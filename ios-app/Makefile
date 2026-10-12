@@ -478,7 +478,7 @@ java:
 	# 默认跳过：预编译 jar 已在 git 中，普通构建与 CI 都不需要 Ant / JDK 8 /
 	# 网络。只有 BUILD_LWJGL=1 时才真正从源码构建（本地改 LWJGL 时用）：
 	#     BUILD_LWJGL=1 make java
-	bash $(SOURCEDIR)/scripts/build_lwjgl.sh
+	if [ "$(BUILD_LWJGL)" = "1" ]; then bash "$(SOURCEDIR)/scripts/build_lwjgl.sh"; else echo '[Amethyst v$(VERSION)] java - using prebuilt LWJGL jars'; fi
 	$(MAKE) -C JavaApp -j$(JOBS) BOOTJDK=$(BOOTJDK)
 	echo '[Amethyst v$(VERSION)] java - end'
 

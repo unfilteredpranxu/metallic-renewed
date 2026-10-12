@@ -132,6 +132,23 @@ jobs:
             tail -80 ios-app/build.log
           fi
 
+          echo "---- Unique error messages (first 15) ----"
+          grep -E '^[^ ]+:[0-9]+:[0-9]+: (fatal )?error:' ios-app/build.log \
+            | sed -E 's#^/Users/runner/work/[^/]+/[^/]+/ios-app/##' | sort -u | head -15 || true
+
+          echo "---- Source lines around the first 4 distinct errors ----"
+          grep -E '^[^ ]+:[0-9]+:[0-9]+: (fatal )?error:' ios-app/build.log \
+            | awk -F: '!seen[$1":"$2]++ {print $1":"$2}' | head -4 | while IFS=: read -r file line; do
+              echo ">>>>> $file : line $line  (file has $(wc -l < "$file") lines)"
+              start=$((line>8 ? line-8 : 1))
+              sed -n "${start},$((line+4))p" "$file" | cat -n
+            done || true
+
+          echo "---- Is the file from your repo or copied from upstream? ----"
+          git -C "$GITHUB_WORKSPACE" log --oneline -3 -- ios-app/Natives/LauncherNewsViewController.m || true
+          echo "---- ARC-related errors ----"
+          grep -nE "ARC" ios-app/build.log | grep -E "error" | head -10 || true
+
       - name: Find outputs
         if: always()
         run: |

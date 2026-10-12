@@ -28,6 +28,17 @@ jobs:
           javac -version
           echo $JAVA_HOME
 
+      - name: Fetch ZeroTier framework
+        run: |
+          DEST=ios-app/Natives/external/ZeroTierFramework
+          if [ ! -d "$DEST/ios-example-app/zt.framework" ]; then
+            rm -rf "$DEST"
+            mkdir -p "$(dirname "$DEST")"
+            git clone --depth 1 https://github.com/zerotier/zerotier-sockets-apple-framework.git "$DEST"
+          fi
+          ls -la "$DEST" "$DEST/ios-example-app" || true
+          test -d "$DEST/ios-example-app/zt.framework"
+
       - name: Build
         shell: bash
         working-directory: ios-app

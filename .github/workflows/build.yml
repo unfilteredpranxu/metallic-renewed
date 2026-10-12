@@ -105,6 +105,52 @@ jobs:
           ls -la "$DEST" "$DEST/ios-example-app" || true
           test -d "$DEST/ios-example-app/zt.framework"
 
+      - name: Resolve missing classes from upstream
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          # Add any class name that the compiler reports as "unknown type name"
+          CLASSES="HomeActionPanelView"
+          for c in $CLASSES; do
+            echo "==================== $c ===================="
+            echo "-- files in your project:"
+            find ios-app \( -name "$c.h" -o -name "$c.m" -o -name "$c.mm" \) -not -path "*/.git/*" | head
+            echo "-- files that mention it in your project:"
+            grep -rl "$c" ios-app --include=*.h --include=*.m --include=*.mm --include=CMakeLists.txt 2>/dev/null | head
+            # Nothing is copied from upstream here: only YOUR files are compiled.
+            # Make sure your .m file is compiled: add it to CMakeLists.txt next to LauncherNewsViewController.m
+            m=$(find ios-app/Natives \( -name "$c.m" -o -name "$c.mm" \) -not -path "*/.git/*" | head -1)
+            if [ -n "$m" ]; then
+              relm="${m#ios-app/Natives/}"
+              if ! grep -q "$relm" ios-app/Natives/CMakeLists.txt; then
+                awk -v rel="$relm" '{print} /LauncherNewsViewController\.m/ && !done {match($0,/^[ \t]*/); print substr($0,1,RLENGTH) rel; done=1}' \
+                  ios-app/Natives/CMakeLists.txt > /tmp/CMakeLists.new && mv /tmp/CMakeLists.new ios-app/Natives/CMakeLists.txt
+                echo "ADDED $relm to CMakeLists.txt"
+              else
+                echo "$relm is already listed in CMakeLists.txt"
+              fi
+
+              # Check that LauncherNewsViewController.m can actually see the class
+              h=$(find ios-app -name "$c.h" -not -path "*/.git/*" | head -1)
+              n=$(find ios-app/Natives -name "LauncherNewsViewController.m" | head -1)
+              echo "---- header found at: $h"
+              echo "---- declarations in $c.h:"
+              grep -nE "@interface|@class|@protocol|#import" "$h" | head -20 || true
+              echo "---- imports in LauncherNewsViewController.m:"
+              grep -nE "^#import|^@import|^#include" "$n" | head -40 || true
+              if [ -n "$h" ] && [ -n "$n" ] && ! grep -q "$c.h" "$n"; then
+                relh=$(python3 -c "import os,sys;print(os.path.relpath(sys.argv[1],sys.argv[2]))" "$h" "$(dirname "$n")")
+                awk -v h="$relh" '{print} /^#import/ && !d {print "#import \"" h "\""; d=1}' "$n" > /tmp/lnvc.new && mv /tmp/lnvc.new "$n"
+                echo "NOTE (runner only, your repo is unchanged): $n did not import $c.h, added: #import \"$relh\""
+              fi
+            else
+              echo "ERROR: $c.m is NOT in your repo, so the build cannot compile it."
+              echo "Did you commit and push it? Is it hidden by .gitignore?"
+              git check-ignore -v "ios-app/Natives/$c.m" "ios-app/Natives/$c.h" || echo "(not ignored by .gitignore)"
+              echo "Files git knows about with a similar name:"
+              git ls-files | grep -i "ActionPanel" || echo "none"
+            fi
+          done
+
       - name: Build
         shell: bash
         working-directory: ios-app

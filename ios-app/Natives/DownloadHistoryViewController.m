@@ -6,7 +6,7 @@
 
 static NSString * const kHistoryCellReuseIdentifier = @"DownloadHistoryCell";
 
-/// 历史条目 cell：名称 + 类型/大小/结果副标题 + 时间（右侧）
+/// History-entry cell: name + type/size/result subtitle + time (on the right).
 @interface DownloadHistoryEntryCell : UITableViewCell
 
 @property (nonatomic, strong) UILabel *nameLabel;
@@ -24,7 +24,7 @@ static NSString * const kHistoryCellReuseIdentifier = @"DownloadHistoryCell";
     if (self) {
         self.backgroundColor = [UIColor secondarySystemBackgroundColor];
         self.layer.cornerRadius = 12.0;
-        self.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+        self.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (match system cards).
         self.layer.masksToBounds = YES;
 
         self.nameLabel = [[UILabel alloc] init];
@@ -79,24 +79,24 @@ static NSString * const kHistoryCellReuseIdentifier = @"DownloadHistoryCell";
     NSString *name = [entry[@"name"] isKindOfClass:[NSString class]] ? entry[@"name"] : @"";
     self.nameLabel.text = name.length > 0 ? name : localize(@"i18n_str_107", nil);
 
-    // 大小（记录的是任务总大小）
+    // Size (the recorded value is the task's total size).
     long long size = [entry[@"size"] longLongValue];
     NSString *sizeText = size > 0 ? [NSByteCountFormatter stringFromByteCount:size
                                                                   countStyle:NSByteCountFormatterCountStyleFile]
                                   : @"--";
 
-    // 结果（当前历史仅记录成功条目）
+    // Result (currently, history records only successful entries).
     NSString *resultRaw = [entry[@"result"] isKindOfClass:[NSString class]] ? entry[@"result"] : @"success";
     NSString *resultText = [resultRaw isEqualToString:@"success"]
-        // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-        ? localize(@"download.history.result.success", @"成功")
-        // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-        : localize(@"download.history.result.failed", @"失败");
+        // ★ [I18N-ORDER] Use the shared localize() entry point instead of bypassing language resolution.
+        ? localize(@"download.history.result.success", @"Success")
+        // ★ [I18N-ORDER] Use the shared localize() entry point instead of bypassing language resolution.
+        : localize(@"download.history.result.failed", @"Failed");
 
     self.detailLabel.text = [NSString stringWithFormat:@"%@ · %@ · %@",
                              typeDisplayName ?: @"--", sizeText, resultText];
 
-    // 时间（右侧，两行：日期 + 时间）
+    // Time (on the right, two lines: date + time).
     NSTimeInterval timestamp = [entry[@"time"] doubleValue];
     if (timestamp > 0) {
         NSDate *date = [NSDate dateWithTimeIntervalSince1970:timestamp];
@@ -140,7 +140,7 @@ static NSString * const kHistoryCellReuseIdentifier = @"DownloadHistoryCell";
     return self;
 }
 
-// 统一使用 InsetGrouped 卡片风格，忽略外部传入的 style
+// Always use the InsetGrouped card style; ignore the externally supplied style.
 - (instancetype)initWithStyle:(UITableViewStyle)style {
     return [self init];
 }
@@ -160,18 +160,20 @@ static NSString * const kHistoryCellReuseIdentifier = @"DownloadHistoryCell";
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    // 适配自定义启动器背景：透明化当前视图控制器，使全局背景壁纸透出（与下载中心一致）
-    // ★ [PAGE-GLASS] 顺序修正：透明化必须【最后】执行 —— 原先先透明化、紧接着又写
-    //   systemBackgroundColor(不透明)，等于把透明底盖掉 ⇒ iOS≥26 无系统液态玻璃、壁纸透不出。
+    // Adapt to the custom launcher background: make this view controller transparent so the global
+    // wallpaper shows through (matching the Download Center).
+    // ★ [PAGE-GLASS] Correct the order: transparency must be applied **last**. Previously it was
+    //   applied first, then systemBackgroundColor (opaque) was assigned, covering the transparent
+    //   background ⇒ on iOS≥26 there was no system Liquid Glass and the wallpaper did not show through.
     self.view.backgroundColor = [UIColor systemBackgroundColor];
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
-    // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-    self.title = localize(@"download.history.title", @"下载历史");
+    // ★ [I18N-ORDER] Use the shared localize() entry point instead of bypassing language resolution.
+    self.title = localize(@"download.history.title", @"Download History");
 
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc]
-        // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-        initWithTitle:localize(@"download.history.clear", @"清空")
+        // ★ [I18N-ORDER] Use the shared localize() entry point instead of bypassing language resolution.
+        initWithTitle:localize(@"download.history.clear", @"Clear")
         style:UIBarButtonItemStylePlain
         target:self
         action:@selector(clearTapped:)];
@@ -185,7 +187,7 @@ static NSString * const kHistoryCellReuseIdentifier = @"DownloadHistoryCell";
     [self updateEmptyState];
 }
 
-/// 空态占位文案（无下拉刷新，进入页面读取一次即可）
+/// Empty-state placeholder text (no pull-to-refresh; read once when entering the page).
 - (void)updateEmptyState {
     if (self.entries.count > 0) {
         [self.emptyLabel removeFromSuperview];
@@ -194,22 +196,23 @@ static NSString * const kHistoryCellReuseIdentifier = @"DownloadHistoryCell";
         return;
     }
 
-    // ★ [HOST-BUG-B] 空历史文案被截成「无载史」根因:
-    //   header 用 CGRectMake(0, 0, 0, 240) 建(width=0),紧接着按 header.bounds.size.width - 48
-    //   给 label 设 frame ⇒ label 宽 = -48,文字被裁到只剩前几个字(用户报"无载史")。
-    //   改为把 label 交给 Auto Layout 约束到 header 左右两边(各留 24pt),
-    //   header 宽度由 UITableView 赋给 tableHeaderView 时决定 ⇒ label 永远按实际宽度换行,完整显示。
-    //   label 每次重建,避免复用旧实例时重复添加约束。
+    // ★ [HOST-BUG-B] Why the empty-history text was clipped to "No hist":
+    //   header was created with CGRectMake(0, 0, 0, 240) (width=0), then the label frame was set to
+    //   header.bounds.size.width - 48 ⇒ label width = -48 and only the first few characters showed.
+    //   Instead, constrain the label to both sides of the header with 24pt margins using Auto Layout.
+    //   UITableView assigns the header width when setting tableHeaderView ⇒ the label always wraps
+    //   to the actual width and displays in full.
+    //   Recreate the label each time to avoid adding constraints repeatedly to a reused instance.
     self.emptyLabel = [[UILabel alloc] init];
     self.emptyLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.emptyLabel.font = [UIFont systemFontOfSize:16];
     self.emptyLabel.textColor = [UIColor secondaryLabelColor];
     self.emptyLabel.textAlignment = NSTextAlignmentCenter;
     self.emptyLabel.numberOfLines = 0;
-    // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-    self.emptyLabel.text = localize(@"download.history.empty", @"暂无下载历史");
+    // ★ [I18N-ORDER] Use the shared localize() entry point instead of bypassing language resolution.
+    self.emptyLabel.text = localize(@"download.history.empty", @"No download history");
 
-    // 用 tableHeaderView 承载居中空态，避免遮挡导航栏
+    // Host the centered empty state in tableHeaderView so it does not cover the navigation bar.
     UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 1, 240)];
     [header addSubview:self.emptyLabel];
     [NSLayoutConstraint activateConstraints:@[
@@ -226,22 +229,22 @@ static NSString * const kHistoryCellReuseIdentifier = @"DownloadHistoryCell";
     if (self.entries.count == 0) return;
 
     UIAlertController *alert = [UIAlertController
-        // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-        alertControllerWithTitle:localize(@"download.history.title", @"下载历史")
-                         // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-                         message:localize(@"download.history.clear_confirm", @"确定清空全部下载历史？此操作不可恢复。")
+        // ★ [I18N-ORDER] Use the shared localize() entry point instead of bypassing language resolution.
+        alertControllerWithTitle:localize(@"download.history.title", @"Download History")
+                         // ★ [I18N-ORDER] Use the shared localize() entry point instead of bypassing language resolution.
+                         message:localize(@"download.history.clear_confirm", @"Are you sure you want to clear all download history? This action cannot be undone.")
                   preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction
-        // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-        actionWithTitle:localize(@"download.history.clear", @"清空")
+        // ★ [I18N-ORDER] Use the shared localize() entry point instead of bypassing language resolution.
+        actionWithTitle:localize(@"download.history.clear", @"Clear")
                   style:UIAlertActionStyleDestructive
                 handler:^(UIAlertAction *action) {
         [[DownloadHistoryStore sharedStore] clearAll];
         [self reloadEntries];
     }]];
     [alert addAction:[UIAlertAction
-        // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-        actionWithTitle:localize(@"download.history.cancel", @"取消")
+        // ★ [I18N-ORDER] Use the shared localize() entry point (do not bypass language resolution).
+        actionWithTitle:localize(@"download.history.cancel", @"Cancel")
                   style:UIAlertActionStyleCancel
                 handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
@@ -275,9 +278,9 @@ static NSString * const kHistoryCellReuseIdentifier = @"DownloadHistoryCell";
     return 60.0;
 }
 
-#pragma mark - 工具方法
+#pragma mark - Utility methods
 
-/// 资源类型显示名（与 DownloadTasksViewController 的映射保持一致）
+/// Resource-type display name (keep mappings consistent with DownloadTasksViewController).
 - (NSString *)displayNameForResourceType:(NSString *)type {
     NSDictionary *map = @{
         DownloadTaskResourceTypeMinecraft: localize(@"i18n_str_113", nil),

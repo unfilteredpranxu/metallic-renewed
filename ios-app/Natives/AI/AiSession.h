@@ -2,7 +2,7 @@
 //  AiSession.h
 //  Amethyst
 //
-//  AI 会话数据模型：包含消息列表与元信息，支持 JSON 系列化以便持久化。
+//  AI session data model: contains the message list and metadata, with JSON serialization for persistence.
 //
 
 #import <Foundation/Foundation.h>
@@ -12,23 +12,23 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface AiSession : NSObject
 
-/// 会话唯一标识（UUID）
+/// Unique session identifier (UUID)
 @property (nonatomic, copy) NSString *identifier;
-/// 会话标题（自动命名，来自首条用户消息）
+/// Session title (automatically named from the first user message)
 @property (nonatomic, copy) NSString *title;
-/// 创建时间
+/// Creation time
 @property (nonatomic, strong) NSDate *createdAt;
-/// 最后更新时间
+/// Last updated time
 @property (nonatomic, strong) NSDate *updatedAt;
-/// 是否置顶
+/// Whether the session is pinned
 @property (nonatomic, assign) BOOL pinned;
-/// 消息列表
+/// Message list
 @property (nonatomic, strong) NSMutableArray<AiMessage *> *messages;
 
-/// 便捷构造：identifier 用 NSUUID，created/updated 为当前时间
+/// Convenience initializer: identifier uses NSUUID; created/updated use the current time
 + (instancetype)sessionWithTitle:(NSString *)title;
 
-/// JSON 系列化
+/// JSON serialization
 - (instancetype)initWithDictionary:(NSDictionary *)dict;
 - (NSDictionary *)toDictionary;
 

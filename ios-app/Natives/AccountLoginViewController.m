@@ -2,12 +2,12 @@
 //  AccountLoginViewController.m
 //  Amethyst
 //
-//  参照 FCL (Fold Craft Launcher) 与 HMCL 的账户登录界面：
-//  - 顶部标题区（大标题 + 副标题）
-//  - 四张可点击的登录方式卡片（微软 / LittleSkin / 自定义第三方 / 本地）
-//  - 每张卡片：左侧彩色图标圆 + 中间标题/描述 + 右侧箭头
-//  - 适配自定义启动器背景（透明 view + 卡片毛玻璃）
-//  - 使用 UIButton 替代 UIControl，避免触摸拦截问题
+//  Account login screen modeled on FCL (Fold Craft Launcher) and HMCL:
+//  - Header area at the top (large title + subtitle)
+//  - Four tappable sign-in method cards (Microsoft / LittleSkin / custom third party / local)
+//  - Each card: colored icon circle on the left + title/description in the middle + arrow on the right
+//  - Adapts to the custom launcher background (transparent view + frosted-glass cards)
+//  - Uses UIButton instead of UIControl to avoid touch interception
 //
 
 #import "AccountLoginViewController.h"
@@ -21,8 +21,9 @@
 @property (nonatomic, strong) UIView *headerContainer;
 @property (nonatomic, strong) UILabel *headerTitleLabel;
 @property (nonatomic, strong) UILabel *headerSubtitleLabel;
-// ★ [ACCT-DUP] 重入守卫：本页选中一种登录方式后即锁死，忽略后续点击，
-//   避免快速双击触发两次登录（本地账户 = 两个随机 UUID = 两条相同账户）。
+// ★ [ACCT-DUP] Re-entry guard: once a sign-in method is selected on this page, lock it and ignore
+//   subsequent taps to prevent a quick double-tap from triggering two sign-ins (two random UUIDs
+//   for a local account would create two duplicate accounts).
 @property (nonatomic) BOOL ameLoginTypeSelected;
 @end
 
@@ -32,24 +33,26 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // 适配自定义启动器背景：将当前视图控制器透明化，使全局背景壁纸能够透出
+    // Adapt to the custom launcher background: make this view controller transparent so the global wallpaper shows through.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
     self.title = localize(@"i18n_str_2", nil);
-    // 透明背景，让自定义启动器背景透出（applyBackgroundToView 会把背景加到 window/splitVC 底层）
+    // Use a transparent background so the custom launcher background shows through
+    // (applyBackgroundToView adds the background at the bottom of the window/splitVC).
     self.view.backgroundColor = [UIColor clearColor];
 
     [self setupUI];
-    // 应用背景（遍历 responder chain 找到 splitVC/window，在最底层加背景）
+    // Apply the background (traverse the responder chain to find splitVC/window and add the background at the bottom).
     [[BackgroundManager sharedManager] applyBackgroundToView:self.view];
 
-    // 监听背景 UI 效果变化通知，当用户切换背景效果（半透明/毛玻璃）时重新应用透明化
+    // Listen for background UI-effect changes and reapply transparency when the user switches the
+    // background effect (translucent/frosted glass).
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
                                                object:nil];
 }
 
-/// 背景效果改变时重新应用透明化（由 BackgroundUIEffectChanged 通知触发）
+/// Reapply transparency when the background effect changes (triggered by the BackgroundUIEffectChanged notification).
 - (void)reapplyBackgroundEffect {
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 }
@@ -60,14 +63,14 @@
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    // 确保 scrollView contentSize 正确
+    // Ensure scrollView contentSize is correct.
     [self.scrollView layoutIfNeeded];
 }
 
 #pragma mark - Setup
 
 - (void)setupUI {
-    // ScrollView 容器
+    // ScrollView container.
     self.scrollView = [[UIScrollView alloc] init];
     self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
     self.scrollView.alwaysBounceVertical = YES;
@@ -76,7 +79,7 @@
     self.scrollView.showsVerticalScrollIndicator = NO;
     [self.view addSubview:self.scrollView];
 
-    // 卡片堆栈
+    // Card stack.
     self.cardStack = [[UIStackView alloc] init];
     self.cardStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardStack.axis = UILayoutConstraintAxisVertical;
@@ -97,13 +100,13 @@
         [self.cardStack.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor constant:-[ScreenUtils dp:40]],
     ]];
 
-    // 标题区
+    // Header area.
     [self setupHeader];
 
-    // 间距
+    // Spacing.
     [self.cardStack addArrangedSubview:[self spacerViewWithHeight:[ScreenUtils dp:8]]];
 
-    // 四张登录卡片
+    // Four sign-in cards.
     [self.cardStack addArrangedSubview:[self createLoginCardWithType:AccountLoginTypeMicrosoft
                                                                 title:localize(@"i18n_str_10", nil)
                                                           description:localize(@"i18n_str_11", nil)
@@ -130,7 +133,7 @@
                                                           accentColor:[UIColor colorWithRed:0.50 green:0.55 blue:0.60 alpha:1.0]]];
 }
 
-/// 顶部标题区（FCL/HMCL 风格：大标题 + 副标题）
+/// Top header area (FCL/HMCL style: large title + subtitle).
 - (void)setupHeader {
     self.headerContainer = [[UIView alloc] init];
     self.headerContainer.translatesAutoresizingMaskIntoConstraints = NO;
@@ -164,34 +167,34 @@
     ]];
 }
 
-/// 创建一张登录方式卡片（FCL/HMCL 风格）
-/// 使用 UIButton 替代 UIControl，确保 touch 事件可靠触发
+/// Create a sign-in method card (FCL/HMCL style).
+/// Use UIButton instead of UIControl to ensure touch events fire reliably.
 - (UIView *)createLoginCardWithType:(AccountLoginType)type
                               title:(NSString *)title
                         description:(NSString *)description
                          iconName:(NSString *)iconName
                      fallbackIcon:(NSString *)fallbackIcon
                         accentColor:(UIColor *)accentColor {
-    // 卡片容器（UIView + 手势），不直接用 UIButton 是因为需要复杂内部布局
-    // 用 UIView + UITapGestureRecognizer 替代 UIControl，避免 UIVisualEffectView 拦截
+    // Card container (UIView + gesture); do not use UIButton directly because the internal layout is complex.
+    // Use UIView + UITapGestureRecognizer instead of UIControl to avoid UIVisualEffectView interception.
     UIView *card = [[UIView alloc] init];
     card.translatesAutoresizingMaskIntoConstraints = NO;
     card.layer.cornerRadius = [ScreenUtils dp:16];
     card.layer.cornerCurve = kCACornerCurveContinuous;
     card.layer.borderWidth = 0.5;
     card.layer.borderColor = [UIColor separatorColor].CGColor;   // ★ [HOST-BUG-A]
-    // 启用触摸交互
+    // Enable touch interaction.
     card.userInteractionEnabled = YES;
 
-    // 毛玻璃背景（blurView.userInteractionEnabled = NO 由 applyEffectToView 保证）
+    // Frosted-glass background (applyEffectToView ensures blurView.userInteractionEnabled = NO).
     [[BackgroundManager sharedManager] applyEffectToView:card];
 
-    // 左侧图标圆（accentColor 轻底色 + SF Symbol）
+    // Icon circle on the left (light accentColor background + SF Symbol).
     UIView *iconCircle = [[UIView alloc] init];
     iconCircle.translatesAutoresizingMaskIntoConstraints = NO;
     iconCircle.backgroundColor = [accentColor colorWithAlphaComponent:0.18];
     iconCircle.layer.cornerRadius = [ScreenUtils dp:24];
-    iconCircle.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+    iconCircle.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (match system cards).
     iconCircle.userInteractionEnabled = NO;
     [card addSubview:iconCircle];
 
@@ -204,7 +207,7 @@
     iconView.userInteractionEnabled = NO;
     [iconCircle addSubview:iconView];
 
-    // 中间标题
+    // Title in the middle.
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.text = title;
@@ -214,7 +217,7 @@
     titleLabel.userInteractionEnabled = NO;
     [card addSubview:titleLabel];
 
-    // 中间描述
+    // Description in the middle.
     UILabel *descLabel = [[UILabel alloc] init];
     descLabel.translatesAutoresizingMaskIntoConstraints = NO;
     descLabel.text = description;
@@ -224,7 +227,7 @@
     descLabel.userInteractionEnabled = NO;
     [card addSubview:descLabel];
 
-    // 右侧箭头
+    // Arrow on the right.
     UIImageView *chevron = [[UIImageView alloc] init];
     chevron.translatesAutoresizingMaskIntoConstraints = NO;
     chevron.image = [UIImage systemImageNamed:@"chevron.right"];
@@ -233,7 +236,7 @@
     chevron.userInteractionEnabled = NO;
     [card addSubview:chevron];
 
-    // 布局约束
+    // Layout constraints.
     CGFloat padding = [ScreenUtils dp:16];
     CGFloat iconSize = [ScreenUtils dp:48];
     CGFloat iconInset = [ScreenUtils dp:24];
@@ -264,9 +267,9 @@
         [chevron.heightAnchor constraintEqualToConstant:[ScreenUtils dp:20]],
     ]];
 
-    // 使用 UITapGestureRecognizer 处理点击（比 UIControlEventTouchUpInside 更可靠，
-    // 不会被 UIVisualEffectView 的 contentView 拦截）
-    // tag 从 1 开始，避免 0 被 UIKit 视为"未设置 tag"
+    // Use UITapGestureRecognizer to handle taps (more reliable than UIControlEventTouchUpInside
+    // and not intercepted by UIVisualEffectView's contentView).
+    // Start tags at 1 so UIKit does not treat 0 as "tag not set".
     card.tag = type + 1;
     UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(cardTapped:)];
     tapGesture.cancelsTouchesInView = NO;
@@ -284,24 +287,26 @@
 
 #pragma mark - Actions
 
-/// 卡片点击处理（由 UITapGestureRecognizer 触发）
+/// Handle a card tap (triggered by UITapGestureRecognizer).
 - (void)cardTapped:(UITapGestureRecognizer *)gesture {
     UIView *card = gesture.view;
     if (!card) return;
-    // ★ [ACCT-DUP] 重入守卫：动画期间本页仍可接收点击 ⇒ 双击会触发两次 onSelectLoginType，
-    //   进而发起两次登录（本地账户每次生成新随机 UUID ⇒ 冒出两条一模一样账户）。
-    //   一旦选中即置位并锁死整页交互，忽略后续点击。
+    // ★ [ACCT-DUP] Re-entry guard: this page can still receive taps during the animation, so a
+    //   double-tap would call onSelectLoginType twice and start two sign-ins (each local sign-in
+    //   generates a random UUID, producing two identical-looking accounts).
+    //   Lock page interaction as soon as a selection is made and ignore later taps.
     if (self.ameLoginTypeSelected) return;
     self.ameLoginTypeSelected = YES;
-    // ★ [ACCT-DONE] 只锁【会触发登录的卡片本身】(cardStack),不再 self.view.userInteractionEnabled = NO ——
-    //   后者会把整页(含导航栏返回键)一起锁死,一旦宿主没消费选择就"进得去出不来"。
+    // ★ [ACCT-DONE] Lock only the cards that trigger sign-in (cardStack); do not set
+    //   self.view.userInteractionEnabled = NO. That would lock the entire page, including the
+    //   navigation-bar back button, making it impossible to leave if the host does not consume the selection.
     self.cardStack.userInteractionEnabled = NO;
 
-    // 还原 tag 偏移（createLoginCardWithType 中存储时 +1）
+    // Restore the tag offset (createLoginCardWithType stores it with +1).
     AccountLoginType type = (AccountLoginType)(card.tag - 1);
 
     __weak typeof(self) weakSelf = self;
-    // 轻微高亮反馈（FCL 风格）
+    // Subtle highlight feedback (FCL style).
     [UIView animateWithDuration:0.1 animations:^{
         card.alpha = 0.65;
     } completion:^(BOOL finished) {
@@ -311,23 +316,25 @@
             if (weakSelf.onSelectLoginType) {
                 weakSelf.onSelectLoginType(type);
             }
-            // ★ [ACCT-DUP] 兜底解锁：若宿主未消费选择（不 pop 本页 / 回调为空），
-            //   0.8s 后恢复交互，避免页面卡死；已 pop（view 不在 window 上）则无需恢复。
+            // ★ [ACCT-DUP] Fallback unlock: if the host does not consume the selection (does not pop this
+            //   page / callback is nil), restore interaction after 0.8s to avoid a stuck page. If already
+            //   popped (view is no longer in a window), no restoration is needed.
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)),
                            dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) strongSelf = weakSelf;
                 if (strongSelf && strongSelf.view.window) {
                     strongSelf.ameLoginTypeSelected = NO;
-                    strongSelf.view.userInteractionEnabled = YES;      // ★ [ACCT-DONE] 双保险(整页)
-                    strongSelf.cardStack.userInteractionEnabled = YES; // ★ [ACCT-DONE] 卡片栈
+                    strongSelf.view.userInteractionEnabled = YES;      // ★ [ACCT-DONE] Double safeguard (entire page).
+                    strongSelf.cardStack.userInteractionEnabled = YES; // ★ [ACCT-DONE] Card stack.
                 }
             });
         }];
     }];
 }
 
-/// ★ [ACCT-DONE] 本页离开(被 pop / 被换走)时**无条件**复位选择锁与交互 —— 保证"选中一次
-///   没被宿主消费"也不会把页面(或下一次进入)留在锁死态。
+/// ★ [ACCT-DONE] Unconditionally reset the selection lock and interaction when this page is left
+///   (popped/replaced), ensuring that a selection not consumed by the host cannot leave this page
+///   (or its next appearance) locked.
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
     self.ameLoginTypeSelected = NO;

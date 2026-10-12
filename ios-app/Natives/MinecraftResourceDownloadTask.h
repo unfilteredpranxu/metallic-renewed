@@ -15,16 +15,16 @@ extern NSString * const kMinecraftResourceDownloadBackgroundSessionIdentifier;
 @property(nonatomic, copy) void(^handleError)(void);
 @property(nonatomic, copy) void(^modpackDownloadCompletion)(void);
 
-// 重试相关属性
+// Retry-related properties.
 @property(nonatomic) NSInteger maxRetryCount;
 @property(nonatomic, readonly) NSInteger currentRetryCount;
 @property(nonatomic, copy) void(^retryCallback)(NSInteger retryCount, NSInteger maxRetryCount);
 
-// 阶段5修复（参照 FCL）：失败的文件列表，单文件下载失败不再取消整批任务，
-// 而是记录到此数组，最终汇总报告给用户。每个元素是 @{@"name": ..., "error": ...}
+// Phase 5 fix (based on FCL): list of failed files. A single-file download failure no longer cancels the whole task;
+// instead, it is recorded in this array and reported to the user in the final summary. Each element is @{@"name": ..., "error": ...}.
 @property(nonatomic, strong) NSMutableArray<NSDictionary *> *failedFiles;
 
-// 新增方法声明（用于账户检查）
+// New method declarations (for account checks).
 - (BOOL)checkAccessWithDialog:(BOOL)show;
 
 - (void)prepareForDownload;
@@ -32,15 +32,15 @@ extern NSString * const kMinecraftResourceDownloadBackgroundSessionIdentifier;
 - (NSURLSessionDownloadTask *)createDownloadTask:(NSString *)url size:(NSUInteger)size sha:(NSString *)sha altName:(NSString *)altName toPath:(NSString *)path;
 - (NSURLSessionDownloadTask *)createDownloadTask:(NSString *)url size:(NSUInteger)size sha:(NSString *)sha altName:(NSString *)altName toPath:(NSString *)path success:(void (^)())success;
 
-// 带重试的下载任务创建
+// Creates a download task with retries.
 - (NSURLSessionDownloadTask *)createDownloadTask:(NSString *)url size:(NSUInteger)size sha:(NSString *)sha altName:(NSString *)altName toPath:(NSString *)path retryCount:(NSInteger)retryCount success:(void (^)())success;
 
 - (void)finishDownloadWithErrorString:(NSString *)error;
 
-/// 取消整个下载流程（redesign-download-ui Phase 3）：
-/// 供 DownloadTaskManager.cancelRawTask: 通过 respondsToSelector:@selector(cancel)
-/// 调用——统一进度页的取消按钮取消任务时，取消内部 NSProgress 以中断流程，
-/// KVO 观察到 cancelled 后按既有路径收尾（置 Cancelled 状态并移除观察者）。
+/// Cancels the entire download flow (redesign-download-ui Phase 3):
+/// Called by DownloadTaskManager.cancelRawTask: via respondsToSelector:@selector(cancel).
+/// When the cancel button on the unified progress page cancels a task, cancels the internal NSProgress to interrupt the flow.
+/// KVO observes the cancelled state and completes using the existing path (sets the Cancelled state and removes the observer).
 - (void)cancel;
 
 - (void)downloadVersion:(NSDictionary *)version;

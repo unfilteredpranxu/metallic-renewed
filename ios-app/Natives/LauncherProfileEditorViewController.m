@@ -6,7 +6,7 @@
 #import "PLProfiles.h"
 #import "ios_uikit_bridge.h"
 #import "utils.h"
-#import "VersionDataMigration.h"   // ★ [VER-ISOLATE-MIGRATE] 版本隔离数据迁移引擎
+#import "VersionDataMigration.h"   // ★ [VER-ISOLATE-MIGRATE] Version-isolation data migration engine
 #import "BackgroundManager.h"
 
 @interface LauncherProfileEditorViewController()<UIPickerViewDataSource, UIPickerViewDelegate>
@@ -18,7 +18,7 @@
 @property(nonatomic) UIPickerView* versionPickerView;
 @property(nonatomic) UIToolbar* versionPickerToolbar;
 @property(nonatomic) int versionSelectedAt;
-// ★ [VER-ISOLATE-MIGRATE] 版本隔离数据迁移（逐实例、复制式、默认不自动搬）
+// ★ [VER-ISOLATE-MIGRATE] Version-isolation data migration (per instance, copy-only, no automatic transfer by default)
 - (void)actionMigrateVersionData;
 - (void)runMigrateItems:(NSArray<NSString *> *)names removeSource:(BOOL)removeSource;
 - (NSString *)ameHumanBytes:(unsigned long long)bytes;
@@ -28,25 +28,25 @@
 
 - (void)viewDidLoad {
     // Setup navigation bar & appearance
-    // ★ [AUDIT-DECIDE] A-11：English 字面量当 key（.strings 无此键）→ 复用已有键 i18n_str_1091。
+    // ★ [AUDIT-DECIDE] A-11: English literal as key (no matching .strings entry) → reuse existing key i18n_str_1091.
     self.title = localize(@"i18n_str_1091", nil);
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(actionDone)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemClose target:self action:@selector(actionClose)];
     self.navigationController.modalInPresentation = YES;
     self.prefSectionsVisible = YES;
     
-    // 设置半透明背景
+    // Apply a translucent background.
     [[BackgroundManager sharedManager] applyEffectToView:self.view];
     
-    // 设置导航栏半透明样式
+    // Apply a translucent navigation-bar style.
     [[BackgroundManager sharedManager] applyEffectToNavigationBar:self.navigationController.navigationBar];
     self.navigationController.navigationBar.tintColor = [UIColor systemBlueColor];
 
     // Setup preference getter and setter
     __weak LauncherProfileEditorViewController *weakSelf = self;
     self.getPreference = ^id(NSString *section, NSString *key){
-        // ★ [VER-ISOLATE-PCL] 版本隔离：未显式设置时展示"解析后的实际生效值"
-        // （与 PCL 设置页一致——显示跟随全局/自动判定的结果），用户切换时才写入显式值。
+        // ★ [VER-ISOLATE-PCL] Version isolation: when not explicitly set, show the "resolved effective value"
+        // (matching the PCL settings page — show the result of global inheritance/automatic detection); write an explicit value only when the user changes it.
         if ([key isEqualToString:@"versionIsolation"]) {
             id raw = weakSelf.profile[key];
             if (raw) return [raw boolValue] ? @"1" : @"0";
@@ -55,7 +55,7 @@
                        [vid isKindOfClass:NSString.class] ? (NSString *)vid : nil) ? @"1" : @"0";
         }
         id rawValue = weakSelf.profile[key];
-        // 兼容 NSDictionary 类型的 javaVersion（旧版直装器写入）
+        // Support NSDictionary-type javaVersion values written by older installers.
         if ([rawValue isKindOfClass:[NSDictionary class]]) {
             id major = rawValue[@"majorVersion"];
             return major ? [major description] : @"(default)";
@@ -137,24 +137,24 @@
               @"type": self.typeTextField,
               @"placeholder": [NSString stringWithFormat:@". -> /Documents/instances/%@", getPrefObject(@"general.game_directory")]
             },
-            // ★ [VER-ISOLATE-PCL] 版本隔离开关（对齐 PCL-CE 实例设置页的「实例隔离」）：
-            // 开 = 该版本的 mods/config/saves/... 独立落 <实例根>/versions/<版本 id>/；
-            // 关 = 与实例内其它版本共享（现状）。值以字符串存 profile（"1"/"0"），
-            // 与 profile 内其它键（NSDictionary<NSString*,NSString*>）类型一致。
+            // ★ [VER-ISOLATE-PCL] Version-isolation switch (matches "Instance Isolation" on the PCL-CE instance settings page):
+            // On = this version's mods/config/saves/... are stored separately under <instance root>/versions/<version id>/;
+            // Off = shared with other versions in the instance (current behavior). Store the value as a string ("1"/"0")
+            // to match the types of other profile keys (NSDictionary<NSString*,NSString*>).
             @{@"key": @"versionIsolation",
               @"icon": @"square.on.square.dashed",
               @"title": @"preference.profile.title.version_isolation",
               @"type": self.typeSwitch,
               @"customSwitchValue": @[@"0", @"1"],
               @"hasDetail": @YES,
-              // ★ [VER-ISOLATE-MIGRATE] 切换隔离会改变下方「迁移版本数据」行是否可用，
-              // 故请求整表刷新以重算 enableCondition（复用既有机制，未改视觉）。
+              // ★ [VER-ISOLATE-MIGRATE] Toggling isolation changes whether the "Migrate Version Data" row below is enabled,
+              // so request a full table refresh to recalculate enableCondition (reuse the existing mechanism; no visual changes).
               @"requestReload": @YES
             },
-            // ★ [VER-ISOLATE-MIGRATE] 版本隔离「数据迁移」入口（逐实例、复制式、默认不自动搬）：
-            // 仅在「版本隔离」已开启时可用（enableCondition）。点击后列出将搬运的目录/文件
-            // 与体量，用户确认才复制；只复制不删除源；同名文件默认跳过并保留两边。
-            // 复用既有 typeButton 行样式，未改视觉。
+            // ★ [VER-ISOLATE-MIGRATE] Entry point for version-isolation data migration (per instance, copy-only, no automatic transfer by default):
+            // available only when version isolation is enabled (enableCondition). Tapping lists the directories/files and sizes to transfer;
+            // copy only after user confirmation. Sources are never deleted; same-name files are skipped by default and kept on both sides.
+            // Reuses the existing typeButton row style; no visual changes.
             @{@"key": @"migrate_version_data",
               @"icon": @"arrow.right.square.on.square",
               @"title": @"preference.profile.title.migrate_version_data",
@@ -214,19 +214,19 @@
     ];
 
     [super viewDidLoad];
-    // 适配自定义启动器背景：将当前视图控制器透明化，让全局背景（图片/视频）能够透出显示。
-    // 此处在上方已通过 applyEffectToView 为视图添加了毛玻璃/半透明效果，
-    // 这里再调用 makeViewControllerTransparent 以确保 tableView 背景也被置为透明。
+    // Adapt to the custom launcher background: make the current view controller transparent so the global background (image/video) shows through.
+    // applyEffectToView above has already applied the glass/translucency effect to the view;
+    // call makeViewControllerTransparent here to ensure the tableView background is transparent too.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
-    // 监听版本列表刷新通知
+    // Listen for version-list refresh notifications.
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reloadVersionList)
                                                  name:@"ReloadProfileList"
                                                object:nil];
 
-    // 监听背景 UI 效果变化通知：当用户在背景设置中切换毛玻璃/半透明或调整透明度时，
-    // 重新调用 makeViewControllerTransparent 以应用最新的视觉效果，保证背景始终正确透出。
+    // Listen for background UI effect changes: when the user switches between glass/translucency or adjusts opacity in Background Settings,
+    // call makeViewControllerTransparent again to apply the latest appearance and keep the background showing through correctly.
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
@@ -237,19 +237,19 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-/// 重新应用背景效果：当 BackgroundUIEffectChanged 通知到达时调用，
-/// 通过 BackgroundManager 重新设置当前视图控制器的透明度/毛玻璃效果，
-/// 确保 tableView 背景透明、全局背景能够正常透出。
+/// Reapply background effects when a BackgroundUIEffectChanged notification arrives,
+/// using BackgroundManager to reset the current view controller's opacity/glass effect
+/// so the tableView background is transparent and the global background shows through.
 - (void)reapplyBackgroundEffect {
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 }
 
 - (void)reloadVersionList {
-    // 清除当前版本列表缓存，下次打开选择器时会重新加载
+    // Clear the current version-list cache; it will reload the next time the picker opens.
     self.versionList = nil;
     self.versionSelectedAt = -1;
     
-    // 如果版本选择器正在显示，立即刷新
+    // If the version picker is visible, refresh it immediately.
     if (self.versionPickerView && self.versionPickerView.window) {
         [self changeVersionType:nil];
     }
@@ -293,13 +293,13 @@
 
     [PLProfiles.current save];
     
-    // 发送通知刷新配置文件列表
+    // Post a notification to refresh the profile list.
     [[NSNotificationCenter defaultCenter] postNotificationName:@"SelectedProfileChanged" object:self.profile[@"name"]];
     
     [self actionClose];
 }
 
-#pragma mark ★ [VER-ISOLATE-MIGRATE] 版本隔离数据迁移
+#pragma mark ★ [VER-ISOLATE-MIGRATE] Version-isolation data migration
 
 - (NSString *)ameHumanBytes:(unsigned long long)bytes {
     return [NSByteCountFormatter stringFromByteCount:(long long)bytes
@@ -311,19 +311,20 @@
     return [vid isKindOfClass:NSString.class] ? (NSString *)vid : nil;
 }
 
-/// 迁移入口（实例编辑页「迁移版本数据」行）。仅列出将搬运的目录/文件与体量，
-/// 逐项可选、用户确认才复制；默认只复制、不删源。不动渲染产物 / 不改 UI 视觉。
+/// Migration entry point (the "Migrate Version Data" row on the instance editor). Lists only the directories/files and sizes to transfer;
+/// items can be selected individually and are copied only after user confirmation. Copy-only by default; sources are not deleted.
+/// Does not touch rendered output or change the UI appearance.
 - (void)actionMigrateVersionData {
     NSString *title = localize(@"preference.profile.title.migrate_version_data", nil);
     NSString *vid = [self ameMigrationVersionId];
 
-    // 未开启隔离 ⇒ 无隔离目标，先提示去开开关（不偷偷替用户开）。
+    // Isolation is disabled, so there is no isolated target. Prompt the user to enable the switch; do not enable it silently.
     if (!amePCLVersionIsolationForProfile(self.profile, vid)) {
         showDialog(title, localize(@"preference.migrate.need_isolation", nil));
         return;
     }
-    // 源 = resolver 在「关隔离」时给出的 gameDir（用户当前实际在用的那个目录）；
-    // 目标 = resolver 在「开隔离」时给出的目录。两端共用同一 resolver，不自拼路径。
+    // Source = gameDir returned by the resolver when isolation is off (the directory the user is currently using);
+    // target = directory returned when isolation is on. Both paths use the same resolver; do not construct paths manually.
     NSString *src = amePCLSharedGameDirForProfile(self.profile, vid);
     NSString *dst = amePCLVersionGameDirAbsolute(self.profile, vid);
     if (src.length == 0 || dst.length == 0 || [src isEqualToString:dst]) {
@@ -331,7 +332,7 @@
         return;
     }
 
-    ameVDMCleanupStaleTemps(dst, ameVDMDefaultItemNames());   // 清上次中断残留
+    ameVDMCleanupStaleTemps(dst, ameVDMDefaultItemNames());   // Clean up leftovers from the previous interrupted operation.
     NSArray<NSDictionary *> *plan = ameVDMPlan(src, dst, ameVDMDefaultItemNames());
     if (plan.count == 0) {
         showDialog(title, localize(@"preference.migrate.nothing", nil));
@@ -351,7 +352,7 @@
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:title message:msg
                                                            preferredStyle:UIAlertControllerStyleActionSheet];
     __weak LauncherProfileEditorViewController *weakSelf = self;
-    // 逐项动作：每项都显示体量（文件数 / 字节），可单独迁移。
+    // Per-item actions: show each item's size (file count / bytes) and allow it to be migrated separately.
     for (NSDictionary *it in plan) {
         NSString *rowTitle = [NSString stringWithFormat:localize(@"preference.migrate.item.title", nil),
                               it[@"name"], (unsigned long)[it[@"files"] unsignedIntegerValue],
@@ -375,11 +376,11 @@
     [self presentViewController:sheet animated:YES completion:nil];
 }
 
-/// 执行迁移并逐项报告；仅在「已复制且无冲突」时提供 destructive 的"删除源"后续动作。
+/// Perform the migration and report each item; offer the destructive "Delete Source" follow-up only when the item was copied without conflicts.
 - (void)runMigrateItems:(NSArray<NSString *> *)names removeSource:(BOOL)removeSource {
     NSString *vid = [self ameMigrationVersionId];
-    NSString *src = amePCLSharedGameDirForProfile(self.profile, vid);   // resolver 的「关隔离」值
-    NSString *dst = amePCLVersionGameDirAbsolute(self.profile, vid);    // resolver 的「开隔离」值
+    NSString *src = amePCLSharedGameDirForProfile(self.profile, vid);   // Resolver result with isolation off.
+    NSString *dst = amePCLVersionGameDirAbsolute(self.profile, vid);    // Resolver result with isolation on.
     NSDictionary *opts = @{@"conflictPolicy": @(ameVDMConflictSkip), @"removeSource": @(removeSource)};
     NSDictionary *rep = ameVDMExecute(src, dst, names, opts);
 

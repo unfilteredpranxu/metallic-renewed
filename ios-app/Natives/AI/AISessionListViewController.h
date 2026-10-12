@@ -2,8 +2,8 @@
 //  AISessionListViewController.h
 //  Amethyst
 //
-//  AI 会话列表页：展示全部历史会话（按更新时间排序，置顶会话优先），
-//  支持搜索、侧滑删除、新建会话；点击会话通过回调返回给调用方。
+//  AI session list: displays all historical sessions (sorted by update time, with pinned sessions first),
+//  supports search, swipe-to-delete, and new sessions; tapping a session returns it to the caller via callback.
 //
 
 #import <UIKit/UIKit.h>
@@ -13,9 +13,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface AISessionListViewController : UIViewController
 
-/// 点击某个会话时的回调
+/// Callback when a session is tapped
 @property (nonatomic, copy, nullable) void (^onSelectSession)(AiSession *session);
-/// 新建会话成功后的回调
+/// Callback after a new session is created
 @property (nonatomic, copy, nullable) void (^onNewSession)(AiSession *session);
 
 @end

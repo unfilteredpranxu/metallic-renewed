@@ -2,53 +2,53 @@
 //  LauncherSkeletonView.m
 //  Amethyst
 //
-//  列表骨架屏实现。
+//  List skeleton-screen implementation.
 //
-//  视觉沿用项目现有毛玻璃体系的语言（见 BackgroundManager / InlineMessageView）：
-//  半透明白色圆角占位条 + 浅描边，透出底层壁纸，再叠一层错峰渐隐的"呼吸"动画，
-//  让"正在加载"这件事可被看见，而不是空白或卡住。
+//  Visual style follows the project's existing glass system (see BackgroundManager / InlineMessageView):
+//  translucent white rounded placeholders with a subtle border reveal the wallpaper underneath, with staggered
+//  fade-in/fade-out "breathing" animations to make loading visible instead of appearing blank or stuck.
 //
 
 #import "LauncherSkeletonView.h"
-// ★ [GLASS-LIQUID] 占位块材质走风格层:系统材质路径(默认)⇒ 系统玻璃/系统材质,不自绘白底+描边
+// ★ [GLASS-LIQUID] Placeholder material uses the style layer: system material by default (system glass/material), not a custom white fill and border.
 #import "UIKit+GlassSurface.h"
 
 #include <math.h>
 
-/// 列表行占位高度 / 行间距
+/// List-row placeholder height / row spacing.
 static CGFloat const kSkeletonListRowHeight = 64.0;
 static CGFloat const kSkeletonListRowSpacing = 10.0;
-/// 网格卡片高度 / 卡片间距
+/// Grid-card height / card spacing.
 static CGFloat const kSkeletonGridCardHeight = 104.0;
 static CGFloat const kSkeletonGridSpacing = 10.0;
-/// 占位条底色 / 描边（保持通透，避免遮死壁纸）
+/// Placeholder fill / border (remain translucent so the wallpaper is not obscured).
 static CGFloat const kSkeletonFillAlpha = 0.12;
 static CGFloat const kSkeletonBorderAlpha = 0.06;
-/// 宽屏（iPad / 横屏）下的网格列数阈值
-static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] 单卡最小可读宽 ⇒ 决定列数(2~4)
+/// Grid-column thresholds for wide layouts (iPad / landscape).
+static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] Minimum readable card width determines the column count (2–4).
 
 @interface LauncherSkeletonView ()
 
-/// 占位样式（创建时固定）
+/// Placeholder style (fixed at creation).
 @property (nonatomic, assign) LauncherSkeletonStyle skeletonStyle;
-/// 当前所有占位条
+/// All current placeholders.
 @property (nonatomic, strong) NSMutableArray<UIView *> *placeholderViews;
-/// 上次构建占位条时的尺寸（尺寸变化才重建）
+/// Size used to build the placeholders last time (rebuild only when the size changes).
 @property (nonatomic, assign) CGSize lastPlaceholderLayoutSize;
 
-/// 指定样式的初始化器（仅内部使用）
+/// Initializer for the specified style (internal use only).
 - (instancetype)initWithFrame:(CGRect)frame style:(LauncherSkeletonStyle)style;
-/// 按当前尺寸重建占位条
+/// Rebuild placeholders for the current size.
 - (void)rebuildPlaceholdersIfNeeded:(BOOL)force;
-/// 构建列表行样式占位条
+/// Build list-row-style placeholders.
 - (void)buildListPlaceholdersForSize:(CGSize)size;
-/// 构建卡片网格样式占位条
+/// Build card-grid-style placeholders.
 - (void)buildCardGridPlaceholdersForSize:(CGSize)size;
-/// 创建一条占位条
+/// Create one placeholder.
 - (UIView *)makePlaceholderViewWithFrame:(CGRect)frame cornerRadius:(CGFloat)cornerRadius;
-/// 统一占位条视觉（底色 / 圆角 / 描边）
+/// Apply consistent placeholder styling (fill / corner radius / border).
 - (void)applyPlaceholderStyleToView:(UIView *)view cornerRadius:(CGFloat)cornerRadius;
-/// 呼吸动画
+/// Breathing animation.
 - (void)startBreathingAnimation;
 - (void)stopBreathingAnimation;
 
@@ -56,7 +56,7 @@ static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] 单�
 
 @implementation LauncherSkeletonView
 
-#pragma mark - 创建 / 销毁
+#pragma mark - Create / destroy
 
 + (instancetype)attachToView:(UIView *)hostView style:(LauncherSkeletonStyle)style {
     if (!hostView) {
@@ -70,7 +70,7 @@ static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] 单�
     LauncherSkeletonView *skeleton = [[LauncherSkeletonView alloc] initWithFrame:hostView.bounds style:style];
     skeleton.translatesAutoresizingMaskIntoConstraints = NO;
     skeleton.hidden = YES;
-    // 纯视觉层：不拦截触摸，列表滚动 / 下拉刷新照常可用
+    // Visual-only layer: does not intercept touches, so list scrolling / pull-to-refresh continue to work.
     skeleton.userInteractionEnabled = NO;
     [parentView addSubview:skeleton];
 
@@ -100,7 +100,7 @@ static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] 单�
     [self stopBreathingAnimation];
 }
 
-#pragma mark - 显示 / 隐藏
+#pragma mark - Show / hide
 
 - (void)showSkeleton {
     [self rebuildPlaceholdersIfNeeded:YES];
@@ -127,7 +127,7 @@ static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] 单�
     } completion:^(BOOL finished) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf || strongSelf.skeletonVisible) {
-            return;  // 淡出过程中又被要求显示，保持现状
+            return;  // If asked to show again while fading out, keep the current state.
         }
         strongSelf.hidden = YES;
         strongSelf.alpha = 1.0;
@@ -143,7 +143,7 @@ static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] 单�
     self.alpha = 1.0;
 }
 
-#pragma mark - 布局
+#pragma mark - Layout
 
 - (void)layoutSubviews {
     [super layoutSubviews];
@@ -181,7 +181,7 @@ static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] 单�
     }
 }
 
-/// 列表行样式：左侧图标方块 + 两行文本条，尽量贴近真实卡片的视觉重量
+/// List-row style: icon square on the left + two text lines, approximating the visual weight of a real card.
 - (void)buildListPlaceholdersForSize:(CGSize)size {
     CGFloat sideInset = 4.0;
     CGFloat rowWidth = MAX(size.width - sideInset * 2.0, 1.0);
@@ -218,12 +218,12 @@ static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] 单�
     }
 }
 
-/// 卡片网格样式：与版本列表的卡片流对齐（iPhone 两列，宽屏三列）
+/// Card-grid style: matches the version-list card flow (two columns on iPhone, three on wide screens).
 - (void)buildCardGridPlaceholdersForSize:(CGSize)size {
     CGFloat sideInset = 8.0;
     CGFloat gap = kSkeletonGridSpacing;
-    // ★ [UI-ADAPT] 列数按「最小卡宽」分档(2~4),与主页便当盒同一口径:
-    //   小屏 2 列 / 中屏 3 列 / 大屏(iPad 横竖) 4 列 —— 不再只看单一阈值。
+    // ★ [UI-ADAPT] Choose 2–4 columns based on minimum card width, matching the home Bento layout:
+    //   two columns on small screens / three on medium screens / four on large screens (iPad portrait or landscape), rather than one threshold.
     NSInteger columnCount = (NSInteger)floor((size.width - sideInset * 2.0 + gap) / (kSkeletonGridMinCardWidth + gap));
     if (columnCount < 2) columnCount = 2;
     if (columnCount > 4) columnCount = 4;
@@ -247,7 +247,7 @@ static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] 单�
     }
 }
 
-#pragma mark - 占位条样式与动画
+#pragma mark - Placeholder styling and animation
 
 - (UIView *)makePlaceholderViewWithFrame:(CGRect)frame cornerRadius:(CGFloat)cornerRadius {
     UIView *view = [[UIView alloc] initWithFrame:frame];
@@ -260,8 +260,8 @@ static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] 单�
     if (!view) {
         return;
     }
-    // ★ [GLASS-LIQUID] 系统材质路径(默认)⇒ 占位块用系统材质(UIGlassEffect / 系统 UIBlurEffect),
-    //   不再自绘「半透明白 + 1px 白描边」;仅显式打开「自绘高光」时才保留旧观感。
+    // ★ [GLASS-LIQUID] System-material path (default): use system material for placeholders (UIGlassEffect / system UIBlurEffect)
+    //   instead of drawing translucent white with a 1 px white border. Keep the old appearance only when custom highlights are explicitly enabled.
     if (AMEGlassStyleAllowsHandDrawnGlass()) {
         view.backgroundColor = [UIColor colorWithWhite:1.0 alpha:kSkeletonFillAlpha];
         view.layer.cornerRadius = cornerRadius;
@@ -274,7 +274,7 @@ static CGFloat const kSkeletonGridMinCardWidth = 150.0;  // ★ [UI-ADAPT] 单�
     }
 }
 
-/// 呼吸动画：占位条按行错峰渐隐渐显，暗示"正在加载"
+/// Breathing animation: stagger placeholder fades by row to suggest that loading is in progress.
 - (void)startBreathingAnimation {
     NSTimeInterval stagger = 0.0;
     for (UIView *placeholder in self.placeholderViews) {

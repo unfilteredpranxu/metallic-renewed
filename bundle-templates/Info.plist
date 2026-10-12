@@ -201,22 +201,27 @@
         <true/>
         <key>UIRequiresFullScreen</key>
         <true/>
-        <!-- Task188（强制横屏·第二轮）：Task187 移除了 Portrait 后 15fddc2 装机
-             仍然竖屏（iPadOS 27 窗口模式下 Code=101 “当前窗口模式不允许以编程
-             方式更改界面方向”）。根因：iPadOS 26+ 的窗口系统里，可自由调节
-             尺寸的 app 窗口由系统持有几何、完全无视 UISupportedInterfaceOrientations
-             与代码级覆盖（AppDelegate supportedInterfaceOrientationsFor:、
-             SceneDelegate scene:supportedInterfaceOrientationsForWindowScene:、
-             根 VC 覆盖全部已就位且无效）。声明 UIRequiresFullScreen=true 退出
-             窗口模式 → 系统回归传统全屏呈现，方向列表立即生效（游戏启动器
-             本就全屏体验，无多任务/分屏诉求）。 -->
+        <!-- Task188 (force landscape, round 2): after Task187 removed Portrait, build 15fddc2
+             still launched in portrait (iPadOS 27 window mode, Code=101: "The current window
+             mode does not allow changing the interface orientation programmatically"). Root cause:
+             in the iPadOS 26+ window system, the resizable app window's geometry is owned by the
+             system, which completely ignores UISupportedInterfaceOrientations and code overrides
+             (AppDelegate supportedInterfaceOrientationsFor:, SceneDelegate
+             scene:supportedInterfaceOrientationsForWindowScene:, and the root VC override were all
+             in place but ineffective). Setting UIRequiresFullScreen=true exits window mode; the
+             system returns to traditional full-screen presentation and immediately honors the
+             orientation list (the game launcher is full-screen by design and has no multitasking
+             or split-screen use case). -->
         <key>UISupportedInterfaceOrientations</key>
         <array>
-                <!-- Task187（强制横屏）：移除 UIInterfaceOrientationPortrait——启动器为横屏设计，
-                     iPhone 上竖屏打开后界面错位且 requestGeometryUpdate 在窗口模式下被系统
-                     拒绝（Code=101 "当前窗口模式不允许以编程方式更改界面方向"，8cb5e03 日志）。
-                     支持列表只留横屏后系统直接以横屏呈现，无需编程请求。iPad 段本就横屏 only，
-                     SceneDelegate 的几何请求保留为纵深防御。 -->
+                <!-- Task187 (force landscape): remove UIInterfaceOrientationPortrait. The launcher
+                     is designed for landscape; portrait launch on iPhone misaligns the UI, and the
+                     system rejects requestGeometryUpdate in window mode (Code=101, "The current
+                     window mode does not allow changing the interface orientation
+                     programmatically", per the 8cb5e03 log). With only landscape orientations in
+                     the supported list, the system presents directly in landscape without a
+                     programmatic request. iPad was already landscape-only; the SceneDelegate
+                     geometry request remains as defense in depth. -->
                 <string>UIInterfaceOrientationLandscapeLeft</string>
                 <string>UIInterfaceOrientationLandscapeRight</string>
         </array>

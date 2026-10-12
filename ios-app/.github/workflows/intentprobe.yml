@@ -24,19 +24,19 @@ jobs:
         working-directory: intentprobe
         run: |
           exec > >(tee -a build.log) 2>&1
-          echo "########## A. const/gather 相关参数 ##########"
+          echo "########## A. const/gather related arguments ##########"
           grep -o -- "-emit-const-values[^ ]*" build.log | head -3 || true
           grep -o -- "-const-gather-protocols-file" build.log | head -3 || true
-          echo "########## B. 协议清单文件路径 ##########"
+          echo "########## B. Protocol manifest file paths ##########"
           grep -o -- "/Users/runner/[^ \"']*" build.log | grep -i -E "gather|protocol|const" | sort -u | head -10 || true
-          echo "########## C. 该文件内容 ##########"
+          echo "########## C. File contents ##########"
           for p in $(grep -o -- "/Users/runner/[^ \"']*" build.log | grep -i -E "gather|protocol|const" | sort -u | head -5); do
             echo "=== CAT $p ==="
             echo "--- $p ---"
             cat "$p" 2>/dev/null | head -80 || true
             echo
           done
-          echo "########## D. DerivedData 里的 txt 清单 ##########"
+          echo "########## D. txt manifests in DerivedData ##########"
           find ~/Library/Developer/Xcode/DerivedData -name "*.txt" 2>/dev/null | head -25 || true
           for p in $(find ~/Library/Developer/Xcode/DerivedData -name "*.txt" 2>/dev/null | head -25); do
             echo "--- $p ($(wc -c < "$p") B) ---"; head -c 400 "$p"; echo
@@ -46,7 +46,7 @@ jobs:
           for f in $(find ~/Library/Developer/Xcode/DerivedData -name extract.actionsdata 2>/dev/null | head -1); do
             echo "--- $f ($(wc -c < "$f") B) ---"; head -c 2500 "$f"; echo
           done
-          echo "########## F. 协议清单 JSON 内容(直接从 DerivedData 找) ##########"
+          echo "########## F. Protocol manifest JSON contents (found directly in DerivedData) ##########"
           for f in $(find ~/Library/Developer/Xcode/DerivedData -name "*_const_extract_protocols.json" 2>/dev/null | head -3); do
             echo "=== $f ($(wc -c < "$f") B) ==="; cat "$f"; echo
           done
@@ -55,7 +55,7 @@ jobs:
           for f in $(find ~/Library/Developer/Xcode/DerivedData -name "*.swiftconstvalues" 2>/dev/null | head -1); do echo "=== $f ==="; cat "$f"; echo; done
           echo "########## H. actionsdata ##########"
           for f in $(find ~/Library/Developer/Xcode/DerivedData -name "extract.actionsdata" 2>/dev/null | head -1); do echo "=== $f ==="; cat "$f"; echo; done
-          echo "########## G. 处理器调用 ##########"
+          echo "########## G. Processor invocation ##########"
           grep -o "appintentsmetadataprocessor.\{0,900\}" build.log | head -1 || true
       - uses: actions/upload-artifact@v4
         with:

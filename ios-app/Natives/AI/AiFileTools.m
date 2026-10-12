@@ -38,43 +38,43 @@ static NSString * const kAiToolDomain = @"AiTool";
 
 - (NSString *)summary {
     if ([self.internalName isEqualToString:@"list_files"]) {
-        return @"列出指定目录下的文件/子目录（不递归）。"
-               "\n参数：path（string，可选，默认当前实例根目录）。"
-               "\n返回 JSON 数组，每项含 name（名称）、type（file/dir）、size（字节）、modifiedUnixTS（修改时间戳），按名称排序。";
+        return @"List files/subdirectories in the specified directory (not recursive)."
+               "\nParameter: path (string, optional, defaults to the current instance root directory)."
+               "\nReturns a JSON array; each item contains name, type (file/dir), size (bytes), and modifiedUnixTS (modification timestamp), sorted by name.";
     }
     if ([self.internalName isEqualToString:@"read_file"]) {
-        return @"读取文本文件内容。"
-               "\n参数：path（string，必填）、maxChars（number，可选，默认 8000，超长截断）。"
-               "\n返回文件文本内容；二进制文件返回「二进制文件不可读」。";
+        return @"Read the contents of a text file."
+               "\nParameters: path (string, required), maxChars (number, optional, defaults to 8000; truncate if longer)."
+               "\nReturns the file text; returns \"Binary file is not readable\" for binary files.";
     }
     if ([self.internalName isEqualToString:@"grep_files"]) {
-        return @"在文件中用正则表达式搜索匹配行。"
-               "\n参数：path（string，可选，默认当前实例根目录）、pattern（string，必填，正则表达式）、"
-               "recursive（boolean，可选，默认 NO）、maxResults（number，可选，默认 50）。"
-               "\n返回 JSON 数组 {path, lineNumber, line}。";
+        return @"Search a file for matching lines using a regular expression."
+               "\nParameters: path (string, optional, defaults to the current instance root directory), pattern (string, required, regular expression), "
+               "recursive (boolean, optional, defaults to NO), maxResults (number, optional, defaults to 50)."
+               "\nReturns a JSON array {path, lineNumber, line}.";
     }
     if ([self.internalName isEqualToString:@"write_file"]) {
-        return @"写文本文件（原子写入，自动创建父目录）。"
-               "\n参数：path（string，必填）、content（string，必填）。"
-               "\n返回「已写入（N 字符）」。覆盖已存在内容。";
+        return @"Write a text file (atomic write; automatically creates parent directories)."
+               "\nParameters: path (string, required), content (string, required)."
+               "\nReturns \"Written (N characters).\" Overwrites existing content.";
     }
     if ([self.internalName isEqualToString:@"edit_file"]) {
-        return @"精确替换文件中的一段文本。"
-               "\n参数：path（string，必填）、oldText（string，必填）、newText（string，必填）。"
-               "\n仅当 oldText 在文件中恰好出现 1 次时才替换，否则返回错误（出现 N 次）。";
+        return @"Precisely replace a section of text in a file."
+               "\nParameters: path (string, required), oldText (string, required), newText (string, required)."
+               "\nReplaces only if oldText appears exactly once in the file; otherwise returns an error (appeared N times).";
     }
     if ([self.internalName isEqualToString:@"delete_file"]) {
-        return @"删除文件（危险操作）。"
-               "\n参数：path（string，必填）。"
-               "\n出于安全考虑，仅允许删除文本类文件（.txt/.log/.json/.properties/.toml/.md/.cfg/.yml/.yaml/.xml/.xaml/.lang 等），不删除目录。"
-               "\n返回「已删除」。";
+        return @"Delete a file (dangerous operation)."
+               "\nParameter: path (string, required)."
+               "\nFor safety, only text files (.txt/.log/.json/.properties/.toml/.md/.cfg/.yml/.yaml/.xml/.xaml/.lang, etc.) may be deleted; directories cannot be deleted."
+               "\nReturns \"Deleted.\"";
     }
-    return @"文件操作工具";
+    return @"File operation tool";
 }
 
-#pragma mark - 沙盒路径安全
+#pragma mark - Sandbox path safety
 
-/// 当前实例根目录（POJAV_GAME_DIR 或其回退）
+/// Current instance root directory (POJAV_GAME_DIR or its fallback)
 + (NSString *)currentGameRoot {
     const char *root = getenv("POJAV_GAME_DIR");
     if (root && strlen(root) > 0) return @(root);
@@ -87,11 +87,11 @@ static NSString * const kAiToolDomain = @"AiTool";
     return [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
 }
 
-/// 文件工具合法根目录：启动器目录（POJAV_HOME；未设置时回退 Documents 下的启动器目录，
-/// 与 main.m 初始化逻辑一致——沙盒内即 Documents 本身，非沙盒为 Documents/AngelAuraAmethyst）。
-/// instances/*（mods/saves/resourcepacks 等）均位于其下；
-/// 经 realpath 归一化以匹配 POJAV_GAME_DIR 符号链接解析后的真实前缀，避免误判越界。
-/// enhance-ai-agent Task 16：从「整个 App 沙盒」收紧为启动器目录，杜绝读写容器外文件。
+/// Valid root for file tools: launcher directory (POJAV_HOME; if unset, fall back to the launcher directory under Documents,
+/// consistent with main.m initialization — Documents itself inside the sandbox, Documents/AngelAuraAmethyst outside the sandbox).
+/// instances/* (mods/saves/resourcepacks, etc.) are all under it;
+/// normalize with realpath to match the real prefix after resolving the POJAV_GAME_DIR symlink and avoid incorrectly flagging traversal.
+/// enhance-ai-agent Task 16: restrict from the entire app sandbox to the launcher directory, preventing reads/writes outside the container.
 + (NSString *)sandboxRoot {
     NSString *root = nil;
     const char *homeEnv = getenv("POJAV_HOME");
@@ -128,31 +128,31 @@ static NSString * const kAiToolDomain = @"AiTool";
 
     NSString *joined;
     if (usedGameDir) {
-        joined = worked; // 已被替换为物理绝对路径（在沙盒内）
+        joined = worked; // Replaced with a physical absolute path (inside the sandbox)
     } else if ([worked hasPrefix:@"/"]) {
-        // 绝对物理路径（可能是 getenv("POJAV_GAME_DIR") 直接返回的实例根，
-        // 也可能是 /var/.../Documents/... 等沙盒内文件）。
-        // 关键修复（list_files 越界）：此前把一切 "以 / 开头的路径" 都当作
-        // "相对 Documents 拼接"，导致传入实例根的绝对路径被拼成 Documents/<容器绝对路径>，
-        // 必然越界；也导致不给 path（默认取 currentGameRoot 绝对路径）时报越界。
-        // 现在绝对路径原样使用，是否越界由下方基于容器根的检查统一裁决。
+        // Absolute physical path (may be an instance root returned directly by getenv("POJAV_GAME_DIR"),
+        // or a sandbox file such as /var/.../Documents/...).
+        // Important fix (list_files path traversal): previously all paths "starting with /" were treated as
+        // "relative paths to join with Documents", causing an absolute instance root to become Documents/<absolute container path>,
+        // which always escaped the sandbox; it also caused out-of-bounds errors when path was omitted (defaulting to the absolute currentGameRoot).
+        // Absolute paths are now used as-is, and the unified sandbox-root check below determines whether they escape.
         joined = worked;
     } else {
-        // 相对路径：相对当前实例根
+        // Relative path: relative to the current instance root
         joined = [[self currentGameRoot] stringByAppendingPathComponent:worked];
     }
 
-    // 标准化（去 ./ ..、解析符号链接），随后做沙盒越界检查
+    // Normalize (remove ./ .., resolve symlinks), then check for sandbox traversal
     NSString *std = [joined stringByResolvingSymlinksInPath];
     stdRoot = [stdRoot stringByResolvingSymlinksInPath];
     NSString *prefix = [stdRoot hasSuffix:@"/"] ? stdRoot : [stdRoot stringByAppendingString:@"/"];
     if (![std isEqualToString:stdRoot] && ![std hasPrefix:prefix]) {
-        return nil; // 越界
+        return nil; // Traversal
     }
     return std;
 }
 
-#pragma mark - 执行分发
+#pragma mark - Execution dispatch
 
 - (void)execute:(NSDictionary<NSString *, id> *)params
      completion:(void (^)(NSString * _Nullable result, NSError * _Nullable error))completion {
@@ -166,7 +166,7 @@ static NSString * const kAiToolDomain = @"AiTool";
     if ([self.internalName isEqualToString:@"delete_file"]) { [self performDeleteFile:params completion:completion]; return; }
 
     NSError *err = [NSError errorWithDomain:kAiToolDomain code:404
-                                   userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"未知工具 %@", self.internalName]}];
+                                   userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Unknown tool %@", self.internalName]}];
     completion(nil, err);
 }
 
@@ -181,10 +181,10 @@ static NSString * const kAiToolDomain = @"AiTool";
     NSString *path = [params[@"path"] isKindOfClass:[NSString class]] ? params[@"path"] : nil;
     if (path.length == 0) path = [[self class] currentGameRoot];
     NSString *resolved = [[self class] resolveSafely:path];
-    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"路径越界或无效"]); return; }
+    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"Path traversal or invalid path"]); return; }
 
     NSArray *items = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:resolved error:nil];
-    if (!items) { completion(nil, [self errorWithCode:404 message:@"目录不存在"]); return; }
+    if (!items) { completion(nil, [self errorWithCode:404 message:@"Directory does not exist"]); return; }
 
     NSMutableArray *entries = [NSMutableArray array];
     for (NSString *name in items) {
@@ -212,9 +212,9 @@ static NSString * const kAiToolDomain = @"AiTool";
 
 - (void)performReadFile:(NSDictionary *)params completion:(void(^)(NSString *, NSError *))completion {
     NSString *path = [params[@"path"] isKindOfClass:[NSString class]] ? params[@"path"] : nil;
-    if (path.length == 0) { completion(nil, [self errorWithCode:400 message:@"参数 path 必填"]); return; }
+    if (path.length == 0) { completion(nil, [self errorWithCode:400 message:@"The path parameter is required"]); return; }
     NSString *resolved = [[self class] resolveSafely:path];
-    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"路径越界或无效"]); return; }
+    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"Path traversal or invalid path"]); return; }
 
     NSUInteger maxChars = 8000;
     NSNumber *maxNum = params[@"maxChars"];
@@ -224,18 +224,18 @@ static NSString * const kAiToolDomain = @"AiTool";
     }
 
     NSData *data = [NSData dataWithContentsOfFile:resolved];
-    if (!data) { completion(nil, [self errorWithCode:404 message:@"文件不存在或不可读"]); return; }
+    if (!data) { completion(nil, [self errorWithCode:404 message:@"File does not exist or is unreadable"]); return; }
 
-    // 二进制检测：包含 NUL 字节，或无法按 UTF-8 解码
+    // Binary detection: contains a NUL byte or cannot be decoded as UTF-8
     BOOL hasNull = [data rangeOfData:[NSData dataWithBytes:"\0" length:1] options:0 range:NSMakeRange(0, data.length)].location != NSNotFound;
-    if (hasNull) { completion(@"二进制文件不可读", nil); return; }
+    if (hasNull) { completion(@"Binary file is not readable", nil); return; }
     NSString *content = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
     if (!content) {
         content = [[NSString alloc] initWithData:data encoding:NSISOLatin1StringEncoding];
     }
-    if (!content) { completion(@"二进制文件不可读", nil); return; }
+    if (!content) { completion(@"Binary file is not readable", nil); return; }
     if (content.length > maxChars) {
-        content = [NSString stringWithFormat:@"（内容过长已截断，显示开头 %lu 字符）\n%@", (unsigned long)maxChars,
+        content = [NSString stringWithFormat:@"(Content too long; truncated to the first %lu characters)\n%@", (unsigned long)maxChars,
                    [content substringToIndex:maxChars]];
     }
     completion(content, nil);
@@ -247,9 +247,9 @@ static NSString * const kAiToolDomain = @"AiTool";
     NSString *path = [params[@"path"] isKindOfClass:[NSString class]] ? params[@"path"] : nil;
     if (path.length == 0) path = [[self class] currentGameRoot];
     NSString *pattern = [params[@"pattern"] isKindOfClass:[NSString class]] ? params[@"pattern"] : nil;
-    if (pattern.length == 0) { completion(nil, [self errorWithCode:400 message:@"参数 pattern（正则）必填"]); return; }
+    if (pattern.length == 0) { completion(nil, [self errorWithCode:400 message:@"The pattern (regular expression) parameter is required"]); return; }
     NSString *resolved = [[self class] resolveSafely:path];
-    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"路径越界或无效"]); return; }
+    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"Path traversal or invalid path"]); return; }
 
     BOOL recursive = NO;
     NSNumber *recNum = params[@"recursive"];
@@ -263,7 +263,7 @@ static NSString * const kAiToolDomain = @"AiTool";
     NSError *regexError = nil;
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern options:0 error:&regexError];
     if (!regex) {
-        completion(nil, [self errorWithCode:400 message:[NSString stringWithFormat:@"正则表达式无效：%@", regexError.localizedDescription]]);
+        completion(nil, [self errorWithCode:400 message:[NSString stringWithFormat:@"Invalid regular expression: %@", regexError.localizedDescription]]);
         return;
     }
 
@@ -312,26 +312,26 @@ static NSString * const kAiToolDomain = @"AiTool";
 - (void)performWriteFile:(NSDictionary *)params completion:(void(^)(NSString *, NSError *))completion {
     NSString *path = [params[@"path"] isKindOfClass:[NSString class]] ? params[@"path"] : nil;
     NSString *content = [params[@"content"] isKindOfClass:[NSString class]] ? params[@"content"] : @"";
-    if (path.length == 0) { completion(nil, [self errorWithCode:400 message:@"参数 path 必填"]); return; }
+    if (path.length == 0) { completion(nil, [self errorWithCode:400 message:@"The path parameter is required"]); return; }
     if (![params[@"content"] isKindOfClass:[NSString class]]) {
-        completion(nil, [self errorWithCode:400 message:@"参数 content 必填"]); return;
+        completion(nil, [self errorWithCode:400 message:@"The content parameter is required"]); return;
     }
     NSString *resolved = [[self class] resolveSafely:path];
-    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"路径越界或无效"]); return; }
+    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"Path traversal or invalid path"]); return; }
 
     NSString *parentDir = [resolved stringByDeletingLastPathComponent];
     NSError *dirError = nil;
     [[NSFileManager defaultManager] createDirectoryAtPath:parentDir withIntermediateDirectories:YES attributes:nil error:&dirError];
-    if (dirError) { completion(nil, [self errorWithCode:500 message:[NSString stringWithFormat:@"创建目录失败：%@", dirError.localizedDescription]]); return; }
+    if (dirError) { completion(nil, [self errorWithCode:500 message:[NSString stringWithFormat:@"Failed to create directory: %@", dirError.localizedDescription]]); return; }
 
     NSData *data = [content dataUsingEncoding:NSUTF8StringEncoding];
     NSError *writeError = nil;
     BOOL ok = [data writeToURL:[NSURL fileURLWithPath:resolved] options:NSDataWritingAtomic error:&writeError];
     if (!ok) {
-        completion(nil, [self errorWithCode:500 message:[NSString stringWithFormat:@"写入失败：%@", writeError.localizedDescription]]);
+        completion(nil, [self errorWithCode:500 message:[NSString stringWithFormat:@"Write failed: %@", writeError.localizedDescription]]);
         return;
     }
-    completion([NSString stringWithFormat:@"已写入（%lu 字符）", (unsigned long)content.length], nil);
+    completion([NSString stringWithFormat:@"Written (%lu characters)", (unsigned long)content.length], nil);
 }
 
 #pragma mark - edit_file
@@ -340,17 +340,17 @@ static NSString * const kAiToolDomain = @"AiTool";
     NSString *path = [params[@"path"] isKindOfClass:[NSString class]] ? params[@"path"] : nil;
     NSString *oldText = [params[@"oldText"] isKindOfClass:[NSString class]] ? params[@"oldText"] : nil;
     NSString *newText = [params[@"newText"] isKindOfClass:[NSString class]] ? params[@"newText"] : @"";
-    if (path.length == 0) { completion(nil, [self errorWithCode:400 message:@"参数 path 必填"]); return; }
-    if (oldText.length == 0) { completion(nil, [self errorWithCode:400 message:@"参数 oldText 必填"]); return; }
-    if (![params[@"newText"] isKindOfClass:[NSString class]]) { completion(nil, [self errorWithCode:400 message:@"参数 newText 必填"]); return; }
+    if (path.length == 0) { completion(nil, [self errorWithCode:400 message:@"The path parameter is required"]); return; }
+    if (oldText.length == 0) { completion(nil, [self errorWithCode:400 message:@"The oldText parameter is required"]); return; }
+    if (![params[@"newText"] isKindOfClass:[NSString class]]) { completion(nil, [self errorWithCode:400 message:@"The newText parameter is required"]); return; }
     NSString *resolved = [[self class] resolveSafely:path];
-    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"路径越界或无效"]); return; }
+    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"Path traversal or invalid path"]); return; }
 
     NSError *readError = nil;
     NSString *content = [NSString stringWithContentsOfFile:resolved encoding:NSUTF8StringEncoding error:&readError];
-    if (!content) { completion(nil, [self errorWithCode:404 message:@"读取文件失败或无此文件"]); return; }
+    if (!content) { completion(nil, [self errorWithCode:404 message:@"Failed to read file or file does not exist"]); return; }
 
-    // 统计 oldText 出现次数
+    // Count occurrences of oldText
     NSUInteger occurrences = 0;
     NSRange searchRange = NSMakeRange(0, content.length);
     while (searchRange.location < content.length) {
@@ -362,7 +362,7 @@ static NSString * const kAiToolDomain = @"AiTool";
         searchRange.length = content.length - next;
     }
     if (occurrences != 1) {
-        completion(nil, [self errorWithCode:422 message:[NSString stringWithFormat:@"oldText 不唯一或未找到（出现 %lu 次）", (unsigned long)occurrences]]);
+        completion(nil, [self errorWithCode:422 message:[NSString stringWithFormat:@"oldText is not unique or was not found (appeared %lu times)", (unsigned long)occurrences]]);
         return;
     }
 
@@ -371,15 +371,15 @@ static NSString * const kAiToolDomain = @"AiTool";
     NSData *data = [newContent dataUsingEncoding:NSUTF8StringEncoding];
     NSError *writeError = nil;
     if (![data writeToURL:[NSURL fileURLWithPath:resolved] options:NSDataWritingAtomic error:&writeError]) {
-        completion(nil, [self errorWithCode:500 message:[NSString stringWithFormat:@"写回失败：%@", writeError.localizedDescription]]);
+        completion(nil, [self errorWithCode:500 message:[NSString stringWithFormat:@"Failed to write changes: %@", writeError.localizedDescription]]);
         return;
     }
-    completion(@"已修改", nil);
+    completion(@"Modified", nil);
 }
 
 #pragma mark - delete_file
 
-/// 允许删除的文件扩展名白名单（文本类）
+/// Allowlist of file extensions that may be deleted (text files)
 + (NSSet<NSString *> *)deletableExtensions {
     static NSSet *set = nil;
     static dispatch_once_t onceToken;
@@ -393,32 +393,32 @@ static NSString * const kAiToolDomain = @"AiTool";
 
 - (void)performDeleteFile:(NSDictionary *)params completion:(void(^)(NSString *, NSError *))completion {
     NSString *path = [params[@"path"] isKindOfClass:[NSString class]] ? params[@"path"] : nil;
-    if (path.length == 0) { completion(nil, [self errorWithCode:400 message:@"参数 path 必填"]); return; }
+    if (path.length == 0) { completion(nil, [self errorWithCode:400 message:@"The path parameter is required"]); return; }
     NSString *resolved = [[self class] resolveSafely:path];
-    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"路径越界或无效"]); return; }
+    if (!resolved) { completion(nil, [self errorWithCode:403 message:@"Path traversal or invalid path"]); return; }
 
     NSFileManager *fm = [NSFileManager defaultManager];
     BOOL isDir = NO;
     if (![fm fileExistsAtPath:resolved isDirectory:&isDir]) {
-        completion(nil, [self errorWithCode:404 message:@"文件不存在"]); return;
+        completion(nil, [self errorWithCode:404 message:@"File does not exist"]); return;
     }
     if (isDir) {
-        completion(nil, [self errorWithCode:403 message:@"出于安全考虑仅允许删除文件，不允许删除目录"]); return;
+        completion(nil, [self errorWithCode:403 message:@"For safety, only files may be deleted; directories cannot be deleted"]); return;
     }
     NSString *ext = [[resolved pathExtension] lowercaseString];
     if (![[[self class] deletableExtensions] containsObject:ext]) {
-        completion(nil, [self errorWithCode:403 message:[NSString stringWithFormat:@"出于安全考虑仅允许删除文本类文件（不支持 .%@）", ext]]);
+        completion(nil, [self errorWithCode:403 message:[NSString stringWithFormat:@"For safety, only text files may be deleted (.%@ is not supported)", ext]]);
         return;
     }
     NSError *removeError = nil;
     if (![fm removeItemAtPath:resolved error:&removeError]) {
-        completion(nil, [self errorWithCode:500 message:[NSString stringWithFormat:@"删除失败：%@", removeError.localizedDescription]]);
+        completion(nil, [self errorWithCode:500 message:[NSString stringWithFormat:@"Failed to delete: %@", removeError.localizedDescription]]);
         return;
     }
-    completion(@"已删除", nil);
+    completion(@"Deleted", nil);
 }
 
-#pragma mark - 工具
+#pragma mark - Tools
 
 - (NSString *)jsonStringFromObject:(id)object {
     if (![NSJSONSerialization isValidJSONObject:object]) return @"[]";

@@ -1,5 +1,5 @@
 #import "CustomControlsViewController.h"
-// ★ [GLASS-LIQUID] 材质统一走风格层(AmeGlassEffect):iOS≥26 ⇒ 系统 UIGlassEffect
+// ★ [GLASS-LIQUID] All materials go through the style layer (AmeGlassEffect): iOS≥26 ⇒ system UIGlassEffect.
 #import "UIKit+GlassSurface.h"
 #import "DBNumberedSlider.h"
 #import "FileListViewController.h"
@@ -74,7 +74,7 @@
     self.resizeView = [[ControlHandleView alloc] initWithFrame:CGRectMake(0, 0, 30, 30)];
     self.resizeView.backgroundColor = self.view.tintColor;
     self.resizeView.layer.cornerRadius = self.resizeView.frame.size.width / 2;
-    self.resizeView.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+    self.resizeView.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (match system cards).
     self.resizeView.clipsToBounds = YES;
     self.resizeView.hidden = YES;
     [self.resizeView addGestureRecognizer:[[UIPanGestureRecognizer alloc]
@@ -238,7 +238,8 @@
         UIMenuItem *actionDelete = [[UIMenuItem alloc] initWithTitle:localize(@"Remove", nil) action:@selector(actionMenuBtnDelete)];
         if ([sender.view isKindOfClass:[ControlDrawer class]]) {
             UIMenuItem *actionAddSubButton = [[UIMenuItem alloc] initWithTitle:localize(@"custom_controls.button_menu.add_subbutton", nil) action:@selector(actionMenuAddSubButton)];
-            // ★ [AUDIT-DECIDE] B-1：恢复「Copy」菜单项（此前被注释掉、且实现体为空 ⇒ 点了没反应）。
+            // ★ [AUDIT-DECIDE] B-1: restore the "Copy" menu item (it was previously commented out and its
+            // implementation was empty ⇒ tapping it did nothing).
             [menuController setMenuItems:@[actionEdit, actionCopy, actionDelete, actionAddSubButton]];
         } else {
             [menuController setMenuItems:@[actionEdit, actionCopy, actionDelete]];
@@ -268,7 +269,7 @@
         message:exit?localize(@"custom_controls.control_menu.exit.warn", nil):@""
         preferredStyle:UIAlertControllerStyleAlert];
     [controller addTextFieldWithConfigurationHandler:^(UITextField *textField) {
-        // ★ [AUDIT-DECIDE] A-10：硬编码 "Name" → 复用已有键 custom_controls.button_edit.name。
+        // ★ [AUDIT-DECIDE] A-10: replace hard-coded "Name" with existing key custom_controls.button_edit.name.
         textField.placeholder = localize(@"custom_controls.button_edit.name", nil);
         textField.text = self.currentFileName;
         textField.clearButtonMode = UITextFieldViewModeWhileEditing;
@@ -447,12 +448,14 @@
         initWithTarget:self action:@selector(onTouch:)]];
 }
 
-// ★ [AUDIT-DECIDE] B-1：实现自定义控件「复制」——把**当前控件的配置**序列化到剪贴板。
-// 序列化格式 = 与「保存(Save)/导入(Load)」完全一致的 controlmap 文档结构
+// ★ [AUDIT-DECIDE] B-1: implement custom-control "Copy" — serialize the **current control's
+// configuration** to the clipboard.
+// Serialization format = exactly the same controlmap document structure as "Save/Load".
 //   { scaledAt, mControlDataList, mDrawerDataList, mJoystickDataList }
-// 只把当前控件这一条放进它所属的列表，另外两个列表补空数组 ⇒ 结构与 Load 读入的文件同构，
-// 可直接另存为 <name>.json 再用「Load」导入，或粘贴进现有 controlmap 文件里手工合并。
-// 失败（无控件 / JSON 序列化失败）一律给出可辨识提示，绝不静默。
+// Put only this control into its corresponding list and use empty arrays for the other two ⇒
+// the structure matches files read by Load. It can be saved as <name>.json and imported with
+// "Load", or pasted into an existing controlmap file and merged manually.
+// Always show a recognizable message on failure (no control / JSON serialization failure); never fail silently.
 - (void)actionMenuBtnCopy {
     UIView *targetView = self.currentGesture.view;
     if (![targetView isKindOfClass:[ControlButton class]] || self.ctrlView.layoutDictionary == nil) {
@@ -461,8 +464,8 @@
     }
     ControlButton *button = (ControlButton *)targetView;
 
-    // 取该控件在 layout 字典里的那一条原始数据（与 doAddButton/doRemoveButton 用的同一份
-    // 字典对象，字段逐一对齐 ⇒ 与导入格式天然兼容）。
+    // Get the raw data for this control from the layout dictionary (the same dictionary object used
+    // by doAddButton/doRemoveButton; fields align one-to-one ⇒ naturally compatible with the import format).
     id entry = nil;
     NSString *listKey = nil;
     if ([button isKindOfClass:[ControlDrawer class]]) {
@@ -472,7 +475,8 @@
         entry = button.properties;
         listKey = @"mJoystickDataList";
     } else {
-        // ControlButton 与 ControlSubButton：均以 properties 作为控件数据（子按钮除外层抽屉外同构）。
+        // Both ControlButton and ControlSubButton use properties as their control data (sub-buttons
+        // have the same structure apart from the outer drawer).
         entry = button.properties;
         listKey = @"mControlDataList";
     }
@@ -497,14 +501,14 @@
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:doc options:NSJSONWritingPrettyPrinted error:&error];
     NSString *json = jsonData ? [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding] : nil;
     if (json.length == 0) {
-        // 与 Save 失败同口径（同一组错误键），并带上具体原因。
+        // Same error handling as Save failure (same set of error keys), including the specific reason.
         showDialog(localize(@"custom_controls.control_menu.save.error.json", nil),
                    error.localizedDescription ?: @"");
         return;
     }
 
     [UIPasteboard generalPasteboard].string = json;
-    // 成功也给一次轻提示：本项当初被报的正是「点了没反应」。
+    // Show a brief success message too: the reported problem for this item was that "tapping did nothing".
     NSLog(@"[CUSTOM-CONTROLS] control copied to pasteboard (%@, %lu bytes)",
           listKey, (unsigned long)jsonData.length);
     showDialog(localize(@"custom_controls.control_menu.copy.ok", nil),
@@ -709,7 +713,7 @@ CGFloat currentY;
 
     UIBlurEffectStyle blurStyle = UIBlurEffectStyleSystemMaterial;
     UIVisualEffectView *blurView;
-    // ★ [GLASS-LIQUID] 走风格层:iOS≥26 ⇒ 系统 UIGlassEffect(不再直接 UIBlurEffect)
+    // ★ [GLASS-LIQUID] Use the style layer: iOS≥26 ⇒ system UIGlassEffect (do not call UIBlurEffect directly).
     blurView = [[UIVisualEffectView alloc] initWithEffect:AmeGlassEffect(blurStyle)];
     blurView.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
     blurView.frame = CGRectMake(
@@ -717,7 +721,7 @@ CGFloat currentY;
         (self.view.frame.size.height - MIN(tempW, tempH))/2,
         MAX(tempW, tempH), MIN(tempW, tempH));
     blurView.layer.cornerRadius = 10.0;
-    blurView.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+    blurView.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (match system cards).
     blurView.clipsToBounds = YES;
     [self.view addSubview:blurView];
 
@@ -773,7 +777,7 @@ CGFloat currentY;
         [self.editSizeWidth addTarget:self action:@selector(textFieldEditingChanged) forControlEvents:UIControlEventEditingChanged];
         [self.editSizeWidth addTarget:self.editSizeWidth action:@selector(resignFirstResponder) forControlEvents:UIControlEventEditingDidEndOnExit];
         self.editSizeWidth.keyboardType = UIKeyboardTypeDecimalPad;
-        // ★ [AUDIT-DECIDE] A-10：硬编码 "width"/"height" → 新增两键（尺寸输入框占位符）。
+        // ★ [AUDIT-DECIDE] A-10: replace hard-coded "width"/"height" with two new keys (size-field placeholders).
         self.editSizeWidth.placeholder = localize(@"custom_controls.button_edit.width", nil);
         self.editSizeWidth.returnKeyType = UIReturnKeyDone;
         self.editSizeWidth.text = [self.targetButton.properties[@"width"] stringValue];
@@ -972,12 +976,12 @@ CGFloat currentY;
     [self dismissViewControllerAnimated:YES completion:nil];
 }
 
-/// 解析真正持有本编辑面板的 CustomControlsViewController。
-/// 设置路径会把 CCVC 包进 UINavigationController 后再 present，此时
-/// presentingViewController 指向的是那个导航控制器；直接向它发
-/// doUpdateButton:from:to: 即 unrecognized selector 闪退。
-/// 这里逐级展开容器（导航控制器 / 上层 presenter），并对最终目标做
-/// respondsToSelector 兜底，任何呈现结构都不会再崩。
+/// Resolve the CustomControlsViewController that actually owns this editor panel.
+/// The Settings path wraps CCVC in a UINavigationController before presenting it, so
+/// presentingViewController points to that navigation controller. Calling
+/// doUpdateButton:from:to: on it directly causes an unrecognized-selector crash.
+/// Unwrap containers (navigation controller / parent presenter) level by level and use
+/// respondsToSelector as a final safeguard so any presentation structure is safe.
 - (CustomControlsViewController *)ownerControlsViewController {
     UIViewController *candidate = self.presentingViewController;
     while (candidate != nil) {

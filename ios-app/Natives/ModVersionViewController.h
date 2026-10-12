@@ -17,16 +17,16 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) ModItem *modItem;
 @property (nonatomic, weak) id<ModVersionViewControllerDelegate> delegate;
 
-// FCL 风格：传入当前 profile 的偏好版本和加载器
-// ModVersionViewController 会优先选中匹配的 chip，并把匹配的版本置顶
-// 不传则保持原有"全部"默认行为
+// FCL style: pass the current profile's preferred version and loader.
+// ModVersionViewController prioritizes the matching chip and pins matching versions to the top.
+// If omitted, preserves the original "All" default behavior.
 @property (nonatomic, copy, nullable) NSString *preferredGameVersion;
 @property (nonatomic, copy, nullable) NSString *preferredLoader;
 
-// API 来源：1 = Modrinth（默认），2 = CurseForge。
-// 关键修复（CurseForge 搜索结果丢失来源）：Mod 搜索结果可能来自 CurseForge（数字 project ID），
-// 进入版本页时必须沿用搜索时的 API 来源，否则会拿 CurseForge 数字 ID 请求 Modrinth API
-// 导致版本列表拉不到。参照 ZL2 的 platform 枚举贯穿搜索→详情→版本全链路。
+// API source: 1 = Modrinth (default), 2 = CurseForge.
+// Key fix (preserve source for CurseForge search results): mod search results may come from CurseForge (numeric project ID).
+// The version page must keep the API source used for search; otherwise, it would send a CurseForge numeric ID to the Modrinth API
+// and fail to fetch the version list. Based on ZL2's platform enum throughout the search → details → versions flow.
 @property (nonatomic, assign) NSInteger apiSource;
 
 @end

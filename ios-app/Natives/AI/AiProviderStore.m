@@ -30,9 +30,9 @@ static NSString * const kSelectedProviderIdKey = @"ai.selected_provider_id";
     return self;
 }
 
-#pragma mark - 文件路径
+#pragma mark - File path
 
-/// Documents/AI/ 目录路径（不存在则创建）
+/// Documents/AI/ directory path (create if it does not exist)
 - (NSString *)aiDirectoryPath {
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSString *docDir = [paths firstObject];
@@ -48,7 +48,7 @@ static NSString * const kSelectedProviderIdKey = @"ai.selected_provider_id";
     return [[self aiDirectoryPath] stringByAppendingPathComponent:@"providers.json"];
 }
 
-#pragma mark - 预设
+#pragma mark - Presets
 
 + (NSArray<NSDictionary *> *)defaultPresets {
     return @[
@@ -68,13 +68,13 @@ static NSString * const kSelectedProviderIdKey = @"ai.selected_provider_id";
             @"name": @"Ollama",
             @"baseURL": @"http://127.0.0.1:11434/v1",
             @"model": @"llama3",
-            // 提示用户：Ollama 需在本机/同一局域网设备上运行服务
+            // Inform the user: Ollama must be running on this device or another device on the same LAN
             @"apiKey": @"",
         },
     ];
 }
 
-#pragma mark - 加载 / 保存
+#pragma mark - Load / save
 
 - (NSMutableArray<AiProvider *> *)providers {
     [self loadIfNeeded];
@@ -99,7 +99,7 @@ static NSString * const kSelectedProviderIdKey = @"ai.selected_provider_id";
             return;
         }
     }
-    // 文件不存在或解析失败：用预设播种
+    // File does not exist or parsing failed: seed with presets
     if (_providers.count == 0) {
         for (NSDictionary *dict in [[self class] defaultPresets]) {
             AiProvider *provider = [AiProvider providerWithDictionary:dict];
@@ -143,7 +143,7 @@ static NSString * const kSelectedProviderIdKey = @"ai.selected_provider_id";
 - (void)deleteProvider:(AiProvider *)provider {
     if (!provider) return;
     [_providers removeObject:provider];
-    // 若删除的是当前选中项，清除选中
+    // If deleting the currently selected item, clear the selection
     if ([self.selectedProvider.identifier isEqualToString:provider.identifier]) {
         [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSelectedProviderIdKey];
     }
@@ -162,8 +162,8 @@ static NSString * const kSelectedProviderIdKey = @"ai.selected_provider_id";
 }
 
 - (nullable AiProvider *)selectedProvider {
-    // 关键修复（重启后误报"未配置供应商"）：必须先从磁盘加载 providers，
-    // 否则启动早期 _providers 为空，providerById 恒返回 nil，导致空态误提示"未配置"。
+    // Important fix (incorrectly reporting "No provider configured" after restart): load providers from disk first,
+    // or _providers will be empty early at startup and providerById will always return nil, incorrectly showing the empty-state message.
     [self loadIfNeeded];
     NSString *sid = [[NSUserDefaults standardUserDefaults] stringForKey:kSelectedProviderIdKey];
     return [self providerById:sid];

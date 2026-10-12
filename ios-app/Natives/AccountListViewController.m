@@ -9,28 +9,32 @@
 #import "LauncherPreferences.h"
 #import "UIImageView+AFNetworking.h"
 #import "BackgroundManager.h"
-// ★ [ACCT-AUDIT] 删除账户时清理其自定义头像文件（Documents/avatars/<accountId>.png）。
+// ★ [ACCT-AUDIT] Delete the account's custom avatar file when removing the account (Documents/avatars/<accountId>.png).
 #import "AvatarManager.h"
 #import "ios_uikit_bridge.h"
 #import "utils.h"
-// ★ [EDIT3] 头像设置入口:复用既有通知动作(LauncherRightPanelViewController norightPostAction:)。
+// ★ [EDIT3] Avatar-settings entry point: reuse the existing notification action
+// (LauncherRightPanelViewController norightPostAction:).
 #import "LauncherRightPanelViewController.h"
 
 @interface AccountListViewController()<ASWebAuthenticationPresentationContextProviding>
 
 @property(nonatomic, strong) NSMutableArray *accountList;
 @property(nonatomic) ASWebAuthenticationSession *authVC;
-// ★ [ADDBTN-INSET] 底部「添加账户」按钮的底边约束:单独持有,交由布局期按【实际遮挡量】调整。
+// ★ [ADDBTN-INSET] Keep the bottom constraint for the floating "Add Account" button separately so
+// layout can adjust it according to the actual overlap.
 @property(nonatomic, strong) NSLayoutConstraint *ameAddAccountBottomConstraint;
-// ★ [ACCT-DUP] 登录/选号重入守卫：同一时刻只允许一条登录流程在飞。
+// ★ [ACCT-DUP] Sign-in/account-selection re-entry guard: allow only one sign-in flow at a time.
 @property(nonatomic) BOOL ameLoginInFlight;
-// ★ [ACCT-DUP] 登录「代数」:每次发起登录自增;回调携带旧代数时被判定过期并丢弃,
-//   防止上一次登录的迟到回调改动本次 UI(回调侧防重的 generation 计数)。
+// ★ [ACCT-DUP] Sign-in "generation": increment for each new sign-in; discard callbacks carrying an
+//   old generation as stale, preventing a late callback from a previous sign-in from changing the
+//   current UI (generation counter for callback-side deduplication).
 @property(nonatomic) NSUInteger ameAuthGeneration;
-// ★ [ACCT-DUP] 「添加账户」入口重入守卫:防连点 push 出两个登录方式页。
+// ★ [ACCT-DUP] "Add Account" entry re-entry guard: prevent rapid taps from pushing two sign-in method pages.
 @property(nonatomic) BOOL ameAddAccountInFlight;
-// ★ [ACCT-DONE] 在飞锁「代次」:每次置位/解锁自增;看门狗延时块只在代次未变且仍在飞时解锁,
-//   避免把后来的一次新登录误解锁。
+// ★ [ACCT-DONE] In-flight lock "token": increment every time it is set/unlocked; the watchdog's
+//   delayed block unlocks only if the token is unchanged and a sign-in is still in flight, preventing
+//   it from accidentally unlocking a later sign-in.
 @property(nonatomic) NSUInteger ameLoginInFlightToken;
 
 @end
@@ -39,10 +43,10 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // 适配自定义启动器背景：将当前视图控制器透明化，使全局背景壁纸能够透出
+    // Adapt to the custom launcher background: make this view controller transparent so the global wallpaper shows through.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
-    self.title = localize(@"login.title", @"账户管理");
+    self.title = localize(@"login.title", @"Account Management");
     self.view.backgroundColor = [UIColor clearColor];
 
     if (self.accountList == nil) {
@@ -51,34 +55,35 @@
         [self.accountList removeAllObjects];
     }
 
-    // List accounts（★ [ACCT-DUP] 载入前先合并存量重复，再过滤损坏文件）
+    // List accounts (★ [ACCT-DUP] merge existing duplicates before loading, then filter corrupt files).
     [self ameLoadAccountListFromDisk];
 
-    // 参照 FCL：卡片式账户列表，去除默认分割线，圆角卡片自带视觉分隔
+    // Inspired by FCL: card-style account list; remove default separators because rounded cards provide visual separation.
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.backgroundColor = [UIColor clearColor];
     self.tableView.estimatedRowHeight = 88;
     self.tableView.rowHeight = UITableViewAutomaticDimension;
-    // 底部内边距避免最后一个 cell 被浮动按钮遮挡
+    // Bottom inset prevents the last cell from being covered by the floating button.
     self.tableView.contentInset = UIEdgeInsetsMake(8, 0, 80, 0);
     self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
-    // 注册卡片 cell
+    // Register the card cell.
     [self.tableView registerClass:UITableViewCell.class forCellReuseIdentifier:@"accountCardCell"];
 
-    // 添加底部"添加账户"浮动按钮（FCL 风格）
+    // Add the floating "Add Account" button at the bottom (FCL style).
     [self setupAddAccountButton];
 
-    // 应用背景
+    // Apply the background.
     [[BackgroundManager sharedManager] applyBackgroundToView:self.view];
 
-    // 监听背景 UI 效果变化通知，当用户切换背景效果（半透明/毛玻璃）时重新应用透明化
+    // Listen for background UI-effect changes and reapply transparency when the user switches
+    // background effects (translucent/frosted glass).
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
                                                object:nil];
 }
 
-/// 背景效果改变时重新应用透明化（由 BackgroundUIEffectChanged 通知触发）
+/// Reapply transparency when the background effect changes (triggered by the BackgroundUIEffectChanged notification).
 - (void)reapplyBackgroundEffect {
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 }
@@ -87,38 +92,43 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-#pragma mark - ★ [ACCOUNTBACK] 返回键(账户链路“进得去出不来”修复)
+#pragma mark - ★ [ACCOUNTBACK] Back button (fix for account flow that could be entered but not exited)
 
-/// ★ [ACCOUNTBACK] 每次出现时保证本页有一个**可用的返回出口**。
+/// ★ [ACCOUNTBACK] Ensure this page has a **working way back** every time it appears.
 ///
-/// 根因(实查,见 _EDITMODE_REPORT.md ①):
+/// Root cause (verified; see _EDITMODE_REPORT.md ①):
 ///   showAccountManager(LauncherRootViewController.m:848 / LauncherCardLayoutViewController.m:989)
-///   把本页作为**一个全新 UINavigationController 的根**(initWithRootViewController:)塞进中间内容区。
-///   根视图控制器没有可 pop 的上级 ⇒ UIKit 不会给返回键,导航栏虽然可见却是一个空壳
-///   ⇒ 用户从主页进得来、出不去。
+///   This page is placed in the middle content area as the root of a **new UINavigationController**
+///   (initWithRootViewController:). The root view controller has no parent to pop to ⇒ UIKit does not
+///   provide a back button, leaving a visible but empty navigation bar ⇒ users can enter from Home
+///   but cannot leave.
 ///
-/// 修法(不改任何账户业务逻辑,只补出口):
-///   ① 确认本页确实是“导航栈根、没有系统返回键”时,注入一枚「返回」左键;
-///      点击只发既有通知 ShowHomePage —— RootVC(:602) / CardLayoutVC(:752) 都已监听
-///      并切回主页,故不依赖具体宿主类,也不用复制任何导航代码。
-///   ② 顺带把承载本页的那个 nav 的导航栏显示出来(navigationBarHidden = NO)。
-///      ★ 这里**故意不做 viewWillDisappear 还原**:该 nav 是 showAccountManager 为账户链路
-///        临时新建、且只服务这一条链路的私有容器;若在 disappear 时还原成 hidden,
-///        紧接着 push 上来的登录页(AccountLoginViewController)就会丢掉系统返回键 ——
-///        那正是本任务要修的毛病。作用域仅限这条私有 nav,不会影响别的页面。
-///   ③ 触发时机放在 viewWillAppear:此时 navigationController 关系已经建立。
+/// Fix (adds only an exit; changes no account business logic):
+///   ① If this page is the navigation-stack root and has no system back button, inject a "Back"
+///      left button. Tapping it sends the existing ShowHomePage notification — RootVC (:602) /
+///      CardLayoutVC (:752) already listen for it and return to Home, so this does not depend on
+///      the specific host class or duplicate any navigation code.
+///   ② Also show the navigation bar for the nav containing this page (navigationBarHidden = NO).
+///      ★ Deliberately do not restore it in viewWillDisappear: this nav is a private container
+///      temporarily created by showAccountManager for this account flow only. Hiding it on
+///      disappearance would remove the system back button from the sign-in page
+///      (AccountLoginViewController) pushed immediately afterward — the exact bug this fixes.
+///      This affects only that private nav and no other pages.
+///   ③ Trigger in viewWillAppear, when the navigationController relationship is established.
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    // ★ [ACCT-DUP] 从登录方式页 pop 回来时解除「添加账户」重入锁（入口在 push 前置位）。
+    // ★ [ACCT-DUP] Clear the "Add Account" re-entry lock when returning from the sign-in method
+    // page (the lock is set before pushing it).
     self.ameAddAccountInFlight = NO;
-    // ★ [ACCT-DONE] 每次出现都无条件把【登录在飞锁】归零:即便上一轮因回调丢失/网络 hang
-    //   把锁留在置位态(表禁用、按钮禁用),回到本页也一定可交互。幂等:在飞期间本页本就可见,
-    //   viewWillAppear 不会重复触发,故不会打断真正进行中的登录。
+    // ★ [ACCT-DONE] Unconditionally clear the in-flight sign-in lock every time this page appears:
+    //   even if a lost callback/network hang left the lock set (disabling the table/button), returning
+    //   here restores interaction. This is idempotent: the page remains visible during sign-in, so
+    //   viewWillAppear does not fire again and cannot interrupt an active sign-in.
     [self ameSetLoginInFlight:NO];
     [self ameAccountEnsureBackItemIfNeeded];
 }
 
-#pragma mark - ★ [ADDBTN-INSET] 底部「添加账户」按钮避开底栏
+#pragma mark - ★ [ADDBTN-INSET] Keep the bottom "Add Account" button above the tab bar
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
@@ -130,9 +140,10 @@
     [self ame_updateAddAccountButtonInset];
 }
 
-/// 把按钮顶到底栏之上:inset = max(自身 safeArea 底, 底栏与本页底部的【实际重叠】高度)。
-///   这样在"有/无底栏、底栏显示/隐藏、横竖屏、底栏半透明与否"下都成立;
-///   找不到底栏时退化为 safeAreaInsets.bottom(与系统一致)。
+/// Keep the button above the tab bar: inset = max(this view's bottom safe area, the actual overlap
+/// between the tab bar and this page's bottom).
+///   This works with/without a tab bar, visible/hidden bars, either orientation, and translucent/
+///   opaque bars; if no tab bar is found, fall back to safeAreaInsets.bottom (matching the system).
 - (void)ame_updateAddAccountButtonInset {
     if (!self.ameAddAccountBottomConstraint) { return; }
 
@@ -140,7 +151,8 @@
 
     UITabBarController *tbc = self.tabBarController;
     if (!tbc) {
-        // 本页挂在主页的「内容容器」里,不一定是 tabBarController 的直接子 VC ⇒ 再往上找一层
+        // This page is hosted in Home's "content container", not necessarily a direct child of the
+        // tabBarController ⇒ look one level higher.
         UIViewController *root = self.view.window.rootViewController;
         if ([root isKindOfClass:[UITabBarController class]]) {
             tbc = (UITabBarController *)root;
@@ -150,7 +162,7 @@
     if (tbc && bar && !bar.hidden && bar.window) {
         CGRect barRect = [self.view convertRect:bar.bounds fromView:bar];
         CGFloat overlap = CGRectGetMaxY(self.view.bounds) - CGRectGetMinY(barRect);
-        // 只在"确实被压住"且量值合理时采纳(防异常值)
+        // Use this only if the view is actually overlapped and the value is reasonable (guard against anomalies).
         if (overlap > 0 && overlap < CGRectGetHeight(self.view.bounds) * 0.5) {
             inset = MAX(inset, overlap);
         }
@@ -158,44 +170,51 @@
     self.ameAddAccountBottomConstraint.constant = -(inset + 16.0);
 }
 
-/// ★ [ACCOUNTBACK] 见 viewWillAppear 注释。
+/// ★ [ACCOUNTBACK] See the viewWillAppear comment.
 - (void)ameAccountEnsureBackItemIfNeeded {
     UINavigationController *nav = self.navigationController;
-    if (!nav) return;                                       // 不在导航栈(无宿主 nav)⇒ 无从注入
+    if (!nav) return;                                       // Not in a navigation stack (no host nav) ⇒ nothing to inject.
 
-    // ① 显示导航栏:根页没有可 pop 的对象时,系统不会画返回键,空导航栏等于没有出口。
+    // ① Show the navigation bar: with nothing to pop from a root page, the system draws no back
+    // button, so an empty navigation bar provides no way out.
     if (nav.navigationBarHidden) {
         [nav setNavigationBarHidden:NO animated:NO];
     }
-    // 语义色:随浅色/深色外观自适应(与主页顶栏同一套语义色),不写死黑白。
+    // Semantic color: adapts to light/dark appearance (same semantic color as the Home top bar);
+    // do not hard-code black or white.
     nav.navigationBar.tintColor = [UIColor labelColor];
-    // ★ [ACCT-DONE] 导航栏出口永不失效:每次出现都把导航栏与已注入的左键拉回可交互态。
-    //   账户链路的「完成/返回」是唯一出口,绝不能因为一次在飞锁/转圈把导航 chrome 一起关掉
-    //   (用户实测:「完成」点不动 ⇒ 进得去出不来)。业务锁只该锁"会触发登录的控件"。
+    // ★ [ACCT-DONE] Keep the navigation exit usable: whenever this page appears, restore interaction
+    //   for the navigation bar and injected left button.
+    //   "Done/Back" is the only exit from the account flow; never disable the navigation chrome because
+    //   of an in-flight lock/spinner (user report: "Done can't be tapped ⇒ can get in but can't get out").
+    //   The business lock should disable only controls that trigger sign-in.
     nav.navigationBar.userInteractionEnabled = YES;
     if (self.navigationItem.leftBarButtonItem) self.navigationItem.leftBarButtonItem.enabled = YES;
 
-    // ★ [EDIT3] 自定义头像菜单的**新入口**:本页 = 点头像进入的「账户管理」页。
-    //   原来“长按主页欢迎卡头像”才能弹出的自定义头像菜单(导入 / 清除),其长按触发器已让位给
-    //   “长按进编辑模式”(见 LauncherNewsViewController.m ★[EDIT3]);为不丢功能,在此给一颗
-    //   明确可见的右键「自定义头像」:点击**只** post 既有动作名 avatarMenu ⇒ 仍由
-    //   LauncherRightPanelViewController 的 showAvatarMenu: 原实现弹出,菜单项/回调/账户校验/
-    //   裁剪保存链路一律不动;本页不复制任何头像逻辑。
-    //   幂等:已注入过就不再注入。按钮挂在本 VC 的 navigationItem 上 ⇒ 只有本页可见,
-    //   push 出去的登录页用的是它自己的 navigationItem,不受影响。
+    // ★ [EDIT3] New entry point for the custom-avatar menu: this is the "Account Management" page
+    //   opened by tapping the avatar.
+    //   The custom-avatar menu (Import / Clear), previously shown by long-pressing the Home welcome-card
+    //   avatar, lost that gesture to "long-press to enter edit mode" (see LauncherNewsViewController.m
+    //   ★[EDIT3]). To preserve the feature, add a clearly visible "Custom Avatar" right button here.
+    //   Tapping it only posts the existing action name avatarMenu ⇒ the original
+    //   LauncherRightPanelViewController showAvatarMenu: displays the menu. Menu items/callbacks/
+    //   account checks/crop-and-save flow remain unchanged; this page does not duplicate avatar logic.
+    //   Idempotent: do not inject it twice. The button is attached to this VC's navigationItem, so it
+    //   is visible only on this page; the pushed sign-in page uses its own navigationItem.
     if (!self.navigationItem.rightBarButtonItem) {
-        UIBarButtonItem *avatarItem = [[UIBarButtonItem alloc] initWithTitle:localize(@"i18n_str_416", @"自定义头像")
+        UIBarButtonItem *avatarItem = [[UIBarButtonItem alloc] initWithTitle:localize(@"i18n_str_416", @"Custom Avatar")
                                                                       style:UIBarButtonItemStylePlain
                                                                      target:self
                                                                      action:@selector(ameAccountAvatarSettingsTapped)];
         avatarItem.tintColor = [UIColor labelColor];
-        avatarItem.accessibilityLabel = localize(@"i18n_str_416", @"自定义头像");
+        avatarItem.accessibilityLabel = localize(@"i18n_str_416", @"Custom Avatar");
         self.navigationItem.rightBarButtonItem = avatarItem;
     }
 
-    // ② 只在“栈里没有再上一级(没有系统返回键)”时注入;已被 push 的页面保留系统返回键原样。
+    // ② Inject only when there is no previous item in the stack (no system back button); preserve
+    // the system back button unchanged on pages that were pushed.
     if (nav.viewControllers.count > 1) return;
-    if (self.navigationItem.leftBarButtonItem) return;      // 幂等:已注入过就不再注入
+    if (self.navigationItem.leftBarButtonItem) return;      // Idempotent: do not inject twice.
 
     UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithTitle:localize(@"resman.common.done", nil)
                                                                 style:UIBarButtonItemStylePlain
@@ -205,17 +224,20 @@
     backItem.accessibilityLabel = localize(@"resman.common.done", nil);
     self.navigationItem.leftBarButtonItem = backItem;
 
-    // ③ 横屏时灵动岛在侧边(≈59pt):左键由系统导航栏摆放在 safeAreaLayoutGuide 内,天然不会被岛压住。
+    // ③ In landscape, the Dynamic Island is on the side (≈59pt); the system navigation bar places
+    // the left button within safeAreaLayoutGuide, so the Island cannot cover it.
 }
 
-/// ★ [ACCOUNTBACK] 「返回」= 回主页。只发既有通知,不动任何账户业务(登录/登出/头像/用户名)。
+/// ★ [ACCOUNTBACK] "Back" = return Home. Send only the existing notification; do not touch any
+/// account behavior (sign-in/sign-out/avatar/username).
 - (void)ameAccountBackToHomeTapped {
     [[NSNotificationCenter defaultCenter] postNotificationName:@"ShowHomePage" object:nil];
 }
 
-/// ★ [EDIT3] 「自定义头像」= 弹自定义头像菜单(导入 / 清除)。
-///   只转发到既有动作名 avatarMenu ⇒ LauncherRightPanelViewController 的 showAvatarMenu: 原实现,
-///   菜单选项、回调、账户校验、裁剪/保存链路一律不变;本页不复制任何头像逻辑。
+/// ★ [EDIT3] "Custom Avatar" = display the custom-avatar menu (Import / Clear).
+///   Forward only the existing action name avatarMenu ⇒ the original
+///   LauncherRightPanelViewController showAvatarMenu: implementation. Menu options, callbacks,
+///   account checks, and crop/save flow are unchanged; this page does not duplicate avatar logic.
 - (void)ameAccountAvatarSettingsTapped {
     [LauncherRightPanelViewController norightPostAction:@"avatarMenu"];
 }
@@ -223,7 +245,7 @@
 - (void)setupAddAccountButton {
     UIButton *addBtn = [UIButton buttonWithType:UIButtonTypeSystem];
     addBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    [addBtn setTitle:localize(@"login.option.add", @"添加账户") forState:UIControlStateNormal];
+    [addBtn setTitle:localize(@"login.option.add", @"Add Account") forState:UIControlStateNormal];
     addBtn.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
     [addBtn setImage:[UIImage systemImageNamed:@"plus"] forState:UIControlStateNormal];
     addBtn.tintColor = [UIColor whiteColor];
@@ -232,18 +254,19 @@
     addBtn.layer.cornerCurve = kCACornerCurveContinuous;
     addBtn.titleEdgeInsets = UIEdgeInsetsMake(0, 6, 0, 0);
     addBtn.imageEdgeInsets = UIEdgeInsetsMake(0, -6, 0, 0);
-    // 投影增强浮动感（FCL 风格）
+    // Shadow enhances the floating appearance (FCL style).
     addBtn.layer.shadowColor = [UIColor blackColor].CGColor;
     addBtn.layer.shadowOpacity = 0.35;
     addBtn.layer.shadowOffset = CGSizeMake(0, 4);
     addBtn.layer.shadowRadius = 10;
     [addBtn addTarget:self action:@selector(addAccountTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:addBtn];
-    // 使用 frameLayoutGuide（UITableView 的可见区域锚点）而非 safeAreaLayoutGuide，
-    // 确保按钮随可见区域底部浮动，不会跟随 cell 滚动
-    // ★ [ADDBTN-INSET] 底边约束【单独持有】:底栏(UITabBarController 的 tabBar)是半透明悬浮的,
-    //   本页内容区延伸到底栏之下 ⇒ 写死 -16 会让按钮被底栏压住(用户实测:新旧系统都被挡)。
-    //   改为交给 ame_updateAddAccountButtonInset 按实际遮挡量设置 constant。
+    // Use frameLayoutGuide (the visible-area anchor for UITableView), not safeAreaLayoutGuide, so
+    // the button floats with the bottom of the visible area instead of scrolling with cells.
+    // ★ [ADDBTN-INSET] Keep the bottom constraint separately: the tab bar (UITabBarController's
+    //   tabBar) floats translucently, and this page's content extends beneath it. A hard-coded -16
+    //   lets the bar cover the button (confirmed on both old and new systems).
+    //   Instead, let ame_updateAddAccountButtonInset set the constant from the actual overlap.
     self.ameAddAccountBottomConstraint =
         [addBtn.bottomAnchor constraintEqualToAnchor:self.tableView.frameLayoutGuide.bottomAnchor constant:-16];
     [NSLayoutConstraint activateConstraints:@[
@@ -262,44 +285,46 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    // FCL 风格：列表只显示已有账户，添加账户改由底部浮动按钮触发
+    // FCL style: show only existing accounts in the list; add accounts using the floating button at the bottom.
     return self.accountList.count;
 }
 
-/// 计算账户类型标签文字与配色（参照 FCL：微软=蓝、第三方=橙、本地=灰、Demo=紫）
+/// Set the account-type badge text and color (following FCL: Microsoft=blue, third party=orange,
+/// local=gray, Demo=purple).
 - (void)applyAccountTypeBadgeForAccount:(NSDictionary *)accountData
                               badgeLabel:(UILabel *)badgeLabel {
     NSString *username = accountData[@"username"];
     if ([username hasPrefix:@"Demo."]) {
-        badgeLabel.text = localize(@"login.option.demo", @"演示");
+        badgeLabel.text = localize(@"login.option.demo", @"Demo");
         badgeLabel.backgroundColor = [UIColor colorWithRed:0.55 green:0.35 blue:0.85 alpha:1.0];
     } else if (accountData[@"clientToken"] != nil) {
-        badgeLabel.text = localize(@"login.option.3rdparty", @"第三方");
+        badgeLabel.text = localize(@"login.option.3rdparty", @"Third Party");
         badgeLabel.backgroundColor = [UIColor colorWithRed:0.92 green:0.55 blue:0.18 alpha:1.0];
     } else if (accountData[@"xboxGamertag"] == nil) {
-        badgeLabel.text = localize(@"login.option.local", @"本地");
+        badgeLabel.text = localize(@"login.option.local", @"Local");
         badgeLabel.backgroundColor = [UIColor colorWithWhite:0.45 alpha:1.0];
     } else {
-        // 微软账户
+        // Microsoft account.
         badgeLabel.text = @"Microsoft";
         badgeLabel.backgroundColor = [UIColor colorWithRed:0.20 green:0.55 blue:0.95 alpha:1.0];
     }
 }
 
-/// 当前选中的账户 accountId（用于卡片显示选中状态）
-/// 使用 accountId 而非 username，确保同名账户也能正确区分选中状态
+/// accountId of the currently selected account (used to show selection state on the card).
+/// Use accountId rather than username so accounts with the same name remain distinguishable.
 - (NSString *)currentSelectedAccountId {
-    // BaseAuthenticator.current 保存当前活跃账户的 authData
+    // BaseAuthenticator.current stores authData for the currently active account.
     BaseAuthenticator *currentAuth = BaseAuthenticator.current;
     return currentAuth.authData[@"accountId"];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    // FCL 风格卡片 cell：圆角 + 毛玻璃 + 左侧头像 + 中间用户名/副标题 + 右侧类型徽章/选中勾
+    // FCL-style card cell: rounded corners + frosted glass + avatar on the left + username/subtitle
+    // in the middle + type badge/selection checkmark on the right.
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"accountCardCell" forIndexPath:indexPath];
 
-    // 重置 cell：移除上一次复用残留的 contentView 子视图
+    // Reset the cell: remove contentView subviews left over from its previous reuse.
     for (UIView *sub in cell.contentView.subviews) {
         [sub removeFromSuperview];
     }
@@ -313,20 +338,21 @@
     NSString *displayName = accountData[@"username"];
     NSString *subtitle = @"";
 
-    // 副标题：Demo 账户显示"演示账户"，第三方显示服务器名，微软显示 Xbox gamertag，本地显示"离线模式"
+    // Subtitle: Demo accounts show "Demo Account", third-party accounts show their server name,
+    // Microsoft accounts show the Xbox gamertag, and local accounts show "Offline Mode".
     if ([displayName hasPrefix:@"Demo."]) {
         displayName = [displayName substringFromIndex:5];
-        subtitle = localize(@"login.option.demo", @"演示账户");
+        subtitle = localize(@"login.option.demo", @"Demo Account");
     } else if (accountData[@"clientToken"] != nil) {
-        // 第三方账户：显示其 authserver 地址
-        subtitle = accountData[@"authserver"] ?: localize(@"login.option.3rdparty", @"第三方账户");
+        // Third-party account: show its authserver address.
+        subtitle = accountData[@"authserver"] ?: localize(@"login.option.3rdparty", @"Third-Party Account");
     } else if (accountData[@"xboxGamertag"] == nil) {
-        subtitle = localize(@"login.option.local", @"离线模式");
+        subtitle = localize(@"login.option.local", @"Offline Mode");
     } else {
         subtitle = accountData[@"xboxGamertag"] ?: @"Microsoft";
     }
 
-    // 卡片容器（圆角 + 半透明背景 + 毛玻璃）
+    // Card container (rounded corners + translucent background + frosted glass).
     UIView *cardView = [[UIView alloc] init];
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     cardView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10];
@@ -341,7 +367,7 @@
     [cell.contentView addSubview:cardView];
     [[BackgroundManager sharedManager] applyEffectToView:cardView];
 
-    // 左侧头像
+    // Avatar on the left.
     UIImageView *avatarView = [[UIImageView alloc] init];
     avatarView.translatesAutoresizingMaskIntoConstraints = NO;
     avatarView.contentMode = UIViewContentModeScaleAspectFill;
@@ -356,7 +382,7 @@
         [avatarView setImageWithURL:[NSURL URLWithString:picURLStr] placeholderImage:[UIImage imageNamed:@"DefaultAccount"]];
     }
 
-    // 用户名
+    // Username.
     UILabel *usernameLabel = [[UILabel alloc] init];
     usernameLabel.translatesAutoresizingMaskIntoConstraints = NO;
     usernameLabel.text = displayName;
@@ -367,7 +393,7 @@
     usernameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [cardView addSubview:usernameLabel];
 
-    // 副标题
+    // Subtitle.
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.text = subtitle;
@@ -378,7 +404,7 @@
     subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [cardView addSubview:subtitleLabel];
 
-    // 右侧账户类型徽章
+    // Account-type badge on the right.
     UILabel *badgeLabel = [[UILabel alloc] init];
     badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     badgeLabel.font = [UIFont systemFontOfSize:10 weight:UIFontWeightBold];
@@ -390,7 +416,7 @@
     [cardView addSubview:badgeLabel];
     [self applyAccountTypeBadgeForAccount:accountData badgeLabel:badgeLabel];
 
-    // 选中状态指示
+    // Selection-state indicator.
     UIImageView *checkmark = [[UIImageView alloc] init];
     checkmark.translatesAutoresizingMaskIntoConstraints = NO;
     checkmark.image = [UIImage systemImageNamed:@"checkmark.circle.fill"];
@@ -403,7 +429,7 @@
                               [selectedAccountId isEqualToString:accountData[@"accountId"]]);
     checkmark.hidden = !isCurrentSelected;
 
-    // 卡片内边距与子视图布局约束
+    // Card padding and subview layout constraints.
     [NSLayoutConstraint activateConstraints:@[
         [cardView.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:6],
         [cardView.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:16],
@@ -440,7 +466,8 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:NO];
-    // ★ [ACCT-DUP] 重入守卫：登录流程在飞时忽略重复选行（连点/长按），避免同一账户被登录两次。
+    // ★ [ACCT-DUP] Re-entry guard: ignore repeated row selections (rapid taps/long press) while a
+    // sign-in flow is active, preventing the same account from being signed in twice.
     if (self.ameLoginInFlight) return;
     [self ameSetLoginInFlight:YES];
     NSUInteger generation = ++self.ameAuthGeneration;
@@ -450,7 +477,8 @@
 
     id callback = ^(id status, BOOL success) {
         dispatch_async(dispatch_get_main_queue(), ^(){
-            // ★ [ACCT-DUP] 回调侧防重：只接受本次登录(generation)的回调，丢弃上一次登录的迟到回调。
+            // ★ [ACCT-DUP] Callback-side deduplication: accept only callbacks for this sign-in generation;
+            // discard late callbacks from the previous sign-in.
             if (generation != self.ameAuthGeneration) return;
             [self callbackMicrosoftAuth:status success:success forCell:cell];
         });
@@ -458,7 +486,8 @@
 
     // Check if this is a third party account
     NSDictionary *accountData = self.accountList[indexPath.row];
-    // 优先用 accountId 加载；若 accountId 缺失（旧格式账户未迁移），回退到 username 触发迁移
+    // Load by accountId first; if accountId is missing (legacy account has not been migrated), fall
+    // back to username to trigger migration.
     NSString *loadKey = accountData[@"accountId"];
     if (loadKey.length == 0) {
         loadKey = accountData[@"username"];
@@ -471,16 +500,20 @@
         // This is a Microsoft or local account
         auth = [BaseAuthenticator loadSavedName:loadKey];
     }
-    // ★ [ACCT-AUDIT] 状态一致性：loadSavedName 在账户文件缺失/损坏（或读取报错）时返回 nil，
-    //   此时 refreshTokenWithCallback: 不会触发任何 callback ⇒ 列表会永久停留在
-    //   modalInPresentation=YES + userInteractionEnabled=NO + 转圈，用户被卡死只能杀进程。
-    //   这里补回滚：恢复可交互、清掉转圈并提示，accountList 与磁盘状态保持不变。
+    // ★ [ACCT-AUDIT] State consistency: loadSavedName returns nil if the account file is missing/
+    //   corrupt (or reading fails). In that case, refreshTokenWithCallback: never invokes a callback
+    //   ⇒ the list remains stuck with modalInPresentation=YES + userInteractionEnabled=NO + spinner,
+    //   and the user can only force-quit.
+    //   Roll back here: restore interaction, stop the spinner, and show a message; keep accountList
+    //   and on-disk state unchanged.
     if (auth == nil) {
-        // ★ [ACCT-DUP] 与重入守卫兼容：统一走 ameSetLoginInFlight:NO 恢复交互与按钮，
-        //   保持上一轮 [ACCT-AUDIT] 的 nil 回滚语义（恢复可交互、停转圈、提示）。
+        // ★ [ACCT-DUP] Compatible with the re-entry guard: use ameSetLoginInFlight:NO to restore
+        //   interaction and the button, preserving the previous [ACCT-AUDIT] nil rollback behavior
+        //   (restore interaction, stop spinner, show a message).
         [self ameSetLoginInFlight:NO];
         [self removeActivityIndicatorFrom:cell];
-        // ★ [AUDIT-DECIDE] A-10/A-11：account data 载入失败的提示此前硬编码英文，走 localize。
+        // ★ [AUDIT-DECIDE] A-10/A-11: the account-data load failure message was hard-coded in English;
+        // route it through localize.
         showDialog(localize(@"Error", nil), localize(@"login.error.account_load", nil));
         return;
     }
@@ -489,19 +522,25 @@
 
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
     if (editingStyle == UITableViewCellEditingStyleDelete) {
-        // ★ [AUDIT-DECIDE] E-1：删除账户不再"只删本地凭据"——尽力让**远端会话**失效。
-        //   判定与登录一致：有 clientToken ⇒ 第三方(Yggdrasil/authlib-injector)；否则 Microsoft/本地。
-        //   · 第三方：调官方 Yggdrasil 失效端点 POST <API Root>/authserver/invalidate（见下方 helper）。
-        //   · Microsoft：identity platform **没有**消费级 refresh token 的公开撤销端点
-        //     （无 RFC 7009 /revoke 等价物；end_session 只结束浏览器会话）⇒ 只做本地失效：
-        //     删账户文件 + 清 keychain 里的 access/refresh token（clearTokenDataOfProfile:），
-        //     并把内存里该账户的 token/refresh 字段随文件一并丢弃（"标记失效"= 本地不再持有任何可用凭据）。
-        //   · 本地账户：无远端会话。
-        //   远端调用异步、非阻塞、失败仅记日志（绝不阻断删除）；★ 任何日志都不打印 token 明文。
+        // ★ [AUDIT-DECIDE] E-1: account deletion no longer "only removes local credentials" — make a best
+        //   effort to invalidate the **remote session**.
+        //   Detection matches sign-in: clientToken present ⇒ third party (Yggdrasil/authlib-injector);
+        //   otherwise Microsoft/local.
+        //   · Third party: call the official Yggdrasil invalidation endpoint,
+        //     POST <API Root>/authserver/invalidate (see helper below).
+        //   · Microsoft: the identity platform has **no** public revocation endpoint for consumer refresh
+        //     tokens (no RFC 7009 /revoke equivalent; end_session only ends the browser session) ⇒ local
+        //     invalidation only: delete the account file + clear access/refresh tokens from keychain
+        //     (clearTokenDataOfProfile:), and discard the account's token/refresh fields in memory along
+        //     with its file ("invalidate" = no usable credentials remain locally).
+        //   · Local accounts: no remote session.
+        //   Remote calls are asynchronous and non-blocking; failures are logged only (never block deletion).
+        //   ★ Never log tokens in clear text.
         NSDictionary *accountData = self.accountList[indexPath.row];
 
-        // 用 accountId 作为文件名（唯一标识），同名账户删除互不影响
-        // 若 accountId 缺失（旧格式账户未迁移），回退到 username
+        // Use accountId as the filename (unique identifier), so deleting same-name accounts does not
+        // affect one another.
+        // If accountId is missing (legacy account not migrated), fall back to username.
         NSString *accountId = accountData[@"accountId"];
         if (accountId.length == 0) {
             accountId = accountData[@"username"];
@@ -516,12 +555,15 @@
             [MicrosoftAuthenticator clearTokenDataOfProfile:xuid];
         }
         [fm removeItemAtPath:path error:nil];
-        // ★ [AUDIT-DECIDE] E-1：本地凭据已清除（账户文件 + keychain token），再尽力触发远端失效。
+        // ★ [AUDIT-DECIDE] E-1: local credentials have been cleared (account file + keychain token);
+        // now make a best effort to invalidate the remote session.
         [self ameInvalidateRemoteSessionForAccountData:accountData accountId:accountId];
-        // ★ [ACCT-AUDIT] 清理：删除账户时一并移除其自定义头像文件（Documents/avatars/<accountId>.png），
-        //   避免用户图像残留在磁盘上。AvatarManager 按 accountId 存储，删除幂等、文件不存在时安全跳过。
+        // ★ [ACCT-AUDIT] Cleanup: also remove the account's custom avatar file
+        //   (Documents/avatars/<accountId>.png) when deleting an account, so user images are not left
+        //   on disk. AvatarManager stores by accountId; deletion is idempotent and safely skips missing files.
         [[AvatarManager sharedManager] removeAvatarForAccount:accountId];
-        // 若删除的正是当前选中账户，清空 selected_account，避免下次启动尝试加载已删除的账户
+        // If this is the currently selected account, clear selected_account so the next launch does not
+        // attempt to load a deleted account.
         if ([getPrefObject(@"internal.selected_account") isEqualToString:accountId]) {
             setPrefObject(@"internal.selected_account", @"");
             [BaseAuthenticator setCurrent:nil];
@@ -531,17 +573,21 @@
     }
 }
 
-#pragma mark - ★ [AUDIT-DECIDE] E-1 删除账户 → 远端会话失效
+#pragma mark - ★ [AUDIT-DECIDE] E-1 Delete account → invalidate remote session
 
-// 尽力让被删账户的远端会话失效。口径（需求："尽量调官方失效/登出接口；无公开接口就写清并只做本地失效"）：
-//   ① 第三方(Yggdrasil / authlib-injector)：调用规范中的官方失效端点
-//      `POST <API Root>/authserver/invalidate`，body = { accessToken, clientToken }。
-//      与既有 authenticate/refresh 同一 API Root；ely.by 沿用旧式 `auth/*` 路径保持一致。
-//   ② Microsoft：官方 **没有** 消费级账户 refresh token 的公开撤销端点（无 RFC 7009 /revoke
-//      等价物；identity platform 的 logout/end_session 仅结束浏览器会话、不吊销 refresh token）
-//      ⇒ 不做远端调用，只做本地失效（账户文件删除 + keychain token 清除，均在调用点已完成）。
-//   ③ 非阻塞：网络请求异步发出，删除流程/界面不等待；失败只 NSLog，绝不阻断删除。
-//   ④ 隐私：日志只记 accountId / 端点 / 结果（状态码/域名），★ 绝不含 accessToken / clientToken 明文。
+// Make a best effort to invalidate the deleted account's remote session. Requirement: "try the
+// official invalidation/logout endpoint; if none is public, document that and invalidate locally only".
+//   ① Third party (Yggdrasil / authlib-injector): call the official endpoint from the specification,
+//      `POST <API Root>/authserver/invalidate`, body = { accessToken, clientToken }.
+//      Use the same API Root as authenticate/refresh; ely.by retains the legacy `auth/*` path.
+//   ② Microsoft: there is **no** public revocation endpoint for consumer refresh tokens (no RFC 7009
+//      /revoke equivalent; identity-platform logout/end_session only ends the browser session and
+//      does not revoke the refresh token) ⇒ no remote call; invalidate locally only (account file
+//      deletion + keychain token clearing are already done at the call site).
+//   ③ Non-blocking: issue the network request asynchronously; deletion flow/UI does not wait.
+//      Log failures only; never block deletion.
+//   ④ Privacy: log only accountId / endpoint / result (status code/host); ★ never include accessToken /
+//      clientToken in clear text.
 - (void)ameInvalidateRemoteSessionForAccountData:(NSDictionary *)data accountId:(NSString *)accountId {
     if (![data isKindOfClass:[NSDictionary class]]) return;
     NSString *tag = accountId.length > 0 ? accountId : @"(unknown)";
@@ -569,7 +615,8 @@
     NSDictionary *body = @{ @"accessToken": accessToken, @"clientToken": clientToken };
     AFHTTPSessionManager *manager = AFHTTPSessionManager.manager;
     manager.requestSerializer = AFJSONRequestSerializer.serializer;
-    // 失效端点常以 204 空体响应：显式容许空响应，避免被误判为「解析失败」。
+    // Invalidation endpoints often respond with 204 and an empty body: explicitly allow empty
+    // responses so they are not misclassified as "parse failures".
     manager.responseSerializer = [AFHTTPResponseSerializer serializer];
     [manager POST:invalidateURL parameters:body headers:nil progress:nil
           success:^(NSURLSessionDataTask *task, id responseObject) {
@@ -583,7 +630,7 @@
 
 - (UITableViewCellEditingStyle)tableView:(UITableView *)tableView editingStyleForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    // 所有账户行都可滑动删除
+    // All account rows can be swiped to delete.
     return UITableViewCellEditingStyleDelete;
 }
 
@@ -597,13 +644,14 @@
 }
 
 - (void)actionAddAccount:(UIView *)sender {
-    // ★ [ACCT-DUP] 重入守卫：防连点「添加账户」push 出两个登录方式页（解锁见 viewWillAppear）。
+    // ★ [ACCT-DUP] Re-entry guard: prevent rapid taps from pushing two sign-in method pages
+    // ("unlock" is in viewWillAppear).
     if (self.ameAddAccountInFlight) return;
     self.ameAddAccountInFlight = YES;
-    // 参照 FCL：push 卡片式登录方式选择页（替代原来的 ActionSheet）
+    // Following FCL, push the card-style sign-in method selection page (replacing the original ActionSheet).
     AccountLoginViewController *loginVC = [[AccountLoginViewController alloc] init];
     loginVC.onSelectLoginType = ^(AccountLoginType type) {
-        // 选完登录方式后 pop 回账户列表，再触发对应登录流程
+        // After a sign-in method is selected, pop back to the account list and then start the corresponding sign-in flow.
         [self.navigationController popViewControllerAnimated:YES];
         dispatch_async(dispatch_get_main_queue(), ^{
             switch (type) {
@@ -629,10 +677,10 @@
     if (getPrefBool(@"warnings.local_warn")) {
         setPrefBool(@"warnings.local_warn", NO);
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:localize(@"login.warn.title.localmode", nil) message:localize(@"login.warn.message.localmode", nil) preferredStyle:UIAlertControllerStyleActionSheet];
-        // 修复：sender 为 nil 时（从 addAccountTapped -> actionAddAccount:nil 链路进入），
-        // ActionSheet 在 iPad/LiveContainer 等 popover 场景下必须提供 sourceView，
-        // 否则会因 popoverPresentationController.sourceView 为 nil 而崩溃。
-        // 回退顺序：sender -> addAccountButton -> self.view 中心点。
+        // Fix: when sender is nil (entered through addAccountTapped -> actionAddAccount:nil),
+        // ActionSheet requires a sourceView in popover contexts such as iPad/LiveContainer; otherwise
+        // popoverPresentationController.sourceView being nil causes a crash.
+        // Fallback order: sender -> addAccountButton -> center of self.view.
         UIView *sourceView = sender ?: self.addAccountButton;
         if (sourceView) {
             alert.popoverPresentationController.sourceView = sourceView;
@@ -647,7 +695,8 @@
         [self presentViewController:alert animated:YES completion:nil];
         return;
     }
-    // ★ [AUDIT-DECIDE] A-11：English 字面量当 key（.strings 无此键）→ 新增键 login.sign_in。
+    // ★ [AUDIT-DECIDE] A-11: an English literal was used as the key (no such key in .strings) →
+    // add the login.sign_in key.
     UIAlertController *controller = [UIAlertController alertControllerWithTitle:localize(@"login.sign_in", nil) message:localize(@"login.option.local", nil) preferredStyle:UIAlertControllerStyleAlert];
     [controller addTextFieldWithConfigurationHandler:^(UITextField *textField) {
         textField.placeholder = localize(@"login.alert.field.username", nil);
@@ -663,8 +712,9 @@
         } else {
             id callback = ^(id status, BOOL success) {
                 if (self.whenItemSelected) self.whenItemSelected();
-                // ★ [ACCT-DUP] 本地登录也刷新列表（与微软/三方路径口径一致），
-                //   立即反映存储幂等去重的结果（重复用户名只会得到同一条）。
+                // ★ [ACCT-DUP] Refresh the list after local sign-in too (consistent with Microsoft/third-party
+                // paths), immediately reflecting storage's idempotent deduplication (duplicate usernames yield
+                // only one entry).
                 [self reloadAccountList];
                 [self dismissViewControllerAnimated:YES completion:nil];
             };
@@ -676,7 +726,7 @@
 }
 
 - (void)actionLoginThirdParty:(UIView *)sender {
-    // 参照 FCL：push 卡片式第三方登录表单页（替代原 UIAlertController 三字段输入）
+    // Following FCL, push the card-style third-party sign-in form (replacing the original three-field UIAlertController input).
     ThirdPartyLoginViewController *vc = [[ThirdPartyLoginViewController alloc] init];
     vc.mode = ThirdPartyLoginModeCustom;
     __weak typeof(self) weakSelf = self;
@@ -690,8 +740,8 @@
 }
 
 - (void)actionLoginLittleSkin:(UIView *)sender {
-    // 参照 FCL：push 卡片式 LittleSkin 登录表单页（替代原 UIAlertController 双字段输入）
-    // LittleSkin 端点固定为 https://littleskin.cn/api/yggdrasil，由 VC 内部预设
+    // Following FCL, push the card-style LittleSkin sign-in form (replacing the original two-field UIAlertController input).
+    // The LittleSkin endpoint is fixed at https://littleskin.cn/api/yggdrasil and preset in the VC.
     ThirdPartyLoginViewController *vc = [[ThirdPartyLoginViewController alloc] init];
     vc.mode = ThirdPartyLoginModeLittleSkin;
     __weak typeof(self) weakSelf = self;
@@ -723,11 +773,12 @@
         NSDictionary *queryItems = [self parseQueryItems:callbackURL.absoluteString];
         if (queryItems[@"code"]) {
             dispatch_async(dispatch_get_main_queue(), ^(){
-                // ★ [ACCT-DONE] 统一走 in-flight 锁(只锁列表+「添加账户」按钮,绝不动导航栏出口);
-                //   原实现此处散写 modalInPresentation/tableView —— modalInPresentation 对本页
-                //   (内容容器里的子 VC)无效,已随 ameSetLoginInFlight: 一并收敛。
+                // ★ [ACCT-DONE] Use the shared in-flight lock (locks only the list + "Add Account" button, never
+                //   the navigation-bar exit). The old implementation separately changed modalInPresentation/
+                //   tableView here; modalInPresentation has no effect on this page (a child VC in a content
+                //   container) and is now handled together by ameSetLoginInFlight:.
                 [self ameSetLoginInFlight:YES];
-                // 仅当 sender 是 UITableViewCell 时才显示加载指示器
+                // Show a loading indicator only when sender is a UITableViewCell.
                 if ([sender isKindOfClass:[UITableViewCell class]]) {
                     [self addActivityIndicatorTo:(UITableViewCell *)sender];
                 }
@@ -773,12 +824,15 @@
     cell.accessoryView = nil;
 }
 
-/// ★ [AUTH-FIX] 把认证失败对象转成**可辨识**的用户可读文案（不再只给 AFNetworking 的
-///   "Request failed: unauthorized (401)" 这类笼统串）：
-///   · NSString  → 原样返回；
-///   · NSError   → 优先解析响应体里的 XErr / Message / errorMessage / error_description / error；
-///                 拿不到再退回 HTTP 状态码 + localizedDescription。
-///   安全性：响应体只含错误码与说明文本，**不含任何 token/凭据**；本方法不回显凭据。
+/// ★ [AUTH-FIX] Convert an authentication-failure object into a **recognizable**, user-readable
+///   message (instead of only a generic AFNetworking string such as
+///   "Request failed: unauthorized (401)"):
+///   · NSString → return as-is;
+///   · NSError  → first parse XErr / Message / errorMessage / error_description / error from the
+///                response body; if unavailable, fall back to the HTTP status code +
+///                localizedDescription.
+///   Security: the response body contains only error codes and explanatory text, **not tokens or
+///   credentials**; this method never echoes credentials.
 - (NSString *)ameReadableAuthError:(id)status {
     if ([status isKindOfClass:[NSString class]]) {
         return status;
@@ -806,7 +860,7 @@
             }
         } else {
             NSString *raw = [[NSString alloc] initWithData:errorData encoding:NSUTF8StringEncoding];
-            if (raw.length > 0 && raw.length < 512) detail = raw;   // 短非 JSON 正文也带上
+            if (raw.length > 0 && raw.length < 512) detail = raw;   // Include short non-JSON response bodies too.
         }
     }
 
@@ -820,18 +874,20 @@
 }
 
 - (void)callbackMicrosoftAuth:(id)status success:(BOOL)success forCell:(UITableViewCell *)cell {
-    // ★ [AUTH-FIX] 区分「进度」与「完成」——修微软登录卡在「(2/6) 请求 Xbox Live 令牌」的误判：
-    //   认证器每一步都发 (status != nil, success = YES) 的**进度**回调
-    //   （如 localize(@"login.msa.progress.acquireXBLToken") == "(2/6) 请求 Xbox Live 令牌"）。
-    //   原实现把这种回调当成「登录成功」收尾（弹"账户"对话框 + reload + dismiss + 解锁），于是：
-    //     ① 刚点登录就弹出进度对话框并提前收尾/解锁；
-    //     ② 若紧接着 XBL 步骤失败，用户最后看到的进度文本正是「请求 Xbox Live 令牌」，
-    //        而失败提示又很笼统 ⇒ 用户表现为"无法请求 Xbox 令牌"。
-    //   上游语义：(status != nil, success = YES) = 进度；(status == nil, success = YES) = 完成。
-    //   唯一终态例外：@"DEMO"（Demo 账户已保存）走完成收尾。
+    // ★ [AUTH-FIX] Distinguish "progress" from "completion" — fixes the false interpretation that
+    //   Microsoft sign-in is stuck at "(2/6) Request Xbox Live token":
+    //   The authenticator sends a **progress** callback at every step (status != nil, success = YES)
+    //   (for example, localize(@"login.msa.progress.acquireXBLToken") == "(2/6) Request Xbox Live token").
+    //   The old implementation treated this as "sign-in succeeded" and finalized (show "Account"
+    //   dialog + reload + dismiss + unlock), so:
+    //     ① A progress dialog appeared immediately after tapping Sign In, then finalized/unlocked early.
+    //     ② If the next XBL step failed, the last progress text was "Request Xbox Live token", while
+    //        the failure message was generic ⇒ users saw "Unable to request Xbox token".
+    //   Upstream semantics: (status != nil, success = YES) = progress; (status == nil, success = YES) = completion.
+    //   The only terminal exception: @"DEMO" (Demo account was saved), which finalizes normally.
     BOOL isDemo = (success && [status isKindOfClass:[NSString class]] && [status isEqualToString:@"DEMO"]);
 
-    // ① 进度：只更新 UI，绝不 dismiss / reload / 解锁 / whenItemSelected
+    // ① Progress: update only the UI; never dismiss / reload / unlock / call whenItemSelected.
     if (status != nil && success && !isDemo) {
         NSString *progress = [status isKindOfClass:[NSError class]] ? [(NSError *)status localizedDescription]
                             : ([status isKindOfClass:[NSString class]] ? status : [status description]);
@@ -840,7 +896,7 @@
         return;
     }
 
-    // ② 认证失败：恢复交互并展示**可辨识**错误
+    // ② Authentication failure: restore interaction and show a **recognizable** error.
     if (status != nil && !success) {
         [self ameSetLoginInFlight:NO];
         if (cell) [self removeActivityIndicatorFrom:cell];
@@ -850,7 +906,7 @@
         return;
     }
 
-    // ③ 完成：status == nil（或 DEMO 终态）
+    // ③ Completion: status == nil (or terminal DEMO state).
     if (success) {
         if (isDemo) {
             showDialog(localize(@"login.warn.title.demomode", nil), localize(@"login.warn.message.demomode", nil));
@@ -863,24 +919,26 @@
         return;
     }
 
-    // ④ status == nil 且 success == NO（取消/无内容回调）：同样必须解锁
-    // ★ [ACCT-DONE] 原实现缺这一支 ⇒ in-flight 永久置位、列表与「添加账户」永久禁用(只能杀进程)。
+    // ④ status == nil and success == NO (cancelled/empty callback): must also unlock.
+    // ★ [ACCT-DONE] The old implementation lacked this branch ⇒ in-flight remained set forever and
+    // the list/"Add Account" button stayed disabled (force-quit was the only option).
     if (cell) [self removeActivityIndicatorFrom:cell];
     [self ameSetLoginInFlight:NO];
     showDialog(localize(@"Error", nil), localize(@"login.error.invalid_response", nil));
 }
 
-/// 重新加载账户列表并刷新表格（FCL 风格：登录/删除后刷新卡片视图）
+/// Reload the account list and refresh the table (FCL style: refresh the card view after sign-in/deletion).
 - (void)reloadAccountList {
     [self ameLoadAccountListFromDisk];
     [self.tableView reloadData];
 }
 
-/// ★ [ACCT-DUP] 从磁盘载入账户列表（viewDidLoad / reloadAccountList 共用）：
-///   ① 载入前先调用 deduplicateAccountsDirectory 合并**同身份**的存量重复（幂等，只删真正重复的文件，
-///      不同 username/xuid/profileId 的合法多账号一律保留）；
-///   ② 跳过 parseJSONFromFile 失败的损坏文件（返回 @{NSErrorObject:…}），
-///      避免列表里凭空多出一条无用户名的“幽灵账户”。
+/// ★ [ACCT-DUP] Load the account list from disk (shared by viewDidLoad / reloadAccountList):
+///   ① Before loading, call deduplicateAccountsDirectory to merge existing duplicates with the
+///      **same identity** (idempotent; delete only truly duplicate files and preserve all legitimate
+///      accounts with different username/xuid/profileId);
+///   ② Skip corrupt files that fail parseJSONFromFile (returns @{NSErrorObject:…}) to avoid a
+///      nameless "ghost account" appearing in the list.
 - (void)ameLoadAccountListFromDisk {
     if (self.accountList == nil) {
         self.accountList = [NSMutableArray array];
@@ -903,16 +961,20 @@
     }
 }
 
-/// ★ [ACCT-DUP] 统一的「登录进行中」开关：置位的同一处即禁用列表与「添加账户」按钮，
-///   结束（成功/失败/取消/nil 回滚/页面离开/看门狗）时恢复——保证一次登录流程在飞期间无法被重复触发。
+/// ★ [ACCT-DUP] Shared "sign-in in progress" switch: setting it disables the list and "Add Account"
+///   button in one place; restore them when finished (success/failure/cancel/nil rollback/page exit/
+///   watchdog) so a sign-in flow cannot be triggered twice while in flight.
 ///
-/// ★ [ACCT-DONE] 本轮修正两点：
-///   ① 只锁【会触发登录的控件】(表格行 + 「添加账户」按钮)。原先还写 self.modalInPresentation,
-///      但本页是内容容器里的**子 VC**(setContentViewController: 塞进主页 contentContainer),
-///      不是模态呈现 ⇒ 该属性无意义,是历史 FormSheet 时代的残留;真正该守的是"导航栏出口(
-///      「完成」左键)任何时候都能点",导航 chrome 一律不锁(见 ameAccountEnsureBackItemIfNeeded)。
-///   ② 加【看门狗】:置位后 60s 若代次未变且仍在飞 ⇒ 强制解锁。防"回调丢失/网络 hang"把
-///      列表永久锁死(与 viewWillAppear 的无条件解锁互为双保险 = defer 式保证)。
+/// ★ [ACCT-DONE] Two corrections in this change:
+///   ① Lock only controls that trigger sign-in (table rows + "Add Account" button). Previously
+///      self.modalInPresentation was also set, but this page is a **child VC** in the content
+///      container (setContentViewController: inserts it into Home's contentContainer), not a modal
+///      presentation ⇒ that property has no effect and is a leftover from the FormSheet era.
+///      The actual safeguard is to keep the "navigation-bar exit (left 'Done' button) tappable at all
+///      times"; never lock navigation chrome (see ameAccountEnsureBackItemIfNeeded).
+///   ② Add a **watchdog**: if the token is unchanged and sign-in is still in flight after 60s ⇒ force
+///      unlock. Prevent a lost callback/network hang from locking the list forever (a second,
+///      defer-style safeguard alongside the unconditional unlock in viewWillAppear).
 - (void)ameSetLoginInFlight:(BOOL)inFlight {
     self.ameLoginInFlight = inFlight;
     self.tableView.userInteractionEnabled = !inFlight;
@@ -924,15 +986,16 @@
                    dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-        if (strongSelf.ameLoginInFlightToken != token) return;   // 已被正常解锁/又换了新一次 ⇒ 不管
+        if (strongSelf.ameLoginInFlightToken != token) return;   // Already unlocked normally or replaced by a new attempt ⇒ do nothing.
         if (!strongSelf.ameLoginInFlight) return;
-        NSLog(@"[ACCT-DONE] in-flight 看门狗超时(60s),强制解锁(防回调丢失把列表锁死)");
+        NSLog(@"[ACCT-DONE] in-flight watchdog timed out (60s); force-unlocking to avoid a permanently locked list if a callback was lost.");
         [strongSelf ameSetLoginInFlight:NO];
     });
 }
 
-/// ★ [ACCT-DONE] 页面真的离开窗口(被 pop / 被内容区换走)时解锁;只是被网页登录盖住时
-///   self.view.window 仍在 ⇒ 不解锁,不会打断正在进行的登录。
+/// ★ [ACCT-DONE] Unlock when the page actually leaves the window (popped/replaced in the content
+/// area). If only covered by web sign-in, self.view.window remains set ⇒ do not unlock or interrupt
+/// the sign-in in progress.
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
     if (self.view.window == nil) {

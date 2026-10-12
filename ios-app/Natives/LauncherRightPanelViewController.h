@@ -1,57 +1,58 @@
 #import <UIKit/UIKit.h>
 
-// FCL风格右侧面板 - 显示账户信息、版本选择和启动按钮
+// FCL-style right panel - displays account information, version selection, and the launch button.
 //
-// ★ [NORIGHT] 右栏卡片已下线(用户拍板:干掉右栏卡,把里面的东西搬家)。
-//   本控制器**保留**为「不可见控制器」:容器被钉成 0×0 + hidden,内部约束由
-//   norightCollapsePanelLayout: 整组停用(否则 0×0 会与内部 required 约束冲突)。
-//   启动全链路(账号校验/JIT/下载拦截/版本解析)、执行 Jar、选择版本、下载中心、
-//   JIT 监视 —— 全部仍在本类里原样运行,只是 UI 入口搬到了新位置:
+// ★ [NORIGHT] The right-panel card has been removed (decision: remove the card and relocate its contents).
+//   This controller is **retained** as a "hidden controller": its container is pinned at 0×0 and hidden, while
+//   norightCollapsePanelLayout: disables all internal constraints (otherwise 0×0 conflicts with required constraints).
+//   The full launch flow (account validation/JIT/download interception/version resolution), JAR execution,
+//   version selection, Download Center, and JIT monitoring all continue to run in this class unchanged;
+//   only their UI entry points have moved:
 //
-//     · 头像 + 用户名 + 版本号  → 主页「欢迎回来」卡(LauncherNewsViewController)
-//        (头像仍可点 / 长按:点 = 账户管理,长按 = 自定义头像菜单 —— 同样转发到本类原方法)
-//     · 启动游戏               → 主页底部「紧凑胶囊」(LauncherNewsViewController)
-//     · JIT 状态               → 主页顶栏右侧 pill(与「⚙ 自定义」并排)
-//     · 执行 Jar / 选择版本     → 「实例」页顶部工具区(VersionManagerViewController)
-//     · 下载中/暂停            → 不搬(「下载」标签本来就有下载中心);通知逻辑保留
+//     · Avatar + username + version → Home page's "Welcome Back" card (LauncherNewsViewController)
+//        (Avatar remains tappable / long-pressable: tap = account management, long press = custom-avatar menu; both forward to this class's original methods.)
+//     · Launch game             → "Compact Capsule" at the bottom of the Home page (LauncherNewsViewController)
+//     · JIT status              → Pill at the upper-right of the Home page, beside "⚙ Customize"
+//     · Execute JAR / select version → Toolbar at the top of the Instances page (VersionManagerViewController)
+//     · Downloading/paused      → Not moved (the Downloads tab already has the Download Center); notification logic is retained.
 //
-//   新 UI 只 post 动作名,由下面的通知转发到**本类原来的方法** —— 零复制逻辑。
+//   The new UI only posts action names; the notifications below forward them to **this class's original methods** — no logic is duplicated.
 //
-// ★ [FIX511] 换底到 5.1.0 时本头文件误取了上游 5.1.0 的 13 行小版本,丢掉了下面
-//   整块 fork 独有的声明(3 个通知常量 + 3 个 noright 方法),导致:
+// ★ [FIX511] When rebasing to 5.1.0, this header was mistakenly replaced with the upstream 5.1.0 13-line stub, dropping
+//   the entire block of fork-specific declarations below (3 notification constants + 3 noright methods), causing:
 //     AccountListViewController.m:165  [LauncherRightPanelViewController norightPostAction:]
 //       → error: no known class method for selector 'norightPostAction:'
 //     LauncherRootViewController.m:597 [rightPanelVC norightCollapsePanelLayout:YES]
 //     LauncherNewsViewController.m    AmeRightPanelStateNotification / …RequestStateNotification
-//   现从 fork 版取回(fork 的 .h 与本文件其余内容一致,纯超集)。
+//   Restored from the fork (the fork's .h matches the rest of this file and is a strict superset).
 
-/// 新 UI 入口 → 右栏原实现。
+/// New UI entry point → original right-panel implementation.
 /// userInfo: @{@"action": @"launch" | @"executeJar" | @"versionPicker" | @"downloadCenter"}
 extern NSString * const AmeRightPanelActionNotification;
-/// 右栏状态广播(版本号 / JIT 文本与颜色 / 用户名 / 启动键标题与可用性)。userInfo 见 .m。
+/// Right-panel state broadcast (version / JIT text and color / username / launch-button title and enabled state). See .m for userInfo.
 extern NSString * const AmeRightPanelStateNotification;
-/// 外部主动索取一次状态(右栏收到后会实时重算 JIT 并回广播)。
+/// Request the current state externally (the right panel recalculates JIT and broadcasts the result upon receiving the request).
 extern NSString * const AmeRightPanelRequestStateNotification;
 
 @interface LauncherRightPanelViewController : UIViewController
 
-// 更新账户信息显示
+// Update the displayed account information.
 - (void)updateAccountInfo;
 
-// 更新版本信息显示
+// Update the displayed version information.
 - (void)updateVersionInfo;
 
-// ★ [NORIGHT] 收起(collapsed=YES)/恢复面板内部全部约束 + 隐藏子视图。幂等。
+// ★ [NORIGHT] Collapse (collapsed=YES) / restore all internal panel constraints and hide its subviews. Idempotent.
 - (void)norightCollapsePanelLayout:(BOOL)collapsed;
 
-// ★ [UI-ADAPT] 头像专用紧凑布局(供 CardLayout / 便当盒:右栏卡被钉成 56pt 高的小卡,
-//   常驻右上角只展示头像)。整组停用通高约束 + 只留头像。幂等。
+// ★ [UI-ADAPT] Compact avatar-only layout (for CardLayout / Bento: the right-panel card is fixed as a 56 pt-high small card,
+//   permanently in the upper-right and displaying only the avatar). Disable the full-height constraint group and keep only the avatar. Idempotent.
 - (void)norightAvatarOnlyLayout:(BOOL)on;
 
-// ★ [NORIGHT] 广播一次当前状态(内部更新时也会自动广播)。
+// ★ [NORIGHT] Broadcast the current state once (also broadcast automatically on internal updates).
 - (void)norightBroadcastState;
 
-// ★ [NORIGHT] 新 UI 发起动作的唯一入口(内部即 post AmeRightPanelActionNotification)。
+// ★ [NORIGHT] The sole entry point for actions from the new UI (internally posts AmeRightPanelActionNotification).
 + (void)norightPostAction:(NSString *)action;
 
 @end

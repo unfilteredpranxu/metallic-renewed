@@ -2,8 +2,8 @@
 //  AiAskTool.h
 //  Amethyst
 //
-//  Air AI Agent 交互问答工具（只读）：ask。
-//  当 AI 需要用户做决策（版本/加载器/目标实例/资源挑选等）时，向用户发起多步选择向导。
+//  Air AI Agent interactive question tool (read-only): ask.
+//  Starts a multi-step selection wizard when the AI needs the user to make a decision (version/loader/target instance/resource selection, etc.).
 //
 
 #import <Foundation/Foundation.h>

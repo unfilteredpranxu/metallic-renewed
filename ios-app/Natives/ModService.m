@@ -3,9 +3,9 @@
 //  ModService.m
 //  AmethystMods
 //
-//  修改：增加文件修改时间缓存，大幅提升扫描速度
-//  修改：文件下载改走 PLDownloadClient 统一下载器（镜像候选 + SHA1 校验 + 断点续传），
-//        移除自建 NSURLSession 下载 delegate（spec optimize-download-system Task 4.2 / 5.1 / 5.2）
+//  Change: add a file modification-time cache to greatly improve scanning speed.
+//  Change: route file downloads through the unified PLDownloadClient (mirror candidates + SHA1 validation + resume support),
+//        removing the custom NSURLSession download delegate (spec optimize-download-system Task 4.2 / 5.1 / 5.2).
 //
 
 #import "ModService.h"
@@ -22,24 +22,24 @@
 #import "PLMirrorCenter.h"
 
 @interface ModService ()
-// ---- PLDownloadClient 下载跟踪（key = DownloadTaskItem.taskId，即 PLDownloadRequest.taskIdentifier）----
+// ---- PLDownloadClient download tracking (key = DownloadTaskItem.taskId, i.e. PLDownloadRequest.taskIdentifier) ----
 @property (nonatomic, strong) NSLock *downloadStateLock;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, DownloadTaskItem *> *downloadTaskItems;
-// 强持有当前 operation：pause 后 PLDownloadClient 会移除内部 task 映射，
-// 需由 Service 保活，DownloadTaskManager 的 rawTask（weak）才能继续 pause/resume
+// Strongly retain the current operation: PLDownloadClient removes its internal task mapping after pause,
+// so the Service must keep it alive for DownloadTaskManager's rawTask (weak) to continue supporting pause/resume.
 @property (nonatomic, strong) NSMutableDictionary<NSString *, PLDownloadOperation *> *downloadOperations;
-// 重试代数：retryHandler 重建请求后旧 operation 的迟到回调（如取消）按此丢弃
+// Retry generation: discard delayed callbacks (e.g. cancellation) from the old operation after retryHandler creates a new request.
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *downloadGenerations;
-// 进度累计（PLDownloadClient 为 delta 语义，含镜像切换/重试的负 delta 回退，直接累加即可）
+// Accumulated progress (PLDownloadClient reports deltas, including negative rollback deltas on mirror switches/retries; simply add them).
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *downloadAccumulatedBytes;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *downloadTotalBytes;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *downloadLastSpeeds;
-// 请求描述缓存：retryHandler 复用同一请求（同 taskIdentifier 可复用断点语义）
+// Cached request description: retryHandler reuses the same request (the same taskIdentifier can reuse resume data).
 @property (nonatomic, strong) NSMutableDictionary<NSString *, PLDownloadRequest *> *downloadRequests;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, void(^)(NSProgress *)> *downloadProgressHandlers;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, ModDownloadHandler> *downloadCompletionHandlers;
 
-// 缓存
+// Cache.
 @property (nonatomic, strong) NSMutableDictionary<NSString *, ModItem *> *metadataCache;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSDate *> *checkpointTimes;
 @property (nonatomic, strong) dispatch_queue_t cacheQueue;
@@ -47,7 +47,7 @@
 
 @implementation ModService
 
-// ---------- TOML 解析（未修改）----------
+// ---------- TOML parsing (unchanged) ----------
 - (nullable id)parseTomlValue:(NSString *)valPart inLines:(NSArray<NSString *> *)lines atIndex:(NSUInteger *)i {
     NSString *trimmedVal = [valPart stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
     NSString *delimiter = nil;
@@ -125,7 +125,7 @@
     return root;
 }
 
-// ---------- 初始化 ----------
+// ---------- Initialization ----------
 + (instancetype)sharedService {
     static ModService *s;
     static dispatch_once_t onceToken;
@@ -139,8 +139,8 @@
     if (self = [super init]) {
         _onlineSearchEnabled = NO;
 
-        // 下载已改走 [PLDownloadClient sharedClient]（镜像候选 + SHA1 校验 + 断点续传），
-        // 不再自建 NSURLSession download delegate
+        // Downloads now use [PLDownloadClient sharedClient] (mirror candidates + SHA1 validation + resume support);
+        // no custom NSURLSession download delegate is created.
         _downloadStateLock = [[NSLock alloc] init];
         _downloadTaskItems = [NSMutableDictionary dictionary];
         _downloadOperations = [NSMutableDictionary dictionary];
@@ -152,7 +152,7 @@
         _downloadProgressHandlers = [NSMutableDictionary dictionary];
         _downloadCompletionHandlers = [NSMutableDictionary dictionary];
 
-        // 初始化缓存
+        // Initialize cache.
         _metadataCache = [NSMutableDictionary dictionary];
         _checkpointTimes = [NSMutableDictionary dictionary];
         _cacheQueue = dispatch_queue_create("com.amethyst.modcache", DISPATCH_QUEUE_CONCURRENT);
@@ -160,7 +160,7 @@
     return self;
 }
 
-// ---------- 辅助方法 ----------
+// ---------- Helper methods ----------
 - (nullable NSString *)sha1ForFileAtPath:(NSString *)path {
     NSData *d = [NSData dataWithContentsOfFile:path];
     if (!d) return nil;
@@ -199,30 +199,30 @@
     return data;
 }
 
-/// 解析 profile 的 gameDir 为绝对路径。
-/// profile gameDir 通常是相对路径（如 "./custom_gamedir/{name}"），需相对于 POJAV_GAME_DIR 解析。
-/// 之前直接使用相对路径会导致 mods 文件夹找不到（fileExistsAtPath 对相对路径基于 cwd 解析，
-/// 而 cwd 不一定是 POJAV_GAME_DIR）。
+/// Resolves the profile's gameDir to an absolute path.
+/// A profile gameDir is usually a relative path (e.g. "./custom_gamedir/{name}") and must be resolved relative to POJAV_GAME_DIR.
+/// Using the relative path directly could make the mods folder unfindable (fileExistsAtPath resolves relative paths from cwd,
+/// which is not necessarily POJAV_GAME_DIR).
 - (nullable NSString *)resolveAbsoluteGameDirForProfile:(NSString *)profileName {
     NSString *profile = profileName.length ? profileName : @"default";
     @try {
         NSDictionary *profiles = PLProfiles.current.profiles;
         NSDictionary *prof = profiles[profile];
         if (![prof isKindOfClass:[NSDictionary class]]) return nil;
-        NSString *gameDir = amePCLVersionGameDirSubpath(prof, nil);   // ★ [VER-ISOLATE-PCL] 版本隔离统一解析
+        NSString *gameDir = amePCLVersionGameDirSubpath(prof, nil);   // ★ [VER-ISOLATE-PCL] Unified resolution for version isolation.
         if (![gameDir isKindOfClass:[NSString class]] || gameDir.length == 0) return nil;
         if ([gameDir isEqualToString:@"."]) {
-            // "." 表示主目录
+            // "." means the root directory.
             const char *env = getenv("POJAV_GAME_DIR");
             return env ? [NSString stringWithUTF8String:env] : NSHomeDirectory();
         }
         if ([gameDir isAbsolutePath]) {
             return gameDir;
         }
-        // 相对路径，相对于 POJAV_GAME_DIR 解析
+        // Resolve relative paths against POJAV_GAME_DIR.
         const char *env = getenv("POJAV_GAME_DIR");
         NSString *baseDir = env ? [NSString stringWithUTF8String:env] : NSHomeDirectory();
-        // 去掉 "./" 前缀（如果有），stringByAppendingPathComponent 能正确处理
+        // Remove the "./" prefix if present; stringByAppendingPathComponent handles it correctly.
         NSString *cleanGameDir = [gameDir hasPrefix:@"./"] ? [gameDir substringFromIndex:2] : gameDir;
         return [baseDir stringByAppendingPathComponent:cleanGameDir];
     } @catch (NSException *ex) {
@@ -234,7 +234,7 @@
     NSString *profile = profileName.length ? profileName : @"default";
     NSFileManager *fm = [NSFileManager defaultManager];
 
-    // 优先用 profile gameDir（已解析为绝对路径）
+    // Prefer the profile gameDir (already resolved to an absolute path).
     NSString *resolvedGameDir = [self resolveAbsoluteGameDirForProfile:profile];
     if (resolvedGameDir.length > 0) {
         NSString *modsPath = [resolvedGameDir stringByAppendingPathComponent:@"mods"];
@@ -244,7 +244,7 @@
         }
     }
 
-    // 回退到 POJAV_GAME_DIR/mods
+    // Fall back to POJAV_GAME_DIR/mods.
     const char *gameDirC = getenv("POJAV_GAME_DIR");
     if (gameDirC) {
         NSString *gameDir = [NSString stringWithUTF8String:gameDirC];
@@ -257,13 +257,13 @@
     return nil;
 }
 
-/// 获取当前 profile 的 mods 目录，不存在时自动创建
+/// Gets the current profile's mods directory, creating it if it does not exist.
 - (nullable NSString *)ensureModsFolderForProfile:(NSString *)profileName error:(NSError **)error {
     NSString *profile = profileName.length ? profileName : @"default";
     NSFileManager *fm = [NSFileManager defaultManager];
     NSString *modsPath = nil;
 
-    // 优先用 profile gameDir（已解析为绝对路径）
+    // Prefer the profile gameDir (already resolved to an absolute path).
     NSString *resolvedGameDir = [self resolveAbsoluteGameDirForProfile:profile];
     if (resolvedGameDir.length > 0) {
         modsPath = [resolvedGameDir stringByAppendingPathComponent:@"mods"];
@@ -286,7 +286,7 @@
 
     BOOL isDir = NO;
     if (![fm fileExistsAtPath:modsPath isDirectory:&isDir]) {
-        // 目录不存在，创建
+        // Directory does not exist; create it.
         NSError *createError = nil;
         [fm createDirectoryAtPath:modsPath withIntermediateDirectories:YES attributes:nil error:&createError];
         if (createError) {
@@ -303,7 +303,7 @@
     return modsPath;
 }
 
-// ---------- 缓存方法 ----------
+// ---------- Cache methods ----------
 - (BOOL)needsRescanForPath:(NSString *)path {
     __block BOOL needs = YES;
     dispatch_sync(self.cacheQueue, ^{
@@ -343,7 +343,7 @@
     });
 }
 
-// ---------- 扫描模组（核心优化）----------
+// ---------- Scan mods (core optimization) ----------
 - (void)scanModsForProfile:(NSString *)profileName completion:(ModListHandler)completion {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSString *modsFolder = [self existingModsFolderForProfile:profileName];
@@ -363,7 +363,7 @@
             if ([fileName.lowercaseString hasSuffix:@".jar"] || [fileName.lowercaseString hasSuffix:@".jar.disabled"]) {
                 NSString *fullPath = [modsFolder stringByAppendingPathComponent:fileName];
 
-                // 检查缓存
+                // Check the cache.
                 if (![self needsRescanForPath:fullPath]) {
                     ModItem *cached = [self cachedModForPath:fullPath];
                     if (cached) {
@@ -397,7 +397,7 @@
     });
 }
 
-// ---------- 元数据获取（原逻辑，仅被上面调用）----------
+// ---------- Retrieve metadata (original logic, called only above) ----------
 - (void)fetchMetadataForMod:(ModItem *)mod completion:(ModMetadataHandler)completion {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         @try {
@@ -483,7 +483,7 @@
     });
 }
 
-// ---------- 文件操作（启用/禁用、删除）----------
+// ---------- File operations (enable/disable, delete) ----------
 - (BOOL)toggleEnableForMod:(ModItem *)mod error:(NSError **)error {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSString *currentPath = mod.filePath;
@@ -513,12 +513,12 @@
     return [[NSFileManager defaultManager] removeItemAtPath:mod.filePath error:error];
 }
 
-// ---------- 下载（PLDownloadClient 统一下载器：镜像候选 + SHA1 校验 + 增量命中 + 断点续传）----------
+// ---------- Download (PLDownloadClient unified downloader: mirror candidates + SHA1 validation + incremental hits + resume support) ----------
 - (void)downloadMod:(ModItem *)mod toProfile:(NSString *)profileName completion:(ModDownloadHandler)completion {
     [self downloadMod:mod toProfile:profileName expectedSHA1:nil progress:nil completion:completion];
 }
 
-// ---------- 带进度回调的下载 ----------
+// ---------- Download with progress callback ----------
 - (void)downloadMod:(ModItem *)mod
           toProfile:(NSString *)profileName
             progress:(void (^)(NSProgress *downloadProgress))progress
@@ -526,7 +526,7 @@
     [self downloadMod:mod toProfile:profileName expectedSHA1:nil progress:progress completion:completion];
 }
 
-// ---------- 带 SHA1 校验的下载（spec Task 5.1：expectedSHA1 传入即启用校验）----------
+// ---------- Download with SHA1 validation (spec Task 5.1: providing expectedSHA1 enables validation) ----------
 - (void)downloadMod:(ModItem *)mod
           toProfile:(NSString *)profileName
        expectedSHA1:(nullable NSString *)expectedSHA1
@@ -552,7 +552,8 @@
 
     NSString *destinationPath = [modsFolder stringByAppendingPathComponent:mod.fileName];
 
-    // 注册到统一下载任务管理器（rawTask 稍后赋值为 PLDownloadOperation；悬浮球已移除，始终注册以便下载任务列表跟踪）
+    // Register with the unified download task manager (rawTask is later set to PLDownloadOperation; the floating bubble was removed,
+    // so always register for tracking in the download task list).
     NSString *resourceName = mod.fileName.length > 0 ? mod.fileName : (mod.displayName.length > 0 ? mod.displayName : @"mod");
     NSString *displayName = mod.displayName.length > 0 ? mod.displayName : resourceName;
     NSString *downloadSource = getPrefObject(@"general.download_source") ?: @"official";
@@ -565,12 +566,12 @@
                       supportsResume:YES
                              iconURL:mod.iconURL];
     taskItem.downloadURL = mod.selectedVersionDownloadURL;
-    // redesign-download-ui Phase 4：单文件下载接入统一进度页——
-    // PLTaskStagesSingleFile 单阶段 + autoPresentDetail 自动弹出 PLTaskProgressViewController
+    // redesign-download-ui Phase 4: integrate single-file downloads with the unified progress page —
+    // PLTaskStagesSingleFile single stage + autoPresentDetail automatically presents PLTaskProgressViewController.
     [[DownloadTaskManager sharedManager] setTaskWithId:taskItem.taskId stages:PLTaskStagesSingleFile()];
     taskItem.autoPresentDetail = YES;
 
-    // retryHandler：FCL 风格重新下载，复用同一 taskItem，重新发起 PLDownloadClient 请求
+    // retryHandler: FCL-style retry; reuse the same taskItem and issue a new PLDownloadClient request.
     __weak typeof(self) weakSelf = self;
     taskItem.retryHandler = ^id(DownloadTaskItem *taskItemRef) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
@@ -579,28 +580,28 @@
     };
 
     PLDownloadRequest *request = [[PLDownloadRequest alloc] init];
-    // 镜像候选列表：原始 CDN URL（cdn.modrinth.com / edge.forgecdn.net 等）+ MCIM 镜像，
-    // 按 download.assetDownloadSource 策略排序（PLMirrorCenter 统一收敛，替代旧版独立镜像工具类）
+    // Mirror candidates: original CDN URLs (cdn.modrinth.com / edge.forgecdn.net, etc.) + MCIM mirrors,
+    // sorted by the download.assetDownloadSource policy (centralized in PLMirrorCenter, replacing the old standalone mirror utility).
     request.candidateURLs = [PLMirrorCenter candidateURLsForOriginalURL:url
                                                           resourceType:PLMirrorResourceTypeAssetDownload];
-    // Task 5.1：expectedSHA1（版本模型 files[].hashes.sha1）传入即启用 SHA1 校验，
-    // 校验失败由 PLDownloadClient 内部按镜像/退避节奏重试
+    // Task 5.1: providing expectedSHA1 (version model files[].hashes.sha1) enables SHA1 validation;
+    // PLDownloadClient retries validation failures using mirror/backoff logic.
     request.expectedSHA1 = expectedSHA1;
-    // Task 5.2：目标文件已存在且校验通过 → PLDownloadClient 零流量直接成功（增量下载）；
-    // 目标路径语义与原实现一致（mods/<fileName>.jar）
+    // Task 5.2: if the destination already exists and passes validation, PLDownloadClient succeeds without network traffic (incremental download);
+    // destination path semantics match the original implementation (mods/<fileName>.jar).
     request.destinationPath = destinationPath;
-    // taskIdentifier 用 DownloadTaskManager 的 taskId，resumeData 断点数据跨次下载可复用
+    // Use DownloadTaskManager's taskId as taskIdentifier so resumeData can be reused across download attempts.
     request.taskIdentifier = taskItem.taskId;
-    // 无 SHA1 时对 .jar（zip 格式）做 EOCD 兜底完整性校验
+    // If SHA1 is unavailable, use EOCD as a fallback integrity check for .jar files (ZIP format).
     request.allowZipFallbackCheck = YES;
 
     [self startPLDownloadWithRequest:request taskItem:taskItem progress:progress completion:completion];
 }
 
-#pragma mark - PLDownloadClient 封装（进度 delta 累计 / 速率采样 / 完成分发）
+#pragma mark - PLDownloadClient wrapper (accumulate progress deltas / sample speed / dispatch completion)
 
-/// 发起（或重发）PLDownloadClient 请求并挂接进度、速率、完成回调。
-/// progress/completion 传 nil 时不覆盖已登记的回调（retryHandler 重发时复用首次回调）。
+/// Starts (or retries) a PLDownloadClient request and attaches progress, speed, and completion callbacks.
+/// If progress/completion is nil, does not overwrite the registered callback (retryHandler reuses the original callback).
 - (nullable PLDownloadOperation *)startPLDownloadWithRequest:(PLDownloadRequest *)request
                                                      taskItem:(DownloadTaskItem *)taskItem
                                                      progress:(nullable void(^)(NSProgress *))progress
@@ -615,7 +616,7 @@
     self.downloadRequests[taskId] = request;
     if (progress) self.downloadProgressHandlers[taskId] = progress;
     if (completion) self.downloadCompletionHandlers[taskId] = completion;
-    // 重发从头下载：归零累计（PLDownloadClient 的负 delta 回退语义在单次 operation 内自洽）
+    // Restart from the beginning on retry: reset the accumulated total (PLDownloadClient's negative-delta rollback is consistent within an operation).
     self.downloadAccumulatedBytes[taskId] = @(0);
     self.downloadTotalBytes[taskId] = @(-1);
     self.downloadLastSpeeds[taskId] = @(0.0);
@@ -638,7 +639,7 @@
         [strongSelf handlePLDownloadCompletion:success error:error taskId:taskId generation:generation];
     }];
     if (!operation) {
-        // 参数错误：PLDownloadClient 会异步回调 completion（error），由统一失败路径收尾
+        // Invalid argument: PLDownloadClient calls completion asynchronously with an error; the unified failure path handles cleanup.
         return nil;
     }
 
@@ -646,19 +647,19 @@
     self.downloadOperations[taskId] = operation;
     [self.downloadStateLock unlock];
 
-    // rawTask 为 weak 引用：operation 由 PLDownloadClient 与本 Service 共同持有，
-    // DownloadTaskManager 据此对 PLDownloadOperation 做 pause/resume/cancel
+    // rawTask is a weak reference: PLDownloadClient and this Service jointly retain the operation,
+    // allowing DownloadTaskManager to pause/resume/cancel PLDownloadOperation.
     taskItem.rawTask = operation;
-    // 占用并发槽位（满则由 DownloadTaskManager 自动 pauseOperation 排队）
+    // Occupy a concurrency slot (if full, DownloadTaskManager queues it by calling pauseOperation automatically).
     [[DownloadTaskManager sharedManager] setTaskWithId:taskId state:DownloadTaskStateDownloading];
-    // redesign-download-ui Phase 4：单阶段任务进入下载时将阶段0 置为 Running
+    // redesign-download-ui Phase 4: set stage 0 to Running when a single-stage task begins downloading.
     [[DownloadTaskManager sharedManager] updateTaskWithId:taskId
                                               stageAtIndex:0
                                                   status:PLTaskStageStatusRunning];
     return operation;
 }
 
-/// retryHandler 入口：复用登记的请求描述重新发起下载
+/// retryHandler entry point: reuse the registered request description to restart the download.
 - (nullable id)restartPLDownloadForTaskId:(NSString *)taskId {
     [self.downloadStateLock lock];
     PLDownloadRequest *request = self.downloadRequests[taskId];
@@ -668,7 +669,7 @@
     return [self startPLDownloadWithRequest:request taskItem:taskItem progress:nil completion:nil];
 }
 
-/// 进度 delta 累计：负 delta（镜像切换/重试/断点失效回退）直接累加即可贴合真实进度
+/// Accumulates progress deltas: add negative deltas (rollback on mirror switch/retry/invalid resume data) to match actual progress.
 - (void)handlePLDownloadDelta:(int64_t)delta total:(int64_t)total taskId:(NSString *)taskId generation:(NSInteger)generation {
     [self.downloadStateLock lock];
     if ([self.downloadGenerations[taskId] integerValue] != generation) {
@@ -689,7 +690,7 @@
                                                  progress:fraction
                                                totalBytes:totalStored
                                           downloadedBytes:accumulated];
-    // redesign-download-ui Phase 4：单阶段任务的阶段进度与任务总进度保持一致
+    // redesign-download-ui Phase 4: keep single-stage progress in sync with total task progress.
     [[DownloadTaskManager sharedManager] updateTaskWithId:taskId
                                               stageAtIndex:0
                                                   progress:fraction
@@ -697,8 +698,8 @@
 
     if (!progressHandler) return;
 
-    // 构造带 throughput/ETA 的 NSProgress，供调用方（DownloadViewController）
-    // 在 FCL 风格的下载进度卡片上显示速度和 ETA
+    // Build an NSProgress with throughput/ETA for the caller (DownloadViewController)
+    // to display speed and ETA on the FCL-style download progress card.
     NSProgress *downloadProgress = [NSProgress progressWithTotalUnitCount:totalStored > 0 ? totalStored : -1];
     downloadProgress.completedUnitCount = accumulated;
     if (lastSpeed > 0) {
@@ -712,7 +713,7 @@
     });
 }
 
-/// 速率采样（PLDownloadClient 每秒回调一次；结束/暂停时回调 0）
+/// Samples download speed (PLDownloadClient calls once per second; reports 0 on completion/pause).
 - (void)handlePLDownloadSpeed:(int64_t)bytesPerSecond taskId:(NSString *)taskId generation:(NSInteger)generation {
     [self.downloadStateLock lock];
     if ([self.downloadGenerations[taskId] integerValue] != generation) {
@@ -731,7 +732,7 @@
                                   estimatedTimeRemaining:eta];
 }
 
-/// 完成分发：更新 DownloadTaskManager 状态并回调业务方（主线程）
+/// Dispatches completion: updates DownloadTaskManager state and calls back to the client (on the main thread).
 - (void)handlePLDownloadCompletion:(BOOL)success
                              error:(nullable NSError *)error
                             taskId:(NSString *)taskId
@@ -750,7 +751,7 @@
         [manager updateTaskWithId:taskId stageAtIndex:0 status:PLTaskStageStatusCompleted];
         [manager setTaskWithId:taskId state:DownloadTaskStateCompleted];
     } else if ([error.domain isEqualToString:NSURLErrorDomain] && error.code == NSURLErrorCancelled) {
-        // 用户取消（DownloadTaskManager 已置 Cancelled，这里幂等对齐）
+        // User cancellation (DownloadTaskManager already set Cancelled; keep this idempotently aligned).
         [manager setTaskWithId:taskId state:DownloadTaskStateCancelled];
     } else {
         [manager updateTaskWithId:taskId stageAtIndex:0 status:PLTaskStageStatusFailed];
@@ -766,7 +767,7 @@
     }
 }
 
-/// 清理指定任务的全部跟踪状态（须在 downloadStateLock 内调用）
+/// Clears all tracking state for the specified task (must be called inside downloadStateLock).
 - (void)cleanupPLDownloadStateForTaskId:(NSString *)taskId {
     [self.downloadTaskItems removeObjectForKey:taskId];
     [self.downloadOperations removeObjectForKey:taskId];

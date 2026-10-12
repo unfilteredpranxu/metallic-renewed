@@ -1,64 +1,62 @@
-# COMPETITOR-GAP: “渲染器之外”差集同步 —— 来源与许可
+# COMPETITOR-GAP: Synchronization of Differences "Beyond the Renderer" — Sources and Licensing
 
-本文件记录本轮（渲染器之外）从竞争对手仓库抄入 `tree510` 的每一项及其来源、许可、回退方式。
-★ 本轮**未 push / 未合并 / 未开 issue / 未提 PR**，全部为本地 commit。
+This document records each item copied from a competitor's repository into `tree510` in this round (beyond the renderer), along with its source, license, and rollback method.
+★ This round was **not pushed, merged, filed as an issue, or submitted as a PR**; all changes are local commits.
 
-## 对比基线与方法
+## Comparison Baseline and Method
 
-- 我们的树：`D:\CTF\_510src\tree510`（HEAD `899e51ec9`，remote `upstream` 派生）。
-- 对手参照：`D:\CTF\_uibuild\repo` = **`Gsjsjzhznsz/Air-Minecraft-iOS-Launcher`**，分支 `ui/e-design-1`，commit
-  `50c59ee6bfc8e14bcbf3de3abee7a2f824209ba5`（在 tree510 内亦可经 `remotes/fork/ui/e-design-1` 访问）。
-- 两树 **无共同祖先**（unrelated histories）；对手仓库文件为 **CRLF**，故所有“内容不同”判定在
-  **LF 归一化 + md5** 后计算（否则会误报 342 处，实测真差异仅 82 处）。
-- 已按用户指示**排除 NG-GL4ES（ZalithLauncher2）**，本轮不再引入。
+- Our tree: `D:\CTF\_510src\tree510` (HEAD `899e51ec9`, derived from remote `upstream`).
+- Competitor reference: `D:\CTF\_uibuild\repo` = **`Gsjsjzhznsz/Air-Minecraft-iOS-Launcher`**, branch `ui/e-design-1`, commit
+  `50c59ee6bfc8e14bcbf3de3abee7a2f824209ba5` (also accessible in tree510 through `remotes/fork/ui/e-design-1`).
+- The two trees have **no common ancestor** (unrelated histories). The competitor's repository uses **CRLF**, so all content comparisons were made after
+  **LF normalization + MD5** (otherwise 342 false differences would be reported; only 82 actual differences were observed).
+- **NG-GL4ES (ZalithLauncher2)** was **excluded** as requested; it was not introduced in this round.
 
-## 许可证
+## License
 
-对手仓库与我们同为 **GNU GPL-3.0**（`LICENSE` 逐字同源，均为 Amethyst-iOS-MyRemastered 的 fork）。
-故按其许可导入同源项目的文件是合规的；本文件即 attribution 记录。
+The competitor's repository and ours are both licensed under **GNU GPL-3.0** (`LICENSE` is identical in both; each is a fork of Amethyst-iOS-MyRemastered).
+Therefore, importing files from the same-source project complies with its license; this document records attribution.
 
-## 已抄入（本 commit）
+## Items Imported (This Commit)
 
-| 路径 | 来源 | 许可 | 原始 md5（导入前） | 说明 |
+| Path | Source | License | Original MD5 (before import) | Description |
 |---|---|---|---|---|
-| `intentprobe/project.yml` | 对手仓库 `ui/e-design-1` @ `50c59ee6b` | GPL-3.0 | `3ef81565f3f4ba253710803eb97a971d` | XcodeGen 工程描述（独立 probe App，bundleIdPrefix `com.probe`） |
-| `intentprobe/Sources/App.swift` | 同上 | GPL-3.0 | `230a33897b60eca9c4ed0e18217ed10d` | probe App 入口（SwiftUI） |
-| `intentprobe/Sources/AmethystIntents.swift` | 同上 | GPL-3.0 | `75bd1b04b96465de3fe272d4eac0ab00` | App Intents / Siri 快捷指令参考（`LaunchVersionIntent` / `SetRendererIntent` / `AmethystShortcuts`） |
-| `METAL_TUTORIAL.txt` | 同上 | GPL-3.0 | `1a6f73c84bca4e239bf231624b121cbd` | Metal(metallum) 集成用户文档 |
+| `intentprobe/project.yml` | Competitor repository `ui/e-design-1` @ `50c59ee6b` | GPL-3.0 | `3ef81565f3f4ba253710803eb97a971d` | XcodeGen project description (standalone probe app, `bundleIdPrefix` `com.probe`) |
+| `intentprobe/Sources/App.swift` | Same | GPL-3.0 | `230a33897b60eca9c4ed0e18217ed10d` | Probe app entry point (SwiftUI) |
+| `intentprobe/Sources/AmethystIntents.swift` | Same | GPL-3.0 | `75bd1b04b96465de3fe272d4eac0ab00` | App Intents / Siri Shortcuts reference (`LaunchVersionIntent` / `SetRendererIntent` / `AmethystShortcuts`) |
+| `METAL_TUTORIAL.txt` | Same | GPL-3.0 | `1a6f73c84bca4e239bf231624b121cbd` | User documentation for Metal (metallum) integration |
 
-### 为什么抄 intentprobe（关键理由 —— 不是“为抄而抄”）
+### Why `intentprobe` Was Imported (The Key Reason — Not Copying for Its Own Sake)
 
-本树**已有** `.github/workflows/intentprobe.yml`（与对手逐字相同，见 commit `d7619d684` “补齐换底时漏掉的
-fork 独有文件”），该 workflow 的 `working-directory: intentprobe` + `xcodegen generate` **指向一个本树不存在的
-目录** —— 即本树的 CI 里挂着一个“引用了空目录”的 workflow。补齐 `intentprobe/` 只做两件事：
+Our tree **already had** `.github/workflows/intentprobe.yml` (identical to the competitor's; see commit `d7619d684`, "Add fork-specific files missed during the base replacement"). Its `working-directory: intentprobe` and `xcodegen generate` **pointed to a directory that did not exist in our tree** — the CI workflow referenced an empty path. Adding `intentprobe/` does only two things:
 
-1. 让这个既有 workflow 不再引用不存在的路径（消除悬空引用，不新增任何自动化）；
-2. 把对手用于“验证 App Intents 元数据能否在无签名构建下生成”的 probe 源码留在树内，作为
-   **将来若要做 Siri 快捷指令功能**的可复用证据/参考。
+1. Prevents the existing workflow from referencing a nonexistent path (removes a dangling reference without adding any automation).
+2. Keeps the competitor's probe source for "checking whether App Intents metadata can be generated in an unsigned build" in the tree as reusable evidence/reference
+   **if Siri Shortcuts support is implemented in the future**.
 
-它**完全不参与 App 打包**：`intentprobe/` 是独立的 XcodeGen 工程（`xcodegen generate` 另行生成
-`.xcodeproj`），不在 `Natives/CMakeLists.txt`、不在 `Makefile`、不在任何 payload/打包清单中。
-故 **无需改 CMakeLists、无需进打包清单** —— 这也是它“低风险”的根本原因。
+It **does not participate in app packaging at all**: `intentprobe/` is a standalone XcodeGen project (`xcodegen generate` creates a separate
+`.xcodeproj`); it is not referenced by `Natives/CMakeLists.txt`, the `Makefile`, or any payload/package manifest.
+Therefore, **no `CMakeLists` changes or package-manifest entries are needed** — this is the fundamental reason it is "low risk."
 
-### 回退
+### Rollback
 
 ```bash
 rm -rf tree510/intentprobe tree510/METAL_TUTORIAL.txt
-git -C tree510 revert <this-commit>     # 或 git checkout <prev> -- intentprobe METAL_TUTORIAL.txt
+git -C tree510 revert <this-commit>     # or git checkout <prev> -- intentprobe METAL_TUTORIAL.txt
 ```
 
-## 已记录、**故意不抄/不换**（同名不同版 · 沿用上一轮既定策略）
+## Recorded but **Intentionally Not Copied/Replaced** (Different Builds with the Same Names · Previous Strategy Retained)
 
-以下为“同名不同构建”的二进制，双方从各自源码线构建，md5 不同但**不是能力缺口**；
-按既定策略**只记录不强行替换**（强换会破坏本树已收敛的构建线与真机验证）。
+The following binaries have the same names but different builds, produced from each side's own source branches. Their MD5 hashes differ, but this is **not a capability gap**.
+Per the established strategy, **they are recorded without forced replacement** (replacement would disrupt our stabilized build line and device validation).
 
-| 文件 | 我们 | 对手 | 结论 |
+| File | Ours | Competitor | Conclusion |
 |---|---|---|---|
-| `Natives/resources/Frameworks/libmetallum.dylib` | 221856 B | 231576 B | 各自构建（对手含其 agent/natives 线）——不换 |
-| `Natives/resources/Frameworks/libshaderc.dylib` | 9384224 B | 8522336 B | 各自构建——不换 |
-| `Natives/resources/Frameworks/libspirv-cross-c-shared.0.dylib` | 2679856 B | 3475240 B | 各自构建——不换 |
-| `Natives/resources/Frameworks/liblwjgl.dylib` | 305216 B | 302104 B | 各自构建——不换 |
-| `Natives/resources/Frameworks/liblwjgl_stb.dylib` | 464472 B | 406224 B | 各自构建——不换 |
-| `JavaApp/libs/others/metallum_agent.jar` | 6852035 B | 539580 B（另有根目录 4106015 B 冗余副本） | 本树 agent 更大更新（多版本分支），不换 |
-| 根目录 `metallum_agent.jar` | 无 | 4106015 B | 对手的**陈旧冗余副本**；本树经 `JavaApp/libs/others/` 生效（JavaLauncher.m:1921），不抄 |
-| `Natives/resources/Frameworks/libopenal.dylib` | 无（**构建期生成**） | 4112728 B（= `libopenal_impl.dylib` 的字节副本） | 本树 Makefile 由 `libopenal_impl.dylib` 用 `-reexport_library` 生成同名垫片 ⇒ **非缺口**，不抄 |
+| `Natives/resources/Frameworks/libmetallum.dylib` | 221856 B | 231576 B | Built separately (competitor includes its agent/natives line) — do not replace |
+| `Natives/resources/Frameworks/libshaderc.dylib` | 9384224 B | 8522336 B | Built separately — do not replace |
+| `Natives/resources/Frameworks/libspirv-cross-c-shared.0.dylib` | 2679856 B | 3475240 B | Built separately — do not replace |
+| `Natives/resources/Frameworks/liblwjgl.dylib` | 305216 B | 302104 B | Built separately — do not replace |
+| `Natives/resources/Frameworks/liblwjgl_stb.dylib` | 464472 B | 406224 B | Built separately — do not replace |
+| `JavaApp/libs/others/metallum_agent.jar` | 6852035 B | 539580 B (plus a redundant 4106015 B copy in the root) | Our agent is newer and larger (multi-version branch); do not replace |
+| Root `metallum_agent.jar` | None | 4106015 B | Competitor's **stale redundant copy**; ours is loaded from `JavaApp/libs/others/` (`JavaLauncher.m:1921`); do not copy |
+| `Natives/resources/Frameworks/libopenal.dylib` | None (**generated at build time**) | 4112728 B (byte-for-byte copy of `libopenal_impl.dylib`) | Our Makefile creates the same-name shim from `libopenal_impl.dylib` with `-reexport_library` — **not a gap**; do not copy |

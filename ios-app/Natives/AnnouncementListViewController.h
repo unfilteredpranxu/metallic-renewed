@@ -2,13 +2,13 @@
 //  AnnouncementListViewController.h
 //  Amethyst
 //
-//  公告列表视图控制器
-//  参考 MinecraftNewsViewController 的瀑布流卡片风格，简化实现：
-//  - 双列 UICollectionViewCompositionalLayout 布局
-//  - 每个 cell 显示标题、日期、摘要
-//  - priority=high 的卡片左侧有蓝色条
-//  - 点击进入详情页 AnnouncementDetailViewController
-//  - 支持下拉刷新与右上角强制刷新
+//  Announcement list view controller
+//  A simplified implementation inspired by the waterfall card style of MinecraftNewsViewController:
+//  - Two-column UICollectionViewCompositionalLayout
+//  - Each cell displays a title, date, and summary
+//  - Cards with priority=high have a blue bar on the left
+//  - Tapping opens AnnouncementDetailViewController
+//  - Supports pull-to-refresh and forced refresh from the top-right corner
 //
 
 #import <UIKit/UIKit.h>

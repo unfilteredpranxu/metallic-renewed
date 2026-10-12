@@ -11,17 +11,17 @@
 #import "IconLoader.h"
 #import <SafariServices/SafariServices.h>
 
-/// 缩略图目标尺寸（用于 IconLoader 降采样）
+/// Target thumbnail size (used by IconLoader for downsampling).
 static const CGFloat kNewsThumbnailTargetWidth = 400.0;
-/// 卡片间距
+/// Card spacing.
 static const CGFloat kNewsCardSpacing = 12.0;
-/// 卡片内边距
+/// Card padding.
 static const CGFloat kNewsCardPadding = 12.0;
-/// 卡片圆角
+/// Card corner radius.
 static const CGFloat kNewsCardCornerRadius = 12.0;
-/// 缩略图圆角
+/// Thumbnail corner radius.
 static const CGFloat kNewsThumbnailCornerRadius = 8.0;
-/// 每页条数
+/// Items per page.
 static const NSInteger kNewsPageSize = 24;
 
 #pragma mark - MCNewsCollectionViewCell
@@ -29,9 +29,9 @@ static const NSInteger kNewsPageSize = 24;
 @interface MCNewsCollectionViewCell : UICollectionViewCell
 @property (nonatomic, strong) UIImageView *thumbnailView;
 @property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UILabel *metaLabel;     // 作者 + 时间
+@property (nonatomic, strong) UILabel *metaLabel;     // Author + time.
 @property (nonatomic, strong) UILabel *summaryLabel;
-@property (nonatomic, strong) UILabel *readMoreLabel; // "查看详情"按钮
+@property (nonatomic, strong) UILabel *readMoreLabel; // "Read more" button.
 @property (nonatomic, strong) UIActivityIndicatorView *loadingIndicator;
 @property (nonatomic, copy) NSString *currentImageURL;
 @property (nonatomic, copy) NSString *currentArticleURL;
@@ -56,17 +56,17 @@ static const NSInteger kNewsPageSize = 24;
     if (self) {
         self.contentView.backgroundColor = [UIColor clearColor];
 
-        // 卡片背景：设为 clearColor，由 BackgroundManager.applyEffectToCollectionViewCell: 注入毛玻璃/半透明
+        // Card background: set to clearColor so BackgroundManager.applyEffectToCollectionViewCell: can add a blur/translucent effect.
         self.backgroundColor = [UIColor clearColor];
         self.layer.cornerRadius = kNewsCardCornerRadius;
         self.layer.cornerCurve = kCACornerCurveContinuous;
         self.clipsToBounds = YES;
-        // contentView 也要圆角匹配，让注入的 blurView 圆角一致
+        // Match the contentView corner radius so the injected blurView has the same corners.
         self.contentView.layer.cornerRadius = kNewsCardCornerRadius;
         self.contentView.layer.cornerCurve = kCACornerCurveContinuous;
         self.contentView.clipsToBounds = YES;
 
-        // 缩略图
+        // Thumbnail.
         _thumbnailView = [[UIImageView alloc] init];
         _thumbnailView.translatesAutoresizingMaskIntoConstraints = NO;
         _thumbnailView.contentMode = UIViewContentModeScaleAspectFill;
@@ -78,7 +78,7 @@ static const NSInteger kNewsPageSize = 24;
         _thumbnailView.tintColor = [UIColor secondaryLabelColor];
         [self.contentView addSubview:_thumbnailView];
 
-        // 加载指示器（封面图加载时显示）
+        // Loading indicator (shown while the cover image loads).
         _loadingIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
         _loadingIndicator.translatesAutoresizingMaskIntoConstraints = NO;
         _loadingIndicator.hidesWhenStopped = YES;
@@ -109,8 +109,8 @@ static const NSInteger kNewsPageSize = 24;
         _readMoreLabel.translatesAutoresizingMaskIntoConstraints = NO;
         _readMoreLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
         _readMoreLabel.textColor = [UIColor systemBlueColor];
-        // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-        _readMoreLabel.text = localize(@"mc_news.read_more", @"查看详情");
+        // ★ [I18N-ORDER] Use the unified localize() entry point (do not bypass language resolution).
+        _readMoreLabel.text = localize(@"mc_news.read_more", @"Read more");
         _readMoreLabel.textAlignment = NSTextAlignmentRight;
         [self.contentView addSubview:_readMoreLabel];
 
@@ -198,21 +198,21 @@ static const NSInteger kNewsPageSize = 24;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-    self.title = localize(@"mc_news.title", @"Minecraft 新闻");
+    // ★ [I18N-ORDER] Use the unified localize() entry point (do not bypass language resolution).
+    self.title = localize(@"mc_news.title", @"Minecraft News");
     self.view.backgroundColor = [UIColor systemBackgroundColor];
 
-    // ★ [LAND-BUG] 本页只由首页(MinecraftNews tile)以 UIModalPresentationPageSheet 整页弹出，
-    //   且原先没有设置任何 navigationItem（无关闭/返回）⇒ iPhone 上 PageSheet 铺满全屏时
-    //   只剩「下滑手势」这一条退出路径，横屏/无明显抓手时用户会认为「退不出去」。
-    //   在此补一个标准「关闭」按钮（与 AnnouncementListViewController 一致）。
+    // ★ [LAND-BUG] This page is presented only as a full UIModalPresentationPageSheet by the home-page MinecraftNews tile.
+    //   It previously had no navigationItem (no close/back control), leaving only the swipe-down gesture to dismiss it
+    //   when the page sheet filled the screen on iPhone. In landscape or without a visible grabber, users could think
+    //   they were stuck. Add a standard Close button here (matching AnnouncementListViewController).
     UIBarButtonItem *landBugCloseItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemClose
                                                                                       target:self
                                                                                       action:@selector(landBugCloseTapped)];
-    landBugCloseItem.accessibilityLabel = @"关闭";
+    landBugCloseItem.accessibilityLabel = @"Close";
     self.navigationItem.leftBarButtonItem = landBugCloseItem;
 
-    // 适配自定义启动器背景
+    // Adapt to the custom launcher background.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
     self.items = [NSMutableArray array];
@@ -220,11 +220,11 @@ static const NSInteger kNewsPageSize = 24;
     self.hasMore = YES;
 
     [self setupUI];
-    // 透明化 collectionView 背景与 cell 背景，避免遮挡全局背景
+    // Make the collectionView and cell backgrounds transparent so they do not obscure the global background.
     self.collectionView.backgroundColor = [UIColor clearColor];
     self.collectionView.backgroundView = nil;
 
-    // 监听背景效果变化通知
+    // Listen for background effect change notifications.
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
@@ -245,7 +245,7 @@ static const NSInteger kNewsPageSize = 24;
 }
 
 - (void)setupUI {
-    // 双列瀑布流布局（用 CompositionalLayout 的 estimateSize 实现 PCL-CE WaterfallPanel 类似效果）
+    // Two-column waterfall layout (uses CompositionalLayout's estimateSize for an effect similar to PCL-CE WaterfallPanel).
     UICollectionViewLayout *layout = [self createCompositionalLayout];
     self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -275,14 +275,14 @@ static const NSInteger kNewsPageSize = 24;
 
     self.retryButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.retryButton.translatesAutoresizingMaskIntoConstraints = NO;
-    // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-    [self.retryButton setTitle:localize(@"mc_news.retry", @"重试") forState:UIControlStateNormal];
+    // ★ [I18N-ORDER] Use the unified localize() entry point (do not bypass language resolution).
+    [self.retryButton setTitle:localize(@"mc_news.retry", @"Retry") forState:UIControlStateNormal];
     self.retryButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
     [self.retryButton addTarget:self action:@selector(loadFirstPage) forControlEvents:UIControlEventTouchUpInside];
     self.retryButton.hidden = YES;
     [self.view addSubview:self.retryButton];
 
-    // 底部加载更多指示器
+    // Bottom "load more" indicator.
     self.footerLoadingView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, 50)];
     UIActivityIndicatorView *footerIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
     footerIndicator.translatesAutoresizingMaskIntoConstraints = NO;
@@ -313,16 +313,16 @@ static const NSInteger kNewsPageSize = 24;
     ]];
 }
 
-/// 双列自适应瀑布流布局（每列宽度相同，cell 高度由内容估算）
+/// Adaptive two-column waterfall layout (equal column widths; cell heights estimated from content).
 - (UICollectionViewLayout *)createCompositionalLayout {
     UICollectionViewCompositionalLayoutConfiguration *config = [[UICollectionViewCompositionalLayoutConfiguration alloc] init];
     config.interSectionSpacing = kNewsCardSpacing;
     config.scrollDirection = UICollectionViewScrollDirectionVertical;
 
-    // section provider block 接收两个参数：sectionIndex 和 layoutEnvironment
-    // 构造方法为 -initWithSectionProvider:configuration:（不是 +layoutWithConfiguration:sectionProvider:）
+    // The section provider block receives two parameters: sectionIndex and layoutEnvironment.
+    // The initializer is -initWithSectionProvider:configuration: (not +layoutWithConfiguration:sectionProvider:).
     return [[UICollectionViewCompositionalLayout alloc] initWithSectionProvider:^NSCollectionLayoutSection *(NSInteger sectionIndex, id<NSCollectionLayoutEnvironment> env) {
-        // 双列布局，每列等宽
+        // Two-column layout with equal-width columns.
         NSCollectionLayoutSize *itemSize = [NSCollectionLayoutSize sizeWithWidthDimension:[NSCollectionLayoutDimension fractionalWidthDimension:0.5]
                                                                             heightDimension:[NSCollectionLayoutDimension estimatedDimension:280]];
         NSCollectionLayoutItem *item = [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -365,8 +365,8 @@ static const NSInteger kNewsPageSize = 24;
 
         if (error) {
             if (strongSelf.items.count == 0) {
-                // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-                strongSelf.errorLabel.text = [NSString stringWithFormat:@"%@\n%@", localize(@"mc_news.load_failed", @"加载失败"), error.localizedDescription ?: @""];
+                // ★ [I18N-ORDER] Use the unified localize() entry point (do not bypass language resolution).
+                strongSelf.errorLabel.text = [NSString stringWithFormat:@"%@\n%@", localize(@"mc_news.load_failed", @"Failed to load"), error.localizedDescription ?: @""];
                 strongSelf.errorLabel.hidden = NO;
                 strongSelf.retryButton.hidden = NO;
             }
@@ -406,7 +406,7 @@ static const NSInteger kNewsPageSize = 24;
         strongSelf.currentPage = nextPage;
         strongSelf.hasMore = (strongSelf.items.count < totalCount);
 
-        // 增量插入新行
+        // Insert new rows incrementally.
         NSMutableArray<NSIndexPath *> *indexPaths = [NSMutableArray array];
         for (NSInteger i = oldCount; i < strongSelf.items.count; i++) {
             [indexPaths addObject:[NSIndexPath indexPathForItem:i inSection:0]];
@@ -429,7 +429,7 @@ static const NSInteger kNewsPageSize = 24;
     MCNewsCollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"NewsCell" forIndexPath:indexPath];
     MinecraftNewsItem *item = self.items[indexPath.item];
     [cell configureWithItem:item];
-    // 适配自定义启动器背景：为 cell 注入毛玻璃/半透明效果
+    // Adapt to the custom launcher background by adding a blur/translucent effect to the cell.
     [[BackgroundManager sharedManager] applyEffectToCollectionViewCell:cell];
     return cell;
 }
@@ -442,7 +442,7 @@ static const NSInteger kNewsPageSize = 24;
     [self openArticleURL:item.articleURL];
 }
 
-/// 滚动接近底部时自动加载下一页
+/// Automatically loads the next page when scrolling near the bottom.
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
     CGFloat offsetY = scrollView.contentOffset.y;
     CGFloat contentHeight = scrollView.contentSize.height;
@@ -452,11 +452,11 @@ static const NSInteger kNewsPageSize = 24;
     }
 }
 
-/// 用 SFSafariViewController 内嵌打开文章页（不跳出 App）
+/// Opens the article page in an embedded SFSafariViewController (without leaving the app).
 - (void)openArticleURL:(NSString *)urlString {
     if (urlString.length == 0) return;
     if (![MinecraftNewsService isSafeNewsLink:urlString]) {
-        // 非白名单链接直接忽略（参考 PCL-CE IsSafeNewsLink 安全过滤）
+        // Ignore non-allowlisted links (based on the PCL-CE IsSafeNewsLink safety filter).
         return;
     }
     NSURL *url = [NSURL URLWithString:urlString];
@@ -473,7 +473,7 @@ static const NSInteger kNewsPageSize = 24;
     [controller dismissViewControllerAnimated:YES completion:nil];
 }
 
-#pragma mark - ★ [LAND-BUG] 关闭
+#pragma mark - ★ [LAND-BUG] Close
 
 - (void)landBugCloseTapped {
     UINavigationController *nav = self.navigationController;

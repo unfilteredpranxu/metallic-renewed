@@ -9,14 +9,14 @@
 #import "BackgroundSettingsViewController.h"
 #import "BackgroundManager.h"
 #import "ImageCropperViewController.h"
-#import "AMEGlassStyle.h"   // ★ [GLASS-STYLE] 界面风格(自动 / 原生 / 液态玻璃)解析层
+#import "AMEGlassStyle.h"   // ★ [GLASS-STYLE] UI style (auto / native / Liquid Glass) resolution layer
 
 @interface BackgroundSettingsViewController ()
 @property (nonatomic, strong) NSArray<NSArray *> *sections;
 @property (nonatomic, strong) UIImageView *previewImageView;
 @property (nonatomic, strong) UISlider *opacitySlider;
 @property (nonatomic, weak) UILabel *opacityValueLabel;
-@property (nonatomic, weak) UILabel *glassStrengthValueLabel;   // ★ [GLASSUI] 玻璃强度数值标签
+@property (nonatomic, weak) UILabel *glassStrengthValueLabel;   // ★ [GLASSUI] Glass-intensity value label
 @end
 
 @implementation BackgroundSettingsViewController
@@ -38,7 +38,8 @@
     // Setup table view
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleSingleLine;
     self.tableView.tableFooterView = [[UIView alloc] init];
-    // ★ [GLASS-STYLE] 「界面风格」页脚是多行说明 ⇒ 走自适应高度(否则多行文案被截/挤)
+    // ★ [GLASS-STYLE] The "UI Style" footer contains multiple lines ⇒ use adaptive height (otherwise
+    // the text will be clipped or compressed).
     self.tableView.sectionFooterHeight = UITableViewAutomaticDimension;
     
     // Setup preview header
@@ -47,22 +48,25 @@
     // Setup sections
     [self setupSections];
     
-    // ★ [GLASSUI] 玻璃设置回读:开关/强度由 BackgroundManager 在 init 时从 NSUserDefaults 载入
-    //   (键 background_glass_rim_enabled / background_glass_rim_strength,默认 开 / 1.0)。
-    //   本页不另存一份本地状态 —— UISwitch/UISlider 在 cellForRowAtIndexPath 里每次都按共享实例
-    //   的值同步(并在滑块 setter 里夹紧),所以「当前值」始终与设置一致。
+    // ★ [GLASSUI] Read back glass settings: BackgroundManager loads the switch/intensity from NSUserDefaults
+    //   during init (keys background_glass_rim_enabled / background_glass_rim_strength; defaults: on / 1.0).
+    //   This page does not keep a separate local state — UISwitch/UISlider are synchronized from the
+    //   shared instance in cellForRowAtIndexPath each time (and the slider setter clamps the value),
+    //   so the "current value" always matches Settings.
     
     // Add close button
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone
                                                                                            target:self
                                                                                            action:@selector(closeTapped)];
 
-    // 适配自定义启动器背景：将当前视图控制器透明化，让全局背景（图片/视频）能够透出显示。
-    // 即使本页是背景设置页本身，也需要透明化以实时预览背景效果。
+    // Adapt to the custom launcher background: make this view controller transparent so the global
+    // background (image/video) shows through.
+    // Even this Background Settings page must be transparent to preview the effect in real time.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
-    // 监听背景 UI 效果变化通知：当用户在背景设置中切换毛玻璃/半透明或调整透明度时，
-    // 重新调用 makeViewControllerTransparent 以应用最新的视觉效果，保证背景始终正确透出。
+    // Listen for background UI-effect changes: when the user switches between frosted glass/translucent
+    // or adjusts opacity in Background Settings, call makeViewControllerTransparent again to apply the
+    // latest appearance and keep the background showing through correctly.
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
@@ -97,7 +101,7 @@
     self.previewImageView.contentMode = UIViewContentModeScaleAspectFill;
     self.previewImageView.clipsToBounds = YES;
     self.previewImageView.layer.cornerRadius = 12;
-    self.previewImageView.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+    self.previewImageView.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (match system cards).
     self.previewImageView.backgroundColor = [UIColor tertiarySystemBackgroundColor];
     self.previewImageView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     
@@ -139,16 +143,18 @@
 }
 
 - (void)setupSections {
-    // Sections: [UI效果设置], [选择背景类型], [图片背景, 视频背景], [恢复默认背景, 清除背景]
+    // Sections: [UI effect settings], [Choose background type], [Image background, Video background],
+    // [Restore default background, Clear background].
     self.sections = @[
         @[localize(@"i18n_str_57", nil), localize(@"i18n_str_1296", nil), localize(@"i18n_str_1297", nil)],
         @[localize(@"i18n_str_60", nil)],
         @[localize(@"i18n_str_61", nil), localize(@"i18n_str_55", nil)],
         @[localize(@"i18n_str_62", nil), localize(@"i18n_str_63", nil)],
-        // ★ [GLASSUI] 玻璃效果:row0=高光开关(UISwitch),row1=强度滑块(UISlider,0…1)
-        // ★ [GLASS-STYLE] 本 section 现在叫「界面风格」:row0=界面风格(自动/原生/液态玻璃),
-        //   row1=高光开关(UISwitch),row2=强度滑块(UISlider,0…1)。
-        //   ★ 整合而非并列:原生风格下高光开关/强度自动置灰 ⇒ 不会出现「两套互相矛盾的开关」。
+        // ★ [GLASSUI] Glass effect: row0=highlight switch (UISwitch), row1=intensity slider (UISlider, 0…1).
+        // ★ [GLASS-STYLE] This section is now called "UI Style": row0=style (auto/native/Liquid Glass),
+        //   row1=highlight switch (UISwitch), row2=intensity slider (UISlider, 0…1).
+        //   ★ Integrated rather than parallel: in native style, highlight switch/intensity are disabled,
+        //   avoiding "two conflicting sets of switches".
         @[localize(@"preference.title.glass_style", nil),
           localize(@"preference.title.glass_handdrawn", nil),
           localize(@"preference.title.glass_strength", nil)]
@@ -166,7 +172,7 @@
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    // 如果没有自定义背景，隐藏UI效果设置部分
+    // Hide the UI effect settings section if no custom background is set.
     if (section == 0 && ![[BackgroundManager sharedManager] hasBackground]) {
         return 0;
     }
@@ -188,10 +194,10 @@
     BackgroundManager *manager = [BackgroundManager sharedManager];
     BOOL hasBackground = [manager hasBackground];
     
-    // UI效果设置部分
+    // UI effect settings section.
     if (indexPath.section == 0 && hasBackground) {
         if (indexPath.row == 0) {
-            // UI效果选择
+            // UI effect selection.
             UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellIdentifier];
             if (!cell) {
                 cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:cellIdentifier];
@@ -208,13 +214,13 @@
             return cell;
             
         } else if (indexPath.row == 1) {
-            // 透明度滑块
+            // Opacity slider.
             UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:sliderCellIdentifier];
             if (!cell) {
                 cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:sliderCellIdentifier];
                 cell.selectionStyle = UITableViewCellSelectionStyleNone;
                 
-                // 创建滑块
+                // Create slider.
                 UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(16, 0, cell.bounds.size.width - 120, 30)];
                 slider.autoresizingMask = UIViewAutoresizingFlexibleWidth;
                 slider.minimumValue = 0.1f;
@@ -222,7 +228,7 @@
                 slider.tag = 200;
                 [slider addTarget:self action:@selector(opacitySliderChanged:) forControlEvents:UIControlEventValueChanged];
                 
-                // 创建数值标签
+                // Create value label.
                 UILabel *valueLabel = [[UILabel alloc] initWithFrame:CGRectMake(cell.bounds.size.width - 80, 0, 60, 30)];
                 valueLabel.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
                 valueLabel.textAlignment = NSTextAlignmentRight;
@@ -251,13 +257,13 @@
             return cell;
             
         } else if (indexPath.row == 2) {
-            // 模糊程度滑块
+            // Blur-intensity slider.
             UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:blurSliderCellIdentifier];
             if (!cell) {
                 cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:blurSliderCellIdentifier];
                 cell.selectionStyle = UITableViewCellSelectionStyleNone;
                 
-                // 创建滑块
+                // Create slider.
                 UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(16, 0, cell.bounds.size.width - 120, 30)];
                 slider.autoresizingMask = UIViewAutoresizingFlexibleWidth;
                 slider.minimumValue = 0.0f;
@@ -265,7 +271,7 @@
                 slider.tag = 300;
                 [slider addTarget:self action:@selector(blurIntensitySliderChanged:) forControlEvents:UIControlEventValueChanged];
                 
-                // 创建数值标签
+                // Create value label.
                 UILabel *valueLabel = [[UILabel alloc] initWithFrame:CGRectMake(cell.bounds.size.width - 80, 0, 60, 30)];
                 valueLabel.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
                 valueLabel.textAlignment = NSTextAlignmentRight;
@@ -294,9 +300,9 @@
         }
     }
     
-    // ★ [GLASS-STYLE] 「界面风格」section:row0=风格(自动/原生/液态玻璃) · row1=高光开关 · row2=强度滑块
+    // ★ [GLASS-STYLE] "UI Style" section: row0=style (auto/native/Liquid Glass) · row1=highlight switch · row2=intensity slider.
     if (indexPath.section == 4) {
-        // ★ [GLASS-STYLE] row0:界面风格分段控件(iOS<26 ⇒「液态玻璃」置灰 + 页脚说明)
+        // ★ [GLASS-STYLE] row0: UI-style segmented control (iOS<26 ⇒ "Liquid Glass" disabled + footer explanation).
         if (indexPath.row == 0) {
             static NSString *glassStyleCellIdentifier = @"GlassStyleCell";
             UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:glassStyleCellIdentifier];
@@ -311,7 +317,8 @@
                 ]];
                 seg.tag = 420;   // ★ [GLASS-STYLE]
                 [seg addTarget:self action:@selector(glassStyleChanged:) forControlEvents:UIControlEventValueChanged];
-                // ★ 平铺进内容区(受 layoutMarginsGuide 约束)⇒ iPhone 320pt 竖屏 / iPad 1366pt 横屏都不被裁
+                // ★ Lay out within the content area (constrained by layoutMarginsGuide) ⇒ no clipping on either a
+                // 320pt-wide iPhone in portrait or a 1366pt-wide iPad in landscape.
                 seg.translatesAutoresizingMaskIntoConstraints = NO;
                 [cell.contentView addSubview:seg];
                 UILayoutGuide *ameMarginGuide = cell.contentView.layoutMarginsGuide;
@@ -328,19 +335,20 @@
             cell.textLabel.text = nil;
             cell.imageView.image = nil;
             if ([seg isKindOfClass:[UISegmentedControl class]]) {
-                // 本地化文案(切语言后 reloadData 会重设)+ 回读当前配置(未设置过 ⇒ 自动)
+                // Localized text (reset by reloadData after a language switch) + read back current setting (unset ⇒ auto).
                 [seg setTitle:localize(@"preference.style.auto", nil)   forSegmentAtIndex:AMEGlassStyleAuto];
                 [seg setTitle:localize(@"preference.style.native", nil) forSegmentAtIndex:AMEGlassStyleNative];
                 [seg setTitle:localize(@"preference.style.liquid", nil) forSegmentAtIndex:AMEGlassStyleLiquid];
                 seg.selectedSegmentIndex = (NSInteger)AMEGlassStyleConfigured();
-                // ★ iOS < 26(或系统拿不到 UIGlassEffect):「液态玻璃」置灰不可选
+                // ★ iOS < 26 (or when the system cannot load UIGlassEffect): disable "Liquid Glass".
                 [seg setEnabled:AMEGlassStyleSystemSupportsLiquid() forSegmentAtIndex:AMEGlassStyleLiquid];
             }
             [self styleCell:cell hasBackground:hasBackground];
             return cell;
         }
 
-        // ★ [GLASS-STYLE] row1:自绘高光开关(默认关 —— 群主口径「纯液态」;仅系统支持液态玻璃时可开)
+        // ★ [GLASS-STYLE] row1: hand-drawn highlight switch (off by default per the "pure liquid" definition;
+        // enabled only when the system supports Liquid Glass).
         if (indexPath.row == 1) {
             static NSString *glassSwitchCellIdentifier = @"GlassSwitchCell";   // ★ [GLASSUI]
             UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:glassSwitchCellIdentifier];
@@ -354,11 +362,12 @@
             }
             cell.textLabel.text = self.sections[indexPath.section][indexPath.row];
             cell.imageView.image = [UIImage systemImageNamed:@"sparkles"];
-            // ★ [GLASS-LIQUID] 开关 = 「自绘高光」是否叠加(默认关)。只有系统支持液态玻璃(iOS≥26)才可开。
+            // ★ [GLASS-LIQUID] Switch = whether to overlay "hand-drawn highlights" (off by default).
+            // Enabled only when the system supports Liquid Glass (iOS≥26).
             BOOL ameLiquidOK = AMEGlassStyleSystemSupportsLiquid();
             UISwitch *sw = (UISwitch *)cell.accessoryView;
             if ([sw isKindOfClass:[UISwitch class]]) {
-                sw.on = AMEGlassStyleHandDrawnOverlayEnabled();   // 回读真实开关(不再混入 glassRimEnabled)
+                sw.on = AMEGlassStyleHandDrawnOverlayEnabled();   // Read back the actual switch (no longer mixed with glassRimEnabled).
                 sw.enabled = ameLiquidOK;
             }
             cell.textLabel.enabled = ameLiquidOK;
@@ -367,7 +376,7 @@
             return cell;
         }
 
-        // ★ [GLASS-STYLE] row2:高光强度滑块(原生风格下同样置灰)
+        // ★ [GLASS-STYLE] row2: highlight-intensity slider (also disabled in native style).
         static NSString *glassSliderCellIdentifier = @"GlassSliderCell";   // ★ [GLASSUI]
         UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:glassSliderCellIdentifier];
         if (!cell) {
@@ -377,7 +386,7 @@
             UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(16, 0, cell.bounds.size.width - 120, 30)];
             slider.autoresizingMask = UIViewAutoresizingFlexibleWidth;
             slider.minimumValue = 0.0f;
-            slider.maximumValue = 1.0f;   // ★ 与 BackgroundManager 的 clamp 区间一致
+            slider.maximumValue = 1.0f;   // ★ Matches BackgroundManager's clamp range.
             slider.tag = 410;             // ★ [GLASSUI]
             [slider addTarget:self action:@selector(glassStrengthSliderChanged:) forControlEvents:UIControlEventValueChanged];
 
@@ -400,8 +409,8 @@
         BOOL ameSliderEnabled = AMEGlassStyleSystemSupportsLiquid() && ameHandOn;
         UISlider *slider = [cell.contentView viewWithTag:410];
         if ([slider isKindOfClass:[UISlider class]]) {
-            slider.value = manager.glassRimStrength;      // 回读当前值(已夹紧)
-            slider.enabled = ameSliderEnabled;            // 未开「自绘高光」或系统不支持 ⇒ 置灰(HIG)
+            slider.value = manager.glassRimStrength;      // Read back current value (already clamped).
+            slider.enabled = ameSliderEnabled;            // Disabled if "Hand-drawn Highlights" is off or unsupported (HIG).
         }
         UILabel *valueLabel = [cell.contentView viewWithTag:411];
         if ([valueLabel isKindOfClass:[UILabel class]]) {
@@ -414,7 +423,7 @@
         return cell;
     }
 
-    // 其他部分
+    // Other sections.
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellIdentifier];
     if (!cell) {
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellIdentifier];
@@ -427,7 +436,7 @@
     [self styleCell:cell hasBackground:hasBackground];
     
     if (indexPath.section == 1) {
-        // 选择背景类型标题
+        // Background-type selection title.
         cell.textLabel.textColor = [UIColor secondaryLabelColor];
         cell.imageView.image = nil;
         cell.accessoryType = UITableViewCellAccessoryNone;
@@ -441,12 +450,12 @@
         }
     } else if (indexPath.section == 3) {
         if (indexPath.row == 0) {
-            // 恢复默认背景
+            // Restore default background.
             cell.imageView.image = [UIImage systemImageNamed:@"arrow.counterclockwise"];
             cell.textLabel.textColor = [UIColor systemBlueColor];
             cell.accessoryType = UITableViewCellAccessoryNone;
         } else if (indexPath.row == 1) {
-            // 清除背景
+            // Clear background.
             cell.imageView.image = [UIImage systemImageNamed:@"xmark.circle"];
             cell.textLabel.textColor = [UIColor systemRedColor];
             cell.accessoryType = UITableViewCellAccessoryNone;
@@ -456,7 +465,8 @@
     return cell;
 }
 
-// ★ [GLASS-STYLE] 「界面风格」页脚:说明自动判定结果 / 置灰原因(原生风格 / 自绘高光状态)
+// ★ [GLASS-STYLE] "UI Style" footer: explain the automatic decision / reason for disabling
+// controls (native style / hand-drawn highlight state).
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     if (section == 4) {
         NSMutableString *ameFooter = [NSMutableString string];
@@ -464,13 +474,13 @@
                                  ? localize(@"preference.style.footer.supported", nil)
                                  : localize(@"preference.style.footer.unsupported", nil)];
         if (!AMEGlassStyleSystemSupportsLiquid()) {
-            // iOS < 26:系统没有液态玻璃 ⇒ 自绘开关/强度不可用
+            // iOS < 26: the system has no Liquid Glass ⇒ hand-drawn switch/intensity unavailable.
             [ameFooter appendFormat:@"\n%@", localize(@"preference.style.footer.native", nil)];
         } else if (AMEGlassStyleHandDrawnOverlayEnabled()) {
-            // 显式打开自绘高光
+            // Hand-drawn highlights explicitly enabled.
             [ameFooter appendFormat:@"\n%@", localize(@"preference.style.footer.handdrawn", nil)];
         } else {
-            // 默认:纯系统材质(群主口径「纯液态」)
+            // Default: pure system material (per the "pure liquid" definition).
             [ameFooter appendFormat:@"\n%@", localize(@"preference.style.footer.pure", nil)];
         }
         return ameFooter;
@@ -478,7 +488,8 @@
     return nil;
 }
 
-// ★ [GLASS-STYLE] 页脚是多行说明 ⇒ 自适应高度(iOS 11+ 对 titleForFooterInSection 支持)
+// ★ [GLASS-STYLE] The footer contains multiple lines ⇒ use adaptive height (supported for
+// titleForFooterInSection since iOS 11).
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
     return UITableViewAutomaticDimension;
 }
@@ -501,7 +512,7 @@
     
     self.opacityValueLabel.text = [NSString stringWithFormat:@"%.0f%%", value * 100];
     
-    // 实时刷新UI效果
+    // Refresh UI effect in real time.
     [[BackgroundManager sharedManager] refreshUIEffect];
 }
 
@@ -509,58 +520,66 @@
     CGFloat value = slider.value;
     [BackgroundManager sharedManager].blurIntensity = value;
     
-    // 更新标签显示
+    // Update the label display.
     UITableViewCell *cell = (UITableViewCell *)slider.superview.superview;
     if ([cell isKindOfClass:[UITableViewCell class]]) {
         UILabel *valueLabel = [cell.contentView viewWithTag:301];
         valueLabel.text = [NSString stringWithFormat:@"%.0f%%", value * 100];
     }
     
-    // 实时刷新UI效果
+    // Refresh UI effect in real time.
     [[BackgroundManager sharedManager] refreshUIEffect];
 }
 
-#pragma mark - ★ [GLASSUI] 玻璃开关 / 强度
+#pragma mark - ★ [GLASSUI] Glass switch / intensity
 
-// 开关:开 = 按当前强度恢复高光;关 = 摘除高光(AmeDetachGlassRim 那条路径)。
-// setter 内已做「持久化 + 写全局强度 + 立即重刷」,这里只同步同页控件的可用态。
+// Switch: on = restore highlights at the current intensity; off = remove highlights (AmeDetachGlassRim path).
+// The setter already persists, writes the global intensity, and refreshes immediately; here we only
+// synchronize the enabled state of controls on this page.
 - (void)glassSwitchChanged:(UISwitch *)sw {
-    // ★ [GLASS-LIQUID] 开关 = 「自绘高光」是否叠加(默认关;群主口径「纯液态」)。
-    //   写入单一真相源键(background_glass_handdrawn)+ 广播 AMEGlassStyleChanged ⇒ BackgroundManager 立即按新值重刷。
-    [BackgroundManager sharedManager].glassRimEnabled = sw.on;      // 兼容既有全局强度收敛(强度 0 ⇒ 不刷)
+    // ★ [GLASS-LIQUID] Switch = whether to overlay "hand-drawn highlights" (off by default per the
+    // "pure liquid" definition).
+    //   Write the single source-of-truth key (background_glass_handdrawn) + broadcast
+    //   AMEGlassStyleChanged ⇒ BackgroundManager immediately refreshes using the new value.
+    [BackgroundManager sharedManager].glassRimEnabled = sw.on;      // Preserve existing global intensity constraints (0 ⇒ no highlight).
     AMEGlassStyleSetHandDrawnOverlayEnabled(sw.on);
 
-    // row2 滑块的可用态 + 本 section 页脚说明都要跟着开关变。
-    // ★ 延后一个 runloop:本方法由本 section 内的 UISwitch 触发,触摸派发中同步 reload 会换掉该控件。
+    // The enabled state of the row2 slider and this section's footer explanation must also follow the switch.
+    // ★ Defer by one run loop: this method is triggered by a UISwitch in this section; reloading
+    // synchronously during touch dispatch would replace that control.
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:4]
                       withRowAnimation:UITableViewRowAnimationNone];
     });
 }
 
-// ★ [GLASS-STYLE] 界面风格(自动 / 原生 / 液态玻璃)
-//   分段控件的 index 与 AMEGlassStyle 枚举一一对应(0=自动 1=原生 2=液态玻璃)。
-//   AMEGlassStyleSetConfigured 内部:① 写 NSUserDefaults(键 background_glass_style,
-//   与同 section 的高光开关/强度同库)② 广播 AMEGlassStyleChangedNotification ⇒ BackgroundManager 立即按新风格重刷;
-//   iOS<26 时该分段已置灰,这里再兜一次「只允许 native」,保证老设备不会被写进 liquid。
+// ★ [GLASS-STYLE] UI style (auto / native / Liquid Glass).
+//   Segmented-control indices map directly to AMEGlassStyle (0=auto, 1=native, 2=Liquid Glass).
+//   AMEGlassStyleSetConfigured internally: ① writes NSUserDefaults (key background_glass_style,
+//   same store as this section's highlight switch/intensity); ② broadcasts
+//   AMEGlassStyleChangedNotification ⇒ BackgroundManager immediately refreshes with the new style.
+//   On iOS<26 the segment is already disabled; repeat the "native only" check here to ensure
+//   older devices cannot be set to Liquid Glass.
 - (void)glassStyleChanged:(UISegmentedControl *)seg {
     AMEGlassStyle picked = AMEGlassStyleEnumFromString(AMEGlassStyleStringFromEnum((AMEGlassStyle)seg.selectedSegmentIndex));
     if (picked == AMEGlassStyleLiquid && !AMEGlassStyleSystemSupportsLiquid()) {
-        picked = AMEGlassStyleNative;   // ★ iOS<26 强制原生
+        picked = AMEGlassStyleNative;   // ★ Force native on iOS<26.
     }
     AMEGlassStyleSetConfigured(picked);
     seg.selectedSegmentIndex = (NSInteger)AMEGlassStyleConfigured();
 
-    // 重设本 section:开关/滑块的可用态、页脚说明都要跟着风格变。
-    // ★ 延后一个 runloop:本方法是由【本 section 内】的分段控件自己触发的,
-    //   在触摸派发过程中同步 reload 会把这个控件连同 cell 一起换掉(偶发丢高亮/手势被打断)。
+    // Reload this section: the enabled state of the switch/slider and the footer explanation must all
+    // follow the style.
+    // ★ Defer by one run loop: this method is triggered by the segmented control in this section;
+    //   reloading during touch dispatch would replace the control and its cell (occasionally losing
+    //   the highlight or interrupting the gesture).
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:4]
                       withRowAnimation:UITableViewRowAnimationNone];
     });
 }
 
-// 强度:setter 内 clamp(0…1)+ 持久化 + 立即重刷;这里只更新数值标签。
+// Intensity: the setter clamps (0…1), persists, and refreshes immediately; here only update the value label.
 - (void)glassStrengthSliderChanged:(UISlider *)slider {
     [BackgroundManager sharedManager].glassRimStrength = slider.value;
 
@@ -579,7 +598,7 @@
     BackgroundManager *manager = [BackgroundManager sharedManager];
     BOOL hasBackground = [manager hasBackground];
     
-    // UI效果设置部分
+    // UI effect settings section.
     if (indexPath.section == 0 && hasBackground) {
         if (indexPath.row == 0) {
             [self showUIEffectPicker];
@@ -587,8 +606,9 @@
         return;
     }
     
-    // ★ [GLASSUI] 点整行也能切换玻璃开关(与点 UISwitch 等效;HIG 习惯)
-    // ★ [GLASS-STYLE] row0(界面风格)由分段控件自己处理,不参与整行点击;开关移到 row1。
+    // ★ [GLASSUI] Tapping the entire row also toggles the glass switch (same as tapping UISwitch; HIG convention).
+    // ★ [GLASS-STYLE] row0 (UI style) is handled by the segmented control itself and does not respond
+    // to row-wide taps; the switch moved to row1.
     if (indexPath.section == 4) {
         if (indexPath.row == 1) {
             UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
@@ -728,10 +748,10 @@
     [alert addAction:[UIAlertAction actionWithTitle:localize(@"i18n_str_75", nil)
                                               style:UIAlertActionStyleDestructive
                                             handler:^(UIAlertAction * _Nonnull action) {
-        // 清除背景
+        // Clear background.
         [[BackgroundManager sharedManager] clearBackground];
         
-        // 重置UI效果设置
+        // Reset UI effect settings.
         BackgroundManager *manager = [BackgroundManager sharedManager];
         manager.uiEffect = BackgroundUIEffectBlur;
         manager.uiOpacity = 0.7;
@@ -739,7 +759,7 @@
         [self updatePreview];
         [self.tableView reloadData];
         
-        // 恢复默认背景色
+        // Restore default background color.
         self.view.backgroundColor = [UIColor systemBackgroundColor];
         self.tableView.backgroundColor = [UIColor systemBackgroundColor];
         self.tableView.backgroundView = nil;
@@ -853,8 +873,9 @@
     NSString *extension = url.pathExtension.lowercaseString;
     
     if ([@[@"jpg", @"jpeg", @"png", @"heic"] containsObject:extension]) {
-        // ★ [ISSUE-FIX] #92（同类）：Document Picker 返回的是 security-scoped URL，
-        //   未取用作用域时 imageWithContentsOfFile: 返回 nil（表现为「选图无反应」）。
+        // ★ [ISSUE-FIX] #92 (same class of issue): Document Picker returns a security-scoped URL;
+        //   without accessing its scope, imageWithContentsOfFile: returns nil (appearing as "image
+        //   selection does nothing").
         BOOL ame92Scoped = [url startAccessingSecurityScopedResource];
         UIImage *image = [UIImage imageWithContentsOfFile:url.path];
         if (ame92Scoped) [url stopAccessingSecurityScopedResource];
@@ -944,9 +965,10 @@
     }];
 }
 
-/// 重新应用背景效果：当 BackgroundUIEffectChanged 通知到达时调用，
-/// 通过 BackgroundManager 重新设置当前视图控制器的透明度/毛玻璃效果，
-/// 并手动清空 tableView 背景与 backgroundView，确保全局背景能够正常透出。
+/// Reapply the background effect when the BackgroundUIEffectChanged notification arrives:
+/// use BackgroundManager to reset this view controller's opacity/frosted-glass effect, and
+/// manually clear the tableView background and backgroundView so the global background can
+/// show through correctly.
 - (void)reapplyBackgroundEffect {
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
     self.tableView.backgroundColor = [UIColor clearColor];

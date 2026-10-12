@@ -2,30 +2,30 @@
 //  AiSettings.h
 //  Amethyst
 //
-//  AI 相关偏好：单例，读取/写入 NSUserDefaults 的 ai.* 键。
-//  setters/getters 直接读写 UserDefaults，不做内存缓存。
+//  AI preferences: singleton that reads/writes ai.* keys in NSUserDefaults.
+//  Setters/getters access UserDefaults directly without in-memory caching.
 //
 
 #import <Foundation/Foundation.h>
-#import "AiTool.h" // 提供 AiSafetyMode 枚举（唯一定义处）
+#import "AiTool.h" // Provides the AiSafetyMode enum (the sole definition)
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface AiSettings : NSObject
 
-/// 单例
+/// Singleton
 + (instancetype)sharedSettings;
 
-/// 当前选中的提供商 id（NSUserDefaults ai.selected_provider_id）
+/// Currently selected provider ID (NSUserDefaults ai.selected_provider_id)
 @property (nonatomic, copy, nullable) NSString *selectedProviderId;
-/// 安全模式（0=Safe/1=Ask/2=YOLO，默认 0）
+/// Safety mode (0=Safe/1=Ask/2=YOLO, defaults to 0)
 @property (nonatomic, assign) AiSafetyMode safetyMode;
-/// 是否启用 Markdown 渲染（默认 YES）
+/// Whether Markdown rendering is enabled (defaults to YES)
 @property (nonatomic, assign) BOOL markdownEnabled;
-/// 自定义系统提示词（默认返回 defaultSystemPrompt）
+/// Custom system prompt (returns defaultSystemPrompt by default)
 @property (nonatomic, copy) NSString *systemPrompt;
 
-/// 默认系统提示词（中文），约定 Air 行为
+/// Default system prompt, defining Air's behavior
 + (NSString *)defaultSystemPrompt;
 
 @end

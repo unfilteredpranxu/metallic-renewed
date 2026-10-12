@@ -13,13 +13,13 @@
 #include "utils.h"
 
 // ---------------------------------------------------------------------------
-// 兼容垫片：Amethyst_SDL3SurfaceWantsPoints()
+// Compatibility shim: Amethyst_SDL3SurfaceWantsPoints().
 //
-// Air Task 60（664f58a3）已定案：本函数代表的「1x 点数对齐」（Task 50）退役，
-// 恒返回 NO 让 1x 分支全部走不通（Air 侧连函数都已删除）。本仓库历史上由
-// sdl3_hook / SurfaceViewController 引用过它，为免对齐 Air 的 gl_bridge 后
-// 出现未定义符号，这里保留一个恒 NO 的导出实现；当前唯一调用点已按 Air
-// 移除，保留它只是 ABI 保险，不改变任何行为。
+// Air Task 60 (664f58a3) finalized the retirement of the "1x point alignment" represented by this function (Task 50).
+// It always returns NO, making the 1x branch unreachable (the function was also removed on the Air side). It was historically
+// referenced here by sdl3_hook / SurfaceViewController; to avoid an undefined symbol after syncing gl_bridge with Air,
+// retain this exported implementation that always returns NO. Its only call site has been removed as on Air;
+// this remains solely as an ABI safeguard and does not change behavior.
 // ---------------------------------------------------------------------------
 BOOL Amethyst_SDL3SurfaceWantsPoints(void) {
     return NO;
@@ -29,46 +29,45 @@ static EGLDisplay g_EglDisplay;
 static egl_library handle;
 
 // ============================================================================
-// 黑屏取证（Task 32）：eglSwapBuffers 成功/失败原子计数器
+// Black-screen diagnostics (Task 32): atomic eglSwapBuffers success/failure counters.
 //
-// 背景（latestlog b199c07 设备实测）：游戏完整启动（390 shader 全部转换成功、
-// 资源/图集/声音加载完毕、SDL 事件循环存活、MC 事件被推入队列），但屏幕全黑。
-// 旧版 gl_swap_buffers 只在 eglGetError()==EGL_BAD_SURFACE 时才打日志，
-// 其余错误码（EGL_BAD_NATIVE_WINDOW / EGL_CONTEXT_LOST / EGL_BAD_ALLOC 等）
-// 完全静默；而 pojavSwapBuffers 的 "First frame rendered" 又是无条件打印的，
-// 无法证明首帧真的上屏。这两个计数器 + SurfaceVC 的 5 秒心跳日志
-// （[RenderDiag] fps= swapOK= swapFail=）可以一锤定音地判断：
-//   - swapFail 持续增长 → 呈现路径断了（layer/surface 生命周期问题）
-//   - swapOK 增长但黑屏 → 帧被换入了错误的目标（覆盖/尺寸/scale 问题）
-//   - 两个都不动 → 渲染线程已卡死（渲染循环在启动后期被阻塞）
+// Background (device test in latestlog b199c07): the game started fully (all 390 shaders converted,
+// resources/atlases/sounds loaded, SDL event loop alive, MC events queued), but the screen was black.
+// The old gl_swap_buffers logged only when eglGetError()==EGL_BAD_SURFACE and stayed silent for
+// other errors (EGL_BAD_NATIVE_WINDOW / EGL_CONTEXT_LOST / EGL_BAD_ALLOC, etc.). pojavSwapBuffers
+// printed "First frame rendered" unconditionally, which did not prove that a frame reached the screen.
+// These counters and SurfaceVC's five-second heartbeat ([RenderDiag] fps= swapOK= swapFail=) provide a definitive diagnosis:
+//   - swapFail keeps increasing → presentation path is broken (layer/surface lifecycle issue).
+//   - swapOK increases but the screen is black → frames are swapped to the wrong target (occlusion/size/scale issue).
+//   - neither changes → render thread is stuck (render loop blocked late in startup).
 // ============================================================================
 static _Atomic unsigned long g_eglSwapOK = 0;
 static _Atomic unsigned long g_eglSwapFail = 0;
 
 // ============================================================================
-// Task 76：swap 帧间隔尖峰跟踪（帧节奏诊断）
+// Task 76: track swap-interval spikes (frame-pacing diagnostics).
 //
-// 背景（bef0f08 双日志对比）：MG/MobileGlues 场次 fps 在 5~60 剧烈震荡而
-// Zink 场次稳定 40-53 —— 用户主观“30fps 看得像 10fps”。帧率均值掩盖了
-// 帧时间尖峰：fps=5 的窗口意味着单帧 200ms，而 vsync 锁 60（MG 场次在
-// max.fps=260 解锁下从未超过 60）把帧到达时间量化到 16.7ms 的整数倍——
-// 丢拍阶梯才是观感卡顿的机理。本计数器在 gl_swap_buffers 成功路径上
-// 记录相邻 swap 的间隔，维护 5 秒窗口（心跳周期）内的 max 与均值，由
-// [RenderDiag] 心跳一并上报，下轮设备日志可直接对比修复前后的帧节奏。
-// 只在渲染线程读写（swap 本就在渲染线程），无需原子操作。
+// Background (bef0f08 log comparison): MG/MobileGlues sessions fluctuated sharply from 5 to 60 fps,
+// while Zink stayed stable at 40–53 fps; users felt "30 fps looked like 10 fps." Average FPS hides
+// frame-time spikes: a window at 5 fps means a 200 ms frame, while 60 Hz VSync (the MG session never
+// exceeded 60 even with max.fps=260 unlocked) quantizes frame arrivals to 16.7 ms intervals.
+// Missing-frame cadence causes the perceived stutter. On successful gl_swap_buffers calls, record
+// intervals between swaps and track the max and average over each five-second heartbeat window.
+// Report them with [RenderDiag] so device logs can compare pacing before and after fixes.
+// Access is render-thread-only (swap already runs there), so atomics are unnecessary.
 // ============================================================================
-static uint64_t ame76_last_swap_ms = 0;   // 0 = 尚无首帧
-static uint32_t ame76_max_gap_ms = 0;     // 本窗口最大帧间隔
-static uint64_t ame76_gap_sum_ms = 0;     // 本窗口间隔总和（ms 粒度够用）
-static uint32_t ame76_gap_count = 0;      // 本窗口间隔样本数
+static uint64_t ame76_last_swap_ms = 0;   // 0 = no first frame yet.
+static uint32_t ame76_max_gap_ms = 0;     // Maximum frame interval in this window.
+static uint64_t ame76_gap_sum_ms = 0;     // Sum of intervals in this window (millisecond precision is sufficient).
+static uint32_t ame76_gap_count = 0;      // Number of interval samples in this window.
 
 void ame_egl_swap_stats(unsigned long *ok, unsigned long *fail) {
     if (ok) *ok = atomic_load(&g_eglSwapOK);
     if (fail) *fail = atomic_load(&g_eglSwapFail);
 }
 
-// Task 76：读取并重置帧间隔窗口统计（SurfaceViewController 5 秒心跳调用）。
-// count==0 时 max/avg 均报告 0。首帧不算间隔（冷启动间隔无意义）。
+// Task 76: read and reset frame-interval window statistics (called by SurfaceViewController's five-second heartbeat).
+// When count==0, report 0 for both max and average. The first frame is not an interval sample (cold-start timing is meaningless).
 void ame_egl_swap_framegap(uint32_t *maxGapMs, uint32_t *avgGapMs) {
     uint32_t mx = ame76_max_gap_ms;
     uint32_t avg = ame76_gap_count ? (uint32_t)(ame76_gap_sum_ms / ame76_gap_count) : 0;
@@ -90,32 +89,30 @@ static void ame76_record_swap(uint64_t now_ms) {
 }
 
 // ============================================================================
-// Task 77：帧相位计时（present vs build 分相归因）
+// Task 77: frame-phase timing (attribute time separately to present vs. build).
 //
-// 背景（66e57f0 双 MG 日志 + 量化关联分析）：MG 场次 avgGap 在 17ms 与
-// 250ms 之间震荡（fps 60↔4），而同日同包 Zink 场次稳定 37-53fps。
-// GC/内存/shader 编译/FSR1/取证探针/深度 workaround 全部排除后，250ms
-// 只能出在渲染线程帧循环的两个相位之一：
-//   build  = 上一次 eglSwapBuffers 返回 → 本次进入 gl_swap_buffers
-//            （MC tick + 事件泵 + GL 编码穿 MobileGlues/ANGLE 的 CPU 税）
-//   present= handle.eglSwapBuffers 内部（ANGLE Metal 编码提交 + nextDrawable
-//            等待 + GPU 追赶；maxDrawableCount=3 耗尽时阻塞）
-// 本计时器按相位分别累计 5 秒窗口的 avg/max，由 [RenderDiag] 心跳上报。
-// 下轮设备日志判读法（二选一，直接定案）：
-//   presAvg/presMax ≈ avgGap   → 停在 ANGLE Metal 呈现/GPU 侧（换渲染器/
-//                                 降 resolutionScale 才有效，CPU 优化无效）
-//   buildAvg/buildMax ≈ avgGap → 停在 MC 帧 CPU 侧（GL 转译税，MobileGlues
-//                                 /ANGLE 逐 draw 开销线才有效）
-// 微秒粒度累计（ms 粒度下 1-2ms 的正常 present 会被舍入噪声淹没），
-// 上报时折算毫秒。只在渲染线程读写，无需原子操作。
+// Background (66e57f0 dual MG logs plus quantized correlation analysis): MG avgGap fluctuated
+// between 17 ms and 250 ms (60↔4 fps), while a same-day Zink session on the same build stayed at 37–53 fps.
+// After excluding GC/memory/shader compilation/FSR1/diagnostic probes/depth workarounds, 250 ms
+// could occur only in one of two render-thread frame-loop phases:
+//   build   = return from the previous eglSwapBuffers → entry into the current gl_swap_buffers
+//             (MC tick + event pump + CPU cost of GL encoding through MobileGlues/ANGLE).
+//   present = inside handle.eglSwapBuffers (ANGLE Metal command submission + nextDrawable wait + GPU catch-up;
+//             blocks when maxDrawableCount=3 is exhausted).
+// This timer separately accumulates average/max values for each phase over five-second windows and reports them in [RenderDiag].
+// The next device log will distinguish the cause directly:
+//   presAvg/presMax ≈ avgGap   → ANGLE Metal presentation/GPU side (switching renderer or lowering resolutionScale helps; CPU optimization does not).
+//   buildAvg/buildMax ≈ avgGap → MC frame CPU side (GL translation cost; optimize per-draw MobileGlues/ANGLE overhead).
+// Accumulate at microsecond precision (normal 1–2 ms presents disappear into rounding noise at millisecond precision),
+// then convert to milliseconds for reporting. Access is render-thread-only; atomics are unnecessary.
 // ============================================================================
-static uint64_t ame77_last_swap_end_us = 0;   // 上次 swap 返回时刻（0=无）
-static uint64_t ame77_present_sum_us = 0;     // 窗口内 present 时长总和
-static uint32_t ame77_present_max_us = 0;     // 窗口内 present 最大时长
-static uint32_t ame77_present_count = 0;      // 窗口内 present 样本数
-static uint64_t ame77_build_sum_us = 0;       // 窗口内 build 时长总和
-static uint32_t ame77_build_max_us = 0;       // 窗口内 build 最大时长
-static uint32_t ame77_build_count = 0;        // 窗口内 build 样本数
+static uint64_t ame77_last_swap_end_us = 0;   // Time the previous swap returned (0 = none).
+static uint64_t ame77_present_sum_us = 0;     // Total present duration in this window.
+static uint32_t ame77_present_max_us = 0;     // Maximum present duration in this window.
+static uint32_t ame77_present_count = 0;      // Number of present samples in this window.
+static uint64_t ame77_build_sum_us = 0;       // Total build duration in this window.
+static uint32_t ame77_build_max_us = 0;       // Maximum build duration in this window.
+static uint32_t ame77_build_count = 0;        // Number of build samples in this window.
 
 static uint64_t ame77_now_us(void) {
     struct timespec ts;
@@ -123,8 +120,8 @@ static uint64_t ame77_now_us(void) {
     return (uint64_t)ts.tv_sec * 1000000ull + (uint64_t)ts.tv_nsec / 1000ull;
 }
 
-// Task 77：读取并重置帧相位窗口统计（SurfaceViewController 5 秒心跳调用）。
-// 值一律折算为毫秒（向下取整）；count==0 时对应 avg/max 报 0。
+// Task 77: read and reset frame-phase window statistics (called by SurfaceViewController's five-second heartbeat).
+// All values are converted to milliseconds (rounded down); when count==0, the corresponding avg/max is 0.
 void ame_egl_swap_phase_stats(uint32_t *presentAvgMs, uint32_t *presentMaxMs,
                               uint32_t *buildAvgMs, uint32_t *buildMaxMs) {
     uint32_t pAvg = ame77_present_count ? (uint32_t)(ame77_present_sum_us / ame77_present_count / 1000ull) : 0;
@@ -143,7 +140,7 @@ void ame_egl_swap_phase_stats(uint32_t *presentAvgMs, uint32_t *presentMaxMs,
     ame77_build_count = 0;
 }
 
-// Task 77：swap 入口记录 build 相位（上一帧 present 结束 → 本帧进入 swap）。
+// Task 77: record the build phase at swap entry (previous present ended → current frame enters swap).
 static void ame77_record_build(uint64_t now_us) {
     if (ame77_last_swap_end_us != 0 && now_us > ame77_last_swap_end_us) {
         uint32_t dur = (uint32_t)(now_us - ame77_last_swap_end_us);
@@ -153,8 +150,8 @@ static void ame77_record_build(uint64_t now_us) {
     }
 }
 
-// Task 77：present 相位计时（eglSwapBuffers 内部时长），成功失败都计
-// （失败的慢 present 同样是归因证据）。
+// Task 77: time the present phase (duration inside eglSwapBuffers), counting both success and failure
+// (a slow failed present is still evidence for attribution).
 static void ame77_record_present(uint64_t dur_us, uint64_t now_us) {
     if (dur_us > ame77_present_max_us) ame77_present_max_us = (uint32_t)dur_us;
     ame77_present_sum_us += dur_us;
@@ -163,16 +160,16 @@ static void ame77_record_present(uint64_t dur_us, uint64_t now_us) {
 }
 
 // ============================================================================
-// Task 50：GL 呈现层所有权标志（跨线程）。
+// Task 50: cross-thread ownership flag for the GL presentation layer.
 //
-// currentBundle（bridge_tbl.h）是 __thread 的——只在渲染线程非空，
-// 主线程（updateSavedResolution）读它永远得到 NULL。因此需要一个跨线程
-// 的原子标志：GL 路径在 gl_init_context 成功创建 surface 后置位，
-// gl_terminate 清零。SurfaceViewController 据此判断"GL 拥有呈现层"，
-// 并把 layer 对齐到原生 scale 像素（Task60 单一事实源几何，详见
-// gl_init_context 内的 Task60 对齐块；Task50 1x 已退役——CA 线性 2x
-// 放大是画面模糊根源）。Vulkan 路径不创建 EGL surface → 标志恒 0 →
-// 主线程保持旧的 2x 行为（MoltenVK 自管 drawableSize，互不干扰）。
+// currentBundle (bridge_tbl.h) is __thread and is non-NULL only on the render thread;
+// the main thread (updateSavedResolution) always reads NULL. A cross-thread atomic flag is therefore needed:
+// set it after the GL path successfully creates a surface in gl_init_context and clear it in gl_terminate.
+// SurfaceViewController uses it to determine whether GL owns the presentation layer and align the layer
+// to native-scale pixels (Task60's single source of truth for geometry; see the Task60 alignment block
+// in gl_init_context. Task50's 1x mode was retired because CA's linear 2x upscaling caused blur).
+// The Vulkan path creates no EGL surface, so the flag remains 0 and the main thread keeps its old 2x behavior
+// (MoltenVK manages drawableSize independently).
 // ============================================================================
 static _Atomic int g_ame50_gl_owns_layer = 0;
 
@@ -181,30 +178,31 @@ bool ame_gl_surface_owns_layer(void) {
 }
 
 // ============================================================================
-// Task 41：交换时刻 GL 状态取证 + 自愈呈现（GL 路径黑屏定位）
+// Task 41: capture GL state at swap time + self-heal presentation (diagnose black screens on the GL path).
 //
-// 现状（latestlog d638c22）：swapOK=529、fps=57、390 编译零崩溃、图集/音效
-// 全齐、遮罩正常移除——但画面全黑。MC RenderPearl GL 后端自建 1180x820 双
-// 缓冲交换链 FBO（[MG] depth alloc #1/#2 两个 D32F 1180x820）。最后疑点：
-// MC 的合成画面从未进入 FBO 0（ANGLE 窗口后缓冲），或进入后被翻译层丢弃。
+// State (latestlog d638c22): swapOK=529, fps=57, all 390 shaders compiled without a crash,
+// atlases/audio loaded and the splash screen removed, yet the display was black. The MC RenderPearl
+// GL backend created its own 1180x820 double-buffered FBO swapchain ([MG] depth allocations #1/#2,
+// both D32F 1180x820). The remaining question was whether MC's composited frame reached FBO 0
+// (ANGLE's window back buffer), or was discarded by the translation layer.
 //
-// 本块在每次 eglSwapBuffers 之前（MC 渲染线程、MC 上下文 current）：
-//   1) 探针帧（#1-#5 + 每 200 帧）：glGetIntegerv 查 DRAW/READ binding +
-//      viewport，eglQuerySurface 查表面尺寸（Task58 官方宏），记日志。
-//      【Task 75】回读探针已退役——4770b53 日志实锤：swap#8400（游戏暂停
-//      剧集、dynamic_fps 降帧）探针 glReadPixels 触发 ANGLE Metal
-//      readPixelsCopyImpl → CopyBGRA8ToRGBA8 SIGBUS（读的是即将呈现的
-//      CAMetalLayer drawable 纹理；iOS glReadPixels 间歇性崩溃为社区已知
-//      现象；上游 herbrine8403/Amethyst-iOS swap 路径全程零回读同源佐证）。
-//      内容 uniq/fbo0/corner 字段随之移除。
-//   2) 自愈 latch（Task 75 几何判据化，零回读）：几何对齐（viewport==
-//      surface）→ mode=normal；几何失配 → Task55 realign / Task49
-//      geo-heal blit（纯 blit 零回读、确定性）。黑屏时代（Task41-58）已
-//      闭案：几何判据 + 呈现层卫兵（Task52）足以覆盖全部已知形态。
+// This block runs before each eglSwapBuffers (on the MC render thread, with the MC context current):
+//   1) Probe frames #1–#5 and every 200 frames: log DRAW/READ bindings and viewport via glGetIntegerv,
+//      and surface dimensions via eglQuerySurface (official Task58 constants).
+//      **Task 75 retired readback probes:** log 4770b53 proved that on swap#8400 (game pause screen,
+//      reduced frame rate from dynamic_fps), probe glReadPixels triggered ANGLE Metal
+//      readPixelsCopyImpl → CopyBGRA8ToRGBA8 SIGBUS while reading the CAMetalLayer drawable about to be
+//      presented. Intermittent iOS glReadPixels crashes are known in the community; the upstream
+//      herbrine8403/Amethyst-iOS swap path from this code lineage never reads pixels back.
+//      The content uniq/fbo0/corner fields were removed with that probe.
+//   2) Self-healing latch (Task 75 uses geometry checks and no readback): matching geometry (viewport==surface)
+//      selects mode=normal; mismatched geometry uses Task55 realign / Task49 geo-heal blit
+//      (blit only, no readback, deterministic). The black-screen investigation (Tasks 41–58) is closed:
+//      geometry checks plus the presentation-layer guard (Task52) cover all known cases.
 //
-// ES 指针从 MG 同款 pin 路径解析（@executable_path/Frameworks/
-// libGLESv2.framework/libGLESv2），指向同一 ANGLE 镜像；对 gl4es 等
-// 渲染器同样适用（它们的底层同为 ANGLE ES 上下文）。
+// Resolve ES pointers through the same pinning path as MG (@executable_path/Frameworks/
+// libGLESv2.framework/libGLESv2), pointing to the same ANGLE image. This also applies to renderers
+// such as gl4es, whose underlying contexts are also ANGLE ES contexts.
 // ============================================================================
 typedef void (*ame_es_getint_t)(unsigned int, int *);
 typedef void (*ame_es_bindfb_t)(unsigned int, unsigned int);
@@ -230,15 +228,15 @@ typedef struct {
     ame_es_enable_t    enable;
     ame_es_blitfb_t    blitFramebuffer;
     EGLBoolean (*querySurface)(EGLDisplay, EGLSurface, EGLint, EGLint *);
-    ame_es_bindtex_t   bindTexture;        // Task 49 几何自愈
-    ame_es_texparami_t texParameteri;      // Task 49 几何自愈
-    ame_es_gentex_t    genTextures;        // Task 49 几何自愈
-    ame_es_deltex_t    deleteTextures;     // Task 49 几何自愈
-    ame_es_teximg2d_t  texImage2D;         // Task 49 几何自愈
-    ame_es_genfb_t     genFramebuffers;    // Task 49 几何自愈
-    ame_es_delfb_t     deleteFramebuffers; // Task 49 几何自愈
-    ame_es_fbtex2d_t   framebufferTexture2D; // Task 49 几何自愈
-    ame_es_checkfb_t   checkFramebufferStatus; // Task 49 几何自愈
+    ame_es_bindtex_t   bindTexture;        // Task 49 geometry self-healing.
+    ame_es_texparami_t texParameteri;      // Task 49 geometry self-healing.
+    ame_es_gentex_t    genTextures;        // Task 49 geometry self-healing.
+    ame_es_deltex_t    deleteTextures;     // Task 49 geometry self-healing.
+    ame_es_teximg2d_t  texImage2D;         // Task 49 geometry self-healing.
+    ame_es_genfb_t     genFramebuffers;    // Task 49 geometry self-healing.
+    ame_es_delfb_t     deleteFramebuffers; // Task 49 geometry self-healing.
+    ame_es_fbtex2d_t   framebufferTexture2D; // Task 49 geometry self-healing.
+    ame_es_checkfb_t   checkFramebufferStatus; // Task 49 geometry self-healing.
 } ame_es_t;
 
 static ame_es_t ame_es(void) {
@@ -266,12 +264,12 @@ static ame_es_t ame_es(void) {
     }
     s_es.getIntegerv     = (ame_es_getint_t)dlsym(h, "glGetIntegerv");
     s_es.bindFramebuffer = (ame_es_bindfb_t)dlsym(h, "glBindFramebuffer");
-    // Task 75：glReadPixels 解析已移除（回读探针退役，Swap 路径零回读）。
+    // Task 75: glReadPixels resolution was removed (readback probes retired; no readback in the swap path).
     s_es.getError        = (ame_es_geterr_t)dlsym(h, "glGetError");
     s_es.isEnabled       = (ame_es_isenabled_t)dlsym(h, "glIsEnabled");
     s_es.enable          = (ame_es_enable_t)dlsym(h, "glEnable");
     s_es.blitFramebuffer = (ame_es_blitfb_t)dlsym(h, "glBlitFramebuffer");
-    // Task 49：几何自愈 blit 需要的 FBO/纹理管理函数（同源 libGLESv2/ANGLE）
+    // Task 49: FBO/texture management functions required by geometry self-healing blits (same libGLESv2/ANGLE).
     s_es.bindTexture     = (ame_es_bindtex_t)dlsym(h, "glBindTexture");
     s_es.texParameteri   = (ame_es_texparami_t)dlsym(h, "glTexParameteri");
     s_es.genTextures     = (ame_es_gentex_t)dlsym(h, "glGenTextures");
@@ -281,9 +279,9 @@ static ame_es_t ame_es(void) {
     s_es.deleteFramebuffers = (ame_es_delfb_t)dlsym(h, "glDeleteFramebuffers");
     s_es.framebufferTexture2D = (ame_es_fbtex2d_t)dlsym(h, "glFramebufferTexture2D");
     s_es.checkFramebufferStatus = (ame_es_checkfb_t)dlsym(h, "glCheckFramebufferStatus");
-    // eglQuerySurface 在 libEGL（ANGLE EGL）里，与 libGLESv2 同一 ANGLE 家族，
-    // 已加载镜像 dlopen 仅引用计数 +1。自行解析以避免前向依赖文件后部的
-    // ame_raw_query_surface（static 声明位于本块之后，不可提前引用）。
+    // eglQuerySurface is in libEGL (ANGLE EGL), from the same ANGLE family as libGLESv2;
+    // dlopen on the already loaded image only increments its reference count. Resolve it here to avoid
+    // a forward dependency on ame_raw_query_surface later in this file (its static declaration is below).
     static const char *const kEglCandidates[] = {
         "@executable_path/Frameworks/libEGL.framework/libEGL",
         "@rpath/libEGL.framework/libEGL",
@@ -300,40 +298,41 @@ static ame_es_t ame_es(void) {
     return s_es;
 }
 
-// Task 75：ame_count_unique_rgba / ame_float_readback_has_content 已随
-// 回读探针一并退役（唯一调用方是探针的内容判定；保留会成死代码告警）。
-// 8x8 回读 → uniq 计数 → “有内容”判定的整条链路自此处消失。
+// Task 75: ame_count_unique_rgba / ame_float_readback_has_content were retired with the readback probe
+// (their only caller was the probe's content check; keeping them would trigger dead-code warnings).
+// The entire 8x8 readback → unique-value count → "has content" check is removed.
 
 // ============================================================================
-// Task 49：几何自愈 blit（scratch-FBO 两段中转）
+// Task 49: geometry self-healing blit (two-pass scratch-FBO intermediate).
 //
-// latestlog 53febda（d11eb66）铁证：MC 的帧确实在后缓冲里，但只覆盖
-// viewport 区域（1180x820，SDL3 点数），而表面是 2x 像素（2360x1640 或
-// 1640x2360）——帧占后缓冲左上 ~25%，其余永远平坦暗色（corner=27，近乎黑）。
-// 用户看到的就是"黑屏"。旧版 mode-2 blit 直接 READ=drawFb → DRAW=0，
-// 但实测 drawFb==0（MC 交换时刻绑定回默认帧缓冲）→ blit 变成 FBO0→FBO0
-// 自拷贝，矩形重叠 = ES 非法/无操作，且旧 latch 判据永不满足 → 自愈从未
-// 启动。
+// Conclusive evidence in latestlog 53febda (d11eb66): MC's frame was in the back buffer but covered
+// only the viewport (1180x820 SDL3 points), while the surface used 2x pixels (2360x1640 or 1640x2360).
+// The frame occupied only the upper-left ~25% of the back buffer; the rest stayed uniformly dark
+// (corner=27, nearly black). This looked like a "black screen." The old mode-2 blit read drawFb and
+// drew to 0, but tests showed drawFb==0 at MC swap time (bound to the default framebuffer), turning
+// the blit into an FBO0→FBO0 self-copy. Overlapping rectangles are invalid/no-op in ES, and the old
+// latch condition was never met, so self-healing never started.
 //
-// 新设计（几何判定，零回读、每帧确定性）：
-//   viewport 维度 != surface 维度 → 帧无法覆盖后缓冲 → 启用两段 blit：
-//     段1: READ = (drawFb ? drawFb : 0) 的 viewport 区域 → scratch（缩放到 surface 尺寸）
-//     段2: READ = scratch → DRAW = FBO 0 全表面（1:1）
-//   两段各自无矩形重叠，ES3 合法。帧被放大铺满整个后缓冲 = 全屏可见，
-//   无论 1x/2x 尺寸单位失配、竖横转置、创建竞态还是旋转残留。
-//   表面尺寸变化时 scratch 懒重建（glTexImage2D 同名重分配）。
+// New design (geometry-based, no readback, deterministic every frame):
+//   viewport dimensions != surface dimensions → the frame cannot cover the back buffer → perform two blits:
+//     Pass 1: READ = viewport region of (drawFb ? drawFb : 0) → scratch (scaled to surface dimensions).
+//     Pass 2: READ = scratch → DRAW = full FBO 0 surface (1:1).
+//   Neither pass has overlapping rectangles, so both are valid in ES3. The frame is scaled to fill the
+//   entire back buffer and becomes full-screen, regardless of 1x/2x unit mismatch, portrait/landscape
+//   transposition, creation races, or leftover rotation state.
+//   Recreate scratch lazily (reallocate the same texture with glTexImage2D) when the surface size changes.
 // ============================================================================
 static unsigned int g_ame49_scratch_fb = 0;
 static unsigned int g_ame49_scratch_tex = 0;
 static int g_ame49_scratch_w = 0, g_ame49_scratch_h = 0;
-static int g_ame49_heal_disabled = 0;   // scratch FBO 完整性失败后的永久熔断
-// Task51：呈现 layer 引用（CFBridgingRetain）。声明前置——swap 诊断函数
-//（Fix F' 钉扎与 hierarchy dump）在本文件更早处使用，原声明位置（Task48
-// 段内）在使用点之后，b9634f4 CI 实测报 undeclared identifier。
+static int g_ame49_heal_disabled = 0;   // Permanently disable after scratch FBO completeness failure.
+// Task51: presentation layer reference (CFBridgingRetain). Declared before use because the swap diagnostic
+// function (Fix F' pinning and hierarchy dump) appears earlier in this file. Its original declaration
+// in the Task48 section was after the use; CI run b9634f4 reported an undeclared identifier.
 static void *g_ame48_layer_cf = NULL;
 
-// Task52：来自 sdl3_hook.m —— 嵌入的 SDL 触摸视图（可见性卫兵 z 序执法用）。
-// 返回值是 __bridge 裸指针，只做同一性比较，不得解引用为 ARC 对象持有。
+// Task52: embedded SDL touch view from sdl3_hook.m (used by the visibility guard to enforce z-order).
+// Returns an unretained __bridge pointer for identity comparison only; do not dereference or retain it as an ARC object.
 extern void *ame_hook_getEmbeddedSDLView(void);
 
 static void ame_task49_geo_heal_blit(ame_es_t es, int drawFb, int readFb,
@@ -343,10 +342,10 @@ static void ame_task49_geo_heal_blit(ame_es_t es, int drawFb, int readFb,
         es.texImage2D == NULL || es.framebufferTexture2D == NULL ||
         es.checkFramebufferStatus == NULL || es.bindTexture == NULL ||
         es.texParameteri == NULL || es.blitFramebuffer == NULL) {
-        g_ame49_heal_disabled = 1;   // 函数指针不全：熔断（创建执法/卫兵钉扎仍在）
+        g_ame49_heal_disabled = 1;   // Missing function pointers: disable healing (creation enforcement/guard pinning remain active).
         return;
     }
-    // 1) scratch 尺寸跟随 surface（懒创建 / 尺寸变化时重分配）
+    // 1) Match scratch size to the surface (create lazily / reallocate when dimensions change).
     if (g_ame49_scratch_fb == 0 || g_ame49_scratch_w != sw || g_ame49_scratch_h != sh) {
         if (g_ame49_scratch_fb == 0) {
             es.genFramebuffers(1, &g_ame49_scratch_fb);
@@ -374,21 +373,21 @@ static void ame_task49_geo_heal_blit(ame_es_t es, int drawFb, int readFb,
         g_ame49_scratch_w = sw; g_ame49_scratch_h = sh;
         NSLog(@"[RenderDiag] Task49 scratch FBO ready %dx%d", sw, sh);
     }
-    // 2) scissor 保存/关闭 + 两段 blit
+    // 2) Save/disable scissor and perform the two blits.
     int scissorWasOn = es.isEnabled(0x0C11 /*GL_SCISSOR_TEST*/);
     if (scissorWasOn) es.enable(0x0C11, 0 /*GL_FALSE*/);
-    // 段1：MC 帧（viewport 区域，源 = MC 当前 FBO 或 FBO 0）→ scratch 全尺寸缩放
+    // Pass 1: MC frame (viewport region, sourced from MC's current FBO or FBO 0) → scratch, scaled to full size.
     es.bindFramebuffer(0x8CA8 /*GL_READ_FRAMEBUFFER*/, (unsigned)(drawFb != 0 ? drawFb : 0));
     es.bindFramebuffer(0x8CA9 /*GL_DRAW_FRAMEBUFFER*/, g_ame49_scratch_fb);
     es.blitFramebuffer(0, 0, vw, vh, 0, 0, sw, sh,
                        0x4000 /*GL_COLOR_BUFFER_BIT*/, 0x2601 /*GL_LINEAR*/);
-    // 段2：scratch → FBO 0 全表面 1:1
+    // Pass 2: scratch → entire FBO 0 surface at 1:1.
     es.bindFramebuffer(0x8CA8, g_ame49_scratch_fb);
     es.bindFramebuffer(0x8CA9, 0);
     es.blitFramebuffer(0, 0, sw, sh, 0, 0, sw, sh,
                        0x4000, 0x2601 /*GL_LINEAR*/);
     unsigned int blitErr = es.getError();
-    // 3) 状态恢复
+    // 3) Restore state.
     es.bindFramebuffer(0x8CA8, (unsigned)readFb);
     es.bindFramebuffer(0x8CA9, (unsigned)drawFb);
     if (scissorWasOn) es.enable(0x0C11, 1 /*GL_TRUE*/);
@@ -402,46 +401,45 @@ static void ame_task49_geo_heal_blit(ame_es_t es, int drawFb, int readFb,
 }
 
 // ============================================================================
-// Task 53：EGL 表面重对齐（画面分裂 + 输入异常根因根治）
+// Task 53: realign the EGL surface (root-cause fix for split images and input problems).
 //
-// 设备铁证（latestlog f4ab8e3，iPad Air M4 / iPadOS 26.6，Task52 修复黑屏
-// 后的首轮真机日志）：
-//   - 表面创建时 1180x820（eglQuerySurface 双确认），但首次交换时已转置为
-//     820x1180 且 1400+ 帧锁死永不恢复（转置发生在加载期"无 swap 的盲窗"
-//     ——窗口事件/UIKit 布局瞬时竖屏，ANGLE 随 layer 重读几何时捕获转置
-//     值，Task48 已证其转置后不随 layer 回横屏）；
-//   - MC viewport 恒 1180x820：帧被裁到转置后缓冲左侧 820 列，Task49
-//     geo-heal blit 再把整帧压扁铺进 820x1180；
-//   - drawableSize 拉锯战：updateSavedResolution（写 bounds 横屏 1180x820）
-//     vs Task52 guard（写 surface 转置值 820x1180，每 200 帧互覆）→
-//     drawable 为横屏的帧：blit 只覆盖左侧 820x820，右侧 360 列残留原始
-//     帧内容 = 用户看到的"画面分裂"（左半压扁 + 右半残影）；
-//   - 触摸按全窗口 1180x820 点空间映射（Task51 px->pt 换算本身正确），
-//     所见画面却错位/压扁 → 点不中所见按钮 = "输入异常"。
+// Device evidence (latestlog f4ab8e3, first on-device log after Task52 fixed the black screen,
+// on iPad Air M4 / iPadOS 26.6):
+//   - Surface creation initially reported 1180x820 (confirmed twice with eglQuerySurface), but by the first
+//     swap it had transposed to 820x1180 and remained stuck for 1,400+ frames. The transposition occurred
+//     during the loading "blind window" with no swaps: window events/UIKit layout briefly switched to portrait,
+//     and ANGLE captured the transposed geometry when rereading the layer. Task48 proved it did not return
+//     to landscape with the layer.
+//   - MC viewport remained 1180x820: the frame was clipped to the left 820 columns of the transposed buffer,
+//     then Task49 geo-heal blit squeezed the whole frame into 820x1180.
+//   - drawableSize oscillated between updateSavedResolution (writing landscape bounds 1180x820) and the
+//     Task52 guard (writing the transposed surface size 820x1180), overwriting each other every 200 frames.
+//     On landscape drawable frames, blit covered only the left 820x820, leaving 360 columns of original frame
+//     on the right: the user saw a split image (squeezed left half + right-side remnant).
+//   - Touch input mapped over the full 1180x820-point window (Task51's px→pt conversion was correct),
+//     but the displayed image was offset/squeezed, so taps missed visible buttons ("input problems").
 //
-// 修复（治本——消灭转置本身，让全部补偿机制回到无害 no-op）：
-//   几何失配首检出时销毁优先重建 EGL window surface。Task48 重建恒败
-//   （EGL_BAD_ALLOC 0x3003）的根因是"先建后毁"——同 layer 双 surface
-//   并存；销毁优先（先 MakeCurrent 解绑再销毁）则层自由，创建必成：
-//     1) 主线程 dispatch_sync 钉扎 layer（contentsScale=1.0、drawableSize=
-//        bounds 点数）——Task50 已证主线程写是唯一可靠写入路径；
-//     2) eglMakeCurrent(无表面) 解绑 → eglDestroySurface(旧) →
-//        eglCreateWindowSurface（读钉扎后的横屏 layer）→ eglMakeCurrent
-//        (新表面)（经 Task36 前端路由，MGContext 跟踪保持；前端
-//        MakeCurrent 对 EGL_NO_SURFACE 纯透传，安全）；
-//     3) 成功后 surface == viewport == drawable == bounds：几何失配判定
-//        不再触发、geo-heal 自动退出（Task50 latch 恢复分支）、拉锯战
-//        自然终止（两写者写同值）、画面 1:1 全屏、触摸坐标与所见画面对齐
-//        （输入随几何自愈）；
-//     4) 失败兜底：预算 3 次 + 2s 限速 + 链路任一步失败即永久熔断，回退
-//        Task49/51/52 既有补偿路径（行为不劣于修复前，零回归）。
+// Fix (address the root cause—the transposition—so all compensations become harmless no-ops):
+//   On first detection of mismatched geometry, destroy the EGL window surface before recreating it. Task48
+//   recreation always failed with EGL_BAD_ALLOC (0x3003) because it created before destroying, leaving two
+//   surfaces on the same layer. Destroying first (unbind with MakeCurrent, then destroy) frees the layer:
+//     1) On the main thread, dispatch_sync to pin the layer (contentsScale=1.0, drawableSize=bounds in points).
+//        Task50 established that main-thread writes are the only reliable path.
+//     2) Unbind via eglMakeCurrent with no surface → eglDestroySurface(old) → eglCreateWindowSurface
+//        (reads the pinned landscape layer) → eglMakeCurrent(new surface). Task36 frontend routing preserves
+//        MGContext tracking; the frontend passes EGL_NO_SURFACE through unchanged, which is safe.
+//     3) Once successful, surface == viewport == drawable == bounds: geometry mismatch no longer triggers,
+//        geo-heal exits automatically (Task50 latch recovery), the write conflict ends naturally (both writers
+//        write the same value), the image is full-screen at 1:1, and touch coordinates align with the image.
+//     4) Fallback on failure: three-attempt budget + two-second rate limit; any failed step permanently disables
+//        retries and falls back to existing Task49/51/52 compensation paths (no worse than before, no regressions).
 // ============================================================================
-static int      g_ame53_attempts = 0;    // 已消耗的重试预算
-static uint64_t g_ame53_last_ms = 0;     // 上次尝试时刻（2s 限速）
-static int      g_ame53_disabled = 0;    // 熔断：预算耗尽或链路失败
-static int      g_ame53_transposed = 0;  // surface 与 MC viewport 失配标志
-//（供 updateSavedResolution 判断停火——失配未治愈期间让 Task52 guard
-//  独占 drawableSize 写权，终结拉锯战；由交换路径逐帧刷新）
+static int      g_ame53_attempts = 0;    // Retry budget consumed.
+static uint64_t g_ame53_last_ms = 0;     // Time of the last attempt (two-second rate limit).
+static int      g_ame53_disabled = 0;    // Circuit breaker: budget exhausted or a step failed.
+static int      g_ame53_transposed = 0;  // Flag indicating surface/MC viewport mismatch.
+// Used by updateSavedResolution to determine when to stop writing: while a mismatch remains unfixed,
+// let the Task52 guard exclusively write drawableSize and end the write conflict. Refreshed every swap.
 
 bool ame_gl_surface_transposed(void) {
     return g_ame53_transposed != 0;
@@ -453,11 +451,11 @@ static uint64_t ame53_now_ms(void) {
     return (uint64_t)ts.tv_sec * 1000ull + (uint64_t)ts.tv_nsec / 1000000ull;
 }
 
-// ---- Task 55：梯度式重对齐的三个辅助 ----
+// ---- Task 55: three helpers for progressive realignment. ----
 
-// 同步等待主队列 runloop 拍数（每拍强制 [CATransaction flush]：CA 事务立即
-// 提交，ANGLE 若监听 layer/CA 通知则获得触发窗口；dispatch_sync 嵌套保证
-// 至少走过 turns 个主队列周期）。
+// Synchronously wait for a number of main-queue runloop turns (force [CATransaction flush] on each turn
+// to commit CA transactions immediately and give ANGLE a chance to react if it observes layer/CA notifications;
+// nested dispatch_sync calls guarantee at least the requested number of main-queue cycles).
 static void ame55_wait_main_turns(int turns) {
     for (int i = 0; i < turns; ++i) {
         dispatch_sync(dispatch_get_main_queue(), ^{
@@ -466,8 +464,9 @@ static void ame55_wait_main_turns(int turns) {
     }
 }
 
-// 渲染线程同步等待 ms 毫秒（主队列 dispatch_after 栅栏——期间主 runloop 照
-// 常转动，CA/ANGLE 有完整窗口清理）。Step B 的销毁-重建真间隔。
+// Block the render thread for ms milliseconds using a main-queue dispatch_after barrier. The main runloop
+// continues normally during the wait, giving CA/ANGLE time to clean up. This is the real destroy/recreate
+// gap required by Step B.
 static void ame55_main_gap_ms(uint64_t ms) {
     dispatch_semaphore_t sem = dispatch_semaphore_create(0);
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)ms * NSEC_PER_MSEC),
@@ -475,17 +474,18 @@ static void ame55_main_gap_ms(uint64_t ms) {
     dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
 }
 
-// 治愈判定：querySurface == layer 期望几何（与交换探针同源的权威值）。
-// outQ 非 NULL 时回填实际查询值（日志指纹用）。
+// Healing criterion: querySurface matches the layer's expected geometry (the same authoritative source used by the swap probe).
+// If outQ is non-NULL, fill it with actual queried values (for log fingerprints).
 static BOOL ame55_verify_surface(ame_es_t es, EGLSurface s, CGSize expected,
                                  EGLint *outQW, EGLint *outQH) {
     if (es.querySurface == NULL || s == EGL_NO_SURFACE) return NO;
     EGLint w = 0, h = 0;
-    // Task 58 根因修正（画面分裂定案）：EGL_HEIGHT=0x3056、EGL_WIDTH=0x3057
-    //（egl.h 官方定义，Natives/external/mesa/EGL/egl.h:90/123）。旧代码两常量
-    // 对调（0x3056 当宽、0x3057 当高）→ 宽高读反 → “治愈判定”永远失败——
-    // 这就是 Task53/55 realign 历轮报 "NOT cured (recreate reads transposed
-    // geometry)" 的真相：新表面其实一直是横屏健康的。
+    // Task 58 root-cause fix (conclusive explanation for the split image): EGL_HEIGHT=0x3056 and
+    // EGL_WIDTH=0x3057 (official definitions in egl.h, Natives/external/mesa/EGL/egl.h:90/123).
+    // The old code swapped these constants (0x3056 used for width, 0x3057 for height), reversing the
+    // dimensions and making the "healing check" always fail. This explains why earlier Task53/55 realign
+    // attempts logged "NOT cured (recreate reads transposed geometry)": the recreated surface was actually
+    // healthy landscape geometry all along.
     if (!es.querySurface(g_EglDisplay, s, EGL_WIDTH, &w) ||
         !es.querySurface(g_EglDisplay, s, EGL_HEIGHT, &h)) return NO;
     if (outQW) *outQW = w;
@@ -494,32 +494,34 @@ static BOOL ame55_verify_surface(ame_es_t es, EGLSurface s, CGSize expected,
            (h == (EGLint)MAX(1.0, round(expected.height)));
 }
 
-/// Task 55 梯度式表面重对齐（取代 Task53 的单式 destroy-recreate）。
-/// 调用方：MC 渲染线程（swap 路径、上下文 current）。
-/// 返回 YES = querySurface == layer bounds（真治愈；调用方复位 latch mode）。
+/// Task 55 progressive surface realignment (replaces Task53's single destroy/recreate attempt).
+/// Caller: MC render thread (swap path, context current).
+/// Returns YES when querySurface == layer bounds (actual healing; caller resets latch mode).
 ///
-/// a901050 真机日志判读（Task 54 构建，2026-09-11 23:10，驱动本轮设计）：
-///   - 初始创建 querySurface=1180x820 正确；盲窗内（8500 行加载、零 swap）
-///     转置为 820x1180；Task53 destroy-first recreate 后【依然 820x1180】
-///     ——对着横屏 layer（pin 打印 bounds 1180x820）重建仍转置；
-///   - 旧判定只验“create 非 NULL”即宣称 SUCCESS（假成功）→ transposed=0 →
-///     updateSavedResolution ceasefire 解除 → drawableSize 拉锯回归 →
-///     画面分裂（用户本轮症状）；
-///   - 转置的 ANGLE 读数源（transform 链 / UIScreen 回退 / swapchain 缓存）
-///     现有日志无法裁定 → 梯度覆盖三假说，每步独立验证 + 指纹日志，
-///     无论哪条路走通都能治愈，全失败则下轮日志带回决定性证据。
+/// Interpretation of on-device log a901050 (Task 54 build, 2026-09-11 23:10; prompted this design):
+///   - Initial querySurface=1180x820 was correct; during the blind window (8,500 log lines loaded, zero swaps)
+///     it transposed to 820x1180. After Task53's destroy-first recreation it was **still 820x1180**,
+///     despite recreating against the landscape layer (pin logged bounds 1180x820).
+///   - The old check declared SUCCESS after verifying only that create returned non-NULL (a false positive),
+///     then cleared transposed=0, lifted updateSavedResolution's ceasefire, restored drawableSize oscillation,
+///     and caused the split image seen in this test.
+///   - Existing logs cannot determine which ANGLE source provides the transposed dimensions (transform chain /
+///     UIScreen fallback / swapchain cache). Progressive steps test all three hypotheses independently and log
+///     fingerprints; any successful step heals the surface, and total failure leaves decisive evidence for the next log.
 ///
-/// 梯度（一步治愈即停）：
-///   A 几何信号（零销毁）：主线程写 drawableSize=bounds + bounds 轻碰
-///     （1pt 偏差同事务写回）+ 2 拍主 runloop（CATransaction flush）→ 查询。
-///     假说：ANGLE 监听 layer 几何事件（622166a 转置即其跟随能力的实证）。
-///   B 延迟重建（Task53 原方案强化）：destroy → 100ms 真间隔（修句柄即时
-///     回收复用——上轮新旧句柄同为 0x1 的疑点）→ recreate（显式横屏
-///     attribs）→ MakeCurrent → 2 拍 → 查询。
-///   C 反向转置旅程：写 drawableSize=转置值 → 2 拍 → 写回横屏 bounds →
-///     2 拍 → 查询（复现盲窗转置事件的正向旅程、收尾落在横屏——若 ANGLE
-///     是事件驱动跟随，一来一回落在最后的横屏值上）。
-/// 全失败 → 本轮 attempt 失败（预算 3 次梯度 + 2s 冷却不变，熔断后补偿照旧）。
+/// Progressive steps (stop after the first successful heal):
+///   A. Geometry signal (no destruction): on the main thread, set drawableSize=bounds, nudge bounds
+///      (write back any 1-point discrepancy in the same transaction), allow two main-runloop turns
+///      with CATransaction flush, then query. Hypothesis: ANGLE listens for layer geometry events
+///      (the transposition in 622166a proves that it follows such changes).
+///   B. Delayed recreation (strengthened Task53 approach): destroy → wait a real 100 ms (to avoid immediate
+///      handle reclamation/reuse, suspected because old and new handles were both 0x1 last time) →
+///      recreate with explicit landscape attributes → MakeCurrent → two turns → query.
+///   C. Reverse-transposition journey: set drawableSize to transposed dimensions → two turns → restore
+///      landscape bounds → two turns → query. This reproduces the forward journey during the blind window
+///      and finishes in landscape; if ANGLE follows events, the final size should win.
+/// If all fail, this attempt fails (three-step budget and two-second cooldown unchanged; compensation
+/// continues after the circuit breaker trips).
 static BOOL ame_task53_realign_surface(void) {
     if (g_ame53_disabled) return NO;
     if (g_ame53_attempts >= 3) {
@@ -543,9 +545,9 @@ static BOOL ame_task53_realign_surface(void) {
     NSLog(@"[GLGeo] Task55 realign: attempt %d/3 (gradient A geometry-signal -> B deferred-recreate -> C transpose-roundtrip)",
           g_ame53_attempts);
 
-    // 期望几何（主线程权威 bounds x contentsScale，像素口径——Task60：
-    // surface/query/drawable 全链已统一像素口径；旧 1x 点数 pin 会让
-    // verify 永远 FAIL、heal 步骤把 drawableSize 拉回 1x）。
+    // Expected geometry: authoritative main-thread bounds × contentsScale, in pixels (Task60).
+    // The surface/query/drawable pipeline now consistently uses pixels; the old 1x point-based pin
+    // made verification always FAIL and caused healing to reset drawableSize to 1x.
     __block CGSize pin55 = CGSizeZero;
     dispatch_sync(dispatch_get_main_queue(), ^{
         @try {
@@ -568,14 +570,14 @@ static BOOL ame_task53_realign_surface(void) {
     EGLSurface cur55 = bundle->gl.surface;
     EGLint q55w = 0, q55h = 0;
 
-    // --- Step A：零销毁几何信号 ---
+    // --- Step A: geometry signal without destruction. ---
     NSLog(@"[GLGeo] Task55 realign stepA: drawableSize=bounds + bounds nudge + 2 main turns (no destroy)");
     dispatch_sync(dispatch_get_main_queue(), ^{
         @try {
             CAMetalLayer *mlA = (CAMetalLayer *)layer;
             mlA.drawableSize = pin55;
-            // bounds 轻碰：1pt 偏差再写回（同一 CA 事务内提交原值，屏幕无可
-            // 感知闪变；目的是强制 CA/KVO 发出“layer 几何变化”通知）。
+            // Nudge bounds: write back a 1-point discrepancy (the original value is committed in the same
+            // CA transaction, so there is no visible flicker); this forces CA/KVO to emit a layer-geometry-change notification.
             CGRect bA = layer.bounds;
             layer.bounds = CGRectMake(bA.origin.x, bA.origin.y, bA.size.width, bA.size.height + 1.0);
             layer.bounds = bA;
@@ -592,7 +594,7 @@ static BOOL ame_task53_realign_surface(void) {
     NSLog(@"[GLGeo] Task55 stepA verify: query=%dx%d expected=%.0fx%.0f -- NOT cured (ANGLE ignored drawableSize+bounds nudge)",
           q55w, q55h, pin55.width, pin55.height);
 
-    // --- Step B：销毁 + 100ms 真间隔 + 重建（修句柄即时回收复用） ---
+    // --- Step B: destroy + real 100 ms gap + recreate (avoid immediate handle reclamation/reuse). ---
     NSLog(@"[GLGeo] Task55 realign stepB: destroy -> 100ms gap -> recreate (explicit landscape attribs)");
     EGLContext ctx55 = bundle->gl.context;
     EGLSurface old55 = cur55;
@@ -644,7 +646,7 @@ static BOOL ame_task53_realign_surface(void) {
     NSLog(@"[GLGeo] Task55 stepB verify: query=%dx%d expected=%.0fx%.0f -- NOT cured (recreate reads transposed geometry)",
           q55w, q55h, pin55.width, pin55.height);
 
-    // --- Step C：反向转置旅程 ---
+    // --- Step C: reverse-transposition journey. ---
     NSLog(@"[GLGeo] Task55 realign stepC: transpose roundtrip (drawableSize transposed -> turns -> landscape -> turns)");
     __block CGSize pinC = pin55;
     dispatch_sync(dispatch_get_main_queue(), ^{
@@ -675,28 +677,28 @@ static BOOL ame_task53_realign_surface(void) {
     return NO;
 }
 
-// 探针 + 自愈主入口。swapIndex 从 1 计。
-// 0 = undecided, 1 = normal, 2 = geo-heal blit
+// Main probe + self-healing entry point. swapIndex starts at 1.
+// 0 = undecided, 1 = normal, 2 = geo-heal blit.
 static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapIndex) {
     ame_es_t es = ame_es();
     if (es.getIntegerv == NULL || es.bindFramebuffer == NULL) return;
 
     static int s_mode = 0;          // 0 undecided / 1 normal / 2 blit
-    // Task 76：取证降频 —— 健康 NORMAL 态下 swap 前零 GL/EGL 查询。
+    // Task 76: reduce diagnostic frequency — perform no GL/EGL queries before swap in healthy NORMAL mode.
     //
-    // 背景（bef0f08 双日志定案）：本函数自 Task41 起每帧在渲染线程跑
-    //   3 次 glGetIntegerv + while(glGetError) 清错 + 2 次 eglQuerySurface；
-    // 上游 Amethyst 的 swap 路径（ame_geo_check_and_heal）零 GL 状态查询。
-    // MobileGlues 场次下这些查询直达 raw ANGLE，绕过前端状态机：
-    //   1) glGetError 清空底层错误队列 —— MobileGlues 的错误转译依赖该
-    //      队列，清空等于吞掉本应转译给 MC 的 GL 错误（正确性风险）；
-    //   2) 每帧 5 次跨层查询是纯诊断税（Task58 后几何恒 NORMAL，多轮
-    //      设备日志 0 失配）。
-    // 降频策略：前 5 帧、每 200 帧、以及任何非 NORMAL 态（未决/补偿中）
-    // 保持全量取证与执法；稳定 NORMAL 帧直接返回。逐帧几何执法由 Task48
-    // guard（surface vs drawable 漂移检测）继续承担，viewport vs surface
-    // 判定随 probe 帧复核——失配场景（旋转/resize）总会先经过 s_mode!=1
-    // 或最多 200 帧内的 probe 帧，无检测盲区。
+    // Background (confirmed by paired logs in bef0f08): since Task41, this function ran each frame on the
+    // render thread and made three glGetIntegerv calls, cleared errors with while(glGetError), and made
+    // two eglQuerySurface calls. The upstream Amethyst swap path (ame_geo_check_and_heal) makes no GL-state queries.
+    // With MobileGlues, these queries go directly to raw ANGLE and bypass the frontend state machine:
+    //   1) glGetError empties the underlying error queue. MobileGlues relies on that queue to translate errors,
+    //      so clearing it swallows GL errors that should reach MC (a correctness risk).
+    //   2) Five cross-layer queries per frame are pure diagnostic overhead (since Task58 geometry has stayed
+    //      NORMAL; multiple device logs have shown no mismatches).
+    // Frequency policy: keep full diagnostics/enforcement for the first five frames, every 200th frame,
+    // and every non-NORMAL state (undecided/compensating); return immediately for stable NORMAL frames.
+    // Task48's guard (surface vs. drawable drift detection) continues enforcing geometry every frame.
+    // Recheck viewport vs. surface on probe frames: a mismatch from rotation/resize will encounter s_mode!=1
+    // first or a probe within at most 200 frames, leaving no undetected interval.
     const BOOL probe = (swapIndex <= 5) || (swapIndex % 200 == 0) || s_mode != 1;
     if (!probe) return;
 
@@ -704,27 +706,28 @@ static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapInde
     es.getIntegerv(0x8CA9 /*GL_DRAW_FRAMEBUFFER_BINDING*/, &drawFb);
     es.getIntegerv(0x8CAA /*GL_READ_FRAMEBUFFER_BINDING*/, &readFb);
     es.getIntegerv(0x0BA2 /*GL_VIEWPORT*/, viewport);
-    // Task 76：退役 while(es.getError() != 0) 清错循环——它会把底层 ANGLE
-    // 错误队列清空，吞掉 MobileGlues 待转译的错误。getIntegerv 本身不产生
-    // GL 错误，残留错误不影响本探针读数的正确性。
+    // Task 76: remove the while(es.getError() != 0) error-clearing loop; it empties ANGLE's underlying
+    // error queue and swallows errors MobileGlues still needs to translate. getIntegerv itself does not
+    // generate GL errors, and stale errors do not affect the correctness of this probe's readings.
 
     int surfW = 0, surfH = 0;
     if (es.querySurface != NULL && surface != EGL_NO_SURFACE) {
         EGLint sw = 0, sh = 0;
-        // Task 58 根因修正（画面分裂 + 输入错位定案）：EGL_HEIGHT=0x3056、
-        // EGL_WIDTH=0x3057。自 Task41 起本探针把 0x3056 读进 surfW、0x3057 读进
-        // surfH——宽高颠倒，1180x820 的健康表面被读成 "820x1180 转置" →
-        // geoMismatch 每帧误判 → Task49 geo-heal 把完好的横屏帧 blit 进竖屏
-        // scratch 再回写 → 分裂画面 + 输入错位全部由补偿链自造（Task48/49/50/
-        // 51/52/53/55/56/57 六轮修复追的都是这个幻影；ANGLE 实现/Metal layer/
-        // drawable 全程健康——创建时用宏查询的 1180x820 即铁证，Task57 split-brain
-        // 探针读渲染线程 layer 恒横屏为旁证）。改用官方宏，永绝后患。
+        // Task 58 root-cause fix (conclusively explains the split image and input offset): EGL_HEIGHT=0x3056,
+        // EGL_WIDTH=0x3057. Since Task41, this probe read 0x3056 into surfW and 0x3057 into surfH,
+        // reversing width and height. A healthy 1180x820 surface was read as "820x1180 transposed",
+        // causing a false geoMismatch every frame. Task49 geo-heal then blitted a healthy landscape frame
+        // into a portrait scratch surface and back, creating both the split image and input offset.
+        // The compensation chain invented the problem; six rounds of fixes (Tasks 48/49/50/51/52/53/55/56/57)
+        // chased this phantom. ANGLE, the Metal layer, and drawable were healthy throughout: the 1180x820
+        // macro query at creation is direct evidence, corroborated by Task57's split-brain probe showing
+        // the render-thread layer remained landscape. Use the official constants to prevent recurrence.
         if (es.querySurface(g_EglDisplay, surface, EGL_WIDTH, &sw) &&
             es.querySurface(g_EglDisplay, surface, EGL_HEIGHT, &sh)) {
             surfW = sw; surfH = sh;
         }
-        // Task 58 一次性指纹：修正后的读数（下轮设备日志验证点——预期
-        // surface == viewport，latch NORMAL，geo-heal/blit 全不触发）。
+        // Task 58 one-time fingerprint: corrected readings (verify in the next device log; expected
+        // surface == viewport, latch NORMAL, and no geo-heal/blit).
         static BOOL s_task58_logged = NO;
         if (!s_task58_logged && surfW > 0 && surfH > 0) {
             s_task58_logged = YES;
@@ -735,19 +738,20 @@ static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapInde
     if (surfW <= 0) surfW = viewport[2];
     if (surfH <= 0) surfH = viewport[3];
 
-    // Task 49：几何失配判定（每帧、零回读、确定性）。
-    // viewport 维度 != surface 维度 → MC 的帧无法铺满后缓冲（1x/2x 尺寸单位
-    // 失配或竖横转置——latestlog 53febda 的确切形态）→ 立即启用 geo-heal。
-    // 此判定优先于一切 latch：几何不匹配时“FBO 0 有内容”也不等于可见。
+    // Task 49: geometry mismatch check (every frame, no readback, deterministic).
+    // viewport dimensions != surface dimensions means MC's frame cannot fill the back buffer
+    // (1x/2x unit mismatch or portrait/landscape transposition—the exact case in latestlog 53febda),
+    // so enable geo-heal immediately. This check takes precedence over all latch states:
+    // when geometry does not match, "FBO 0 has content" does not mean it is visible.
     //
-    // Task 78（FSR 联动豁免）：MG 渲染器 + FSR 预设开启时，启动器把 MC 的
-    // 窗口告知值缩到 surface/fsr_scale（updateSavedResolution），MC viewport
-    // 恒小于 surface 且【两个维度都小】——这是 FSR1 升采样路径的预期形态，
-    // 不是几何事故；补偿链（Task49 geo-heal / Task55 realign / Task51/52
-    // drawable 钉扎）若介入会与 ApplyFSR 的 blit 打架。豁免条件刻意要求
-    // viewport 双维严格小于 surface：转置形态（一维大一维小，如 820x1180 vs
-    // 1180x820）不满足 → 真正的几何事故仍会走自愈链。FSR 关闭或非 MG
-    // 渲染器时 viewport==surface，豁免天然无操作。
+    // Task 78 (FSR integration exemption): with MobileGlues and an FSR preset enabled, the launcher
+    // scales the window size reported to MC to surface/fsr_scale (updateSavedResolution). MC's viewport
+    // is then always smaller than the surface in **both dimensions**, as expected for the FSR1 upscale
+    // path—not a geometry fault. Compensation (Task49 geo-heal / Task55 realign / Task51/52 drawable
+    // pinning) would conflict with ApplyFSR's blit. The exemption deliberately requires both viewport
+    // dimensions to be strictly smaller: a transposition (one dimension larger and one smaller, e.g.
+    // 820x1180 vs 1180x820) does not qualify, so real geometry faults still self-heal. With FSR disabled
+    // or a non-MG renderer, viewport==surface and the exemption has no effect.
     static int s_task78_fsr_link = -1;
     if (s_task78_fsr_link < 0) {
         const char *ame78_renderer = getenv("AMETHYST_RENDERER");
@@ -775,52 +779,53 @@ static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapInde
     }
     g_ame53_transposed = geoMismatch ? 1 : 0;
     if (!geoMismatch) {
-        // Task53：对齐帧重置冷却——下一个失配剧集（几何从对齐转为失配）立即可
-        // 重试。否则冷却期被跳过的尝试会让 mode 卡在 2（补偿态不重入分支），
-        // realign 永远失去重臂机会（逻辑测试 S3 场景实测暴露）。
+        // Task53: reset the cooldown on an aligned frame so the next mismatch episode can retry immediately.
+        // Otherwise, an attempt skipped during cooldown can leave mode stuck at 2 (the compensation state
+        // does not re-enter this branch), permanently preventing realignment from being armed again
+        // (observed in logic test scenario S3).
         g_ame53_last_ms = 0;
     }
     if (geoMismatch && s_mode != 2) {
-        // Task 57（取证闭环）：失配首检出瞬间，从【渲染线程】（本函数运行处，
-        // 与 ANGLE 的 layer 读取同一执行环境）读一次渲染层几何。主线程心跳
-        // （SurfaceViewController updateGameStats）读同一 layer 对象恒报横屏
-        // 1180x820，而 ANGLE 在此环境算出转置 820x1180——两侧并排入日志，
-        // CALayer 跨线程 split-brain（622166a 心跳 2360x1640 vs 卫兵读
-        // 1640x2360；bbe6d63 零 drift 行 = 渲染线程 drawableSize 读数与转置
-        // 表面一致）一锤定音。sublayers 计数顺带证伪/证实 ANGLE 自建子层假说
-        // （initialize 的 isKindOfClass:[CAMetalLayer class] 为真 → 直接使用，
-        // 计数应为 0）。
+        // Task57 (close the diagnostic loop): on first mismatch detection, read render-layer geometry once
+        // from the render thread (where this function runs, the same execution environment in which ANGLE
+        // reads the layer). The main-thread heartbeat (SurfaceViewController updateGameStats) always reports
+        // landscape 1180x820 for the same layer object, while ANGLE computes transposed 820x1180 here.
+        // Logging both side by side conclusively tests the CALayer cross-thread split-brain theory
+        // (622166a heartbeat 2360x1640 vs. guard reading 1640x2360; bbe6d63's zero-drift rows show the
+        // render-thread drawableSize matches the transposed surface). The sublayer count also tests whether
+        // ANGLE created its own sublayer; initialize's isKindOfClass:[CAMetalLayer class] check is true,
+        // so it should use the layer directly and the count should be 0.
         {
             CALayer *l57 = (__bridge CALayer *)g_ame48_layer_cf;
             if (l57 != nil) {
                 BOOL m57 = [l57 isKindOfClass:CAMetalLayer.class];
                 CGSize d57 = m57 ? ((CAMetalLayer *)l57).drawableSize : CGSizeZero;
-                NSLog(@"[GLGeo] Task57 render-thread layer read (split-brain probe): bounds=%.0fx%.0f drawable=%.0fx%.0f scale=%.2f sublayers=%lu surface=%dx%d (对照主线程心跳: bounds/drawable 恒 1180x820)",
+                NSLog(@"[GLGeo] Task57 render-thread layer read (split-brain probe): bounds=%.0fx%.0f drawable=%.0fx%.0f scale=%.2f sublayers=%lu surface=%dx%d (compare with main-thread heartbeat: bounds/drawable always 1180x820)",
                       l57.bounds.size.width, l57.bounds.size.height,
                       d57.width, d57.height, (double)l57.contentsScale,
                       (unsigned long)[l57.sublayers count], surfW, surfH);
             }
         }
-        // Task 55（画面分裂根治）：几何失配首检出时先治本——梯度式重对齐
-        //（A 几何信号 / B 延迟重建 / C 反向转置旅程，一步治愈即停；治愈判定
-        // = querySurface == layer bounds，杜绝 Task53 假成功）。成功后
-        // surface==viewport==drawable==bounds，补偿全部回到 no-op。
-        // Task 57 补丁生效时本分支预期不可达（表面冻结在创建几何 = viewport）；
-        // 可达即说明 viewport 变化（窗口 resize）——stepB 销毁重建成为冻结
-        // 体制下唯一合法换尺寸通道，予以保留。
+        // Task55 (root-cause fix for the split image): on first geometry mismatch, attempt progressive
+        // realignment (A geometry signal / B delayed recreation / C reverse-transposition journey; stop
+        // on the first heal). Healing requires querySurface == layer bounds, preventing Task53 false positives.
+        // On success, surface==viewport==drawable==bounds and all compensations return to no-op.
+        // This branch should be unreachable with the Task57 patch (surface is frozen at the creation geometry
+        // == viewport). If reached, the viewport changed (window resize); step B recreation is the only legal
+        // way to change size under the frozen-surface policy, so retain this path.
         if (ame_task53_realign_surface()) {
-            // 表面已对齐：mode 复位，下一帧重新 latch（几何对齐 + FBO0 有
-            // 内容 → NORMAL，geo-heal 经 Task50 恢复分支自动退出）。
+            // Surface is aligned: reset mode and relatch next frame (matching geometry + FBO0 content
+            // → NORMAL; geo-heal exits automatically through Task50's recovery branch).
             s_mode = 0;
             g_ame53_transposed = 0;
-            // 刷新本地 surfW/surfH：下方探针 / hierarchy / guard 全部输出新
-            // 表面的真实状态。surface 形参此时是已销毁的旧句柄，改查
-            // currentBundle 里的新表面。
+            // Refresh local surfW/surfH so the probes/hierarchy/guard below report the new surface's
+            // actual state. The surface parameter is now the destroyed old handle; query the new surface
+            // in currentBundle instead.
             basic_render_window_t *b53 = currentBundle;
             if (b53 != NULL && es.querySurface != NULL && b53->gl.surface != EGL_NO_SURFACE) {
                 EGLint sw53 = 0, sh53 = 0;
-                // Task 58：常量修正（0x3056=EGL_HEIGHT、0x3057=EGL_WIDTH，
-                // 与探针/验证函数同源同修）。
+                // Task58: corrected constants (0x3056=EGL_HEIGHT, 0x3057=EGL_WIDTH;
+                // fixed consistently with the probe/verification function).
                 if (es.querySurface(g_EglDisplay, b53->gl.surface, EGL_WIDTH, &sw53) &&
                     es.querySurface(g_EglDisplay, b53->gl.surface, EGL_HEIGHT, &sh53)) {
                     surfW = sw53;
@@ -834,15 +839,16 @@ static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapInde
               viewport[2], viewport[3], surfW, surfH, s_mode,
               100.0 * (double)viewport[2] * (double)viewport[3] / ((double)surfW * (double)surfH));
         s_mode = 2;
-        // Task51 Fix F'（Task55 语义反转）：转置固化期一次性把 drawableSize
-        // 钉到【横屏 bounds 值】——与 Task52 guard 的 heal-align 同向。
-        // 旧语义（钉成 surface 转置值"present 自洽"）被 a901050 日志证伪：
-        // 它与 guard 一起反向钉死转置，阻断 ANGLE 依据 drawableSize 自愈；
-        // 且旧语义下 drawableSize 拉锯（updateSavedResolution 写 bounds）即
-        // 用户看到的"画面分裂"。失配期间保持单一写者单一方向（横屏信号）；
-        // 治愈后本写入变同值 no-op。主线程 dispatch_async（e6886e2 证明主
-        // 线程写有效；622166a 证伪渲染线程写）。
-        // 触发条件 s_mode != 2 保证整个失配剧集至多执行一次，guard 随后接管。
+        // Task51 Fix F' (semantics reversed by Task55): during persistent transposition, set drawableSize
+        // once to the **landscape bounds value**, matching the Task52 guard's heal-align direction.
+        // The old behavior (pinning to the transposed surface size for "present consistency") was disproved
+        // by log a901050: together with the guard, it pinned the transposition in the wrong direction and
+        // blocked ANGLE from self-healing based on drawableSize. Under the old behavior, drawableSize
+        // oscillation (updateSavedResolution writing bounds) also caused the user's split image.
+        // Keep one writer and one direction (landscape signal) during mismatch; after healing, this becomes
+        // a same-value no-op. Dispatch asynchronously to the main thread (e6886e2 proved main-thread writes
+        // work; 622166a disproved render-thread writes).
+        // s_mode != 2 ensures this runs at most once per mismatch episode; the guard takes over afterward.
         void *ame51_layer_ref = g_ame48_layer_cf;
         if (ame51_layer_ref != NULL) {
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -853,9 +859,8 @@ static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapInde
                         CGSize old = ml.drawableSize;
                         CGFloat bw = MAX(1.0, round(l.bounds.size.width));
                         CGFloat bh = MAX(1.0, round(l.bounds.size.height));
-                        // Task 60：像素口径（bounds x contentsScale）——与
-                        // surface/drawable 全链一致；旧 1x 点数写入会把 2x
-                        // drawableSize 拉回 1x（模糊回归）。
+                        // Task 60: use pixel units (bounds × contentsScale), matching the surface/drawable
+                        // pipeline. The old 1x point-based write reset a 2x drawableSize to 1x (blur regression).
                         CGFloat sc51 = l.contentsScale;
                         if (sc51 <= 0.0) sc51 = 1.0;
                         CGSize tgt51 = CGSizeMake(round(bw * sc51), round(bh * sc51));
@@ -872,31 +877,31 @@ static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapInde
                 }
             });
         }
-        }  // Task53 else：重对齐不可用/失败 → 既有补偿路径（行为不变）
+        }  // Task53 else: realignment unavailable/failed → use existing compensation path (behavior unchanged).
     }
 
     if (probe) {
-        // Task 75：回读探针退役（整块移除）。原实现在此对当前 FBO 中心、
-        // FBO 0 中心、FBO 0 远角各做 8x8 glReadPixels（UBYTE + FLOAT 兜底），
-        // uniq 计数判断“有内容”。4770b53 日志：同一探针连续 46 次成功后
-        // （swap#1..#8200 全部 err=0x0），第 47 次 swap#8400（游戏暂停、
-        // dynamic_fps 降帧剧集）在回读中触发 angle::CopyBGRA8ToRGBA8+0x114
-        // SIGBUS，帧栈：GL_ReadPixels ← ame_task41_swap_forensics ←
-        // gl_swap_buffers。根因：drawFb==0 时回读对象是即将 eglSwapBuffers
-        // 呈现的 CAMetalLayer drawable 纹理，ANGLE Metal readback 的 staging
-        // blit 与 drawable 生命周期存在竞态（暂停时帧间隔变长、回收周期
-        // 改变，竞态窗口被踩中）；iOS glReadPixels 间歇崩溃为社区已知现象，
-        // 上游 Amethyst swap 路径从不回读。诊断收益早已归零（Task58 后几何
-        // 判据已覆盖），风险是整机崩溃——退役，swap 路径自此零回读。
+        // Task 75: readback probe retired (the entire block was removed). It used to run 8x8 glReadPixels
+        // at the center of the current FBO, the center of FBO 0, and a far corner of FBO 0 (UBYTE with
+        // FLOAT fallback), then count unique values to decide whether content was present.
+        // Log 4770b53: after 46 successful probes (swap#1..#8200 all err=0x0), the 47th at swap#8400
+        // (game pause screen, reduced rate from dynamic_fps) triggered angle::CopyBGRA8ToRGBA8+0x114
+        // SIGBUS during readback. Stack: GL_ReadPixels ← ame_task41_swap_forensics ← gl_swap_buffers.
+        // When drawFb==0, the readback target is the CAMetalLayer drawable about to be presented by
+        // eglSwapBuffers. ANGLE Metal's staging blit races with the drawable lifecycle (longer intervals
+        // and a changed reclamation cycle during pauses exposed the race). Intermittent iOS glReadPixels
+        // crashes are known in the community; the upstream Amethyst swap path never reads back.
+        // Diagnostics had no remaining value (geometry checks cover this since Task58), while the risk
+        // was a full-device crash, so readback was retired and the swap path now performs none.
         NSLog(@"[RenderDiag] swap#%lu (Task75 geo-probe): drawFb=%d readFb=%d viewport=%d,%d %dx%d surface=%dx%d mode=%d (readback retired -- CopyBGRA8ToRGBA8 SIGBUS @4770b53)",
               swapIndex, drawFb, readFb, viewport[0], viewport[1], viewport[2], viewport[3],
               surfW, surfH, s_mode);
 
-        // Task51 取证：呈现层可见性全量 dump（首帧 + 每 500 帧，主线程执行）。
-        // 动机：连续四轮日志（48/49/50/51 基线）都显示"GL 全绿 + present 成功"
-        // 但用户黑屏——断点极可能在 UIKit 呈现层（layer 不在树 / 被遮挡 /
-        // hidden / transform 旋转 / window 不显示）。本 dump 一次打印全部
-        // 可见性关键状态，下轮日志无论好坏都能一锤定音。
+        // Task51 diagnostic: dump full presentation-layer visibility state (first frame + every 500 frames, on main thread).
+        // Motivation: four consecutive log rounds (48/49/50/51 baselines) showed "all GL green + presentation succeeded,"
+        // yet the user still saw a black screen. The fault was likely in UIKit presentation (layer absent from the tree,
+        // occluded, hidden, rotated by a transform, or its window not visible). This dump logs all key visibility state
+        // at once to provide a conclusive answer in the next log, whether the problem is present or not.
         if (swapIndex == 1 || (swapIndex > 0 && swapIndex % 500 == 0)) {
             void *ame51_h_layer = g_ame48_layer_cf;
             int h_sw = surfW, h_sh = surfH;
@@ -938,18 +943,18 @@ static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapInde
         }
 
         // ====================================================================
-        // Task 52：呈现层可见性卫兵（每 50 帧一次，主线程异步执行，零渲染阻塞）。
+        // Task 52: presentation-layer visibility guard (every 50 frames; asynchronous on the main thread, no render blocking).
         //
-        // 根因（hierarchy dump 实锤，b805f51 日志 8967 行）：CAMetalLayer
-        //   hid=1 —— 供应商 libSDL3.dylib 的 Zalith 同源嵌入补丁在每次真实
-        //   SDL_CreateWindow / SDL_Metal_CreateView 时按类名查找并
-        //   [GameSurfaceView setHidden:YES]（反汇编 @0x152e6c）。GL 帧全部
-        //   呈现进这个被隐藏的 layer → 渲染全绿 + 黑屏。
-        // 本卫兵持续执法三不变量（嵌入层的步骤 3.5 负责首拍，这里兜住
-        //   MetalCreate/后续嵌入重跑/任何外部隐藏者的复发）：
-        //   1) 渲染 layer 可见；2) SDL 触摸视图 z 序高于画面层；3)
-        //   drawableSize == surface 尺寸（present 自洽，接替一次性 Fix F'，
-        //   对抗宿主 updateSavedResolution 的周期性写回）。
+        // Root cause (proven by hierarchy dump in line 8967 of log b805f51): CAMetalLayer had hid=1.
+        // The vendor's libSDL3.dylib contains an embedding patch from the Zalith code lineage that, on each
+        // real SDL_CreateWindow / SDL_Metal_CreateView, looks up a class name and calls
+        // [GameSurfaceView setHidden:YES] (disassembly at @0x152e6c). All GL frames were presented into
+        // this hidden layer, producing healthy rendering but a black screen.
+        // This guard continuously enforces three invariants (embedding step 3.5 handles the initial frame;
+        // this catches MetalCreate, subsequent embedding reruns, and any external code hiding the view):
+        //   1) Render layer is visible; 2) SDL touch view has higher z-order than the image layer;
+        //   3) drawableSize == surface size (consistent presentation; replaces one-shot Fix F' and
+        //      counteracts periodic writes from host updateSavedResolution).
         // ====================================================================
         if (swapIndex == 1 || (swapIndex > 0 && swapIndex % 50 == 0)) {
             int g52_sw = surfW, g52_sh = surfH;
@@ -957,7 +962,7 @@ static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapInde
             void *g52_layer = g_ame48_layer_cf;
             dispatch_async(dispatch_get_main_queue(), ^{
                 @try {
-                    // 1) 揭开渲染层（主线程读写，权威值）
+                    // 1) Unhide the render layer (read/write on the main thread, the authoritative source).
                     UIView *g52_gs = [SurfaceViewController surface];
                     if (g52_gs != nil && (g52_gs.hidden || g52_gs.layer.hidden)) {
                         g52_gs.hidden = NO;
@@ -965,7 +970,7 @@ static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapInde
                         NSLog(@"[GLGeo] Task52 guard #%lu: render layer was HIDDEN by external code -- UN-HIDDEN (surface=%dx%d)",
                               g52_idx, g52_sw, g52_sh);
                     }
-                    // 2) z 序：SDL 触摸视图必须在画面层之上（否则触摸被画面层截走）
+                    // 2) Z-order: the SDL touch view must be above the image layer (otherwise the image layer intercepts touches).
                     UIView *g52_sdl = (__bridge UIView *)ame_hook_getEmbeddedSDLView();
                     if (g52_gs != nil && g52_sdl != nil && g52_gs.superview != nil &&
                         g52_sdl.superview == g52_gs.superview) {
@@ -978,25 +983,25 @@ static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapInde
                                   g52_idx);
                         }
                     }
-                    // 3) present 几何执法（Task55 语义自适应）：
-                    //    - 失配未治愈（转置锁死）：写【横屏 bounds 值】——持续
-                    //      给 ANGLE“回横屏”信号。a901050 日志铁证：写 surface
-                    //      转置值（820x1180）是反向钉死——它阻断 ANGLE 依据
-                    //      drawableSize 自愈的一切可能（622166a 铁证 ANGLE
-                    //      具备跟随 layer 几何能力；Task50 证明主线程写入是
-                    //      唯一可靠通道）。若 ANGLE 不跟随，压扁 blit + CA
-                    //      拉伸双重互逆、纵横比还原，优于持续压扁+拉锯分裂。
-                    //    - 已治愈/无失配：写 surface 值（present 自洽维护，
-                    //      治愈后两值相同，同值 no-op）。
+                    // 3) Enforce presentation geometry (semantics adapt per Task55):
+                    //    - If mismatch remains unfixed (transposition stuck), write the **landscape bounds**
+                    //      value to keep signaling ANGLE to return to landscape. Log a901050 proves that writing
+                    //      the transposed surface value (820x1180) pins the wrong orientation and prevents ANGLE
+                    //      from self-healing based on drawableSize. Log 622166a proves ANGLE can follow layer
+                    //      geometry; Task50 proves main-thread writes are the only reliable channel. If ANGLE
+                    //      does not follow, the squeeze blit and CA stretch are inverse transformations that
+                    //      restore the aspect ratio, better than persistent squeezing and split-image oscillation.
+                    //    - If healed/no mismatch, write the surface value (maintain presentation consistency;
+                    //      after healing both values match, so this is a no-op).
                     CALayer *g52_l = (__bridge CALayer *)g52_layer;
                     if (g52_l != nil && [g52_l isKindOfClass:CAMetalLayer.class] &&
                         g52_sw > 0 && g52_sh > 0) {
                         CAMetalLayer *g52_ml = (CAMetalLayer *)g52_l;
                         CGSize g52_old = g52_ml.drawableSize;
                         BOOL g52_heal = ame_gl_surface_transposed();
-                        // Task 60：heal 分支同样用像素口径（bounds x
-                        // contentsScale）——与 present 分支的 surface 像素
-                        // 口径同尺度，避免把 2x drawableSize 拉回 1x。
+                        // Task60: use pixel units (bounds × contentsScale) in the heal branch too,
+                        // matching the surface pixel units in the present branch and avoiding
+                        // resetting a 2x drawableSize to 1x.
                         CGFloat g52_sc = g52_l.contentsScale;
                         if (g52_sc <= 0.0) g52_sc = 1.0;
                         CGSize g52_target = g52_heal
@@ -1020,73 +1025,74 @@ static void ame_task41_swap_forensics(EGLSurface surface, unsigned long swapInde
             });
         }
 
-        // latch 判定（Task 75 重写：纯几何判据，零回读）。
-        // 旧版依赖 FBO 0 内容回读（fbo0Content/fbo0Flat）——回读已随 Task75
-        // 退役（SIGBUS 崩溃源，见上方退役说明）。新判据：几何对齐
-        // （viewport==surface）本身就是"帧能铺满后缓冲"的充要信号（Task58
-        // 定案：surface==viewport 的会话 100% 健康，本日志 43 次探针同证）。
-        // 几何失配的检出/治愈/降级路径（geoMismatch 分支：Task57 探测 →
-        // Task55 realign → Task51/52 钉扎）不受影响，全部零回读。进入
-        // mode=2 的唯一通道 = geoMismatch 分支的 realign 失败；退出通道保留
-        // Task50 语义（几何恢复对齐即退出，不再要求内容证据）。
+        // Latch check (rewritten in Task75: geometry only, no readback).
+        // The old version relied on reading FBO 0 content (fbo0Content/fbo0Flat); readback was retired
+        // in Task75 as a SIGBUS crash source (see the retirement note above). New criterion: aligned
+        // geometry (viewport==surface) is both necessary and sufficient to show the frame can fill the
+        // back buffer. Task58 concluded that sessions with surface==viewport are 100% healthy, confirmed
+        // by 43 probes in this log.
+        // Geometry-mismatch detection/healing/fallback (geoMismatch branch: Task57 probe → Task55 realign
+        // → Task51/52 pinning) is unchanged and uses no readback. The only way into mode=2 is failed
+        // realignment in the geoMismatch branch; exit preserves Task50 semantics (leave geo-heal when
+        // geometry realigns, with no content evidence required).
         if (s_mode == 0 && !geoMismatch) {
             s_mode = 1;
             NSLog(@"[RenderDiag] Task41 latch: NORMAL present (geometry aligned, readback retired by Task75)");
         } else if (s_mode == 2 && !geoMismatch) {
-            // Task 50 语义保留（判据改几何）：几何恢复对齐 → 退出 geo-heal，
-            // 停止逐帧 scratch 中转（旧版一旦进入 mode=2 便永不退出，几何
-            // 修复后仍每帧 blit，白耗带宽且状态机无法回到正常呈现路径）。
+            // Preserve Task50 semantics (criterion changed to geometry): once geometry realigns, exit geo-heal
+            // and stop scratch transfers every frame. The old version never left mode=2 after entering it,
+            // so it kept blitting after geometry was fixed, wasting bandwidth and preventing the state machine
+            // from returning to the normal presentation path.
             s_mode = 1;
             NSLog(@"[RenderDiag] Task50 heal disengaged: geometry aligned (viewport==surface) -- back to normal present");
         }
     }
 
     if (s_mode == 2) {
-        // Task 49：两段 scratch-FBO blit（源=MC 帧 viewport 区域，缩放铺满 FBO 0）
+        // Task 49: two-pass scratch-FBO blit (source = MC viewport region, scaled to fill FBO 0).
         ame_task49_geo_heal_blit(es, drawFb, readFb, viewport[2], viewport[3], surfW, surfH);
     }
 }
 
 // ============================================================================
-// Task 48：呈现几何卫兵（GL 路径黑屏根因修复）
+// Task 48: presentation geometry guard (root-cause fix for black screens on the GL path).
 //
-// 设备铁证（latestlog 1518ce1，iPad Air M4 / iPadOS 26.6）：
-//   - 渲染管线 100% 健康：1032 帧 swap 全成功、fps=57、swapFail=0、GL 零错误、
-//     MC 26.3 到标题画面（图集/音效全载入）、fbo 内容探针 uniq=44-49；
-//   - [RenderDiag] EGL surface 创建时 = 2360x1640（layer 当时正确，eglQuerySurface
-//     证实），但到交换时 surface = 1640x2360（竖屏转置）且 1032 帧永不恢复；
-//   - CAMetalLayer 心跳报 drawable=2360x1640（横屏正确）、bounds=1180x820；
-//   - MC 的 glViewport = 1180x820（SDL3-on-iOS 以"点"而非"像素"回报窗口尺寸，
-//     MC 请求 2360x1640 被钳到 1180x820 → MC 实际以 1x 渲染）。
-// 三者互相失配 → 呈现的 backbuffer 维度与 drawable 维度对不上 → 屏幕全黑。
+// Device evidence (latestlog 1518ce1, iPad Air M4 / iPadOS 26.6):
+//   - The render pipeline was fully healthy: all 1,032 swaps succeeded, fps=57, swapFail=0, no GL errors,
+//     MC 26.3 reached the title screen (atlases/audio loaded), and the FBO content probe reported uniq=44–49.
+//   - [RenderDiag] EGL surface was 2360x1640 at creation (the layer was correct, confirmed by eglQuerySurface),
+//     but was 1640x2360 (portrait-transposed) by swap and remained so for all 1,032 frames.
+//   - CAMetalLayer heartbeat reported drawable=2360x1640 (correct landscape), bounds=1180x820.
+//   - MC glViewport=1180x820 (SDL3-on-iOS reports window dimensions in "points," not "pixels";
+//     MC requested 2360x1640 but was clamped to 1180x820, so MC actually rendered at 1x).
+// These dimensions disagreed, so the presented backbuffer did not match the drawable and the screen was black.
 //
-// 修复策略（对"谁转置了 surface"不做任何单一假设，全部自愈）：
-//   1) 创建钉扎：MobileGlues 渲染器在 eglCreateWindowSurface 前把
-//      drawableSize 钉到 layer.bounds（点数）——即 MC 将要渲染的真实尺寸
-//      （1180x820）。ANGLE 在创建时刻会读 layer（本日志已证实此读取可靠），
-//      于是 surface == MC viewport == drawable，三者一致，画面 1:1 全屏。
-//   2) 交换卫兵：每次 eglSwapBuffers 前核对 surface 实际尺寸 vs layer
-//      drawableSize，不等则立刻把 drawableSize 钉回 surface 尺寸
-//      （drawable 必须等于将要呈现的 backbuffer 尺寸——这是"帧能上屏"的
-//      硬约束，无论 ANGLE/MG/旋转把哪边改了都能收敛）。
-//   3) 重建升级：若 surface 偏离创建时的期望尺寸并稳定持续 30+ 帧，
-//      限速（5s）重建 EGL window surface（先钉 layer，再创建，MG 前端
-//      MakeCurrent 重绑，销毁旧表面）——重建是重置 ANGLE 内部表面尺寸的
-//      唯一可靠手段。最多 3 次，避免无限循环。
+// Fix strategy (self-heal without assuming which component transposed the surface):
+//   1) Pin on creation: for MobileGlues, set drawableSize to layer.bounds (points) before
+//      eglCreateWindowSurface—the actual size MC will render (1180x820). ANGLE reads the layer
+//      at creation (confirmed by this log), so surface == MC viewport == drawable and the image is full-screen at 1:1.
+//   2) Swap guard: before each eglSwapBuffers, compare the actual surface size with layer drawableSize.
+//      If they differ, immediately pin drawableSize to the surface size (drawable must match the backbuffer
+//      about to be presented; this is a hard requirement for displaying the frame, and converges regardless
+//      of whether ANGLE/MG/rotation changed either side).
+//   3) Escalate to recreation: if the surface differs from its creation-time expected size for 30+ consecutive
+//      frames, rate-limit (five seconds) an EGL window-surface recreation (pin layer first, create, rebind
+//      with MG frontend MakeCurrent, destroy old surface). Recreation is the only reliable way to reset
+//      ANGLE's internal surface dimensions. Allow at most three attempts to avoid an infinite loop.
 //
-// 线程安全：卫兵在 MC 渲染线程（上下文 current）运行；只触碰 CALayer/
-// CAMetalLayer API（Apple 明确支持渲染线程驱动 CAMetalLayer），不碰 UIKit。
-// layer 指针在创建时以 CFBridgingRetain 缓存，避免渲染线程访问 UIView。
-// Vulkan 路径完全不受影响（本文件仅 GL 桥）。
+// Thread safety: the guard runs on the MC render thread (context current) and touches only CALayer/
+// CAMetalLayer APIs (Apple explicitly supports driving CAMetalLayer from a render thread), not UIKit.
+// Cache the layer pointer with CFBridgingRetain at creation so the render thread does not access UIView.
+// The Vulkan path is unaffected (this file is only the GL bridge).
 // ============================================================================
-//（声明已前置至 Task49 静态区——见 g_ame48_layer_cf）
-static int   g_ame48_expected_w = 0;         // 期望表面宽（创建钉扎值）
-static int   g_ame48_expected_h = 0;         // 期望表面高
-static long  g_ame48_drift_swaps = 0;        // surface != drawable 的连续帧数（纯取证）
-static int   g_ame48_recreates = 0;          // 历史保留（Task50 起不再重建）
+// (Declaration moved to the Task49 static section above; see g_ame48_layer_cf.)
+static int   g_ame48_expected_w = 0;         // Expected surface width (creation-time pinned value).
+static int   g_ame48_expected_h = 0;         // Expected surface height.
+static long  g_ame48_drift_swaps = 0;        // Consecutive frames with surface != drawable (diagnostics only).
+static int   g_ame48_recreates = 0;          // Retained for history (no recreation since Task50).
 static uint64_t g_ame48_last_recreate_ms = 0;
 
-/// 创建时调用：缓存呈现 layer、记录期望尺寸、复位卫兵状态。
+/// Called at creation: cache the presentation layer, record expected dimensions, and reset guard state.
 static void ame48_record_creation(CALayer *layer, EGLDisplay dpy, EGLSurface surface) {
     if (g_ame48_layer_cf != NULL) {
         CFRelease(g_ame48_layer_cf);
@@ -1100,9 +1106,9 @@ static void ame48_record_creation(CALayer *layer, EGLDisplay dpy, EGLSurface sur
     g_ame48_last_recreate_ms = 0;
     g_ame48_expected_w = 0;
     g_ame48_expected_h = 0;
-    // 期望值 = 创建完成时 ANGLE 报告的表面实际尺寸（创建钉扎生效后
-    // 即 MC 的渲染尺寸）。查询失败则保持 0（卫兵漂移检测停用，
-    // 但"drawable == surface"的逐帧钉扎仍然全程有效）。
+    // Expected value = actual surface dimensions reported by ANGLE after creation (the MC render dimensions
+    // once creation-time pinning takes effect). Leave it at 0 if querying fails (disable drift detection,
+    // but per-frame drawable == surface pinning remains active throughout).
     ame_es_t es = ame_es();
     if (es.querySurface != NULL && surface != EGL_NO_SURFACE) {
         EGLint sw = 0, sh = 0;
@@ -1116,20 +1122,20 @@ static void ame48_record_creation(CALayer *layer, EGLDisplay dpy, EGLSurface sur
           g_ame48_layer_cf, g_ame48_expected_w, g_ame48_expected_h);
 }
 
-/// 交换卫兵：gl_swap_buffers 每帧调用（渲染线程、上下文 current）。
-/// Task 50：本函数已降级为**纯取证**（只读 + 日志，零写入）。
+/// Swap guard: called every frame by gl_swap_buffers (render thread, context current).
+/// Task50 downgraded this function to **diagnostics only** (read-only + logging, no writes).
 ///
-/// 622166a 设备日志证明旧卫兵的全部三个自愈动作无效且有害：
-///   1. 跨线程写 drawableSize（渲染线程 vs 主线程 CA 提交树状态分叉：
-///      心跳读到 drawable=2360x1640 而卫兵读到 1640x2360，全日志 0 条
-///      "Task48 pin" = 逐帧钉扎从未生效）；
-///   2. 同 layer 二次 eglCreateWindowSurface 恒 EGL_BAD_ALLOC 0x3003；
-///   3. 钉扎与 updateSavedResolution（旋转时主线程写 2x）互相打架。
-/// Task60 之后几何由"原生 scale 像素单一事实源"保证一致（gl_init_context
-/// 创建时对齐 + updateSavedResolution GL 分支跟随 bounds x scale 像素），
-/// 本函数只保留漂移取证（surface vs drawable，同为像素口径）。
-/// ANGLE 会随 layer 自然 resize（622166a 的 surface 转置事件即实证），
-/// 瞬态失配由 Task49 geo-heal blit 兜底（双向 latch，几何恢复即退出）。
+/// Device log 622166a showed all three self-healing actions in the old guard were ineffective and harmful:
+///   1. Cross-thread drawableSize writes (render-thread vs. main-thread CA committed-tree state diverged:
+///      heartbeat read drawable=2360x1640 while the guard read 1640x2360; there were no "Task48 pin"
+///      entries in the entire log, proving per-frame pinning never took effect).
+///   2. A second eglCreateWindowSurface on the same layer always returned EGL_BAD_ALLOC 0x3003.
+///   3. Pinning conflicted with updateSavedResolution (which writes 2x from the main thread during rotation).
+/// Since Task60, geometry consistency is guaranteed by a single source of truth in native-scale pixels
+/// (align at gl_init_context creation + GL branch of updateSavedResolution follows bounds × scale).
+/// This function now only records drift (surface vs. drawable, both in pixels).
+/// ANGLE naturally resizes with the layer (the surface transposition in 622166a proves this);
+/// Task49 geo-heal blit handles transient mismatch and exits when geometry realigns (two-way latch).
 static void ame48_swap_geometry_guard(basic_render_window_t *bundle) {
     if (bundle == NULL || bundle->gl.surface == EGL_NO_SURFACE) return;
     CALayer *layer = (__bridge CALayer *)g_ame48_layer_cf;
@@ -1140,7 +1146,7 @@ static void ame48_swap_geometry_guard(basic_render_window_t *bundle) {
     EGLint sw = 0, sh = 0;
     if (!es.querySurface(g_EglDisplay, bundle->gl.surface, EGL_WIDTH, &sw) ||
         !es.querySurface(g_EglDisplay, bundle->gl.surface, EGL_HEIGHT, &sh)) {
-        return;  // 查询失败（EGL 错误）不干预
+        return;  // Do not intervene if the query fails (EGL error).
     }
     if (sw <= 0 || sh <= 0) return;
 
@@ -1172,50 +1178,48 @@ static void* load_egl_symbol(void *dl_handle, const char *symbol) {
 }
 
 // ============================================================================
-// Task 36：MobileGlues 前端 EGL 路由（GL 路径黑屏修复）
+// Task 36: route EGL calls through the MobileGlues frontend (fix black screens on the GL path).
 //
-// 设备实测（latestlog e28e4c3 + libmobileglues.dylib）：MC 26.3 的 OpenGL
-// 后端被接受（c71dcfa 的 glGetError 一致性检查已过），渲染循环全速运转
-// （fps=57~58、eglSwapBuffers 成功 485 次、零失败、零 GL 错误），但屏幕全黑、
-// 只有声音。日志里 MobileGlues 自己给出了三条铁证：
+// Device test (latestlog e28e4c3 + libmobileglues.dylib): MC 26.3 accepted the OpenGL
+// backend (passed c71dcfa's glGetError consistency check), and the render loop ran at full speed
+// (fps=57–58, 485 successful eglSwapBuffers calls, no failures or GL errors), but the screen was black
+// and only audio played. MobileGlues' own log provided three conclusive clues:
 //
-//   [MG] SYMBOL THEFT: ... （平坦命名空间把 gl* 解析给了别的镜像 —— 警告性）
+//   [MG] SYMBOL THEFT: ... (flat namespace resolved gl* to another image — warning only).
 //   [MG] depth filter scan: context untracked (EGL bypassed this layer)...
-//   （深位查询返回 -1，每上下文状态全部落在 context-0 回退实例上）
+//   (depth query returned -1; all per-context state fell back to the context-0 instance).
 //
-// 根因：本 bridge 此前把 MobileGlues 的 EGL 符号从 libtinygl4angle.dylib
-// （raw ANGLE）解析，上下文/MakeCurrent 全部绕过了 MobileGlues 2.0.16+ 的
-// 前端 EGL。MobileGlues 的 egl/context.cpp 里 MGContext 虚拟上下文记录只能
-// 由前端 eglCreateContext 创建、由前端 eglMakeCurrent 绑定（g_current_ctx +
-// mg_framebuffer_bind_context(id) + gl_state 重指向）。被绕过时
-// mg_context_make_current 走 “handle is not tracked, leaving no current
-// record” 分支 —— g_current_ctx 永远为 NULL，FBO 转译/状态机全部退化为
-// 进程级单例，MC 26.3 RenderPearl 的合成画面从未进入默认帧缓冲，
-// eglSwapBuffers 呈现的是从未被画过的黑帧。
+// Root cause: this bridge previously resolved MobileGlues EGL symbols from libtinygl4angle.dylib
+// (raw ANGLE), bypassing MobileGlues 2.0.16+'s frontend EGL for all context/MakeCurrent calls.
+// In MobileGlues egl/context.cpp, an MGContext virtual-context record can only be created by frontend
+// eglCreateContext and bound by frontend eglMakeCurrent (g_current_ctx + mg_framebuffer_bind_context(id)
+// + gl_state redirection). When bypassed, mg_context_make_current takes the "handle is not tracked,
+// leaving no current record" branch: g_current_ctx remains NULL, FBO translation/state management
+// degrade to process-wide singletons, MC 26.3 RenderPearl's composite never reaches the default
+// framebuffer, and eglSwapBuffers presents a black frame that was never drawn to.
 //
-// 修复：生命周期函数（eglBindAPI/eglCreateContext/eglDestroyContext/
-// eglMakeCurrent/eglSwapBuffers/eglSwapInterval）改经 libmobileglues.dylib
-// 的前端 EGL；基础设施函数（display/config/surface 等 —— 前端本来就是纯
-// 透传）保持 raw ANGLE，两者指向同一个 ANGLE 实例（tinygl4angle 只是
-// libEGL/libGLESv2 framework 的别名垫片）。
+// Fix: route lifecycle functions (eglBindAPI/eglCreateContext/eglDestroyContext/eglMakeCurrent/
+// eglSwapBuffers/eglSwapInterval) through libmobileglues.dylib's frontend EGL. Keep infrastructure
+// functions (display/config/surface, etc.—already pure pass-throughs in the frontend) on raw ANGLE.
+// Both paths point to the same ANGLE instance (tinygl4angle is only an alias shim for libEGL/libGLESv2).
 //
-// 时序约束：前端函数内部的 LOAD_EGL 静态指针是首次调用时一次性初始化的，
-// 而后端句柄 `egl` 只在 mg_init_gles()（Apple 平台）里绑定；mg_init_gles
-// 又需要“有当前上下文”才能做正确的 caps 检测。因此在首个前端调用之前，
-// 用 raw ANGLE 建一个 16x16 pbuffer + 临时 ES 上下文 → eglMakeCurrent →
-// 调 mg_init_gles()（真实上下文在场，caps 检测有效）→ 释放并销毁临时资源
-// → 再把生命周期指针切换到前端。引导失败则保持旧行为（全 raw ANGLE），
-// 不引入新风险。
+// Ordering constraint: the frontend's internal LOAD_EGL static pointers initialize only on first call,
+// while its backend handle `egl` is bound only inside mg_init_gles() (on Apple). mg_init_gles in turn
+// needs a current context for correct capability detection. Therefore, before the first frontend call,
+// create a 16x16 pbuffer and temporary ES context using raw ANGLE → eglMakeCurrent → call mg_init_gles()
+// (a real context is current, so capability detection works) → release and destroy the temporary resources
+// → then switch lifecycle pointers to the frontend. If bootstrap fails, retain the old all-raw-ANGLE
+// behavior and introduce no additional risk.
 // ============================================================================
-static void *ame_mg_handle = NULL;        // libmobileglues.dylib（前端 EGL/GL）
-static void *ame_mg_angle_handle = NULL;  // libtinygl4angle.dylib（raw ANGLE 垫片）
-static BOOL  ame_mgFrontendActive = NO;   // 生命周期函数已切到前端
-static BOOL  ame_mgBootstrapTried = NO;   // 引导只尝试一次
+static void *ame_mg_handle = NULL;        // libmobileglues.dylib (frontend EGL/GL).
+static void *ame_mg_angle_handle = NULL;  // libtinygl4angle.dylib (raw ANGLE shim).
+static BOOL  ame_mgFrontendActive = NO;   // Lifecycle functions have switched to the frontend.
+static BOOL  ame_mgBootstrapTried = NO;   // Bootstrap is attempted only once.
 
 typedef void (*ame_mg_init_gles_t)(void);
 static ame_mg_init_gles_t ame_mg_init_gles = NULL;
 
-// 引导专用 raw ANGLE 指针（不进 handle 表：仅 bootstrap + 取证使用）
+// Raw ANGLE pointers used only for bootstrap (not in the handle table; bootstrap + diagnostics only).
 typedef EGLSurface (*ame_fn_create_pbuffer)(EGLDisplay, EGLConfig, const EGLint *);
 typedef EGLBoolean (*ame_fn_egl_query_surface)(EGLDisplay, EGLSurface, EGLint, EGLint *);
 static ame_fn_create_pbuffer       ame_raw_create_pbuffer = NULL;
@@ -1224,53 +1228,54 @@ static PFNEGLCREATECONTEXTPROC     ame_raw_create_context = NULL;
 static PFNEGLMAKECURRENTPROC       ame_raw_make_current = NULL;
 static PFNEGLDESTROYCONTEXTPROC    ame_raw_destroy_context = NULL;
 static PFNEGLDESTROYSURFACEPROC    ame_raw_destroy_surface = NULL;
-static PFNEGLSWAPINTERVALPROC      ame_raw_swap_interval = NULL;   // Task 76 双保险
+static PFNEGLSWAPINTERVALPROC      ame_raw_swap_interval = NULL;   // Task 76 redundant safeguard.
 
 // ============================================================================
-// [sfpew-egl-route] SFPEW 叠加时的 EGL 解析路由（可 A/B）
+// [sfpew-egl-route] EGL symbol-resolution route when SFPEW is layered (A/B selectable).
 //
-// 符号表事实（vendored SimpleFPEWrapper 全目录核对，不会说谎）：
-//   SFPEW 只导出 7 个 EGL 符号 —— eglGetProcAddress / eglCreateContext /
+// Symbol-table facts (verified across the entire vendored SimpleFPEWrapper tree):
+//   SFPEW exports only seven EGL symbols: eglGetProcAddress / eglCreateContext /
 //   eglDestroyContext / eglMakeCurrent / eglSwapBuffers /
-//   eglSwapBuffersWithDamageEXT / eglSwapBuffersWithDamageKHR。
-//   eglGetDisplay / eglInitialize / eglChooseConfig / eglBindAPI /
-//   eglCreateWindowSurface 一律不导出。
+//   eglSwapBuffersWithDamageEXT / eglSwapBuffersWithDamageKHR.
+//   It does not export eglGetDisplay / eglInitialize / eglChooseConfig / eglBindAPI /
+//   eglCreateWindowSurface.
 //
-// 因此宿主有两种接法，且只有一种成立：
-//   (a) dlsym(SFPEW) 取全部 EGL      -> infra 全部 NULL，必然崩（19ef078d 之前）
-//   (b) dlsym(真后端) 取全部 EGL      -> SFPEW 的 lifecycle 一次都不被调用，
-//       sfpewRegisterContextDispatch / sfpewNoteDispatchCurrentContext 从不登记，
-//       dispatch registry 恒空 -> "No context is current"（19ef078d，当前默认）
-//   (c) 用 SFPEW 的 eglGetProcAddress 解析全部 EGL —— 安卓/FCL 实测模型。
-//       lookup.cpp 里它自动分流：create/destroy/makeCurrent/swap 返回 SFPEW
-//       包装版，其余名字转发后端 g_eglFuncs.eglGetProcAddress。
-//       FCL 三份实测日志（SFPEW+MG、SFPEW+MobileGL 1.7.10 与 1.12.2）
-//       POJAVEXEC_EGL=libSimpleFPEWrapper.so 正是这条路径，两个组合都正常。
+// Therefore, the host has three possible integration models, only one of which works:
+//   (a) dlsym(SFPEW) for all EGL functions → all infrastructure pointers are NULL; crashes (before 19ef078d).
+//   (b) dlsym(the real backend) for all EGL functions → SFPEW lifecycle functions are never called;
+//       sfpewRegisterContextDispatch / sfpewNoteDispatchCurrentContext never register anything,
+//       leaving the dispatch registry empty → "No context is current" (19ef078d, currently the default).
+//   (c) Resolve all EGL functions through SFPEW's eglGetProcAddress—the model tested on Android/FCL.
+//       lookup.cpp routes automatically: create/destroy/makeCurrent/swap return SFPEW wrappers,
+//       while other names forward to backend g_eglFuncs.eglGetProcAddress.
+//       Three FCL device logs (SFPEW+MG, SFPEW+MobileGL 1.7.10, and 1.12.2) used
+//       POJAVEXEC_EGL=libSimpleFPEWrapper.so, exactly this route; both combinations worked.
 //
-// (c) 需要 SFPEW 先 dlopen 后端（SFPEW_EGL，JavaLauncher 已设置）成功。
-// 默认关闭（保持现状），设 AMETHYST_SFPEW_EGL_ROUTE=1 启用，无需重新构建。
+// (c) requires SFPEW to successfully dlopen its backend (SFPEW_EGL, already set by JavaLauncher).
+// Disabled by default (preserves current behavior); set AMETHYST_SFPEW_EGL_ROUTE=1 to enable without rebuilding.
 // ============================================================================
 static BOOL ame_sfpew_egl_route_active = NO;
 
-// Task 179：默认启用。
+// Task 179: enabled by default.
 //
-// 根因（SFPEW lookup.cpp:75-79 的注释，原文）：
+// Root cause (comment in SFPEW lookup.cpp:75-79, original text):
 //   "the wrapper has to drain its pending batch before the frame is presented,
 //    or geometry drawn late in the frame is submitted into the next one and
 //    cleared away."
-// 即 eglSwapBuffers 必须经 SFPEW 的 wrapper：wrapper 要在 present 前把延迟
-// 提交的几何冲出去。模型 (b)（全部 EGL 从真后端 dlsym）绕过了它，于是
-// SFPEW 的 pending batch 从不 drain，每帧几何被推到下一帧再被 clear ——
-// 这正是 MobileGL-gles + SFPEW 加载界面白屏、ANGLE/LTW + SFPEW 全黑的成因。
+// In other words, eglSwapBuffers must go through the SFPEW wrapper, which drains queued geometry
+// before presentation. Model (b) (dlsym all EGL functions from the real backend) bypassed it, so
+// SFPEW's pending batch was never drained: each frame's geometry moved to the next frame and was then
+// cleared. This caused the white loading screen with MobileGL-gles + SFPEW and the fully black screen
+// with ANGLE/LTW + SFPEW.
 //
-// FCL 实测三份日志 POJAVEXEC_EGL=libSimpleFPEWrapper.so，EGL 入口就是 SFPEW
-// 本身，等价于此处的 (c)：lifecycle（create/destroy/makeCurrent/swap）走
-// SFPEW wrapper，infra 由 SFPEW 转发后端（lookup.cpp:1048-1055）。
+// Three FCL device logs used POJAVEXEC_EGL=libSimpleFPEWrapper.so, making SFPEW itself the EGL
+// entry point, equivalent to model (c): lifecycle calls (create/destroy/makeCurrent/swap) use
+// SFPEW wrappers, while infrastructure calls are forwarded by SFPEW to the backend (lookup.cpp:1048-1055).
 //
-// 保留 opt-out：AMETHYST_SFPEW_EGL_ROUTE=0 回到模型 (b)。解析失败同样回落。
+// Keep an opt-out: AMETHYST_SFPEW_EGL_ROUTE=0 returns to model (b). Resolution failure also falls back.
 static BOOL ameSFPEWEglRouteWanted(void) {
     const char *v = getenv("AMETHYST_SFPEW_EGL_ROUTE");
-    if (v == NULL) return YES;                    // 默认启用
+    if (v == NULL) return YES;                    // Enabled by default.
     return !(strcmp(v, "0") == 0);
 }
 
@@ -1287,7 +1292,7 @@ static BOOL ameSFPEWResolveEGL(void) {
         return NO;
     }
     void *(*gpa)(const char *) = NULL;
-    // void* -> 函数指针：经由 union 避免 ISO C 的客体/函数指针混用告警
+    // void* → function pointer: use a union to avoid ISO C diagnostics for mixing object and function pointers.
     union { void *obj; void *(*fn)(const char *); } cast;
     cast.obj = raw;
     gpa = cast.fn;
@@ -1333,21 +1338,21 @@ static BOOL ameSFPEWResolveEGL(void) {
 }
 
 static bool dlsym_EGL() {
-    // EGL 符号来源：
-    //   - Mithril / MobileGL：自带完整 EGL 实现，必须从自身 dylib 解析。
-    //     若复用 ANGLE 的 EGL，会创建 ANGLE 的 Metal 上下文而不是渲染器自己的
-    //     surface，且 eglChooseConfig 在这些渲染器请求的属性组合下可能返回 0
-    //     个配置，触发 gl_init_context 里的 assert(bundle->config) 崩溃。
-    //   - MobileGlues：生命周期函数经其前端 EGL（Task 36，见上方大段注释），
-    //     其余基础设施函数仍从 ANGLE 解析（前端本来就是透传，且必须在
-    //     mg_init_gles 引导完成前避免触发前端内部的 LOAD_EGL 一次性初始化）。
-    //   - 其余渲染器（gl4es / ANGLE / LTW）：全部从 ANGLE 解析。
+    // EGL symbol sources:
+    //   - Mithril / MobileGL: these provide a complete EGL implementation; resolve from their own dylib.
+    //     Reusing ANGLE EGL would create an ANGLE Metal context instead of the renderer's own surface,
+    //     and eglChooseConfig may return zero configurations for their requested attributes, triggering
+    //     assert(bundle->config) in gl_init_context.
+    //   - MobileGlues: route lifecycle functions through its frontend EGL (Task36; see the detailed note above);
+    //     resolve remaining infrastructure functions from ANGLE (the frontend passes these through, and
+    //     must not trigger its one-time internal LOAD_EGL initialization before mg_init_gles completes bootstrap).
+    //   - Other renderers (gl4es / ANGLE / LTW): resolve everything from ANGLE.
     const char *renderer = getenv("AMETHYST_RENDERER");
-    // SFPEW 叠加模式下 AMETHYST_RENDERER 已换成 libSimpleFPEWrapper.dylib，但 EGL
-    // 基础设施必须由真后端提供（对齐安卓：POJAVEXEC_EGL 不变，只换 renderLibrary）。
-    // 真后端名在 AMETHYST_SFPEW_BACKEND（JavaLauncher.m 设置）：
-    //   - MobileGlues：与单独使用时一致，EGL 走 ANGLE
-    //   - MobileGL(-gles)：自带 EGL，从 libMobileGL.dylib 解析
+    // In SFPEW overlay mode, AMETHYST_RENDERER is libSimpleFPEWrapper.dylib, but EGL infrastructure
+    // must come from the real backend (matching Android: POJAVEXEC_EGL stays unchanged; only renderLibrary changes).
+    // The real backend name is in AMETHYST_SFPEW_BACKEND (set in JavaLauncher.m):
+    //   - MobileGlues: same as standalone use; EGL goes through ANGLE.
+    //   - MobileGL(-gles): has its own EGL; resolve from libMobileGL.dylib.
     const char *eglRenderer = renderer;
     if (isSFPEWRenderer(renderer)) {
         const char *sfpewBackend = getenv("AMETHYST_SFPEW_BACKEND");
@@ -1362,13 +1367,13 @@ static bool dlsym_EGL() {
         return false;
     }
 
-    // Task 36：MobileGlues 前端 EGL 准备（不改变任何行为，仅记录句柄/符号，
-    // 真正的指针切换发生在 ame_mgBootstrap 成功之后）。
-    // SFPEW 叠加时 AMETHYST_RENDERER 已是 libSimpleFPEWrapper.dylib，这里必须按
-    // 真后端（eglRenderer）判定，否则前端镜像不加载 → ame_mg_handle 为 NULL →
-    // bootstrap 跳过 → MobileGlues 的 LOAD_EGL 静态指针在后端句柄 `egl` 仍为 NULL
-    // 时被永久初始化成 NULL（static 局部变量只初始化一次，事后 mg_init_gles 也
-    // 救不回来）→ eglCreateContext/eglMakeCurrent 全部失败 → 无当前上下文。
+    // Task36: prepare the MobileGlues frontend EGL (does not change behavior; only records handles/symbols;
+    // pointers actually switch after ame_mgBootstrap succeeds).
+    // Under SFPEW overlay, AMETHYST_RENDERER is libSimpleFPEWrapper.dylib, so test the real backend
+    // (eglRenderer) here. Otherwise the frontend image will not load → ame_mg_handle remains NULL →
+    // bootstrap is skipped → MobileGlues' LOAD_EGL static pointers are permanently initialized to NULL
+    // while backend handle `egl` is still NULL (static locals initialize only once and later mg_init_gles
+    // cannot recover) → eglCreateContext/eglMakeCurrent fail → no current context.
     if (eglRenderer && strcmp(eglRenderer, RENDERER_NAME_MOBILEGLUES) == 0 &&
         !isSelfEglRenderer(eglRenderer)) {
         ame_mg_angle_handle = dl_handle;
@@ -1387,18 +1392,19 @@ static bool dlsym_EGL() {
                   @" (%s) -- EGL stays on raw ANGLE (legacy behavior)",
                   dlerror() ?: "unknown");
         }
-        // 引导与取证用的 raw 指针（始终来自 ANGLE 垫片）
+        // Raw pointers for bootstrap and diagnostics (always from the ANGLE shim).
         ame_raw_create_pbuffer   = (ame_fn_create_pbuffer)load_egl_symbol(dl_handle, "eglCreatePbufferSurface");
         ame_raw_query_surface    = (ame_fn_egl_query_surface)load_egl_symbol(dl_handle, "eglQuerySurface");
         ame_raw_create_context   = (PFNEGLCREATECONTEXTPROC)load_egl_symbol(dl_handle, "eglCreateContext");
         ame_raw_make_current     = (PFNEGLMAKECURRENTPROC)load_egl_symbol(dl_handle, "eglMakeCurrent");
         ame_raw_destroy_context  = (PFNEGLDESTROYCONTEXTPROC)load_egl_symbol(dl_handle, "eglDestroyContext");
         ame_raw_destroy_surface  = (PFNEGLDESTROYSURFACEPROC)load_egl_symbol(dl_handle, "eglDestroySurface");
-        // Task 76：raw eglSwapInterval —— POJAV_DISABLE_VSYNC 双保险直调用。
-        // handle.eglSwapInterval 在 bootstrap 后指向 MobileGlues 前端（前端
-        // 理论上透传后端，但 bef0f08 MG 场 33 条心跳在 max.fps=260 解锁下
-        // fps 从未超过 60，vsync 疑似未被 ANGLE Metal 接受）。raw 直调绕过
-        // 前端转译链，两路各设一次（幂等），设备日志双路打印返回值分诊。
+        // Task76: raw eglSwapInterval for a redundant POJAV_DISABLE_VSYNC call.
+        // After bootstrap, handle.eglSwapInterval points to the MobileGlues frontend (which should
+        // pass through to the backend), but in the MG session in bef0f08, 33 heartbeat logs never
+        // exceeded 60 fps with max.fps=260 unlocked, suggesting ANGLE Metal did not accept VSync changes.
+        // A raw call bypasses the frontend translation chain. Set it through both routes (idempotently)
+        // and log both return values on-device for diagnosis.
         ame_raw_swap_interval    = (PFNEGLSWAPINTERVALPROC)load_egl_symbol(dl_handle, "eglSwapInterval");
     }
 
@@ -1406,30 +1412,28 @@ static bool dlsym_EGL() {
     // EGL context is made current, because init_target_gles() queries
     // GL version/extensions which requires an active context.
 
-    // LTW 模式：eglCreateContext / eglDestroyContext / eglMakeCurrent 三个函数
-    // 必须从 libltw.dylib 直接 dlsym 解析，而非 ANGLE。
+    // LTW mode: resolve eglCreateContext / eglDestroyContext / eglMakeCurrent directly from libltw.dylib,
+    // not from ANGLE.
     //
-    // 原因：LTW 是 OpenGL Core 3.3 → OpenGL ES 3 的转译层，它在这三个函数中
-    // 注入 wrapper 逻辑（创建 ES3 上下文 + 安装 GL 函数指针转译表 + 伪装 ARB 扩展）。
-    // 如果直接使用 ANGLE 的 eglCreateContext，创建的是原生 ES3 上下文，MC 1.17+
-    // 检测到 GL_VERSION 不含 "Core Profile" 会拒绝启动；Sodium/Iris 的 ARB 扩展
-    // 查询也会全部失败。LTW 的 wrapper 让 MC 看到的是 OpenGL 3.3 Core Profile，
-    // 且主动声明 GL_ARB_buffer_storage 等 ARB 扩展，让 Sodium 的 persistent mapped
-    // buffers / texture buffers 和 Iris 的 draw_buffers_blend 正常工作。
+    // Reason: LTW translates OpenGL Core 3.3 to OpenGL ES 3 and injects wrapper logic into these functions
+    // (create an ES3 context, install a GL function-pointer translation table, and emulate ARB extensions).
+    // Using ANGLE's eglCreateContext directly would create a native ES3 context; MC 1.17+ rejects it
+    // because GL_VERSION lacks "Core Profile," and Sodium/Iris ARB extension queries would all fail.
+    // LTW wrappers make MC see OpenGL 3.3 Core Profile and declare extensions such as GL_ARB_buffer_storage,
+    // enabling Sodium persistent mapped buffers/texture buffers and Iris draw_buffers_blend.
     //
-    // 注意：不能用 RTLD_DEFAULT dlsym（iOS 的 flat namespace 中 ANGLE 符号会先命中），
-    // 必须显式 dlopen libltw.dylib 后从其 handle dlsym。
+    // Note: do not use dlsym(RTLD_DEFAULT) (ANGLE symbols are found first in iOS's flat namespace);
+    // explicitly dlopen libltw.dylib and resolve symbols from its handle.
     //
-    // 其余 EGL 函数（eglChooseConfig / eglCreateWindowSurface / eglSwapBuffers 等）
-    // LTW 不做 wrapper，直接从 ANGLE 解析。
-    // 必须按「真后端」eglRenderer 判定，不能用 renderer：
-    // SFPEW 顶替模式下 AMETHYST_RENDERER 已是 libSimpleFPEWrapper.dylib，
-    // renderer 永远不等于 libltw.dylib，于是 useLTW 恒为 NO —— LTW 的
-    // eglCreateContext / eglDestroyContext / eglMakeCurrent 三个 wrapper 一次都
-    // 不会被解析（下面 load_egl_symbol(ltw_handle, ...) 整段被跳过），LTW 注入的
-    // 「建 ES3 上下文 + 安装 GL 函数指针转译表 + 伪装 ARB 扩展」完全不生效，
-    // 转译层形同未接入，画面必黑。非 SFPEW 模式下 eglRenderer == renderer，
-    // 与改动前逐字等价。
+    // LTW does not wrap other EGL functions (eglChooseConfig / eglCreateWindowSurface / eglSwapBuffers, etc.);
+    // resolve those from ANGLE.
+    // Test the "real backend" eglRenderer, not renderer: under SFPEW replacement mode AMETHYST_RENDERER
+    // is libSimpleFPEWrapper.dylib, so renderer never equals libltw.dylib and useLTW would always be NO.
+    // None of LTW's eglCreateContext / eglDestroyContext / eglMakeCurrent wrappers would be resolved
+    // (the load_egl_symbol(ltw_handle, ...) block below would be skipped), so its ES3 context creation,
+    // GL function-pointer translation table, and ARB extension emulation would have no effect; the
+    // translation layer would effectively be absent and the display would be black. Outside SFPEW mode,
+    // eglRenderer == renderer, so behavior is unchanged.
     BOOL useLTW = eglRenderer && strcmp(eglRenderer, RENDERER_NAME_LTW) == 0;
     void *ltw_handle = NULL;
     if (useLTW) {
@@ -1437,51 +1441,51 @@ static bool dlsym_EGL() {
         if (!ltw_handle) {
             NSLog(@"EGLBridge: LTW renderer selected but failed to load libltw.dylib: %s",
                   dlerror() ?: "unknown dlopen error");
-            // 致命错误：LTW 模式下没有 LTW 的 wrapper，MC 1.17+ 无法启动
+            // Fatal: without LTW wrappers, MC 1.17+ cannot start in LTW mode.
             return false;
         }
         NSLog(@"EGLBridge: LTW mode active, eglCreateContext/Destroy/MakeCurrent resolved from libltw.dylib");
     }
 
-    // SFPEW（SimpleFPEWrapper）—— 对齐安卓 Amethyst-Android v3_openjdk 的接入模型。
+    // SFPEW (SimpleFPEWrapper) — match the integration model in Android Amethyst-Android v3_openjdk.
     //
-    // 安卓 JREUtils.java：POJAVEXEC_EGL 始终指向真后端（libmobileglues.so /
-    // libEGL_angle.so / libEGL_mesa.so / libltw.so），启用 SFPEW 时只做两件事：
-    //   SFPEW_EGL = POJAVEXEC_EGL（真后端）；renderLibrary = libSimpleFPEWrapper.so。
-    // 然后 egl_loader.c 的 dlsym_EGL() 用 loader_dlopen(getenv("POJAVEXEC_EGL"))
-    // 取 eglGetProcAddress，再逐个拿 eglGetDisplay / eglInitialize /
-    // eglChooseConfig / eglCreateContext / eglMakeCurrent / eglSwapBuffers ...
-    // 即：安卓上 SFPEW 的 EGL 导出一次都不会被调用，它只承担 GL。
-    // （JREUtils.java:349 还把 SDL_EGL_LIBRARY 也指向 POJAVEXEC_EGL，同理。）
+    // Android JREUtils.java: POJAVEXEC_EGL always points to the real backend (libmobileglues.so /
+    // libEGL_angle.so / libEGL_mesa.so / libltw.so). When SFPEW is enabled, it only does two things:
+    //   SFPEW_EGL = POJAVEXEC_EGL (real backend); renderLibrary = libSimpleFPEWrapper.so.
+    // egl_loader.c dlsym_EGL() then uses loader_dlopen(getenv("POJAVEXEC_EGL")) to obtain
+    // eglGetProcAddress, then resolves eglGetDisplay / eglInitialize / eglChooseConfig /
+    // eglCreateContext / eglMakeCurrent / eglSwapBuffers, etc.
+    // In other words, Android never calls SFPEW's EGL exports; it provides GL only.
+    // (JREUtils.java:349 also points SDL_EGL_LIBRARY to POJAVEXEC_EGL for the same reason.)
     //
-    // SFPEW 上游本来就允许 EGL 被绕过：fpe.cpp 里 sfpewNoteCurrentContext 的注释
-    // 写的是 "Set by the wrapper's own eglMakeCurrent **when the app routes EGL
-    // through us**"，并且 sfpewReconcileContext() 每 ~256 次 resolve 就用后端的
-    // eglGetCurrentContext 重新校准（还有 SFPEW_RELAXED_CONTEXT 开关）。
+    // Upstream SFPEW already allows EGL to be bypassed: the sfpewNoteCurrentContext comment in fpe.cpp
+    // says "Set by the wrapper's own eglMakeCurrent **when the app routes EGL through us**", and
+    // sfpewReconcileContext() recalibrates against the backend's eglGetCurrentContext about every 256
+    // resolves (there is also the SFPEW_RELAXED_CONTEXT switch).
     //
-    // 所以这里 EGL 生命周期必须留在真后端 dl_handle（= eglRenderer，见上方
-    // AMETHYST_SFPEW_BACKEND 判定）上。此前把 CreateContext/DestroyContext/
-    // MakeCurrent/SwapBuffers 从 SFPEW 取，会把 EGL 劈成两半 —— infra 来自真后端、
-    // lifecycle 先进 SFPEW 再转发后端 —— 与安卓模型不符，是 iOS 上
-    // SFPEW + MobileGlues / SFPEW + MobileGL-GLES 双双崩溃的成因。
+    // Therefore, keep EGL lifecycle functions on the real backend dl_handle (= eglRenderer, selected by
+    // AMETHYST_SFPEW_BACKEND above). Previously resolving CreateContext/DestroyContext/MakeCurrent/
+    // SwapBuffers from SFPEW split EGL in two: infrastructure came from the real backend, while lifecycle
+    // calls entered SFPEW and were forwarded to the backend. This differed from Android and caused both
+    // SFPEW + MobileGlues and SFPEW + MobileGL-GLES to crash on iOS.
 
     memset(&handle, 0, sizeof(handle));
 
-    // [sfpew-egl-route] A/B：AMETHYST_SFPEW_EGL_ROUTE=1 时改走 (c) —— EGL 全部经
-    // SFPEW 的 eglGetProcAddress 解析（安卓/FCL 实测模型）。失败则回落到下方
-    // 真后端 dlsym 路径，不改变默认行为。
-    // Task 181：LTW 后端同样要走这条路由 —— Task 178 的 `!useLTW` 排除是反的。
+    // [sfpew-egl-route] A/B: when AMETHYST_SFPEW_EGL_ROUTE=1, use route (c) and resolve all EGL
+    // functions through SFPEW's eglGetProcAddress (the Android/FCL tested model). On failure, fall back
+    // to the real-backend dlsym path below; default behavior is unchanged.
+    // Task181: the LTW backend must use this route too; Task178's `!useLTW` exclusion was backwards.
     //
-    // 关键事实：路由并不是「绕过后端」，而是「经 SFPEW 转发到后端」。SFPEW 的
-    // eglGetProcAddress 对 create/destroy/makeCurrent 返回它自己的 wrapper，而
-    // wrapper 内部调用的是 SFPEW_EGL 指向的后端 EGL —— 也就是 libltw.dylib 的
-    // eglCreateContext。LTW 注入的 wrapper（建 ES3 上下文 + 装 GL Core 3.3 -> ES 3
-    // 函数指针转译表 + 伪装 ARB 扩展）照样会被执行，一次都不会被架空。
+    // Key fact: this route does not bypass the backend; it forwards through SFPEW to the backend.
+    // For create/destroy/makeCurrent, SFPEW's eglGetProcAddress returns its own wrappers, which call
+    // the EGL backend selected by SFPEW_EGL—libltw.dylib's eglCreateContext in this case. LTW wrappers
+    // (create an ES3 context, install the GL Core 3.3 → ES3 function-pointer translation table, and
+    // emulate ARB extensions) still run and are never bypassed.
     //
-    // 反而是排除它会致命：eglSwapBuffers 落回后端直调，SFPEW 的 pending batch
-    // 就永远没有 drain 的机会（lookup.cpp:75-79 的注释），每帧几何被推到下一帧
-    // 再被 clear —— 这正是 LTW/ANGLE + SFPEW 全黑的成因，与 MobileGL-gles 白屏
-    // 同源。故此处不再按后端类型排除。
+    // Excluding it would instead be fatal: eglSwapBuffers would call the backend directly, so SFPEW's
+    // pending batch would never drain (see lookup.cpp:75-79). Each frame's geometry would be deferred to
+    // the next frame and then cleared—the cause of the fully black LTW/ANGLE + SFPEW screen, related to
+    // the white screen with MobileGL-gles. Therefore, do not exclude routes by backend type here.
     if (isSFPEWRenderer(renderer) && ameSFPEWEglRouteWanted()) {
         if (ameSFPEWResolveEGL()) {
             ame_sfpew_egl_route_active = YES;
@@ -1495,7 +1499,7 @@ static bool dlsym_EGL() {
     handle.eglBindAPI = load_egl_symbol(dl_handle, "eglBindAPI");
     handle.eglChooseConfig = load_egl_symbol(dl_handle, "eglChooseConfig");
     if (useLTW && ltw_handle) {
-        // 从 LTW 解析三个 wrapper 函数（关键：让 LTW 的 GL Core→ES 转译逻辑生效）
+        // Resolve the three wrappers from LTW (required to activate LTW's GL Core→ES translation logic).
         handle.eglCreateContext = load_egl_symbol(ltw_handle, "eglCreateContext");
         handle.eglDestroyContext = load_egl_symbol(ltw_handle, "eglDestroyContext");
         handle.eglMakeCurrent = load_egl_symbol(ltw_handle, "eglMakeCurrent");
@@ -1525,8 +1529,8 @@ static bool dlsym_EGL() {
         handle.eglReleaseThread && handle.eglSwapInterval && handle.eglTerminate;
 }
 
-// 只应在 gl_init_context（eglChooseConfig 之后、eglBindAPI/eglCreateContext 之前）
-// 调用一次。返回 YES 表示生命周期 EGL 已切换到 MobileGlues 前端。
+// Call only once from gl_init_context (after eglChooseConfig and before eglBindAPI/eglCreateContext).
+// Returns YES if lifecycle EGL has switched to the MobileGlues frontend.
 static BOOL ame_mgBootstrap(EGLDisplay dpy, EGLConfig config) {
     if (ame_mgBootstrapTried) return ame_mgFrontendActive;
     ame_mgBootstrapTried = YES;
@@ -1543,8 +1547,8 @@ static BOOL ame_mgBootstrap(EGLDisplay dpy, EGLConfig config) {
         return NO;
     }
 
-    // 1) 临时 pbuffer + ES3 上下文（raw ANGLE）：唯一目的是让 mg_init_gles() 的
-    //    caps 查询（glGetString 等）发生在"有当前上下文"的正确环境里。
+    // 1) Temporary pbuffer + ES3 context (raw ANGLE): solely to ensure mg_init_gles() capability
+    //    queries (glGetString, etc.) run in the correct environment with a current context.
     const EGLint pbAttribs[] = { EGL_WIDTH, 16, EGL_HEIGHT, 16, EGL_NONE };
     EGLSurface pb = ame_raw_create_pbuffer(dpy, config, pbAttribs);
     const EGLint tmpCtxAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE };
@@ -1555,7 +1559,7 @@ static BOOL ame_mgBootstrap(EGLDisplay dpy, EGLConfig config) {
     BOOL ok = NO;
     if (pb != EGL_NO_SURFACE && tmpCtx != EGL_NO_CONTEXT &&
         ame_raw_make_current(dpy, pb, pb, tmpCtx)) {
-        // 2) 绑定 gles/egl 后端句柄 + 真实 caps 检测（MobileGlues 内部幂等）
+        // 2) Bind GLES/EGL backend handles + perform real capability detection (idempotent inside MobileGlues).
         ame_mg_init_gles();
         ok = YES;
         NSLog(@"[MG-Bridge] bootstrap: mg_init_gles complete under throwaway ES context "
@@ -1567,7 +1571,7 @@ static BOOL ame_mgBootstrap(EGLDisplay dpy, EGLConfig config) {
               (unsigned int)(uintptr_t)handle.eglGetError());
     }
 
-    // 3) 无论成败都释放临时资源（MobileGlues 从未见过它们，无残留状态）
+    // 3) Release temporary resources regardless of success (MobileGlues never saw them, so no state remains).
     if (pb != EGL_NO_SURFACE || tmpCtx != EGL_NO_CONTEXT) {
         ame_raw_make_current(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         if (tmpCtx != EGL_NO_CONTEXT) ame_raw_destroy_context(dpy, tmpCtx);
@@ -1575,27 +1579,25 @@ static BOOL ame_mgBootstrap(EGLDisplay dpy, EGLConfig config) {
     }
     if (!ok) return NO;
 
-    // 4) 把生命周期 EGL 切换到 MobileGlues 前端（此后 eglCreateContext 会建立
-    //    MGContext 记录、eglMakeCurrent 会绑定 g_current_ctx 与每上下文子系统，
-    //    eglSwapBuffers 走 presentSurface）。任一符号缺失则单独回退 raw。
+    // 4) Switch lifecycle EGL to the MobileGlues frontend (eglCreateContext will then create an
+    //    MGContext record, eglMakeCurrent will bind g_current_ctx and per-context subsystems,
+    //    and eglSwapBuffers will use presentSurface). If any symbol is missing, that call falls back to raw EGL.
     //
-    // [fix/sfpew-split-egl] SFPEW 叠加（后端 = mobileglues）时同样必须走这里的
-    // 切换 —— 19ef078d 已把 SFPEW 的生命周期特判删除、handle.egl* 一律来自
-    // dl_handle，而 dl_handle 对非 selfEgl 渲染器（mobileglues 即是）是 ANGLE。
-    // 若在此 early-return，context 会是 ANGLE 的 ES context、GL 却是 MG 的
-    // （LWJGL -> SFPEW -> MG gl*），MG 的 per-context 状态为 NULL —— 这正是
-    // SFPEW + MobileGlues 在 1.7.10 上 glTexImage2D 崩溃、"No context is
-    // current" x8、glCheckFramebufferStatus 返回垃圾值的成因。
-    // 对齐安卓模型（Amethyst-Android egl_loader.c）：dl_handle 本来就是
-    // libmobileglues.so（MG 前端），eglCreateContext/eglMakeCurrent 从前端
-    // 解析 —— context 从头到尾都是 MG 的，SFPEW 只承担 GL 转发（renderLibrary），
-    // 其 EGL 导出一次都不会被调用。iOS 侧等价物 = 与非叠加 mobileglues 完全
-    // 相同的 AME_MG_SWAP 路径。
+    // [fix/sfpew-split-egl] With SFPEW layered over MobileGlues, this switch is still required.
+    // Commit 19ef078d removed SFPEW-specific lifecycle handling; handle.egl* now comes from dl_handle,
+    // which is ANGLE for non-self-EGL renderers such as MobileGlues. An early return here would produce
+    // an ANGLE ES context but MG GL calls (LWJGL → SFPEW → MG gl*), leaving MG per-context state NULL.
+    // This caused glTexImage2D crashes, eight "No context is current" errors, and garbage from
+    // glCheckFramebufferStatus with SFPEW + MobileGlues 1.7.10.
+    // Match the Android model (Amethyst-Android egl_loader.c): dl_handle is libmobileglues.so (MG frontend),
+    // and eglCreateContext/eglMakeCurrent resolve from that frontend, so the context belongs to MG throughout.
+    // SFPEW handles only GL forwarding (renderLibrary); none of its EGL exports are called. The iOS equivalent
+    // is exactly the same AME_MG_SWAP path used for standalone MobileGlues.
 
-    // [sfpew-egl-route] 路由激活时生命周期已在 SFPEW 上：SFPEW 的
-    // sfpewEglCreateContext 会转发到后端（MG）的 eglCreateContext，MGContext
-    // 由 MG 自己建立。此处若再 AME_MG_SWAP 覆盖，SFPEW 会被整个摘出 EGL 链，
-    // 回到 (b) 的 registry 恒空状态。bootstrap 的 mg_init_gles 已完成，保留。
+    // [sfpew-egl-route] When the route is active, lifecycle calls already use SFPEW:
+    // SFPEW's sfpewEglCreateContext forwards to the MG backend's eglCreateContext, and MG creates
+    // its own MGContext. Applying AME_MG_SWAP here would remove SFPEW from the EGL chain entirely,
+    // returning to model (b) with an empty registry. mg_init_gles bootstrap has completed; leave it intact.
     if (ame_sfpew_egl_route_active) {
         ame_mgFrontendActive = YES;
         NSLog(@"[MG-Bridge] bootstrap done; SFPEW EGL route active -- lifecycle stays on SFPEW "
@@ -1641,7 +1643,7 @@ static bool gl_init() {
     return true;
 }
 
-// SFPEW 叠加时是否仍按真后端判定 desktop GL（诊断逃逸阀，默认否）。
+// Whether to classify desktop GL by the real backend under SFPEW overlay (diagnostic escape hatch, default off).
 static BOOL ameSFPEWForceDesktopGL(void) {
     const char *v = getenv("AMETHYST_SFPEW_DESKTOPGL");
     return v != NULL && v[0] != '\0' && v[0] != '0';
@@ -1651,32 +1653,31 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
     gl_render_window_t* bundle = calloc(1, sizeof(gl_render_window_t));
 
     NSString *renderer = NSProcessInfo.processInfo.environment[@"AMETHYST_RENDERER"];
-    // SFPEW 叠加模式下 AMETHYST_RENDERER 已被换成 libSimpleFPEWrapper.dylib，
-    // 真后端名在 AMETHYST_SFPEW_BACKEND（EGL 来源判定用它，见 dlsym_EGL()）。
+    // Under SFPEW overlay, AMETHYST_RENDERER has been replaced with libSimpleFPEWrapper.dylib;
+    // the real backend name is in AMETHYST_SFPEW_BACKEND (used to select EGL sources; see dlsym_EGL()).
     const char *apiRenderer = renderer.UTF8String;
     const BOOL sfpewActive = isSFPEWRenderer(apiRenderer);
     if (sfpewActive) {
         const char *sfpewBackend = getenv("AMETHYST_SFPEW_BACKEND");
         if (sfpewBackend != NULL && sfpewBackend[0] != '\0') apiRenderer = sfpewBackend;
     }
-    // ANGLE / Mithril / MobileGL 导出的都是 desktop OpenGL，走 EGL_OPENGL_BIT +
-    // eglBindAPI(EGL_OPENGL_API)；其余（gl4es / MobileGlues / LTW）是 OpenGL ES。
+    // ANGLE / Mithril / MobileGL expose desktop OpenGL and use EGL_OPENGL_BIT +
+    // eglBindAPI(EGL_OPENGL_API); others (gl4es / MobileGlues / LTW) use OpenGL ES.
     BOOL desktopGL = isDesktopGLRenderer(apiRenderer);
-    // ---- SFPEW 叠加：上下文一律走 OpenGL ES ----------------------------------
-    // SFPEW 生成的固定管线着色器恒为 `#version 300 es`（fpe_shadergen.cpp 的
-    // mg_shader_header，VS/FS 两处无条件拼接，没有 desktop 分支）。所以只要
-    // SFPEW 在场，上下文就必须是 ES —— 哪怕真后端自述为 desktop GL 也一样。
+    // ---- SFPEW overlay: always use an OpenGL ES context ----------------------
+    // SFPEW-generated fixed-pipeline shaders always use `#version 300 es`
+    // (mg_shader_header in fpe_shadergen.cpp is unconditionally prepended to both VS/FS; there is no desktop branch).
+    // Therefore, whenever SFPEW is present, the context must be ES—even if the real backend reports desktop GL.
     //
-    // MobileGL-gles 是最典型的反例：GL_VERSION 报 "4.6.0 MobileGL 26.09-dev,
-    // Direct (OpenGL ES) Backend"，EGL 由 ANGLE 提供、只有 ES 档；SFPEW 自己
-    // 也据此把它判成 ES 后端（capabilities.cpp 的 sfpewBackendTakesBgra 会为
-    // 它做 BGRA 重排）。但我们此前按真后端名命中 isDesktopGLRenderer，请求
-    // EGL_OPENGL_BIT + eglBindAPI(EGL_OPENGL_API)，把 ES 3.00 着色器交给了
-    // desktop 上下文 → 编译/链接失败 → 用无效 program 绘制 →
-    // GL_INVALID_OPERATION(1282) 在 Pre/Post startup、Pre/Post render 刷屏。
+    // MobileGL-gles is the clearest counterexample: GL_VERSION reports "4.6.0 MobileGL 26.09-dev,
+    // Direct (OpenGL ES) Backend"; ANGLE provides EGL with only ES configs. SFPEW also classifies it
+    // as an ES backend (capabilities.cpp's sfpewBackendTakesBgra enables BGRA reordering for it).
+    // Previously, however, isDesktopGLRenderer matched the real backend name, requesting EGL_OPENGL_BIT
+    // + eglBindAPI(EGL_OPENGL_API). This sent ES 3.00 shaders to a desktop context → compile/link failure
+    // → draw with an invalid program → repeated GL_INVALID_OPERATION(1282) in Pre/Post startup and render.
     //
-    // 安卓侧 eglBindAPI 同样以 ES 为默认（仅 zink 走 desktop），与此一致。
-    // 逃逸阀：AMETHYST_SFPEW_DESKTOPGL=1 恢复「按真后端判定」的旧行为。
+    // Android also defaults eglBindAPI to ES (only zink uses desktop), matching this behavior.
+    // Escape hatch: AMETHYST_SFPEW_DESKTOPGL=1 restores the old "classify by real backend" behavior.
     if (sfpewActive && !ameSFPEWForceDesktopGL()) {
         if (desktopGL) {
             NSDebugLog(@"EGLBridge: SFPEW overlay active -- forcing OpenGL ES context "
@@ -1714,10 +1715,10 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
         return NULL;
     }
 
-    // Task 36：在首个前端 EGL 调用（eglBindAPI）之前完成 MobileGlues 引导 ——
-    // 绑定后端句柄 + caps 检测 + 把生命周期指针切到前端。
-    // 必须位于此处：config 已可用（引导需要），eglBindAPI/eglCreateContext
-    // 尚未发生（前端函数内部 LOAD_EGL 静态指针需要后端已绑定）。
+    // Task36: bootstrap MobileGlues before the first frontend EGL call (eglBindAPI):
+    // bind backend handles, detect capabilities, and switch lifecycle pointers to the frontend.
+    // It must run here: config is available (required by bootstrap), and eglBindAPI/eglCreateContext
+    // have not yet run (the frontend's internal LOAD_EGL static pointers require the backend to be bound).
     ame_mgBootstrap(g_EglDisplay, bundle->config);
 
     EGLBoolean bindResult;
@@ -1732,48 +1733,47 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
 
     CALayer *layer = SurfaceViewController.surface.layer;
     // ============================================================================
-    // Task 50（黑屏根因修复）→ Task 60（画面模糊根因修复）：呈现几何单一
-    // 事实源 —— 原生 scale 像素对齐。
+    // Task50 (root-cause fix for black screen) → Task60 (root-cause fix for blur): a single source of
+    // truth for presentation geometry—alignment to native-scale pixels.
     //
-    // 历史（622166a 黑屏时代，本块取代 Task48 创建钉扎 + Task49 重试环）：
-    //   1. 全日志 0 条 "Task48 pin"（卫兵逐帧钉扎从未生效）——渲染线程读
-    //      layer 属性与主线程心跳读到不同值（CALayer 跨线程状态分叉），
-    //      跨线程写 drawableSize 打不进主线程的 CA 提交树；
-    //   2. Task49 重试环 5 连败：pin 写 1180x820 后 ANGLE 仍建出 2360x1640
-    //      —— ANGLE 读的是 bounds×contentsScale（=1180x820×2.0），不是
-    //      drawableSize；
-    //   3. 卫兵重建表面恒 EGL_BAD_ALLOC 0x3003（同 layer 二次建 window
-    //      surface 必败），重建失败 → surface 被锁死在转置态 1640x2360，
-    //      而 drawable/viewport 是横屏 2360x1640 —— 600+ 帧 present 尺寸
-    //      失配 = 用户看到的全黑。
+    // History (622166a black-screen era; this block replaced Task48 creation pinning + Task49 retry loop):
+    //   1. No "Task48 pin" entries appeared in any log (per-frame guard pinning never worked): render-thread
+    //      layer reads disagreed with main-thread heartbeat reads (CALayer cross-thread state divergence),
+    //      and render-thread drawableSize writes did not enter the main thread's CA committed tree.
+    //   2. Task49 retry loop failed five times: even after pinning to 1180x820, ANGLE created 2360x1640
+    //      because ANGLE reads bounds × contentsScale (=1180x820×2.0), not drawableSize.
+    //   3. Guard surface recreation always failed with EGL_BAD_ALLOC 0x3003 (creating a second window
+    //      surface on the same layer always fails). After failure, surface remained transposed at
+    //      1640x2360 while drawable/viewport were landscape 2360x1640. A 600+ frame present-size mismatch
+    //      produced the black screen.
     //
-    // 当年黑屏的结构性根源：三套尺寸（1x 点 viewport / 2x drawable /
-    // ANGLE surface）互相打架。Task50 以 1x 点数对齐终结拉锯——但代价
-    // 是渲染分辨率减半：
-    //   - MC 26.3：surface 1180x820 → MC viewport 跟随 → 半分辨率渲染，
-    //     CA 线性放大 2x = 全屏模糊（5f1df50 真机实测"画面模糊"；
-    //     "MC 像素风格最近邻无损"的假设不成立——CAMetalLayer 默认线性
-    //     过滤，且 MC 26.3 有平滑光照/字体/渐变）；
-    //   - MC 26.2 LWJGL：MC 信念 2360x1640 ≠ surface 1180x820 → Task49
-    //     geo-heal 每帧降采样 blit（双重模糊 + 带宽开销）= 真机实测
-    //     "MG 对 LWJGL 兼容性倒退"（MG 2.0.16 SYMBOL THEFT 警告为无害
-    //     环境诊断——其符号解析不依赖 flat 顺序）。
+    // Structural cause of the black screen was a conflict among three dimensions (1x point viewport,
+    // 2x drawable, ANGLE surface). Task50 ended the conflict with 1x point alignment, but halved render resolution:
+    //   - MC 26.3: surface 1180x820 → MC viewport followed → half-resolution rendering, then CA linearly
+    //     enlarged it 2x, blurring the full screen (blur measured on device in 5f1df50). The assumption
+    //     that MC's pixel art would remain sharp with nearest-neighbor scaling was false: CAMetalLayer
+    //     defaults to linear filtering, and MC 26.3 uses smooth lighting/fonts/gradients.
+    //   - MC 26.2 LWJGL: MC expected 2360x1640 != surface 1180x820, so Task49 geo-heal downsampled
+    //     every frame (double blur + bandwidth cost), measured on device as "MG compatibility regression
+    //     with LWJGL." The MG 2.0.16 SYMBOL THEFT warning was harmless environment diagnostics; its symbol
+    //     resolution does not depend on flat-namespace order.
     //
-    // Task 60 修复（口径已由 Task58 EGL 常量修正 + Task59 输入像素直通
-    // 定案）：对齐到原生 scale 像素——contentsScale = 权威 screen scale
-    //（layer 所属 view 的 window screen，兜底主屏），drawableSize =
-    // bounds × scale（= 2360x1640）。全链像素口径：surface==drawable==
-    // 物理屏像素 1:1 零缩放；launchJVM 告知 MC 的 2360x1640 与 MC 窗口
-    // 信念一致；输入链（Task59 直通）零影响；26.2 LWJGL viewport 2360x1640
-    // == surface → geo-heal blit 自然退出。旋转时 bounds 跟随 → 同步翻转
-    //（ANGLE 具备跟随 layer 几何能力，622166a 转置事件即实证）。
-    //   Vulkan 路径不受影响：gl_init_context 只在 GL 路径执行。
+    // Task60 fix (unit consistency established by Task58 EGL constant correction + Task59 direct input-pixel
+    // pass-through): align to native-scale pixels—contentsScale = authoritative screen scale (the window
+    // screen of the view owning the layer, falling back to the main screen); drawableSize = bounds × scale
+    // (=2360x1640). The entire pipeline uses pixels: surface==drawable==physical screen pixels at 1:1 with
+    // no scaling; launchJVM reports 2360x1640 to MC, matching its window dimensions; Task59's direct input
+    // path is unaffected; and the MC 26.2 LWJGL viewport 2360x1640 == surface, so geo-heal blit exits
+    // naturally. During rotation, bounds follow and dimensions flip together (ANGLE's ability to follow
+    // layer geometry is proven by the transposition event in 622166a).
+    //   Vulkan is unaffected: gl_init_context runs only on the GL path.
     // ============================================================================
-    // Task60 对齐写 layer 必须发生在主线程：旧代码的致命伤之一就是从渲染线程
-    // 写 drawableSize（CALayer 跨线程状态分叉：渲染线程读到一套、主线程的
-    // CA 提交树另一套——622166a 心跳 drawable=2360x1640 与卫兵读取 1640x2360
-    // 的矛盾即其表现）。单一写入者纪律：本块与 updateSavedResolution（主线程，
-    // 旋转时）是 layer 尺寸仅有的两个写入者，且都在主线程。
+    // Task60 layer alignment must be written on the main thread. A fatal flaw in the old code was writing
+    // drawableSize from the render thread (CALayer state diverged across threads: the render thread and
+    // main-thread CA committed tree saw different values—the 622166a mismatch between heartbeat
+    // drawable=2360x1640 and guard reading 1640x2360). Single-writer discipline: this block and
+    // updateSavedResolution (main thread during rotation) are the only two layer-size writers, and both
+    // run on the main thread.
     if ([layer isKindOfClass:CAMetalLayer.class]) {
         __block CGSize oldDrawable50 = CGSizeZero;
         __block CGFloat oldScale50 = 0.0;
@@ -1781,10 +1781,10 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
             CAMetalLayer *ml60 = (CAMetalLayer *)layer;
             CGFloat w60 = MAX(1.0, round(layer.bounds.size.width));
             CGFloat h60 = MAX(1.0, round(layer.bounds.size.height));
-            // Task 60：权威 scale —— layer 所属 view 的 window screen
-            //（外接屏正确），兜底主屏，再兜底 1.0。与 Task59 输入链的
-            // screenScale 同源；resolutionScale 语义由宿主
-            // updateSavedResolution 负责（此处创建时以原生 scale 钉齐）。
+            // Task60: authoritative scale—the window screen of the view owning the layer
+            // (correct for external displays), falling back to the main screen, then 1.0.
+            // Same source as screenScale in the Task59 input path; resolutionScale semantics belong
+            // to host updateSavedResolution (at creation, align to native scale here).
             CGFloat scale60 = 0.0;
             UIView *v60 = (UIView *)layer.delegate;  // CALayer.delegate == owning UIView
             if (v60 != nil && v60.window != nil && v60.window.screen != nil) {
@@ -1792,19 +1792,18 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
             }
             if (scale60 <= 0.0) scale60 = UIScreen.mainScreen.scale;
             if (scale60 <= 0.0) scale60 = 1.0;
-            // Task 78：创建时同步应用 resolutionScale（video.resolution）。
-            // 旧行为在 resolutionScale<100% 时把 drawableSize 钉到全物理
-            // 分辨率，随后 updateSavedResolution 写缩小值 → 创建后拉锯（
-            // Task57 冻结补丁下 surface 锁死在创建尺寸，guard 每次把
-            // drawableSize 拉回 surface 全尺寸，用户看到的是"半分辨率
-            // 选项 + 每帧 geo-heal blit"）。创建与旋转两个写者现在同口径
-            // （bounds × screenScale × resolutionScale），单一事实源成立；
-            // resolutionScale=100% 时数值与旧行为完全一致（零回归）。
-            // Task 78 FSR 联动：MC 的告知窗口（=viewport=渲染尺寸）由
-            // updateSavedResolution 单独缩至 surface/fsr_scale，本块只负责
-            // surface/drawable 口径，不受 fsr_scale 影响。
+            // Task78: apply resolutionScale (video.resolution) at creation too.
+            // Previously, when resolutionScale<100%, drawableSize was pinned to full physical resolution,
+            // then updateSavedResolution wrote a smaller value, causing a post-creation conflict. Under
+            // the Task57 freeze patch, surface stayed at its creation size and the guard reset drawableSize
+            // to full surface size each time; users saw a "half-resolution option + per-frame geo-heal blit."
+            // Creation and rotation writers now use the same units (bounds × screenScale × resolutionScale),
+            // establishing a single source of truth. At 100%, values exactly match the old behavior (no regression).
+            // Task78 FSR integration: updateSavedResolution alone scales the window reported to MC
+            // (=viewport=render size) to surface/fsr_scale. This block handles only surface/drawable units
+            // and is independent of fsr_scale.
             CGFloat rs60 = resolutionScale;
-            if (rs60 <= 0.0) rs60 = 1.0;  // 防御：全局未初始化（JavaGUI 等路径）
+            if (rs60 <= 0.0) rs60 = 1.0;  // Guard against an uninitialized global (e.g. JavaGUI paths).
             oldDrawable50 = ml60.drawableSize;
             oldScale50 = layer.contentsScale;
             layer.contentsScale = scale60 * rs60;
@@ -1813,9 +1812,9 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
         if ([NSThread isMainThread]) {
             align60();
         } else {
-            // gl_init_context 运行于 JVM 渲染线程；此刻主线程处于空闲 runloop
-            // （launchJVM 在后台线程，主线程无任何等待渲染线程的锁——同窗口期
-            // ame_embedSDLViewIntoHost 的 dispatch_sync 已在设备上验证安全）。
+            // gl_init_context runs on the JVM render thread; the main thread is in an idle run loop at this point.
+            // (launchJVM runs on a background thread, and the main thread holds no lock that the render thread
+            // is waiting for—the dispatch_sync of ame_embedSDLViewIntoHost was verified safe on-device in the same window.)
             dispatch_sync(dispatch_get_main_queue(), align60);
         }
         NSLog(@"[GLGeo] Task60 native-scale alignment (main thread): bounds=%.0fx%.0f drawableSize %.0fx%.0f scale %.2f -> drawableSize %.0fx%.0f scale %.2f (surface==drawable==physical px; Task50 1x retired -- CA linear 2x upscale was the blur)",
@@ -1825,16 +1824,16 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
               layer.bounds.size.height * layer.contentsScale,
               (double)layer.contentsScale);
     }
-    // MobileGL 的 eglCreateWindowSurface 不会从 CALayer 推断尺寸，必须显式给出
-    // 宽高（读取已对齐原生 scale 的 layer，与 drawableSize 保持一致），否则 surface
-    // 会按 1x1 创建，进世界后画面异常。其余渲染器从 layer 自行推断，传 NULL。
+    // MobileGL's eglCreateWindowSurface does not infer dimensions from CALayer; supply width/height
+    // explicitly (read from the native-scale-aligned layer to match drawableSize), or it creates a 1x1
+    // surface and the in-game display is broken. Other renderers infer size from the layer; pass NULL.
     const EGLint mobileGLSurfaceAttribs[] = {
         EGL_WIDTH, (EGLint)MAX(1.0, round(layer.bounds.size.width * layer.contentsScale)),
         EGL_HEIGHT, (EGLint)MAX(1.0, round(layer.bounds.size.height * layer.contentsScale)),
         EGL_NONE
     };
-    // 单次创建（无重试环）：原生 scale 对齐后 ANGLE 无论读 bounds×scale 还是
-    // drawableSize 都得到与 MC viewport 相同的尺寸，无需执法。
+    // Create once (no retry loop): after native-scale alignment, whether ANGLE reads bounds×scale
+    // or drawableSize, it gets the same dimensions as MC viewport; no enforcement is needed.
     bundle->surface = handle.eglCreateWindowSurface(g_EglDisplay, bundle->config,
         (__bridge EGLNativeWindowType)layer, mobileGL ? mobileGLSurfaceAttribs : NULL);
     if (!bundle->surface) {
@@ -1842,9 +1841,10 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
         free(bundle);
         return NULL;
     }
-    // 黑屏取证（Task 32）：surface 创建成功时，把呈现目标的完整状态记入日志——
-    // layer 指针/bounds/contentsScale/drawableSize/是否已在窗口层级。
-    // 若后续黑屏，对照此处即可判断 layer 尺寸/层级在上下文创建时是否就已经不对。
+    // Black-screen diagnostics (Task32): on successful surface creation, log full presentation-target state—
+    // layer pointer/bounds/contentsScale/drawableSize/whether it is in the window hierarchy.
+    // If the screen later goes black, compare against this to tell whether the layer size/hierarchy was
+    // already wrong when the context was created.
     {
         BOOL isMetal = [layer isKindOfClass:CAMetalLayer.class];
         CGSize drawable = isMetal ? ((CAMetalLayer *)layer).drawableSize : CGSizeZero;
@@ -1854,9 +1854,9 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
               (void *)bundle->surface, (__bridge void *)layer,
               layer.bounds.size.width, layer.bounds.size.height,
               (double)layer.contentsScale, drawable.width, drawable.height, (int)inWindow);
-        // Task 36 取证：surface 在 EGL 侧的真实尺寸（MC RenderPearl 的表面配置
-        // 报 1180x820，若此处 eglQuerySurface 报 2360x1640 则存在 2x 不匹配，
-        // 下一轮设备日志可据此判断合成/缩放行为）。
+        // Task36 diagnostics: actual EGL-side surface dimensions. MC RenderPearl's surface configuration
+        // reported 1180x820; if eglQuerySurface reports 2360x1640 here, a 2x mismatch exists. Use the
+        // next device log to diagnose compositing/scaling.
         if (ame_raw_query_surface != NULL && bundle->surface != EGL_NO_SURFACE) {
             EGLint sw = 0, sh = 0;
             if (ame_raw_query_surface(g_EglDisplay, bundle->surface, EGL_WIDTH, &sw) &&
@@ -1864,11 +1864,11 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
                 NSLog(@"[RenderDiag] eglQuerySurface: %dx%d", sw, sh);
             }
         }
-        // Task 48：记录呈现 layer（CFBridgingRetain）与期望表面尺寸，
-        // 供 ame48_swap_geometry_guard 逐帧自愈使用。
+        // Task48: record the presentation layer (CFBridgingRetain) and expected surface size for
+        // per-frame healing by ame48_swap_geometry_guard.
         ame48_record_creation(layer, g_EglDisplay, bundle->surface);
-        // Task 50：GL 拥有呈现层（跨线程标志）——此后主线程
-        // updateSavedResolution 走原生 scale 对齐分支（bounds x scale 跟随旋转）。
+        // Task50: GL owns the presentation layer (cross-thread flag); from now on main-thread
+        // updateSavedResolution uses native-scale alignment (bounds × scale, follows rotation).
         atomic_store(&g_ame50_gl_owns_layer, 1);
     }
 
@@ -1876,10 +1876,10 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
         EGL_CONTEXT_CLIENT_VERSION, 3,
         EGL_NONE
     };
-    // MobileGL 走真正的 desktop GL：要求 3.3 Core Profile。
-    // Mithril 同样导出 desktop GL 3.3 Core，但其 EGLConfig 已同时声明
-    // EGL_OPENGL_BIT | EGL_OPENGL_ES3_BIT，沿用 ES 版的 CLIENT_VERSION=3 即可
-    // （与 Uniaball 官方 launcher-patch 中验证过的配置保持一致）。
+    // MobileGL uses true desktop GL and requires 3.3 Core Profile.
+    // Mithril also exposes desktop GL 3.3 Core, but its EGLConfig declares both
+    // EGL_OPENGL_BIT | EGL_OPENGL_ES3_BIT, so it can use the ES-style CLIENT_VERSION=3
+    // (matching the configuration verified in Uniaball's official launcher patch).
     const EGLint desktop_ctx_attribs[] = {
         EGL_CONTEXT_MAJOR_VERSION, 3,
         EGL_CONTEXT_MINOR_VERSION, 3,
@@ -1918,7 +1918,7 @@ void gl_make_current(gl_render_window_t* bundle) {
         // we have a current context.  mg_init_gles() uses RTLD_DEFAULT to
         // resolve ANGLE's GLES symbols and queries GL version/extensions.
         // Only runs once; subsequent calls are a no-op.
-        // (Task 36 引导成功后这里是无害的 no-op；引导失败时仍是原始兜底路径。)
+        // (After successful Task36 bootstrap this is a harmless no-op; if bootstrap failed, this remains the original fallback path.)
         static BOOL mgInitialized = NO;
         if (!mgInitialized) {
             mgInitialized = YES;
@@ -1932,33 +1932,34 @@ void gl_make_current(gl_render_window_t* bundle) {
             }
         }
 
-        // 帧率解锁关键点：在 EGL context 首次变为 current 后立即设置 swap interval=0。
+        // Key to unlocking the frame rate: set swap interval=0 as soon as the EGL context first becomes current.
         //
-        // 为什么必须在这里设置（而不是等 MC 调用 glfwSwapInterval 时才设置）：
+        // Why it must be set here (rather than waiting for MC to call glfwSwapInterval):
         //
-        // 对于 zink 渲染器（Mesa 21.0），Vulkan swapchain 是延迟创建的——
-        // 在第一次 eglSwapBuffers 或需要 swapchain 时才创建。
-        // zink 创建 swapchain 时会根据当前 eglSwapInterval 的值选择 present mode：
-        //   - interval=0 → VK_PRESENT_MODE_IMMEDIATE_KHR（不等 vsync，帧率可超 60）
-        //   - interval=1 → VK_PRESENT_MODE_FIFO_KHR（等 vsync，锁在屏幕刷新率）
+        // For the zink renderer (Mesa 21.0), the Vulkan swapchain is created lazily—
+        // on the first eglSwapBuffers or when the swapchain is needed.
+        // When creating the swapchain, zink chooses its present mode from the current eglSwapInterval:
+        //   - interval=0 → VK_PRESENT_MODE_IMMEDIATE_KHR (no VSync wait; frame rate can exceed 60).
+        //   - interval=1 → VK_PRESENT_MODE_FIFO_KHR (wait for VSync; lock to the display refresh rate).
         //
-        // 如果等 MC 调用 glfwSwapInterval(1) → pojavSwapInterval(0) → eglSwapInterval(0)
-        // 时才设置，swapchain 可能已经用默认的 FIFO 创建了。
-        // Mesa 21.0 的 zink 不会在 eglSwapInterval 变化时重建 swapchain，
-        // 导致 present mode 固定为 FIFO，帧率被锁死在屏幕刷新率（60Hz/120Hz）。
+        // If this waits until MC calls glfwSwapInterval(1) → pojavSwapInterval(0) → eglSwapInterval(0),
+        // the swapchain may already have been created with the default FIFO mode.
+        // Mesa 21.0 zink does not recreate the swapchain when eglSwapInterval changes,
+        // so present mode stays FIFO and frame rate is locked to display refresh (60Hz/120Hz).
         //
-        // 在 gl_make_current 中提前设置 eglSwapInterval(0)，可确保 zink 创建
-        // swapchain 时读到 interval=0，从而选择 IMMEDIATE present mode。
+        // Setting eglSwapInterval(0) early in gl_make_current ensures zink sees interval=0 when it
+        // creates the swapchain and selects IMMEDIATE present mode.
         //
-        // 这对 ANGLE Metal 后端也有效（ANGLE 在 interval=0 时不等 vsync）。
+        // This also works for the ANGLE Metal backend (ANGLE does not wait for VSync when interval=0).
         if (getenv("POJAV_DISABLE_VSYNC") && strcmp(getenv("POJAV_DISABLE_VSYNC"), "1") == 0) {
             static BOOL s_loggedInitialSwapInterval = NO;
             EGLBoolean feOk = handle.eglSwapInterval(g_EglDisplay, 0);
-            // Task 76：双保险 —— MobileGlues 前端 + raw ANGLE 各设一次。
-            // 前端的 LOAD_EGL 理论上透传后端，但 MG 场 fps 锁 60（max.fps=260
-            // 解锁下 33 条心跳零超 60）提示 interval=0 未被 ANGLE Metal 采纳。
-            // raw 直调绕过前端转译；两路返回值一并入日志，下轮设备日志据此
-            // 分诊（前端吞掉 vs ANGLE Metal 不支持 interval=0）。
+            // Task76: redundant safeguard—set once through the MobileGlues frontend and once through raw ANGLE.
+            // The frontend's LOAD_EGL should pass through to the backend, but the MG session stayed capped
+            // at 60 fps (none of 33 heartbeats exceeded 60 with max.fps=260 unlocked), suggesting ANGLE Metal
+            // did not honor interval=0. The raw call bypasses frontend translation. Log both return values
+            // to diagnose in the next device log (frontend swallowed the call vs. ANGLE Metal does not
+            // support interval=0).
             EGLBoolean rawOk = EGL_FALSE;
             if (ame_raw_swap_interval != NULL) {
                 rawOk = ame_raw_swap_interval(g_EglDisplay, 0);
@@ -1976,30 +1977,30 @@ void gl_make_current(gl_render_window_t* bundle) {
 }
 
 void gl_swap_buffers() {
-    // currentBundle 只在 eglMakeCurrent 成功后赋值。若 MC 在 MakeCurrent 之前
-    // （或 MakeCurrent(NULL) 释放之后）调用 swap，这里解引用空指针会直接段错误。
-    // SDL3 路径下 SDL_GL_SwapWindow 由我们接管，调用时机不再由 GLFW 约束，
-    // 所以必须显式防护。
+    // currentBundle is assigned only after eglMakeCurrent succeeds. If MC calls swap before MakeCurrent
+    // (or after MakeCurrent(NULL) releases the context), dereferencing a null pointer here would segfault.
+    // On the SDL3 path, we take over SDL_GL_SwapWindow, so GLFW no longer constrains when it is called;
+    // an explicit guard is required.
     if (currentBundle == NULL) {
         NSLog(@"EGLBridge: gl_swap_buffers called with no current context, ignored");
         return;
     }
-    // Task 77：build 相位起点——上一次 present 返回至今的全部 MC 帧构造
-    // （tick/事件泵/GL 编码）时长在此刻定格。先于卫兵/取证记录，卫兵与
-    // 探针的耗时归入 neither（Task76 后探针帧极稀，可忽略）。
+    // Task77: start of the build phase—the elapsed MC frame construction time (tick/event pump/GL encoding)
+    // since the previous present returned is captured here. Record before guard/diagnostics so their time
+    // belongs to neither phase (probe frames are rare after Task76 and can be ignored).
     uint64_t ame77_t_entry = ame77_now_us();
     ame77_record_build(ame77_t_entry);
-    // Task 48 呈现几何卫兵：先于一切交换动作执行（可能在内部重建表面，
-    // 重建后 currentBundle->gl.surface 已更新，后续探针/交换都作用于新表面）。
+    // Task48 presentation geometry guard: run before any swap action (it may recreate the surface internally,
+    // updating currentBundle->gl.surface; subsequent probes/swaps then use the new surface).
     ame48_swap_geometry_guard(currentBundle);
-    // 黑屏取证（Task 32）：记录每次 swap 的真实结果。
-    // 成功：首次打一条日志（证明呈现路径至少活过一次）；之后交给原子计数器，
-    // 由 SurfaceViewController 的 [RenderDiag] 5 秒心跳汇总上报。
-    // 失败：任意错误码都打（去掉旧版 EGL_BAD_SURFACE 过滤），前 10 次逐条打，
-    // 之后每 100 次打一条，避免日志爆炸。
+    // Black-screen diagnostics (Task32): record the actual result of every swap.
+    // Success: log the first success (proves the presentation path worked at least once), then rely on atomic
+    // counters summarized by SurfaceViewController's five-second [RenderDiag] heartbeat.
+    // Failure: log any error code (remove the old EGL_BAD_SURFACE-only filter), log the first 10 individually,
+    // then every 100th to avoid flooding.
     ame_task41_swap_forensics(currentBundle->gl.surface,
                               atomic_load(&g_eglSwapOK) + atomic_load(&g_eglSwapFail) + 1);
-    // Task 77：present 相位计时——只包 eglSwapBuffers 本体。
+    // Task77: time the present phase around eglSwapBuffers only.
     uint64_t ame77_t_present0 = ame77_now_us();
     EGLBoolean swapResult = handle.eglSwapBuffers(g_EglDisplay, currentBundle->gl.surface);
     uint64_t ame77_t_present1 = ame77_now_us();
@@ -2017,13 +2018,13 @@ void gl_swap_buffers() {
     if (oks == 1) {
         NSLog(@"[RenderDiag] first eglSwapBuffers OK surface=%p (presentation path confirmed)",
               (void *)currentBundle->gl.surface);
-        // ★ [SDL-FIRSTFRAME] 首帧信号兜底：本计数器是「确实有一帧上屏了」的硬证据。
-        //   egl_bridge 的 PojavFirstFrameRendered 只在 pojavSwapBuffers 入口发；若
-        //   MC/渲染器直接经渲染器自己的 eglSwapBuffers 走到本桥（不经过
-        //   pojavSwapBuffers —— 旧日志里那句 "egl_bridge swap is not used" 描述的正是
-        //   这种形态），首帧通知就永远不会发，遮罩只能干等到 45s 超时并被误记成
-        //   「启动失败」。这里用一次性通知补上该信号：两条路都发也只撤一次遮罩
-        //   （onFirstFrameRendered / dismiss 路径内都有 launchOverlayDismissed 守卫）。
+        // ★ [SDL-FIRSTFRAME] Fallback first-frame signal: this counter is hard evidence that a frame was actually presented.
+        //   egl_bridge posts PojavFirstFrameRendered only at the entry to pojavSwapBuffers. If MC/the renderer
+        //   reaches this bridge through its own eglSwapBuffers (bypassing pojavSwapBuffers—the old log message
+        //   "egl_bridge swap is not used" describes this case), the first-frame notification is never posted.
+        //   The overlay then waits until its 45-second timeout and incorrectly reports "startup failed."
+        //   Post a one-time notification here to supply the signal. If both paths post it, the overlay is still
+        //   dismissed only once (onFirstFrameRendered / dismiss paths both guard with launchOverlayDismissed).
         static dispatch_once_t ameFirstSwapNotifyOnce;
         dispatch_once(&ameFirstSwapNotifyOnce, ^{
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -2035,7 +2036,7 @@ void gl_swap_buffers() {
             });
         });
     }
-    // Task 76：帧间隔尖峰跟踪（见文件头计数器块注释）。
+    // Task76: track frame-interval spikes (see the counter block comment at the top of this file).
     ame76_record_swap(ame53_now_ms());
 }
 
@@ -2044,7 +2045,7 @@ void gl_swap_interval(int swapInterval) {
 }
 
 void gl_terminate() {
-    // Task 50：GL 不再拥有呈现层（下次 updateSavedResolution 回到 2x 默认）。
+    // Task50: GL no longer owns the presentation layer (the next updateSavedResolution returns to the 2x default).
     atomic_store(&g_ame50_gl_owns_layer, 0);
     handle.eglMakeCurrent(g_EglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     handle.eglDestroySurface(g_EglDisplay, currentBundle->gl.surface);

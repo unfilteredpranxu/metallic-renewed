@@ -7,8 +7,8 @@
 //
 
 #import "BackgroundManager.h"
-#import "UIKit+GlassSurface.h"   // ★ 液态玻璃材质 + 玻璃质感(高光边)
-#import "AMEGlassStyle.h"        // ★ [GLASS-STYLE] 界面风格解析层(原生 / 液态玻璃)
+#import "UIKit+GlassSurface.h"   // ★ Liquid Glass material + glass effect (highlight rim)
+#import "AMEGlassStyle.h"        // ★ [GLASS-STYLE] UI style resolution layer (native / Liquid Glass)
 #import <Photos/Photos.h>
 
 static NSString * const kBackgroundTypeKey = @"background_type";
@@ -24,15 +24,18 @@ static const NSInteger kBackgroundImageTag = 99998;
 static const NSInteger kBackgroundBlurTag = 99997;
 static const NSInteger kBackgroundDimTag = 99996;
 static const NSInteger kDefaultBackgroundTag = 99995;
-// ★ [GLASSUI] 合并同一 runloop 内的多次玻璃重刷(强度滑块连续拖动时避免反复遍历视图树)
+// ★ [GLASSUI] Coalesce repeated glass refreshes in the same run loop (avoid repeatedly traversing
+// the view tree while the intensity slider is dragged).
 static BOOL gAmeGlassRimApplyScheduled = NO;
 
-#pragma mark - ★ [E3] 默认背景渐变视图(SPEC §2.1:深=紫蓝 / 浅=白→粉紫)
+#pragma mark - ★ [E3] Default background gradient view (SPEC §2.1: dark=purple-blue / light=white→pink-purple)
 //
-// 未设自定义背景图/视频时的默认背景。原实现是平面 systemBackgroundColor(深黑/浅白),
-// 与 E 稿「深 = 紫蓝渐变 / 浅 = 白→粉紫渐变」不符。
-// 本视图自绘渐变(base 线性 + 3 个椭圆径向光斑),仅当 currentType == BackgroundTypeNone
-// (无自定义背景)时挂载 ⇒ 不触碰自定义背景图/视频路径,主界面自定义能力保留。
+// Default background shown when no custom image/video is set. The original implementation used a
+// flat systemBackgroundColor (black in dark mode / white in light mode), which did not match the
+// E design ("dark = purple-blue gradient / light = white→pink-purple gradient").
+// This view draws a gradient (linear base + three elliptical radial highlights) and is attached only
+// when currentType == BackgroundTypeNone (no custom background), leaving custom image/video paths
+// untouched and preserving the home screen's customization options.
 @interface AmeGradientBackgroundView : UIView
 @end
 
@@ -62,7 +65,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    // 尺寸变化(旋转/分屏)后重绘,保证渐变铺满
+    // Redraw after a size change (rotation / split view) to keep the gradient covering the view.
     if (!CGSizeEqualToSize(_ameLastLayoutSize, self.bounds.size)) {
         _ameLastLayoutSize = self.bounds.size;
         [self setNeedsDisplay];
@@ -77,7 +80,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     [AmeGradientBackgroundView ame_drawDefaultBackgroundInRect:self.bounds dark:dark];
 }
 
-// 一个椭圆径向渐变(CSS radial(rx ry at x y) 用 CTM 缩放近似:先画圆再压扁)
+// An elliptical radial gradient (approximate CSS radial(rx ry at x y) by scaling the CTM:
+// draw a circle, then squash it).
 + (void)ame_drawRadialInContext:(CGContextRef)ctx
                          center:(CGPoint)c
                              rx:(CGFloat)rx
@@ -99,7 +103,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     CGGradientRef grad = CGGradientCreateWithColorComponents(space, comps, locs, 2);
     CGContextSaveGState(ctx);
     CGContextTranslateCTM(ctx, c.x, c.y);
-    CGContextScaleCTM(ctx, 1.0, ry / rx);            // 圆 → 椭圆
+    CGContextScaleCTM(ctx, 1.0, ry / rx);            // Circle → ellipse
     CGContextDrawRadialGradient(ctx, grad, CGPointZero, 0.0, CGPointZero, rx,
                                 kCGGradientDrawsBeforeStartLocation | kCGGradientDrawsAfterEndLocation);
     CGContextRestoreGState(ctx);
@@ -113,18 +117,18 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     const CGFloat W = b.size.width, H = b.size.height;
 
     UIColor *base0 = nil, *base1 = nil, *r1 = nil, *r2 = nil, *r3 = nil;
-    CGFloat r1x = 0.9 * W, r1y = 0.70 * H, r1s = 0.60;   // 蓝光斑
-    CGFloat r2x = 0.9 * W, r2y = 0.80 * H, r2s = 0.55;   // 品红/粉光斑
-    CGFloat r3x = 0.8 * W, r3y = 0.70 * H, r3s = 0.60;   // 青色/薄荷光斑
+    CGFloat r1x = 0.9 * W, r1y = 0.70 * H, r1s = 0.60;   // Blue highlight
+    CGFloat r2x = 0.9 * W, r2y = 0.80 * H, r2s = 0.55;   // Magenta/pink highlight
+    CGFloat r3x = 0.8 * W, r3y = 0.70 * H, r3s = 0.60;   // Cyan/mint highlight
     if (dark) {
-        // 深色:紫蓝渐变  base #101322 → #05060c
+        // Dark mode: purple-blue gradient, base #101322 → #05060c
         base0 = AmeRGBA(0x10, 0x13, 0x22, 1.0);
         base1 = AmeRGBA(0x05, 0x06, 0x0C, 1.0);
         r1 = AmeRGBA(90, 130, 255, 0.55);
         r2 = AmeRGBA(210, 90, 220, 0.50);
         r3 = AmeRGBA(0, 220, 200, 0.32);
     } else {
-        // 浅色:白→粉紫  base #eef3ff → #fdf8ff
+        // Light mode: white→pink-purple, base #eef3ff → #fdf8ff
         base0 = AmeRGBA(0xEE, 0xF3, 0xFF, 1.0);
         base1 = AmeRGBA(0xFD, 0xF8, 0xFF, 1.0);
         r1 = AmeRGBA(150, 185, 255, 0.90);
@@ -132,7 +136,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         r3 = AmeRGBA(160, 240, 225, 0.70);
     }
 
-    // 线性底(top → bottom)
+    // Linear base (top → bottom)
     CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
     CGGradientRef baseGrad = CGGradientCreateWithColors(space,
         (__bridge CFArrayRef)@[(id)base0.CGColor, (id)base1.CGColor], NULL);
@@ -142,7 +146,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     CGGradientRelease(baseGrad);
     CGColorSpaceRelease(space);
 
-    // 三个径向光斑(坐标 = CSS 的 at x% y%)
+    // Three radial highlights (coordinates = CSS-style at x% y%).
     [self ame_drawRadialInContext:ctx
                            center:CGPointMake(CGRectGetMinX(b) + 0.12 * W, CGRectGetMinY(b) + 0.00 * H)
                                rx:r1x ry:r1y color:r1 stop:r1s];
@@ -165,14 +169,15 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 @property (nonatomic, weak) UIWindow *currentWindow;
 @property (nonatomic, weak) UISplitViewController *currentSplitVC;
 @property (nonatomic, strong, readwrite, nullable) UIView *globalBackgroundContainer;
-// ★ [E3] 记住默认渐变宿主(removeGlobalBackground 的 currentWindow 会被置 nil,需单独持弱引用清理)
+// ★ [E3] Keep a weak reference to the default-gradient host (removeGlobalBackground sets currentWindow
+// to nil, so this is needed to clean it up separately).
 @property (nonatomic, weak) UIView *ameDefaultGradientHost;
-// ★ [E3] 私有:把默认渐变背景挂到宿主(window / splitVC.view)
+// ★ [E3] Private: attach the default gradient background to its host (window / splitVC.view).
 - (void)ame_applyDefaultGradientToHost:(UIView *)host;
-// ★ [GLASSUI] 私有:玻璃高光设置即时生效(设置页接入用)
+// ★ [GLASSUI] Private: apply glass-highlight settings immediately (for Settings integration).
 - (void)applyGlassRimSettingsNow;
 - (void)ameApplyGlassRimSettingsToViewTree:(UIView *)root;
-// ★ [GLASS-STYLE] 私有:界面风格(原生 / 液态玻璃)即时生效
+// ★ [GLASS-STYLE] Private: apply UI style (native / Liquid Glass) immediately.
 - (void)ameSyncGlassRimStrengthForCurrentStyle;
 - (void)ameReapplyGlassStyleToViewTree:(UIView *)root;
 - (void)ameGlassStyleChanged:(NSNotification *)note;
@@ -229,7 +234,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
                                                  name:UIApplicationWillChangeStatusBarFrameNotification
                                                object:nil];
 
-    // ★ [GLASS-STYLE] 界面风格切换(设置页写 AMEGlassStyleSetConfigured ⇒ 广播)⇒ 立即按新风格重刷
+    // ★ [GLASS-STYLE] UI style changed (Settings calls AMEGlassStyleSetConfigured ⇒ broadcasts);
+    // immediately refresh using the new style.
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(ameGlassStyleChanged:)
                                                  name:AMEGlassStyleChangedNotification
@@ -273,11 +279,11 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 - (void)saveBackgroundSettings {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults setInteger:self.currentType forKey:kBackgroundTypeKey];
-    // ★ [AUDIT] currentBackgroundPath 是 nullable(见头文件),clearBackgroundInternal /
-    //   loadSavedBackground 都会把它置为 nil;而 setObject:forKey: 传 nil 会抛
-    //   NSInvalidArgumentException(object cannot be nil)→ 崩溃(与
-    //   「setTitleTextAttributes:nil」属同一类「把 nil 传给非空参数」的崩法)。
-    //   nil 时改用 removeObjectForKey: 清除该键(NSUserDefaults 的官方清值方式)。
+    // ★ [AUDIT] currentBackgroundPath is nullable (see the header), and clearBackgroundInternal /
+    //   loadSavedBackground both set it to nil. Passing nil to setObject:forKey: raises
+    //   NSInvalidArgumentException (object cannot be nil) and crashes (the same class of bug as
+    //   passing nil to the non-null parameter in setTitleTextAttributes:nil).
+    //   Use removeObjectForKey: when nil to clear the key (the official NSUserDefaults approach).
     if (self.currentBackgroundPath.length > 0) {
         [defaults setObject:self.currentBackgroundPath forKey:kBackgroundPathKey];
     } else {
@@ -288,57 +294,63 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 
 - (void)loadUISettings {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    // ★ [UI-B] 修复(2026-10-02):键不存在时 integerForKey 返回 0,而 0 == BackgroundUIEffectTranslucent,
-    //   越界校验永远判不出"从未设置过" ⇒ 首装默认落到"半透明" ⇒ applyEffectToView: 的 Blur 分支永不执行
-    //   ⇒ 整条玻璃路径被静默跳过(用户现场:"我可以保证主界面绝对没有玻璃")。用 objectForKey 区分。
+    // ★ [UI-B] Fix (2026-10-02): when a key is absent, integerForKey returns 0, and
+    //   0 == BackgroundUIEffectTranslucent. The range check can never tell that it was never set;
+    //   a fresh install therefore defaults to "Translucent", so the Blur branch in applyEffectToView:
+    //   is never reached and the entire glass path is silently skipped (user report: "I can guarantee
+    //   there is absolutely no glass on the main screen"). Use objectForKey to distinguish the cases.
     id ameEffObj = [defaults objectForKey:kBackgroundUIEffectKey];
     _uiEffect = ameEffObj ? [defaults integerForKey:kBackgroundUIEffectKey] : BackgroundUIEffectBlur;
     if (_uiEffect < BackgroundUIEffectTranslucent || _uiEffect > BackgroundUIEffectBlur) {
-        _uiEffect = BackgroundUIEffectBlur; // 默认毛玻璃效果
+        _uiEffect = BackgroundUIEffectBlur; // Default frosted-glass effect
     }
     
     _uiOpacity = [defaults floatForKey:kBackgroundUIOpacityKey];
     if (_uiOpacity < 0.1 || _uiOpacity > 1.0) {
-        _uiOpacity = 0.7; // 默认透明度
+        _uiOpacity = 0.7; // Default opacity
     }
     
-    // ★ [UI-B] 同型修复(2026-10-02):键不存在返回 0.0,恰在合法区间 [0,1] 内 ⇒ 强度 0%
-    //   ⇒ blurView.alpha = 0.3 + 0*0.7 = 0.3,观感近于无。默认给 0.7。
+    // ★ [UI-B] Same type of fix (2026-10-02): an absent key returns 0.0, which is within the valid
+    //   [0,1] range ⇒ intensity is 0% ⇒ blurView.alpha = 0.3 + 0*0.7 = 0.3, making the effect nearly
+    //   imperceptible. Use 0.7 as the default.
     id ameBlurObj = [defaults objectForKey:kBackgroundBlurIntensityKey];
     _blurIntensity = ameBlurObj ? [defaults floatForKey:kBackgroundBlurIntensityKey] : 0.7;
     if (_blurIntensity < 0.0 || _blurIntensity > 1.0) {
-        _blurIntensity = 0.7; // 默认模糊程度
+        _blurIntensity = 0.7; // Default blur intensity
     }
 
-    // ★ [GLASS-MIGRATE] 一次性迁移:老版本"键不存在 => 0 => 半透明"的 bug 会把第一次运行写成
-    //   "半透明",于是 applyEffectToView: 永远走 else 分支 ⇒ 用户现场"主界面绝对没有玻璃"。
-    //   这里只做【一次】:若当前是半透明且从未迁移过,改成毛玻璃并打标记(用户仍可在设置里改回)。
+    // ★ [GLASS-MIGRATE] One-time migration: in older versions, the bug "missing key => 0 => Translucent"
+    //   caused the first run to save "Translucent". applyEffectToView: then always took the else branch,
+    //   matching the user report "there is absolutely no glass on the main screen".
+    //   Run this only once: if the current setting is Translucent and has not been migrated, switch to
+    //   Blur and record the migration (the user can still switch it back in Settings).
     static NSString * const kGlassMigratedKey = @"background.glass_migrated_v1";
     if (_uiEffect == BackgroundUIEffectTranslucent && ![defaults boolForKey:kGlassMigratedKey]) {
         _uiEffect = BackgroundUIEffectBlur;
         [defaults setInteger:_uiEffect forKey:kBackgroundUIEffectKey];
         [defaults setBool:YES forKey:kGlassMigratedKey];
         [defaults synchronize];
-        NSLog(@"[glass] migrated uiEffect: Translucent -> Blur (一次性,可在设置里改回)");
+        NSLog(@"[glass] migrated uiEffect: Translucent -> Blur (one-time; can be changed back in Settings)");
     }
-    // ★ [RIM-UI] 高光开关 / 强度(默认:开、1.0)
+    // ★ [RIM-UI] Highlight switch / intensity (defaults: on, 1.0).
     id ameRimObj  = [defaults objectForKey:kGlassRimEnabledKey];
     _glassRimEnabled  = ameRimObj ? [defaults boolForKey:kGlassRimEnabledKey] : YES;
     id ameRimSObj = [defaults objectForKey:kGlassRimStrengthKey];
     _glassRimStrength = ameRimSObj ? [defaults floatForKey:kGlassRimStrengthKey] : 1.0;
     if (_glassRimStrength < 0.0 || _glassRimStrength > 1.0) _glassRimStrength = 1.0;
-    // ★ [GLASS-STYLE] 界面风格:解析实际生效风格(单一真相源),并按风格收敛纯代码玻璃强度。
-    //   原生风格(iOS<26 一律,iOS>=26 用户可选)⇒ 强度强制 0(rim 助手内部也会短路,这里是双保险)。
+    // ★ [GLASS-STYLE] Resolve the active UI style (single source of truth) and adjust the hand-drawn
+    //   glass intensity accordingly. Native style (always on iOS<26; user-selectable on iOS>=26)
+    //   forces intensity to 0 (the rim helper also short-circuits internally; this is a second safeguard).
     AMEGlassStyleLogResolvedOnce();
     [self ameSyncGlassRimStrengthForCurrentStyle];
 
-    NSLog(@"[glass] settings loaded: uiEffect=%ld (0=半透明,1=毛玻璃) blurIntensity=%.2f uiOpacity=%.2f",
+    NSLog(@"[glass] settings loaded: uiEffect=%ld (0=Translucent,1=Blur) blurIntensity=%.2f uiOpacity=%.2f",
           (long)_uiEffect, _blurIntensity, _uiOpacity);
     NSLog(@"[glass] rim: enabled=%d strength=%.2f", (int)self.glassRimEnabled, self.glassRimStrength);
-    // ★ [GLASS-STYLE] 自证日志:风格判定矩阵现场可判(系统能力 / 用户配置 / 实际生效)
-    NSLog(@"[glass] style: 配置=%@ · 系统支持液态玻璃=%@ · 实际生效=%@",
+    // ★ [GLASS-STYLE] Diagnostic to verify the style decision matrix (system capability / user setting / actual style).
+    NSLog(@"[glass] style: configured=%@ · system supports Liquid Glass=%@ · actually in effect=%@",
           AMEGlassStyleStringFromEnum(AMEGlassStyleConfigured()),
-          AMEGlassStyleSystemSupportsLiquid() ? @"是" : @"否",
+          AMEGlassStyleSystemSupportsLiquid() ? @"yes" : @"no",
           AMEGlassStyleStringFromEnum(AMEGlassStyleResolved()));
 }
 
@@ -367,26 +379,30 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     [self saveUISettings];
 }
 
-#pragma mark - ★ [GLASSUI] 玻璃高光 开关 / 强度(设置页接入:夹紧 + 持久化 + 即时生效)
+#pragma mark - ★ [GLASSUI] Glass highlight switch / intensity (Settings integration: clamp + persist + apply immediately)
 //
-// 说明:glassRimEnabled / glassRimStrength 原本只有自动合成的访问器 —— 外部直接赋值既不会
-// 写进 NSUserDefaults,也不会写进 UIKit+GlassSurface.h 里的全局强度变量 gAmeGlassRimStrength。
-// 这里补显式 setter,复用【既有】键(background_glass_rim_enabled / background_glass_rim_strength,
-// 见本文件顶部常量),不新增第二套键/第二套实现:
-//   ① 夹紧到合法区间;② saveUISettings 持久化;③ AmeSetGlassRimStrength 写全局强度(关 ⇒ 0);
-//   ④ applyGlassRimSettingsNow 立即重刷屏幕上所有已挂高光的载体(即时生效)。
-// 载入路径(init 里直写 _glassRimEnabled / _glassRimStrength 两个 ivar)不经过 setter ⇒ 启动不会触发重刷。
+// Note: glassRimEnabled / glassRimStrength originally had only synthesized accessors. Assigning
+// them externally did not write to NSUserDefaults or to the global intensity variable
+// gAmeGlassRimStrength in UIKit+GlassSurface.h.
+// Add explicit setters here, reusing the existing keys (background_glass_rim_enabled /
+// background_glass_rim_strength; see the constants at the top of this file), without adding a second
+// set of keys or another implementation:
+//   ① Clamp to the valid range; ② persist via saveUISettings; ③ AmeSetGlassRimStrength writes the
+//      global intensity (off ⇒ 0); ④ applyGlassRimSettingsNow immediately refreshes all on-screen
+//      views that already have a highlight.
+// The load path (directly writing _glassRimEnabled / _glassRimStrength in init) does not use the
+// setters ⇒ startup does not trigger a refresh.
 - (void)setGlassRimEnabled:(BOOL)glassRimEnabled {
     _glassRimEnabled = glassRimEnabled;
     [self saveUISettings];
-    [self ameSyncGlassRimStrengthForCurrentStyle];   // ★ [GLASS-STYLE] 原生风格下恒为 0
+    [self ameSyncGlassRimStrengthForCurrentStyle];   // ★ [GLASS-STYLE] Always 0 for native style
     [self applyGlassRimSettingsNow];
 }
 
 - (void)setGlassRimStrength:(CGFloat)glassRimStrength {
-    _glassRimStrength = MAX(0.0, MIN(1.0, glassRimStrength));   // ★ 夹紧:0…1,越界不入
+    _glassRimStrength = MAX(0.0, MIN(1.0, glassRimStrength));   // ★ Clamp to 0…1; ignore out-of-range values
     [self saveUISettings];
-    [self ameSyncGlassRimStrengthForCurrentStyle];   // ★ [GLASS-STYLE] 原生风格下恒为 0
+    [self ameSyncGlassRimStrengthForCurrentStyle];   // ★ [GLASS-STYLE] Always 0 for native style
     [self applyGlassRimSettingsNow];
 }
 
@@ -406,14 +422,16 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 
     // For default background, just set the window's background color
     // No need for container
-    // 修复：使用 systemBackgroundColor 自适应浅色/深色模式。
-    // 之前硬编码深灰（0.08）在浅色模式下导致"中间一片黑"。
-    // systemBackgroundColor 在浅色模式为白、深色模式为黑，自动适配。
-    // 为避免状态栏区域透出纯黑，使用 systemBackground 而非纯黑。
+    // Fix: use systemBackgroundColor to adapt to light and dark modes.
+    // Previously, a hard-coded dark gray (0.08) caused "a black area in the middle" in light mode.
+    // systemBackgroundColor is white in light mode and black in dark mode, adapting automatically.
+    // Use systemBackground rather than pure black to avoid showing black through the status bar area.
     if (self.currentType == BackgroundTypeNone) {
-        // ★ [E3] SPEC §2.1:未设自定义背景时改用默认渐变(深=紫蓝 / 浅=白→粉紫)。
-        //   原值:window.backgroundColor = systemBackgroundColor(深黑/浅白,平面无色)
-        //   新值:挂 AmeGradientBackgroundView —— 仅无自定义背景时生效,自定义背景路径不受影响
+        // ★ [E3] SPEC §2.1: use the default gradient (dark=purple-blue / light=white→pink-purple)
+        //   when no custom background is set.
+        //   Old: window.backgroundColor = systemBackgroundColor (flat, colorless black/white).
+        //   New: attach AmeGradientBackgroundView — only active without a custom background; custom
+        //   background paths are unaffected.
         [self ame_applyDefaultGradientToHost:window];
         return;
     }
@@ -455,9 +473,9 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     
     // For default background, just set the view's background color
     // No need for container or transparency
-    // 修复：使用 systemBackgroundColor 自适应浅色/深色模式
+    // Fix: use systemBackgroundColor to adapt to light and dark modes.
     if (self.currentType == BackgroundTypeNone) {
-        // ★ [E3] SPEC §2.1:默认渐变背景(同 window 路径;原为平面 systemBackgroundColor)
+        // ★ [E3] SPEC §2.1: use the default gradient (same as the window path; previously a flat systemBackgroundColor).
         [self ame_applyDefaultGradientToHost:splitVC.view];
         return;
     }
@@ -501,7 +519,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         if (existing) [existing removeFromSuperview];
     }
     
-    // ★ [E3] 同时移除默认渐变背景 —— 切自定义背景 / 清空背景时必须清掉,否则会盖住后续内容
+    // ★ [E3] Also remove the default gradient background when switching to a custom background or
+    // clearing it; otherwise it would cover subsequent content.
     if (self.currentWindow) {
         UIView *dg = [self.currentWindow viewWithTag:kDefaultBackgroundTag];
         if (dg) [dg removeFromSuperview];
@@ -510,7 +529,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         UIView *dg = [self.currentSplitVC.view viewWithTag:kDefaultBackgroundTag];
         if (dg) [dg removeFromSuperview];
     }
-    // ★ [E3] 兜底:通过弱持有的宿主清理(切背景时 currentWindow/currentSplitVC 可能已被置 nil)
+    // ★ [E3] Fallback: clean up through the weakly held host (currentWindow/currentSplitVC may already
+    // have been set to nil when the background changes).
     if (self.ameDefaultGradientHost) {
         UIView *dg = [self.ameDefaultGradientHost viewWithTag:kDefaultBackgroundTag];
         if (dg) [dg removeFromSuperview];
@@ -561,7 +581,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 
 #pragma mark - Background Content Application
 
-// ★ [E3] 把默认渐变背景挂到宿主(window / splitVC.view)。仅无自定义背景时调用。
+// ★ [E3] Attach the default gradient background to its host (window / splitVC.view). Called only
+// when there is no custom background.
 - (void)ame_applyDefaultGradientToHost:(UIView *)host {
     if (!host) return;
     UIView *existing = [host viewWithTag:kDefaultBackgroundTag];
@@ -570,8 +591,9 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     AmeGradientBackgroundView *g = [[AmeGradientBackgroundView alloc] initWithFrame:host.bounds];
     g.tag = kDefaultBackgroundTag;
     [host insertSubview:g atIndex:0];
-    self.ameDefaultGradientHost = host;   // ★ [E3] 弱持有,便于清理
-    // 兜底底色(与渐变基色一致,避免首帧/渐变外露黑)
+    self.ameDefaultGradientHost = host;   // ★ [E3] Weakly held for cleanup.
+    // Fallback base color (matches the gradient base and prevents black from showing through
+    // on the first frame or outside the gradient).
     host.backgroundColor = AmeDynamicColor(AmeRGBA(0x10, 0x13, 0x22, 1.0),
                                            AmeRGBA(0xEE, 0xF3, 0xFF, 1.0));
 }
@@ -581,9 +603,9 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     UIView *existing = [container viewWithTag:kDefaultBackgroundTag];
     if (existing) [existing removeFromSuperview];
 
-    // ★ [E3] SPEC §2.1:默认背景改为「深=紫蓝 / 浅=白→粉紫」渐变。
-    //   原值:平面 systemBackgroundColor(深黑/浅白,与 E 稿不符)
-    //   新值:AmeGradientBackgroundView(随 traitCollection 自动切换深浅)
+    // ★ [E3] SPEC §2.1: change the default background to a "dark=purple-blue / light=white→pink-purple" gradient.
+    //   Old: flat systemBackgroundColor (black in dark mode / white in light mode; does not match the E design).
+    //   New: AmeGradientBackgroundView (automatically switches with traitCollection).
     AmeGradientBackgroundView *defaultBackgroundView =
         [[AmeGradientBackgroundView alloc] initWithFrame:container.bounds];
     defaultBackgroundView.tag = kDefaultBackgroundTag;
@@ -650,15 +672,15 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     UIView *existingDim = [container viewWithTag:kBackgroundDimTag];
     if (existingDim) [existingDim removeFromSuperview];
 
-    // 修复：使用 SystemThinMaterial（自适应浅色/深色，且较通透）替代硬编码 Dark。
-    // 之前使用 UIBlurEffectStyleDark + 黑色 dim view 叠加，导致：
-    // 1. 浅色模式下背景图被完全压暗成"中间一片黑"
-    // 2. 左右侧栏完全不透明，背景图透不出来
-    // SystemThinMaterial 会在浅色模式呈浅色毛玻璃、深色模式呈深色毛玻璃，
-    // 且透明度适中，背景图可见。
+    // Fix: use SystemThinMaterial (adapts to light/dark mode and is more translucent) instead of
+    // hard-coded Dark. Previously, UIBlurEffectStyleDark + an overlaid black dim view caused:
+    // 1. The background image to become so dark in light mode that "the middle was all black".
+    // 2. The sidebars to be completely opaque, hiding the background image.
+    // SystemThinMaterial is light frosted glass in light mode and dark frosted glass in dark mode,
+    // with moderate opacity so the background remains visible.
     UIBlurEffect *blurEffect;
     if (@available(iOS 13.0, *)) {
-        blurEffect = AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial);   // ★ 液态玻璃(iOS 26+)/ 旧系统回退
+        blurEffect = AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial);   // ★ Liquid Glass (iOS 26+) / fallback on older systems
     } else {
         blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
     }
@@ -670,7 +692,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 
     [container addSubview:blurView];
 
-    // 修复：dim view 改为自适应颜色而非纯黑，避免浅色模式下过度压暗
+    // Fix: use an adaptive color for the dim view instead of pure black to avoid over-darkening in light mode.
     UIView *dimView = [[UIView alloc] initWithFrame:container.bounds];
     dimView.tag = kBackgroundDimTag;
     if (@available(iOS 13.0, *)) {
@@ -678,7 +700,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     } else {
         dimView.backgroundColor = [UIColor blackColor];
     }
-    dimView.alpha = self.blurIntensity * 0.2; // 降低到 0.2，避免过度压暗
+    dimView.alpha = self.blurIntensity * 0.2; // Reduced to 0.2 to avoid over-darkening.
     dimView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
     [container addSubview:dimView];
@@ -691,11 +713,11 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     
     // Main view - apply effect based on settings
     if (self.uiEffect == BackgroundUIEffectBlur) {
-        // 毛玻璃效果 - clear background, let blur show through
+        // Frosted-glass effect — clear background to let the blur show through.
         viewController.view.backgroundColor = [UIColor clearColor];
     } else {
-        // 半透明效果 - semi-transparent background
-        // 修复：使用 systemBackgroundColor 替代硬编码黑色，自适应浅色/深色模式
+        // Translucent effect — semi-transparent background.
+        // Fix: use systemBackgroundColor instead of hard-coded black to adapt to light/dark mode.
         if (@available(iOS 13.0, *)) {
             UIColor *base = [UIColor systemBackgroundColor];
             viewController.view.backgroundColor = [base colorWithAlphaComponent:1.0 - self.uiOpacity];
@@ -733,22 +755,25 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 
 - (void)applyEffectToCell:(UITableViewCell *)cell {
     if (cell == nil) { return; }
-    // ★ [RIM-STATE] 列表行不叠高光(见下面 [NO-RIM])——但行会被复用、也可能带着历史图层 ⇒
-    //   每次应用都【无条件先摘一次】,保证「原生 / 关高光」下行上没有任何高光残留
-    //   (用户实测:从玻璃切到原生后,设置页会残留一点小高光)。
+    // ★ [RIM-STATE] Do not overlay highlights on list rows (see [NO-RIM] below), but rows are reused
+    //   and may carry old layers ⇒ always remove any previous highlight before applying an effect,
+    //   so none remains when using "Native / highlights off" (user confirmed a small highlight
+    //   remained on the Settings screen after switching from glass to native).
     AmeDetachGlassRim(cell);
     if (self.uiEffect == BackgroundUIEffectBlur) {
-        // 毛玻璃效果 - use UIBlurEffect on cell background
+        // Frosted-glass effect — use UIBlurEffect for the cell background.
         if (@available(iOS 13.0, *)) {
-            UIVisualEffect *blur = AmeGlassEffect(UIBlurEffectStyleSystemMaterial);   // ★ 列表行玻璃
+            UIVisualEffect *blur = AmeGlassEffect(UIBlurEffectStyleSystemMaterial);   // ★ Glass effect for list rows
             UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
             blurView.frame = cell.bounds;
-            // ★ [E3] SPEC §2:玻璃底 + blur 26 / saturate 180%
-            //   ★ [GLASS-STYLE] 底填充按风格(液体=白填充;原生=不加,系统材质原样)
+            // ★ [E3] SPEC §2: glass base + blur 26 / saturate 180%.
+            //   ★ [GLASS-STYLE] Base fill depends on style (liquid = white fill; native = none,
+            //   leave the system material unchanged).
             AmeApplyGlassFillForCurrentStyle(blurView);
-            AmeTuneGlassBackdrop(blurView, AmeGlassBlurRadius, AmeGlassSaturate);   // 内部按风格短路
-            // ★ [NO-RIM] 列表行不再刷高光(用户反馈:设置页 / 实例子目录不要这个描边)
-            //   主界面卡片的 rim 仍在 applyEffectToView: 里保留。
+            AmeTuneGlassBackdrop(blurView, AmeGlassBlurRadius, AmeGlassSaturate);   // Internally short-circuits by style.
+            // ★ [NO-RIM] Do not add highlights to list rows (user feedback: remove this stroke from
+            //   Settings / instance subdirectories). The rim remains on home-screen cards in
+            //   applyEffectToView:.
             blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
             // Remove old background views
@@ -758,12 +783,12 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
                 }
             }
 
-            // ★ [ROUND-ROW] 选项行改圆角(设置页/实例子目录的选项)
+            // ★ [ROUND-ROW] Round the option rows (Settings / instance subdirectories).
             CGFloat rowRadius = 12.0;
             blurView.layer.cornerRadius = rowRadius;
             blurView.layer.masksToBounds = YES;
             cell.layer.cornerRadius = rowRadius;
-            cell.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+            cell.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (match system cards).
             cell.layer.masksToBounds = YES;
             cell.backgroundView = blurView;
         } else {
@@ -771,8 +796,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         }
         cell.contentView.backgroundColor = [UIColor clearColor];
     } else {
-        // 半透明效果 - simple semi-transparent background
-        // 修复：使用 secondarySystemBackgroundColor 替代硬编码 0.1 黑色
+        // Translucent effect — simple semi-transparent background.
+        // Fix: use secondarySystemBackgroundColor instead of hard-coded 0.1 black.
         if (@available(iOS 13.0, *)) {
             cell.backgroundColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:self.uiOpacity];
         } else {
@@ -780,9 +805,9 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         }
         cell.contentView.backgroundColor = [UIColor clearColor];
         cell.backgroundView = nil;
-        // ★ [ROUND-ROW] 半透明模式下行也圆角(与毛玻璃模式一致)
+        // ★ [ROUND-ROW] Also round rows in translucent mode (to match frosted-glass mode).
         cell.layer.cornerRadius = 12.0;
-        cell.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+        cell.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (match system cards).
         cell.layer.masksToBounds = YES;
     }
 }
@@ -818,47 +843,51 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)applyEffectToNavigationBar:(UINavigationBar *)navigationBar {
-    // 关键修复（UI 累积异常 + 小白条根治）：
-    // 1. 之前每次调用都重建 UINavigationBarAppearance，iOS 内部会重新生成 hairline
-    //    UIImageView，累积后表现为"上方一行小白条"。现改为静态单例 Appearance，
-    //    同一种效果只构建一次，避免反复触发 iOS 内部 hairline view 重建。
-    // 2. 之前清理 hairline 只遍历 navigationBar.subviews（直接子视图），但 iOS 的
-    //    hairline 常嵌在 _UINavigationBarBackground / _UIBarBackground 等私有子视图
-    //    内部。改为递归遍历所有后代视图，彻底清理累积的 hairline。
+    // Key fix (prevents accumulated UI anomalies and recurring white lines):
+    // 1. Previously, each call rebuilt UINavigationBarAppearance, causing iOS to generate new
+    //    hairline UIImageViews that accumulated as "a thin white line at the top". Appearance is
+    //    now a static singleton, built only once per effect to avoid repeatedly triggering internal
+    //    hairline-view recreation.
+    // 2. Previously, cleanup traversed only navigationBar.subviews (direct children), but iOS often
+    //    nests hairlines inside private subviews such as _UINavigationBarBackground / _UIBarBackground.
+    //    Recursively traverse all descendants to remove accumulated hairlines completely.
     static UIImage *emptyImage = nil;
     static UINavigationBarAppearance *blurAppearance = nil;
     static UINavigationBarAppearance *translucentAppearance = nil;
     static UIColor *translucentBarColor = nil;
-    static NSInteger blurAppearanceStyle = -1;   // ★ [GLASS-STYLE] 毛玻璃 Appearance 对应的界面风格
+    static NSInteger blurAppearanceStyle = -1;   // ★ [GLASS-STYLE] UI style associated with the frosted-glass appearance
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         emptyImage = [UIImage new];
-        // 半透明 Appearance 在首次调用时按当前 uiOpacity 构建（见下方懒加载）
+        // The translucent appearance is built on first use using the current uiOpacity (lazy-loaded below).
     });
 
-    // ★ [GLASS-STYLE] 毛玻璃 Appearance 按【界面风格】缓存:风格变了就重建一次
-    //   (原生 ⇒ 系统常规材质;液态 ⇒ 系统 UIGlassEffect)。既让切风格后导航栏立刻跟上,
-    //   又保留「同一风格只构建一次」的原意(避免反复重建触发 iOS 内部 hairline 累积)。
+    // ★ [GLASS-STYLE] Cache the frosted-glass appearance by UI style and rebuild it when the style changes
+    //   (native ⇒ standard system material; liquid ⇒ system UIGlassEffect). This updates the navigation
+    //   bar immediately after a style switch while retaining the "build only once per style" behavior
+    //   (avoiding accumulated internal iOS hairlines from repeated rebuilds).
     NSInteger curAmeNavStyle = (NSInteger)AMEGlassStyleResolved();
     if (blurAppearance == nil || blurAppearanceStyle != curAmeNavStyle) {
         blurAppearance = [[UINavigationBarAppearance alloc] init];
         [blurAppearance configureWithTransparentBackground];
         blurAppearance.backgroundColor = [UIColor clearColor];
-        blurAppearance.backgroundEffect = AmeGlassEffect(UIBlurEffectStyleSystemMaterial);   // ★ 导航栏玻璃(按风格)
+        blurAppearance.backgroundEffect = AmeGlassEffect(UIBlurEffectStyleSystemMaterial);   // ★ Navigation-bar glass (style-dependent)
         blurAppearance.shadowColor = nil;
         blurAppearance.shadowImage = emptyImage;
         blurAppearanceStyle = curAmeNavStyle;
     }
 
-    // 递归清理 iOS 内部累积的 hairline UIImageView（高度极小的分割线视图）
-    // hairline 常嵌在 _UINavigationBarBackground / _UIBarBackground 等私有子视图内部
+    // Recursively remove accumulated internal iOS hairline UIImageViews (extremely short separator views).
+    // Hairlines are often nested in private subviews such as _UINavigationBarBackground / _UIBarBackground.
     //
-    // 关键修复（Card/Root 布局进入所有页闪退加固）：
-    //   block 内引用自身（removeHairlines(sub)）必须用 __block 限定符，否则
-    //   捕获的是 nil（block 字面量赋值还未完成时的栈帧值），递归调用是 no-op，
-    //   只会处理 navigationBar 的直接子视图，无法清理 _UIBarBackground 内层的 hairline。
-    //   累积的 hairline 在 setContentViewController 反复切换时会触发私有子视图
-    //   layout 解算异常，导致 EXC_BAD_ACCESS（不被 NSUncaughtExceptionHandler 捕获）。
+    // Key fix (hardens against crashes when entering pages from Card/Root layouts):
+    //   A block that references itself (removeHairlines(sub)) must use the __block qualifier;
+    //   otherwise it captures nil (the stack value before the block literal assignment completes),
+    //   making recursive calls no-ops. Only direct navigationBar children would be processed,
+    //   leaving hairlines nested inside _UIBarBackground untouched.
+    //   Accumulated hairlines can cause private subview layout failures during repeated
+    //   setContentViewController switches, resulting in EXC_BAD_ACCESS (not caught by
+    //   NSUncaughtExceptionHandler).
     __block void (^removeHairlines)(UIView *) = ^(UIView *view) {
         for (UIView *sub in view.subviews) {
             if ([sub isKindOfClass:[UIImageView class]] &&
@@ -873,7 +902,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     removeHairlines(navigationBar);
 
     if (self.uiEffect == BackgroundUIEffectBlur) {
-        // 毛玻璃效果 - 复用静态单例
+        // Frosted-glass effect — reuse the static singleton.
         if (@available(iOS 13.0, *)) {
             navigationBar.standardAppearance = blurAppearance;
             navigationBar.scrollEdgeAppearance = blurAppearance;
@@ -883,13 +912,14 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         navigationBar.backgroundColor = [UIColor clearColor];
         navigationBar.shadowImage = emptyImage;
     } else {
-        // 半透明效果
+        // Translucent effect.
         if (@available(iOS 13.0, *)) {
             UIColor *barColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:self.uiOpacity];
             navigationBar.barTintColor = barColor;
             navigationBar.backgroundColor = barColor;
-            // 半透明 Appearance 需要按当前 uiOpacity 构建（uiOpacity 可变，无法像 blur 一样全局单例）
-            // 但同一 uiOpacity 下复用同一实例，避免反复重建
+            // The translucent appearance must use the current uiOpacity (it varies, so it cannot be a
+            // global singleton like blur), but reuse the same instance for the same uiOpacity to avoid
+            // repeated rebuilding.
             if (!translucentAppearance || ![translucentBarColor isEqual:barColor]) {
                 UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
                 [appearance configureWithTransparentBackground];
@@ -912,31 +942,32 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)applyEffectToToolbar:(UIToolbar *)toolbar {
-    // 关键修复（同 applyEffectToNavigationBar:）：静态单例 Appearance + 递归清理 hairline
+    // Key fix (same as applyEffectToNavigationBar:): static singleton appearance + recursive hairline cleanup.
     static UIImage *emptyImage = nil;
     static UIToolbarAppearance *blurToolbarAppearance = nil;
     static UIToolbarAppearance *translucentToolbarAppearance = nil;
     static UIColor *translucentToolbarColor = nil;
-    static NSInteger blurToolbarAppearanceStyle = -1;   // ★ [GLASS-STYLE] 同导航栏
+    static NSInteger blurToolbarAppearanceStyle = -1;   // ★ [GLASS-STYLE] Same as navigation bar
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         emptyImage = [UIImage new];
     });
-    // ★ [GLASS-STYLE] 工具栏毛玻璃 Appearance 同样按界面风格缓存重建(见 applyEffectToNavigationBar:)
+    // ★ [GLASS-STYLE] Rebuild the toolbar's frosted-glass appearance by UI style as well
+    // (see applyEffectToNavigationBar:).
     NSInteger curAmeBarStyle = (NSInteger)AMEGlassStyleResolved();
     if (blurToolbarAppearance == nil || blurToolbarAppearanceStyle != curAmeBarStyle) {
         blurToolbarAppearance = [[UIToolbarAppearance alloc] init];
         [blurToolbarAppearance configureWithTransparentBackground];
         blurToolbarAppearance.backgroundColor = [UIColor clearColor];
-        blurToolbarAppearance.backgroundEffect = AmeGlassEffect(UIBlurEffectStyleSystemMaterial);   // ★ 工具栏玻璃(按风格)
+        blurToolbarAppearance.backgroundEffect = AmeGlassEffect(UIBlurEffectStyleSystemMaterial);   // ★ Toolbar glass (style-dependent)
         blurToolbarAppearance.shadowColor = nil;
         blurToolbarAppearance.shadowImage = emptyImage;
         blurToolbarAppearanceStyle = curAmeBarStyle;
     }
 
-    // 递归清理累积的 hairline UIImageView
-    // 关键修复：同 applyEffectToNavigationBar:，block 内引用自身必须用 __block
-    // 限定符，否则递归调用是 no-op，无法清理 _UIBarBackground 内层的 hairline。
+    // Recursively remove accumulated hairline UIImageViews.
+    // Key fix: as in applyEffectToNavigationBar:, a block referencing itself must use the __block
+    // qualifier; otherwise recursive calls are no-ops and cannot clean hairlines nested in _UIBarBackground.
     __block void (^removeHairlines)(UIView *) = ^(UIView *view) {
         for (UIView *sub in view.subviews) {
             if ([sub isKindOfClass:[UIImageView class]] &&
@@ -951,12 +982,14 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     removeHairlines(toolbar);
 
     if (self.uiEffect == BackgroundUIEffectBlur) {
-        // 毛玻璃效果 - 复用静态单例
+        // Frosted-glass effect — reuse the static singleton.
         if (@available(iOS 13.0, *)) {
             toolbar.standardAppearance = blurToolbarAppearance;
-            // ★ [API-GUARD] UIToolbar.scrollEdgeAppearance 是 iOS 15+ 才有的属性
-            //   （UINavigationBar.scrollEdgeAppearance 的 iOS 13 就有 ⇒ 易被上面 @available(iOS 13.0) 误放行）。
-            //   老系统（iOS 14）直接赋值 ⇒ unrecognized selector 闪退。双重守门：版本 + respondsToSelector。
+            // ★ [API-GUARD] UIToolbar.scrollEdgeAppearance is available only on iOS 15+.
+            //   (UINavigationBar.scrollEdgeAppearance exists since iOS 13 ⇒ the @available(iOS 13.0)
+            //   check above could mistakenly allow it.)
+            //   Direct assignment on older systems (iOS 14) causes an unrecognized-selector crash.
+            //   Two checks: OS version + respondsToSelector.
             if (@available(iOS 15.0, *)) {
                 if ([toolbar respondsToSelector:@selector(setScrollEdgeAppearance:)]) {
                     toolbar.scrollEdgeAppearance = blurToolbarAppearance;
@@ -967,7 +1000,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         toolbar.barTintColor = [UIColor clearColor];
         toolbar.backgroundColor = [UIColor clearColor];
     } else {
-        // 半透明效果
+        // Translucent effect.
         if (@available(iOS 13.0, *)) {
             UIColor *barColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:self.uiOpacity];
             toolbar.barTintColor = barColor;
@@ -983,7 +1016,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
                 translucentToolbarColor = barColor;
             }
             toolbar.standardAppearance = translucentToolbarAppearance;
-            // ★ [API-GUARD] 同上一处：UIToolbar.scrollEdgeAppearance 仅 iOS 15+（老系统赋值 = 闪退）。
+            // ★ [API-GUARD] Same as above: UIToolbar.scrollEdgeAppearance is iOS 15+ only
+            // (assignment on older systems causes a crash).
             if (@available(iOS 15.0, *)) {
                 if ([toolbar respondsToSelector:@selector(setScrollEdgeAppearance:)]) {
                     toolbar.scrollEdgeAppearance = translucentToolbarAppearance;
@@ -1017,27 +1051,31 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     if (!view) return;
 
     if (self.uiEffect == BackgroundUIEffectBlur) {
-        // ★ [GLASS-LIQUID] 明确区分两条路:系统材质(默认)vs 自绘叠加(仅用户显式打开)。
-        //   旧日志 "BLUR path" 会被误读成"还在纯代码画玻璃" ⇒ 按当前风格如实汇报。
-        //   · 系统材质:iOS≥26 ⇒ 系统 UIGlassEffect;iOS<26 ⇒ 系统 UIBlurEffect 常规材质。都不自绘。
+        // ★ [GLASS-LIQUID] Clearly distinguish the two paths: system material (default) vs hand-drawn
+        //   overlay (only when explicitly enabled by the user).
+        //   The old "BLUR path" log was misread as "still drawing glass entirely in code" ⇒ report
+        //   the actual current style instead.
+        //   · System material: iOS≥26 ⇒ system UIGlassEffect; iOS<26 ⇒ standard system UIBlurEffect.
+        //     Neither draws glass in code.
         BOOL ameSystemMaterial = AMEGlassStyleUsesSystemMaterial();
         NSLog(@"[glass] applyEffectToView: %@ on %@ (blur=%.1f sat=%.2f intensity=%.2f hasBg=%d)",
-              ameSystemMaterial ? @"SYSTEM-material path(系统材质,不自绘)"
-                                : @"HAND-DRAWN overlay path(显式自绘叠加)",
+              ameSystemMaterial ? @"SYSTEM-material path (system material, not hand-drawn)"
+                                : @"HAND-DRAWN overlay path (explicitly enabled)",
               NSStringFromClass(view.class), (double)AmeGlassBlurRadius, (double)AmeGlassSaturate,
               (double)self.blurIntensity, (int)[self hasBackground]);
-        // 毛玻璃效果 - 创建 UIVisualEffectView 作为子视图
-        // 先移除已有的 blur view
+        // Frosted-glass effect — create a UIVisualEffectView as a subview.
+        // Remove any existing blur view first.
         for (UIView *subview in view.subviews) {
             if ([subview isKindOfClass:[UIVisualEffectView class]] && subview.tag == kBackgroundBlurTag) {
                 [subview removeFromSuperview];
             }
         }
 
-        // 修复：使用 SystemThinMaterial 替代 SystemMaterialDark，使左右侧栏
-        // 在浅色/深色模式下都自适应，且足够通透让背景图透出。
-        // SystemMaterialDark 过于不透明，导致"左右两边完全不透明"。
-        // ★ 真玻璃可用就用真玻璃(iOS 26 设备),否则系统材质 + 下面加的高光边
+        // Fix: use SystemThinMaterial instead of SystemMaterialDark so the sidebars adapt to light/dark
+        // mode and remain translucent enough for the background image to show through.
+        // SystemMaterialDark was too opaque, making "both sides completely opaque".
+        // ★ Use real glass when available (iOS 26 devices); otherwise use system material plus the
+        // highlight rim added below.
         UIVisualEffect *blur = AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial);
         UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
         blurView.tag = kBackgroundBlurTag;
@@ -1046,37 +1084,42 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         blurView.layer.cornerRadius = view.layer.cornerRadius;
         blurView.layer.masksToBounds = YES;
 
-        // 参照 ZL2 双层透明度控制：
-        // 1. blurIntensity 控制毛玻璃本身的模糊强度（0.3~1.0 范围，避免过低完全透明）
-        // 2. 有自定义背景时降低不透明度让背景透出，无背景时保持较高不透明度
-        // 这样实现了 ZL2 的 influencedByBackgroundColor 效果：
-        // 有背景图/视频时卡片更通透，无背景时卡片更不透明（与系统默认一致）
+        // Follow ZL2's two-layer opacity control:
+        // 1. blurIntensity controls the frosted-glass blur strength (0.3~1.0, avoiding full
+        //    transparency at low values).
+        // 2. Reduce opacity when a custom background is present to let it show through; keep opacity
+        //    higher when no background is set.
+        // This implements ZL2's influencedByBackgroundColor behavior:
+        // cards are more translucent over an image/video and more opaque without one (matching the system default).
         CGFloat effectiveAlpha = 0.3 + (self.blurIntensity * 0.7);  // 0.3~1.0
         if (![self hasBackground]) {
-            // 无自定义背景时，提高不透明度，使 UI 更清晰
+            // Increase opacity without a custom background to make the UI clearer.
             effectiveAlpha = MIN(effectiveAlpha + 0.2, 1.0);
         }
         blurView.alpha = effectiveAlpha;
 
-        // 毛玻璃本身不响应触摸，让事件穿透到宿主视图（如 UIControl 卡片）。
-        // 否则 blurView 会拦截 touch，导致 AccountLoginViewController 的登录卡片
-        // 点击无反应（UIControlEventTouchUpInside 永远不触发）。
+        // Do not let the frosted-glass view respond to touches; pass events through to the host view
+        // (such as a UIControl card). Otherwise blurView intercepts touches and the sign-in cards in
+        // AccountLoginViewController do not respond (UIControlEventTouchUpInside never fires).
         blurView.userInteractionEnabled = NO;
 
         [view insertSubview:blurView atIndex:0];
         view.backgroundColor = [UIColor clearColor];
-        // ★ [E3] SPEC §2 设计令牌:玻璃底填充(glass 深.10/浅.55)+ blur 26 / saturate 180%
-        //   ★ [GLASS-STYLE] 底填充与私有 backdrop 调参按风格(液体=做;原生=不做)
+        // ★ [E3] SPEC §2 design tokens: glass base fill (glass dark .10 / light .55) + blur 26 / saturate 180%.
+        //   ★ [GLASS-STYLE] Apply base fill and private backdrop tuning by style (liquid = apply; native = skip).
         AmeApplyGlassFillForCurrentStyle(blurView);
         AmeTuneGlassBackdrop(blurView, AmeGlassBlurRadius, AmeGlassSaturate);
-        // ★ 玻璃质感:高光描边 + 上缘内高光(不依赖 iOS 26 SDK)
-        // ★ [RIM-UI] 按用户开关/强度刷高光;先摘旧图层,再按新强度重刷
-        // ★ [GLASS-STYLE] 强度按当前风格收敛(原生风格 ⇒ 恒 0,下面的 rim 助手随即短路为 no-op)
+        // ★ Glass effect: highlight stroke + inner highlight on the top edge (does not depend on the iOS 26 SDK).
+        // ★ [RIM-UI] Apply highlights according to the user's switch/intensity; remove old layers first,
+        // then reapply at the new intensity.
+        // ★ [GLASS-STYLE] Constrain intensity by current style (native ⇒ always 0; the rim helper below
+        // then short-circuits as a no-op).
         [self ameSyncGlassRimStrengthForCurrentStyle];
         AmeDetachGlassRim(view);
         AmeAttachGlassRim(view, view.layer.cornerRadius);
-        // ★ [UI-B] 修复(2026-10-02):AmeRefreshGlassRim 全工程原本 0 个调用者
-        //   ⇒ 高光 CAGradientLayer 的 frame 恒为 (0,0,0,0) ⇒ 上缘高光从来没画出来过。
+        // ★ [UI-B] Fix (2026-10-02): AmeRefreshGlassRim previously had no callers in the project,
+        //   so the highlight CAGradientLayer frame always remained (0,0,0,0) and the top-edge
+        //   highlight was never drawn.
         dispatch_async(dispatch_get_main_queue(), ^{
             AmeRefreshGlassRim(view);
             [self ameRefreshRimsRecursive:view];
@@ -1084,19 +1127,20 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     } else {
         NSLog(@"[glass] applyEffectToView: TRANSLUCENT path on %@ (uiEffect=%ld)",
               NSStringFromClass(view.class), (long)self.uiEffect);
-        // 半透明效果 - 移除 blur view，使用半透明背景
-        // 修复：使用 systemBackgroundColor 替代硬编码深灰，自适应浅色/深色模式
+        // Translucent effect — remove the blur view and use a translucent background.
+        // Fix: use systemBackgroundColor instead of hard-coded dark gray to adapt to light/dark mode.
         for (UIView *subview in view.subviews) {
             if ([subview isKindOfClass:[UIVisualEffectView class]] && subview.tag == kBackgroundBlurTag) {
                 [subview removeFromSuperview];
             }
         }
         if (@available(iOS 13.0, *)) {
-            // 使用 secondarySystemBackgroundColor 作为半透明基底，再叠加 alpha
-            // 参照 ZL2 双层透明度控制：有背景时降低不透明度让背景透出
+            // Use secondarySystemBackgroundColor as the translucent base, then apply alpha.
+            // Follow ZL2's two-layer opacity control: reduce opacity when a background is present
+            // so it shows through.
             CGFloat effectiveOpacity = self.uiOpacity;
             if (![self hasBackground]) {
-                // 无自定义背景时，提高不透明度，使 UI 更清晰
+                // Increase opacity without a custom background to make the UI clearer.
                 effectiveOpacity = MIN(effectiveOpacity + 0.3, 1.0);
             }
             UIColor *base = [UIColor secondarySystemBackgroundColor];
@@ -1110,11 +1154,14 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 - (void)applyEffectToCollectionViewCell:(UICollectionViewCell *)cell {
     if (!cell) return;
 
-    // ★ [CORNER-FIX] 有效圆角:contentView 没设圆角时,回退到「第一个带圆角的内层卡片容器」。
-    //   原先只取 cell.contentView.layer.cornerRadius ⇒ 对「圆角挂在【内层容器】上、contentView
-    //   本身为 0」的 cell(实例页 VMTileBaseCell 一族)注入的 blur 圆角为 0 且铺满整个 cell
-    //   ⇒ 圆角卡片外沿露出一圈方角(用户实测:「长方形的尖尖角没有消掉」)。
-    //   统一做法:把有效圆角也落到 contentView 并裁剪,blur 与它同值 ⇒ 圆角外沿不再有方角。
+    // ★ [CORNER-FIX] Effective corner radius: if contentView has none, fall back to the first
+    //   rounded inner card container.
+    //   Previously, only cell.contentView.layer.cornerRadius was used. For cells in the instance
+    //   screen's VMTileBaseCell family, the radius is on the inner container while contentView has
+    //   radius 0; the injected blur therefore had square corners and covered the entire cell, exposing
+    //   square corners around the rounded card (user report: "the sharp rectangular corners are still there").
+    //   Consistent fix: apply the effective radius to contentView and clip it; give blur the same
+    //   radius so no square corners remain around the rounded card.
     CGFloat ameEffectiveRadius = cell.contentView.layer.cornerRadius;
     if (ameEffectiveRadius <= 0.0) {
         for (UIView *ameSub in cell.contentView.subviews) {
@@ -1123,41 +1170,43 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     }
     if (ameEffectiveRadius > 0.0) {
         cell.contentView.layer.cornerRadius = ameEffectiveRadius;
-        cell.contentView.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 与系统卡片一致
+        cell.contentView.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Match system cards.
         cell.contentView.layer.masksToBounds = YES;
     }
 
     if (self.uiEffect == BackgroundUIEffectBlur) {
-        // 毛玻璃效果
+        // Frosted-glass effect.
         for (UIView *subview in cell.contentView.subviews) {
             if ([subview isKindOfClass:[UIVisualEffectView class]] && subview.tag == kBackgroundBlurTag) {
                 [subview removeFromSuperview];
             }
         }
 
-        // ★ [GLASS-LIQUID] 别绕过风格层:iOS≥26 必须走系统 UIGlassEffect(旧代码直接 UIBlurEffect)。
+        // ★ [GLASS-LIQUID] Do not bypass the style layer: iOS≥26 must use system UIGlassEffect
+        // (the old code called UIBlurEffect directly).
         UIVisualEffect *blur = AmeGlassEffect(UIBlurEffectStyleSystemMaterial);
         UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
         blurView.tag = kBackgroundBlurTag;
         blurView.frame = cell.contentView.bounds;
         blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        blurView.layer.cornerRadius = ameEffectiveRadius;   // ★ [CORNER-FIX] 用有效圆角(见方法开头)
-        blurView.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 与系统卡片一致
+        blurView.layer.cornerRadius = ameEffectiveRadius;   // ★ [CORNER-FIX] Use the effective radius (see start of method).
+        blurView.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Match system cards.
         blurView.layer.masksToBounds = YES;
-        // ★ [E3] SPEC §2.5:blur 26 / saturate 180%(尽力落到系统材质,失败回退默认并打日志)
+        // ★ [E3] SPEC §2.5: blur 26 / saturate 180% (apply to system material if possible; otherwise
+        // fall back to the default and log it).
         AmeTuneGlassBackdrop(blurView, AmeGlassBlurRadius, AmeGlassSaturate);
 
         [cell.contentView insertSubview:blurView atIndex:0];
         cell.backgroundColor = [UIColor clearColor];
         cell.contentView.backgroundColor = [UIColor clearColor];
     } else {
-        // 半透明效果
+        // Translucent effect.
         for (UIView *subview in cell.contentView.subviews) {
             if ([subview isKindOfClass:[UIVisualEffectView class]] && subview.tag == kBackgroundBlurTag) {
                 [subview removeFromSuperview];
             }
         }
-        // 修复：使用 secondarySystemBackgroundColor 替代硬编码 0.1 黑色
+        // Fix: use secondarySystemBackgroundColor instead of hard-coded 0.1 black.
         if (@available(iOS 13.0, *)) {
             cell.backgroundColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:self.uiOpacity];
         } else {
@@ -1170,14 +1219,14 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 - (void)applyEffectToSearchBar:(UISearchBar *)searchBar {
     if (!searchBar) return;
 
-    // 1. searchBar 整体背景透明，让底层自定义启动器背景透出
-    //    UISearchBar 默认是不透明的 systemBackgroundColor，会遮挡全局背景图/毛玻璃
+    // 1. Make the entire searchBar background transparent so the custom launcher background shows through.
+    //    UISearchBar defaults to opaque systemBackgroundColor, which hides the global background image/glass.
     searchBar.barTintColor = [UIColor clearColor];
     searchBar.backgroundColor = [UIColor clearColor];
     searchBar.translucent = YES;
-    // Minimal 样式让系统不绘制不透明背景，仅保留输入框背景
+    // Minimal style prevents the system from drawing an opaque background, retaining only the input field background.
     searchBar.searchBarStyle = UISearchBarStyleMinimal;
-    // 移除系统自动添加的 _UISearchBarBackground 不透明背景视图
+    // Remove the opaque _UISearchBarBackground view added automatically by the system.
     for (UIView *sub in searchBar.subviews) {
         for (UIView *inner in sub.subviews) {
             if ([NSStringFromClass(inner.class) containsString:@"Background"]) {
@@ -1190,8 +1239,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         }
     }
 
-    // 2. 透明化内部 UITextField（搜索输入框）背景
-    //    UITextField 默认带 systemFillColor 浅灰色背景，遮挡自定义背景
+    // 2. Make the inner UITextField (search input) background transparent.
+    //    UITextField defaults to a light-gray systemFillColor background that obscures the custom background.
     UITextField *textField = nil;
     for (UIView *sub in searchBar.subviews) {
         for (UIView *inner in sub.subviews) {
@@ -1202,7 +1251,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         }
         if (textField) break;
     }
-    // iOS 13+ 可直接用 -searchTextField
+    // On iOS 13+, use -searchTextField directly.
     if (!textField && [searchBar respondsToSelector:@selector(searchTextField)]) {
         @try {
             textField = [searchBar performSelector:@selector(searchTextField)];
@@ -1212,14 +1261,15 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     }
     if (textField) {
         if (self.uiEffect == BackgroundUIEffectBlur) {
-            // 毛玻璃：输入框背景设为浅色半透明，保证文字可读且不挡背景
+            // Frosted glass: give the input field a light, translucent background so text stays
+            // readable without obscuring the background.
             if (@available(iOS 13.0, *)) {
                 textField.backgroundColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:0.5];
             } else {
                 textField.backgroundColor = [UIColor colorWithWhite:0.95 alpha:0.5];
             }
         } else {
-            // 半透明效果：输入框背景按 uiOpacity 调整
+            // Translucent effect: adjust the input-field background according to uiOpacity.
             if (@available(iOS 13.0, *)) {
                 textField.backgroundColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:MAX(0.3, self.uiOpacity)];
             } else {
@@ -1347,11 +1397,12 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         }
         return;
     }
-    // ★ [ISSUE-FIX] #92：从「文件」App（UIDocumentPickerViewController）选出的视频是
-    //   security-scoped URL，未 startAccessingSecurityScopedResource 时
-    //   fileExistsAtPath: / copyItemAtURL: 都会失败 ⇒ 用户看到「视频文件不存在」
-    //   （i18n_str_51）。这里在读取/复制期间持有安全作用域，复制完成后立即释放；
-    //   相册(UIImagePickerController)返回的临时 URL 无作用域：start 返回 NO，无需释放。
+    // ★ [ISSUE-FIX] #92: videos selected from the Files app (UIDocumentPickerViewController) use
+    //   security-scoped URLs. Without startAccessingSecurityScopedResource, fileExistsAtPath: /
+    //   copyItemAtURL: both fail ⇒ the user sees "Video file does not exist" (i18n_str_51).
+    //   Hold the security scope while reading/copying and release it immediately afterward.
+    //   Temporary URLs returned by Photos (UIImagePickerController) are not scoped:
+    //   start returns NO, so nothing needs to be released.
     BOOL ame92Scoped = videoURL.isFileURL ? [videoURL startAccessingSecurityScopedResource] : NO;
     if (![[NSFileManager defaultManager] fileExistsAtPath:videoURL.path]) {
         if (ame92Scoped) [videoURL stopAccessingSecurityScopedResource];
@@ -1371,7 +1422,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         
         NSError *copyError = nil;
         BOOL copied = [[NSFileManager defaultManager] copyItemAtURL:videoURL toURL:[NSURL fileURLWithPath:filePath] error:&copyError];
-        // ★ [ISSUE-FIX] #92：复制完成，安全作用域即可释放（后续只操作已复制到沙盒的副本）。
+        // ★ [ISSUE-FIX] #92: once copying is complete, release the security scope (subsequent
+        // operations use only the copy in the sandbox).
         if (ame92Scoped) [videoURL stopAccessingSecurityScopedResource];
         
         if (copied) {
@@ -1438,25 +1490,30 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 
-// ★ [UI-B] 递归重刷玻璃高光(frame 不随 autoresize 变化,必须在布局后重设)
+// ★ [UI-B] Recursively refresh glass highlights (the frame does not change with autoresizing and
+// must be reset after layout).
 - (void)ameRefreshRimsRecursive:(UIView *)v {
     if (!v) return;
     AmeRefreshGlassRim(v);
     for (UIView *sub in v.subviews) { [self ameRefreshRimsRecursive:sub]; }
 }
 
-#pragma mark - ★ [GLASSUI] 玻璃高光设置即时生效
+#pragma mark - ★ [GLASSUI] Apply glass highlight settings immediately
 
-// 遍历视图树:只对「已经挂了高光图层(tag 'MRIM')」的载体做摘除 + 按当前开关/强度重建。
-// 关 ⇒ AmeDetachGlassRim 摘掉;开 ⇒ AmeAttachGlassRim 按新强度重建(内部先查强度,0 也不刷)。
-// 主路径(applyEffectToView:)与其它文件自挂的高光都会在这里被按新强度重建。
+// Traverse the view tree: remove and rebuild highlights at the current switch/intensity only on
+// views that already have a highlight layer (tag 'MRIM').
+// Off ⇒ AmeDetachGlassRim removes it; on ⇒ AmeAttachGlassRim rebuilds at the new intensity
+// (it checks the intensity internally and does nothing when it is 0).
+// Highlights added by the main path (applyEffectToView:) and by other files are both rebuilt here.
 - (void)ameApplyGlassRimSettingsToViewTree:(UIView *)root {
     if (root == nil) { return; }
-    static const NSInteger kAmeGlassRimTag = 0x4D52494D;   // 'MRIM',与 UIKit+GlassSurface.h 一致
-    // ★ [RIM-STATE] 【载体】判定必须与开关无关:
-    //   旧逻辑只看"当前有没有挂着高光子层" ⇒ 关掉高光后所有载体都被摘成"没有子层",于是再打开
-    //   开关时这里直接跳过 ⇒ **开关是开的却没有任何高光**,而新建/复用的 cell 又各自按开关走
-    //   ⇒ 表现为用户说的"随机 / 这次不听开关的话"。改为认「高光载体」标记(永久保留)。
+    static const NSInteger kAmeGlassRimTag = 0x4D52494D;   // 'MRIM', matches UIKit+GlassSurface.h
+    // ★ [RIM-STATE] The "carrier" check must not depend on the switch:
+    //   The old logic checked only whether a highlight sublayer was currently attached. After
+    //   turning highlights off, every carrier had no sublayer, so this code skipped them when
+    //   highlights were turned back on: the switch was on but no highlights appeared. Newly
+    //   created/reused cells each followed the switch independently, which looked "random / like
+    //   the switch was ignored this time" to users. Now use a persistent "highlight carrier" marker.
     BOOL isCarrier = AmeIsGlassRimHost(root);
     if (!isCarrier) {
         for (UIView *sub in root.subviews) {
@@ -1464,10 +1521,11 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         }
     }
     if (isCarrier) {
-        [self ameSyncGlassRimStrengthForCurrentStyle];   // ★ [GLASS-STYLE] 原生风格 ⇒ 恒 0
-        AmeDetachGlassRim(root);                                // ★ 摘除(先摘,保证只有一层)
+        [self ameSyncGlassRimStrengthForCurrentStyle];   // ★ [GLASS-STYLE] Native style ⇒ always 0
+        AmeDetachGlassRim(root);                         // ★ Remove first to ensure only one layer remains.
         if (AMEGlassStyleAllowsHandDrawnGlass() && self.glassRimEnabled && self.glassRimStrength > 0.001) {
-            AmeAttachGlassRim(root, root.layer.cornerRadius);   // ★ 按当前开关【补上】(原生/关 ⇒ 内部即时 no-op)
+            AmeAttachGlassRim(root, root.layer.cornerRadius);   // ★ Add according to current switch
+                                                                // (native/off ⇒ immediate no-op internally).
         }
         AmeRefreshGlassRim(root);
     }
@@ -1476,10 +1534,11 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     }
 }
 
-// 立即把当前开关/强度刷到所有窗口上(合并同一 runloop 的重复调用),并广播通知让各页重新应用。
+// Immediately apply the current switch/intensity to all windows (coalescing duplicate calls in the
+// same run loop), then broadcast a notification for each page to reapply it.
 - (void)applyGlassRimSettingsNow {
     [self ameSyncGlassRimStrengthForCurrentStyle];   // ★ [GLASS-STYLE]
-    if (gAmeGlassRimApplyScheduled) { return; }   // ★ 本 runloop 已排队 ⇒ 合并,不重复遍历
+    if (gAmeGlassRimApplyScheduled) { return; }   // ★ Already queued in this run loop ⇒ coalesce; do not traverse again.
     gAmeGlassRimApplyScheduled = YES;
     dispatch_async(dispatch_get_main_queue(), ^{
         gAmeGlassRimApplyScheduled = NO;
@@ -1490,31 +1549,35 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     });
 }
 
-#pragma mark - ★ [GLASS-STYLE] 界面风格(原生 / 液态玻璃)即时生效
+#pragma mark - ★ [GLASS-STYLE] Apply UI style (native / Liquid Glass) immediately
 
-// 纯代码玻璃的强度按【实际生效风格】收敛:原生(iOS<26,或用户在 iOS>=26 上选原生)⇒ 恒 0;
-// 液态玻璃 ⇒ 由「高光开关 + 强度滑块」决定。所有写全局强度的地方都走这一条,避免风格与开关打架。
+// Constrain hand-drawn glass intensity by the actual style: native (iOS<26 or user selected native
+// on iOS>=26) ⇒ always 0; Liquid Glass ⇒ controlled by the "highlight switch + intensity slider".
+// All writes to the global intensity go through this method to prevent conflicts between style and switch.
 - (void)ameSyncGlassRimStrengthForCurrentStyle {
     CGFloat s = 0.0;
     if (AMEGlassStyleAllowsHandDrawnGlass() && self.glassRimEnabled) { s = self.glassRimStrength; }
     AmeSetGlassRimStrength(s);
 }
 
-// 遍历视图树:把已经贴出去的玻璃层按【当前风格】重新解析一次。
-// 只认我们自己打的 tag(kBackgroundBlurTag),壁纸容器的模糊层也在其列 —— 它没有 managed 标记,
-// 所以只换材质、绝不叠白底。
+// Traverse the view tree and resolve already-added glass layers again using the current style.
+// Only consider layers marked with our tag (kBackgroundBlurTag). This includes the wallpaper
+// container's blur layer, which has no managed marker; therefore, change only its material and
+// never overlay a white fill.
 - (void)ameReapplyGlassStyleToViewTree:(UIView *)root {
     if (root == nil) { return; }
     for (UIView *sub in [root.subviews copy]) {
         if ([sub isKindOfClass:[UIVisualEffectView class]] && sub.tag == kBackgroundBlurTag) {
             UIVisualEffectView *vev = (UIVisualEffectView *)sub;
-            // 宿主分类决定回退材质:列表行/集合行用 SystemMaterial,面板/卡片/容器用 SystemThinMaterial
-            // (与 applyEffectToCell: / applyEffectToView: / applyEffectToCollectionViewCell: 的原选型一致)
+            // Host type determines fallback material: list/collection rows use SystemMaterial, while
+            // panels/cards/containers use SystemThinMaterial (matching the original choices in
+            // applyEffectToCell: / applyEffectToView: / applyEffectToCollectionViewCell:).
             BOOL isRow = [vev.superview isKindOfClass:[UITableViewCell class]] ||
                          [vev.superview isKindOfClass:[UICollectionViewCell class]] ||
                          [vev.superview.superview isKindOfClass:[UITableViewCell class]] ||
                          [vev.superview.superview isKindOfClass:[UICollectionViewCell class]];
-            // ★ 换一遍 effect ⇒ UIKit 重建 backdrop(私有调参随之复位),再按风格重铺填充 / 重做调参
+            // ★ Replacing the effect makes UIKit rebuild the backdrop (resetting private tuning);
+            // then reapply the style-dependent fill and tuning.
             vev.effect = AmeGlassEffect(isRow ? UIBlurEffectStyleSystemMaterial : UIBlurEffectStyleSystemThinMaterial);
             if (AmeIsManagedGlass(vev)) {
                 AmeApplyGlassFillForCurrentStyle(vev);
@@ -1527,9 +1590,10 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     }
 }
 
-// 界面风格变更(设置页 → AMEGlassStyleSetConfigured → 通知)⇒ 立即重刷:
-//   ① 收敛纯代码玻璃强度;② 重解析所有已贴玻璃层的材质/填充/调参;③ 重建高光;
-//   ④ 广播 BackgroundUIEffectChanged,让各页面按新风格重新应用(导航栏/工具栏在各自 apply 里按风格重建)。
+// UI style changed (Settings → AMEGlassStyleSetConfigured → notification) ⇒ refresh immediately:
+//   ① Constrain hand-drawn glass intensity; ② resolve material/fill/tuning again for all existing
+//      glass layers; ③ rebuild highlights; ④ broadcast BackgroundUIEffectChanged so each page
+//      reapplies the new style (navigation/toolbar appearances are rebuilt in their own apply methods).
 - (void)ameGlassStyleChanged:(NSNotification *)note {
     (void)note;
     [self ameSyncGlassRimStrengthForCurrentStyle];
@@ -1539,7 +1603,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
             [self ameApplyGlassRimSettingsToViewTree:w];
         }
         [[NSNotificationCenter defaultCenter] postNotificationName:@"BackgroundUIEffectChanged" object:nil];
-        NSLog(@"[glass] 界面风格切换已生效: 配置=%@ · 实际生效=%@",
+        NSLog(@"[glass] UI style change applied: configured=%@ · actually in effect=%@",
               AMEGlassStyleStringFromEnum(AMEGlassStyleConfigured()),
               AMEGlassStyleStringFromEnum(AMEGlassStyleResolved()));
     });

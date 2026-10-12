@@ -35,30 +35,30 @@
 
 - (NSString *)summary {
     if ([self.internalName isEqualToString:@"list_settings"]) {
-        return @"列出启动器支持的设置键与取值说明。"
-               "\n无参数。"
-               "\n返回键表：video.renderer（渲染器，实例级：auto/GL4ES/ANGLE/MobileGlues/Zink/MoltenVK/LTW）、"
-               "video.graphics_api（图形 API，实例级，MC 26.2+ 生效：default/prefer_vulkan/prefer_opengl）、"
-               "java.allocated_memory（游戏内存 MB，全局）、java.auto_ram（自动分配内存，全局，true/false）、"
-               "java.java_args（JVM 参数，全局+实例级覆盖）、general.download_source（下载源，全局：official/bmclapi）、"
-               "general.game_directory（当前游戏目录名，全局）、control.default_ctrl（默认控制布局，全局）。";
+        return @"List the setting keys supported by the launcher and their value descriptions."
+               "\nNo parameters."
+               "\nAvailable keys: video.renderer (renderer, instance-level: auto/GL4ES/ANGLE/MobileGlues/Zink/MoltenVK/LTW), "
+               "video.graphics_api (graphics API, instance-level, effective in MC 26.2+: default/prefer_vulkan/prefer_opengl), "
+               "java.allocated_memory (game memory in MB, global), java.auto_ram (automatic memory allocation, global, true/false), "
+               "java.java_args (JVM arguments, global with instance-level override), general.download_source (download source, global: official/bmclapi), "
+               "general.game_directory (current game directory name, global), control.default_ctrl (default control layout, global).";
     }
     if ([self.internalName isEqualToString:@"get_setting"]) {
-        return @"读取指定设置键的当前值。"
-               "\n参数：key（string，必填，见 list_settings）、instance（string，可选，实例/profile 名，缺省当前选中实例）。"
-               "\n返回：全局值 + 实例生效值（实例值优先于全局，实例未设置时回退全局）。";
+        return @"Read the current value of a specified setting key."
+               "\nParameters: key (string, required, see list_settings), instance (string, optional, instance/profile name; defaults to the currently selected instance)."
+               "\nReturns: global value + effective instance value (instance value takes precedence; falls back to global if not set for the instance).";
     }
     // set_setting
-    return @"修改启动器设置。"
-           "\n参数：key（string，必填）、value（string/number/boolean，必填）、instance（string，可选，缺省修改当前选中实例或全局）。"
-           "\n说明：video.renderer / video.graphics_api 为实例级设置（写入指定实例的 profile）；"
-           "其余键为全局设置。渲染器可传友好名（MoltenVK/Zink/MobileGlues/GL4ES/ANGLE/auto），内部自动映射为存储键。"
-           "\n写成功后返回新值并广播刷新通知。除 YOLO 模式外执行前会请求用户确认。";
+    return @"Change a launcher setting."
+           "\nParameters: key (string, required), value (string/number/boolean, required), instance (string, optional; defaults to changing the currently selected instance or the global setting)."
+           "\nDetails: video.renderer / video.graphics_api are instance-level settings (written to the specified instance's profile); "
+           "all other keys are global. For renderer, you may provide a friendly name (MoltenVK/Zink/MobileGlues/GL4ES/ANGLE/auto); it is automatically mapped to its stored key."
+           "\nOn success, returns the new value and broadcasts a refresh notification. User confirmation is requested before execution unless in YOLO mode.";
 }
 
-#pragma mark - 键元数据
+#pragma mark - Key metadata
 
-/// 实例级键 → profile 字段名
+/// Instance-level key → profile field name
 + (NSDictionary<NSString *, NSString *> *)profileKeyMap {
     return @{
         @"video.renderer": @"renderer",
@@ -67,28 +67,28 @@
     };
 }
 
-/// 渲染器友好名 → 存储键（getRendererKeys 的实际值）
+/// Renderer friendly name → storage key (actual value from getRendererKeys)
 + (NSString *)rendererStorageKeyForValue:(NSString *)value {
     if (value.length == 0) return nil;
     NSString *lower = [value lowercaseString];
-    // 传入的已是存储键（libxxx.dylib / auto）则原样返回
+    // If the input is already a storage key (libxxx.dylib / auto), return it unchanged
     NSArray *keys = getRendererKeys(NO);
     for (NSString *key in keys) {
         if ([key.lowercaseString isEqualToString:lower]) return key;
     }
-    if ([lower isEqualToString:@"auto"] || [lower containsString:@"自动"]) return @"auto";
+    if ([lower isEqualToString:@"auto"] || [lower containsString:@"automatic"]) return @"auto";
     if ([lower containsString:@"moltenvk"] || [lower containsString:@"vulkan"]) return @(RENDERER_NAME_VULKAN);
     if ([lower containsString:@"zink"] || [lower containsString:@"mesa"] || [lower containsString:@"osmesa"]) return @(RENDERER_NAME_VK_ZINK);
     if ([lower containsString:@"mobileglues"] || [lower isEqualToString:@"mg"]) return @(RENDERER_NAME_MOBILEGLUES);
     if ([lower containsString:@"angle"] || [lower containsString:@"tinygl4"]) return @(RENDERER_NAME_MTL_ANGLE);
-    // 必须排在 angle 之后："MetalANGLE" 同样含 "metal" 子串
+    // Must come after angle: "MetalANGLE" also contains the "metal" substring
     if ([lower containsString:@"metallum"] || [lower containsString:@"metal"]) return @(RENDERER_NAME_METAL);
     if ([lower containsString:@"gl4es"]) return @(RENDERER_NAME_GL4ES);
     if ([lower containsString:@"ltw"]) return @(RENDERER_NAME_LTW);
     return nil;
 }
 
-/// 渲染器存储键 → 友好名（输出给 AI 看）
+/// Renderer storage key → friendly name (output for the AI)
 + (NSString *)rendererFriendlyName:(NSString *)storageKey {
     if ([storageKey isEqualToString:@"auto"]) return @"auto";
     if ([storageKey isEqualToString:@(RENDERER_NAME_VULKAN)]) return @"MoltenVK (libMoltenVK.dylib)";
@@ -104,13 +104,13 @@
 + (NSString *)graphicsApiStorageKeyForValue:(NSString *)value {
     if (value.length == 0) return nil;
     NSString *lower = [value lowercaseString];
-    if ([lower isEqualToString:@"default"] || [lower containsString:@"默认"]) return @"default";
+    if ([lower isEqualToString:@"default"] || [lower containsString:@"default"]) return @"default";
     if ([lower containsString:@"vulkan"]) return @"prefer_vulkan";
     if ([lower containsString:@"opengl"] || [lower containsString:@"gl"]) return @"prefer_opengl";
     return nil;
 }
 
-/// 解析目标 profile 名（instance 参数优先，缺省当前选中）
+/// Resolve the target profile name (instance parameter takes precedence; defaults to the currently selected profile)
 + (NSString *)profileNameForParams:(NSDictionary *)params {
     NSString *instance = [params[@"instance"] isKindOfClass:[NSString class]] ? params[@"instance"] : @"";
     if (instance.length > 0) return instance;
@@ -118,7 +118,7 @@
     return name.length > 0 ? name : @"(Default)";
 }
 
-/// 目标 profile 字典（不存在时返回 nil）
+/// Target profile dictionary (returns nil if it does not exist)
 + (NSMutableDictionary *)profileDictionaryForName:(NSString *)profileName {
     NSDictionary *profiles = [PLProfiles current].profiles;
     if (![profiles isKindOfClass:[NSDictionary class]]) return nil;
@@ -127,12 +127,12 @@
 }
 
 + (NSString *)stringFromValue:(id)value {
-    if (!value || [value isKindOfClass:[NSNull class]]) return @"（未设置）";
+    if (!value || [value isKindOfClass:[NSNull class]]) return @"(Not set)";
     if ([value isKindOfClass:[NSString class]]) return value;
     return [value description];
 }
 
-#pragma mark - 执行分发
+#pragma mark - Execution dispatch
 
 - (void)execute:(NSDictionary<NSString *, id> *)params
      completion:(void (^)(NSString * _Nullable result, NSError * _Nullable error))completion {
@@ -152,7 +152,7 @@
     }
 
     NSError *err = [NSError errorWithDomain:@"AiTool" code:404
-                                   userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"未知工具 %@", self.internalName]}];
+                                   userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Unknown tool %@", self.internalName]}];
     completion(nil, err);
 }
 
@@ -161,51 +161,51 @@
 - (void)performListSettings:(void (^)(NSString *, NSError *))completion {
     NSDictionary *table = @{
         @"video.renderer": @{
-            @"scope": @"实例级",
+            @"scope": @"Instance-level",
             @"values": @"auto / GL4ES / ANGLE(MetalANGLE) / MobileGlues / Zink / MoltenVK / LTW",
-            @"note": @"渲染器。MC 26.2 遇 OpenGL 语法错误时切换为 MoltenVK；Iris 光影建议 Zink",
+            @"note": @"Renderer. Switch to MoltenVK for OpenGL syntax errors in MC 26.2; Zink is recommended for Iris shaders.",
         },
         @"video.graphics_api": @{
-            @"scope": @"实例级",
+            @"scope": @"Instance-level",
             @"values": @"default / prefer_vulkan / prefer_opengl",
-            @"note": @"MC 26.2+（含 1.21.8+）游戏内图形 API 选择",
+            @"note": @"In-game graphics API selection for MC 26.2+ (including 1.21.8+)",
         },
         @"java.allocated_memory": @{
-            @"scope": @"全局",
-            @"values": @"整数（MB），如 2048",
-            @"note": @"游戏分配内存；java.auto_ram 开启时由启动器自动决定",
+            @"scope": @"Global",
+            @"values": @"Integer (MB), e.g. 2048",
+            @"note": @"Memory allocated to the game; automatically determined by the launcher when java.auto_ram is enabled",
         },
         @"java.auto_ram": @{
-            @"scope": @"全局",
+            @"scope": @"Global",
             @"values": @"true / false",
-            @"note": @"自动分配内存",
+            @"note": @"Automatically allocate memory",
         },
         @"java.java_args": @{
-            @"scope": @"全局（实例可覆盖）",
-            @"values": @"JVM 参数字符串，如 -XX:+UseG1GC",
-            @"note": @"实例 profile 的 javaArgs 字段可覆盖全局值",
+            @"scope": @"Global (overridable per instance)",
+            @"values": @"JVM argument string, e.g. -XX:+UseG1GC",
+            @"note": @"The javaArgs field in an instance profile can override the global value",
         },
         @"general.download_source": @{
-            @"scope": @"全局",
+            @"scope": @"Global",
             @"values": @"official / bmclapi",
-            @"note": @"Minecraft 本体下载源（资源类走 Modrinth 自动兜底链）",
+            @"note": @"Minecraft game download source (assets use the automatic Modrinth fallback chain)",
         },
         @"general.game_directory": @{
-            @"scope": @"全局",
-            @"values": @"实例目录名",
-            @"note": @"当前游戏目录；新建实例请用 create_instance 工具，不建议直接改此键",
+            @"scope": @"Global",
+            @"values": @"Instance directory name",
+            @"note": @"Current game directory; use the create_instance tool to create instances; changing this key directly is not recommended",
         },
         @"control.default_ctrl": @{
-            @"scope": @"全局",
-            @"values": @"控制布局文件名（不含扩展名）",
-            @"note": @"默认触屏控制布局",
+            @"scope": @"Global",
+            @"values": @"Control layout filename (without extension)",
+            @"note": @"Default touch control layout",
         },
     };
 
     NSError *jsonError = nil;
     NSData *data = [NSJSONSerialization dataWithJSONObject:table options:NSJSONWritingPrettyPrinted error:&jsonError];
     if (!data || jsonError) {
-        completion(@"序列化设置表失败", nil);
+        completion(@"Failed to serialize settings table", nil);
         return;
     }
     completion([[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding], nil);
@@ -218,20 +218,20 @@
     NSString *key = [params[@"key"] isKindOfClass:[NSString class]] ? params[@"key"] : @"";
     if (key.length == 0) {
         completion(nil, [NSError errorWithDomain:@"AiTool" code:400
-                                     userInfo:@{NSLocalizedDescriptionKey: @"参数 key 必填"}]);
+                                     userInfo:@{NSLocalizedDescriptionKey: @"The key parameter is required"}]);
         return;
     }
 
     NSString *profileName = [AiSettingsTools profileNameForParams:params];
     NSString *profileField = [AiSettingsTools profileKeyMap][key];
 
-    // 实例生效值：resolveKey 语义（实例值优先，回退全局）
+    // Effective instance value: resolveKey semantics (instance value takes precedence, falls back to global)
     id effective = nil;
     if (profileField) {
         NSMutableDictionary *prof = [AiSettingsTools profileDictionaryForName:profileName];
         effective = [PLProfiles profile:prof resolveKey:profileField];
     }
-    // 全局值
+    // Global value
     id global = getPrefObject(key);
 
     NSString *globalDesc = [AiSettingsTools stringFromValue:global];
@@ -245,7 +245,7 @@
     }
 
     completion([NSString stringWithFormat:
-                @"key: %@\n全局值: %@\n实例生效值（%@）: %@\n当前游戏目录: %@",
+                @"key: %@\nGlobal value: %@\nEffective instance value (%@): %@\nCurrent game directory: %@",
                 key, globalDesc, profileName, effectiveDesc,
                 [AiSettingsTools stringFromValue:getPrefObject(@"general.game_directory")]], nil);
 }
@@ -258,11 +258,11 @@
     id value = params[@"value"];
     if (key.length == 0 || value == nil || [value isKindOfClass:[NSNull class]]) {
         completion(nil, [NSError errorWithDomain:@"AiTool" code:400
-                                     userInfo:@{NSLocalizedDescriptionKey: @"参数 key 与 value 必填"}]);
+                                     userInfo:@{NSLocalizedDescriptionKey: @"The key and value parameters are required"}]);
         return;
     }
 
-    // ---- 实例级键：写入 profile ----
+    // ---- Instance-level key: write to profile ----
     NSString *profileField = [AiSettingsTools profileKeyMap][key];
     if (profileField) {
         NSString *storageValue = nil;
@@ -271,7 +271,7 @@
             if (!storageValue) {
                 completion(nil, [NSError errorWithDomain:@"AiTool" code:400
                                              userInfo:@{NSLocalizedDescriptionKey:
-                                                 @"无效的渲染器取值；可选 auto/GL4ES/ANGLE/MobileGlues/Zink/MoltenVK/LTW"}]);
+                                                 @"Invalid renderer value; options: auto/GL4ES/ANGLE/MobileGlues/Zink/MoltenVK/LTW"}]);
                 return;
             }
         } else if ([key isEqualToString:@"video.graphics_api"]) {
@@ -279,7 +279,7 @@
             if (!storageValue) {
                 completion(nil, [NSError errorWithDomain:@"AiTool" code:400
                                              userInfo:@{NSLocalizedDescriptionKey:
-                                                 @"无效的图形 API 取值；可选 default/prefer_vulkan/prefer_opengl"}]);
+                                                 @"Invalid graphics API value; options: default/prefer_vulkan/prefer_opengl"}]);
                 return;
             }
         } else {
@@ -291,11 +291,11 @@
         if (!prof) {
             completion(nil, [NSError errorWithDomain:@"AiTool" code:404
                                          userInfo:@{NSLocalizedDescriptionKey:
-                                             [NSString stringWithFormat:@"实例 %@ 不存在", profileName]}]);
+                                             [NSString stringWithFormat:@"Instance %@ does not exist", profileName]}]);
             return;
         }
 
-        // 深拷贝后写回并保存（避免直接改动共享字典引发竞态）
+        // Copy deeply, then write back and save (avoid race conditions from directly modifying a shared dictionary)
         NSMutableDictionary *mutable = [prof mutableCopy];
         mutable[profileField] = storageValue;
         [PLProfiles.current.profiles setObject:mutable forKey:profileName];
@@ -306,12 +306,12 @@
         if ([key isEqualToString:@"video.renderer"]) {
             display = [AiSettingsTools rendererFriendlyName:storageValue];
         }
-        completion([NSString stringWithFormat:@"已将实例「%@」的 %@ 设置为 %@。",
-                    profileName, key, display], nil);
+        completion([NSString stringWithFormat:@"Set %@ for instance \"%@\" to %@.",
+                    key, profileName, display], nil);
         return;
     }
 
-    // ---- 全局键：写入 LauncherPreferences ----
+    // ---- Global key: write to LauncherPreferences ----
     if ([key isEqualToString:@"java.allocated_memory"]) {
         setPrefObject(@"java.allocated_memory", @([value integerValue]));
     } else if ([key isEqualToString:@"java.auto_ram"]) {
@@ -321,7 +321,7 @@
     } else if ([key isEqualToString:@"general.game_directory"]) {
         completion(nil, [NSError errorWithDomain:@"AiTool" code:400
                                      userInfo:@{NSLocalizedDescriptionKey:
-                                         @"不建议直接修改游戏目录键（涉及符号链接重建）；新建实例请用 create_instance 工具"}]);
+                                         @"Changing the game directory key directly is not recommended (it requires rebuilding symlinks); use the create_instance tool to create an instance"}]);
         return;
     } else if ([key isEqualToString:@"general.download_source"] ||
                [key isEqualToString:@"java.java_args"] ||
@@ -330,12 +330,12 @@
     } else {
         completion(nil, [NSError errorWithDomain:@"AiTool" code:400
                                      userInfo:@{NSLocalizedDescriptionKey:
-                                         [NSString stringWithFormat:@"不支持的设置键：%@（用 list_settings 查看可用键）", key]}]);
+                                         [NSString stringWithFormat:@"Unsupported setting key: %@ (use list_settings to view available keys)", key]}]);
         return;
     }
 
     [[NSNotificationCenter defaultCenter] postNotificationName:@"ReloadProfileList" object:nil];
-    completion([NSString stringWithFormat:@"已将全局 %@ 设置为 %@。", key, [AiSettingsTools stringFromValue:value]], nil);
+    completion([NSString stringWithFormat:@"Set global %@ to %@.", key, [AiSettingsTools stringFromValue:value]], nil);
 }
 
 @end

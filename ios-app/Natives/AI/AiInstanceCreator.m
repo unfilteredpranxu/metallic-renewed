@@ -18,12 +18,12 @@
 }
 
 - (NSString *)summary {
-    return @"新建游戏目录（实例）并切换为当前目录。"
-           "\n参数：name（string，必填，目录名，推荐「MC版本 加载器 YYYY.MM.DD」格式，如「1.20.1 Fabric 2026.08.26」）、"
-           "mcVersion（string，可选）、loader（string，可选）。"
-           "\n行为：在 instances/ 下创建目录 → 切换当前游戏目录（重建符号链接）→ 注册并选中同名 profile。"
-           "\n返回实例完整路径。后续 install_* 的 instance 参数传该目录名即可。"
-           "\n边界：目录已存在时直接切换不报错（幂等）。";
+    return @"Create a game directory (instance) and switch to it as the current directory."
+           "\nParameters: name (string, required, directory name; recommended format: \"MC version Loader YYYY.MM.DD\", e.g. \"1.20.1 Fabric 2026.08.26\"), "
+           "mcVersion (string, optional), loader (string, optional)."
+           "\nBehavior: create a directory under instances/ → switch the current game directory (rebuild the symlink) → register and select a profile with the same name."
+           "\nReturns the full instance path. Pass the directory name as the instance parameter for subsequent install_* calls."
+           "\nBoundary: if the directory already exists, switch to it without error (idempotent).";
 }
 
 - (void)execute:(NSDictionary<NSString *, id> *)params
@@ -33,17 +33,17 @@
     NSString *name = [params[@"name"] isKindOfClass:[NSString class]] ? params[@"name"] : @"";
     if (name.length == 0) {
         completion(nil, [NSError errorWithDomain:@"AiTool" code:400
-                                     userInfo:@{NSLocalizedDescriptionKey: @"参数 name 必填"}]);
+                                     userInfo:@{NSLocalizedDescriptionKey: @"The name parameter is required"}]);
         return;
     }
-    // 目录名安全化：去掉路径分隔符（与 VersionManagerViewController 创建目录一致直接拼接，
-    // 这里额外剥离分隔符防止「../」逃逸出 instances/）
+    // Sanitize the directory name by removing path separators (VersionManagerViewController directly concatenates when creating directories;
+    // strip separators here as an additional safeguard against "../" escaping instances/)
     NSArray *parts = [name componentsSeparatedByCharactersInSet:
                       [NSCharacterSet characterSetWithCharactersInString:@"/\\:"]];
     name = [parts componentsJoinedByString:@"_"];
     if (name.length == 0) {
         completion(nil, [NSError errorWithDomain:@"AiTool" code:400
-                                     userInfo:@{NSLocalizedDescriptionKey: @"参数 name 无效"}]);
+                                     userInfo:@{NSLocalizedDescriptionKey: @"The name parameter is invalid"}]);
         return;
     }
 
@@ -53,7 +53,7 @@
         home = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
     }
 
-    // 1. 创建实例目录（幂等）
+    // 1. Create the instance directory (idempotent)
     NSString *instancePath = [home stringByAppendingPathComponent:
                               [NSString stringWithFormat:@"instances/%@", name]];
     NSError *dirError = nil;
@@ -63,11 +63,11 @@
                                                          error:&dirError]) {
         completion(nil, [NSError errorWithDomain:@"AiTool" code:500
                                      userInfo:@{NSLocalizedDescriptionKey:
-                                         [NSString stringWithFormat:@"创建实例目录失败：%@", dirError.localizedDescription ?: @"未知错误"]}]);
+                                         [NSString stringWithFormat:@"Failed to create instance directory: %@", dirError.localizedDescription ?: @"Unknown error"]}]);
         return;
     }
 
-    // 2. 切换当前游戏目录（复刻 LauncherPrefGameDirViewController.changeSelectionTo / VersionManagerViewController.switchGameDirTo）
+    // 2. Switch the current game directory (replicate LauncherPrefGameDirViewController.changeSelectionTo / VersionManagerViewController.switchGameDirTo)
     setPrefObject(@"general.game_directory", name);
     const char *gameDirEnv = getenv("POJAV_GAME_DIR");
     NSString *lasmPath = (gameDirEnv && strlen(gameDirEnv) > 0) ? [NSString stringWithUTF8String:gameDirEnv] : nil;
@@ -80,7 +80,7 @@
         if (!linkOK) {
             completion(nil, [NSError errorWithDomain:@"AiTool" code:500
                                          userInfo:@{NSLocalizedDescriptionKey:
-                                             [NSString stringWithFormat:@"重建 POJAV_GAME_DIR 符号链接失败：%@", linkError.localizedDescription ?: @"未知错误"]}]);
+                                             [NSString stringWithFormat:@"Failed to rebuild POJAV_GAME_DIR symlink: %@", linkError.localizedDescription ?: @"Unknown error"]}]);
             return;
         }
         [[NSFileManager defaultManager] changeCurrentDirectoryPath:lasmPath];
@@ -88,7 +88,7 @@
     toggleIsolatedPref(NO);
     [PLProfiles updateCurrent];
 
-    // 3. 注册并选中同名 profile（mcVersion/loader 仅作备注写入 userInfo 字段）
+    // 3. Register and select a profile with the same name (mcVersion/loader are only written as notes in the userInfo field)
     NSMutableDictionary *prof = [[PLProfiles current].profiles[name] mutableCopy];
     if (!prof) prof = [NSMutableDictionary dictionary];
     if (!prof[@"name"]) prof[@"name"] = name;
@@ -102,16 +102,16 @@
     [[PLProfiles current] saveProfile:prof withName:name];
     [PLProfiles current].selectedProfileName = name;
 
-    // 4. 广播刷新
+    // 4. Broadcast refresh
     [[NSNotificationCenter defaultCenter] postNotificationName:@"ReloadProfileList" object:nil];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"SelectedProfileChanged" object:nil];
 
     NSString *note = @"";
     if (mcVersion.length > 0 || loader.length > 0) {
-        note = [NSString stringWithFormat:@"（备注：MC %@ %@；请继续用 install_game_version / install_loader 安装）",
-                mcVersion.length > 0 ? mcVersion : @"未指定", loader.length > 0 ? loader : @"无加载器"];
+        note = [NSString stringWithFormat:@" (Note: MC %@ %@; continue installation with install_game_version / install_loader)",
+                mcVersion.length > 0 ? mcVersion : @"unspecified", loader.length > 0 ? loader : @"no loader"];
     }
-    completion([NSString stringWithFormat:@"已创建并切换到实例「%@」。\n路径：%@%@",
+    completion([NSString stringWithFormat:@"Created and switched to instance \"%@\".\nPath: %@%@",
                 name, instancePath, note], nil);
 }
 

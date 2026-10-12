@@ -2,7 +2,7 @@
 //  AIViewController.h
 //  Amethyst
 //
-//  AI 聊天主界面。展示会话消息、输入栏，负责与 AiAgent 交互与流式刷新。
+//  AI chat main interface. Displays session messages and the input bar, and handles AiAgent interaction and streaming updates.
 //
 
 #import <UIKit/UIKit.h>
@@ -12,7 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface AIViewController : UIViewController
 
-/// 指定会话；传 nil 时由 AiSessionStore 新建一个
+/// Specified session; if nil, AiSessionStore creates one
 - (instancetype)initWithSession:(nullable AiSession *)session;
 
 @end

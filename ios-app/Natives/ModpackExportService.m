@@ -6,18 +6,18 @@
 #import <CommonCrypto/CommonCrypto.h>
 
 @interface ModpackExportService ()
-/// 解析 profile gameDir 为绝对路径（复用 ModService 的逻辑）
+/// Resolves the profile gameDir to an absolute path (reuses ModService logic).
 - (nullable NSString *)resolveAbsoluteGameDirForProfile:(NSString *)profileName;
-/// 计算文件 sha1（分块读取，避免大文件内存压力）
+/// Computes a file's SHA1 (reads in chunks to avoid memory pressure on large files).
 - (nullable NSString *)sha1ForFileAtPath:(NSString *)path;
-/// 计算文件 sha512（分块读取）
+/// Computes a file's SHA512 (reads in chunks).
 - (nullable NSString *)sha512ForFileAtPath:(NSString *)path;
-/// 将目录递归写入 zip
+/// Recursively writes a directory to a ZIP.
 - (void)addDirectoryToArchive:(UZKArchive *)archive
                       dirPath:(NSString *)dirPath
                   prefixInZip:(NSString *)prefixInZip
                      progress:(void (^_Nullable)(NSUInteger done, NSUInteger total))progress;
-/// 内部使用：检查取消信号
+/// Internal use: checks the cancellation signal.
 - (BOOL)checkCancelledWithError:(NSError **)error;
 @end
 
@@ -106,7 +106,7 @@
     return [files copy];
 }
 
-#pragma mark - 公开导出 API
+#pragma mark - Public export API
 
 - (BOOL)exportModpackForProfile:(NSString *)profileName
                          toPath:(NSString *)destPath
@@ -148,10 +148,10 @@
 
     reportProgress(0.0, localize(@"i18n_str_1274", nil));
 
-    // 取消检查点
+    // Cancellation checkpoint.
     if ([self checkCancelledWithError:error]) return NO;
 
-    // 1. 获取 profile 信息
+    // 1. Get profile information.
     NSDictionary *profile = PLProfiles.current.profiles[profileName];
     if (![profile isKindOfClass:[NSDictionary class]]) {
         if (error) {
@@ -168,7 +168,7 @@
         gameDirAbsolute = env ? [NSString stringWithUTF8String:env] : NSHomeDirectory();
     }
 
-    // 2. 解析 loader 和 mc 版本
+    // 2. Resolve the loader and Minecraft version.
     NSDictionary *versionInfo = [ModpackExportService parseVersionId:lastVersionId];
     NSString *mcVersion = versionInfo[@"minecraft"] ?: @"";
     NSString *loader = versionInfo[@"loader"] ?: @"";
@@ -185,23 +185,23 @@
         return NO;
     }
 
-    // 取消检查点
+    // Cancellation checkpoint.
     if ([self checkCancelledWithError:error]) return NO;
 
-    // 3. 收集 mods 文件列表
+    // 3. Collect the list of mod files.
     reportProgress(0.1, localize(@"i18n_str_1275", nil));
     NSFileManager *fm = [NSFileManager defaultManager];
     NSString *modsDir = [gameDirAbsolute stringByAppendingPathComponent:@"mods"];
     NSMutableArray<NSDictionary *> *modFiles = [NSMutableArray new];
     if ([fm fileExistsAtPath:modsDir]) {
-        // 嵌套目录扫描（部分整合包 mod 分子目录存放）
+        // Scan nested directories (some modpacks store mods in subdirectories).
         NSDirectoryEnumerator *enumerator = [fm enumeratorAtPath:modsDir];
         NSString *relativePath;
         while ((relativePath = [enumerator nextObject])) {
             NSString *fullPath = [modsDir stringByAppendingPathComponent:relativePath];
             BOOL isDir = NO;
             if (![fm fileExistsAtPath:fullPath isDirectory:&isDir] || isDir) continue;
-            // 只包含 .jar 文件（不包含 .disabled）
+            // Include only .jar files (exclude .disabled).
             if (![relativePath hasSuffix:@".jar"]) continue;
             NSDictionary *attrs = [fm attributesOfItemAtPath:fullPath error:nil];
             unsigned long long fileSize = [attrs fileSize];
@@ -217,10 +217,10 @@
     }
     NSLog(@"[ModpackExport] Found %lu mod files", (unsigned long)modFiles.count);
 
-    // 取消检查点
+    // Cancellation checkpoint.
     if ([self checkCancelledWithError:error]) return NO;
 
-    // 4. 根据格式导出
+    // 4. Export according to the format.
     switch (format) {
         case ModpackExportFormatModrinth:
             return [self exportModrinthFormat:modFiles
@@ -288,7 +288,7 @@
     return NO;
 }
 
-#pragma mark - Modrinth 格式导出
+#pragma mark - Export Modrinth format
 
 - (BOOL)exportModrinthFormat:(NSArray<NSDictionary *> *)modFiles
                       toPath:(NSString *)destPath
@@ -308,7 +308,7 @@
     progress(0.2, localize(@"i18n_str_1276", nil));
     NSFileManager *fm = [NSFileManager defaultManager];
 
-    // 构造 dependencies
+    // Build dependencies.
     NSMutableDictionary *dependencies = @{@"minecraft": mcVersion}.mutableCopy;
     if ([loader isEqualToString:@"fabric"] && loaderVersion.length > 0) {
         dependencies[@"fabric-loader"] = loaderVersion;
@@ -320,7 +320,7 @@
         dependencies[@"neoforge"] = loaderVersion;
     }
 
-    // 构造 files 列表
+    // Build the files list.
     NSMutableArray *files = [NSMutableArray new];
     for (NSDictionary *modFile in modFiles) {
         if ([self checkCancelledWithError:error]) return NO;
@@ -331,12 +331,12 @@
                 @"sha1": modFile[@"sha1"],
                 @"sha512": sha512 ?: @""
             },
-            @"downloads": @[],  // 不填下载链接，导入时走 overrides 还原（与 HMCL 导出策略一致）
+            @"downloads": @[],  // Leave download links empty; restore from overrides during import (matches HMCL export strategy).
             @"fileSize": modFile[@"fileSize"]
         }];
     }
 
-    // 构造 modrinth.index.json
+    // Build modrinth.index.json.
     NSDictionary *indexJson = @{
         @"formatVersion": @(1),
         @"game": @"minecraft",
@@ -367,14 +367,14 @@
         return NO;
     }
 
-    // 写入 modrinth.index.json
+    // Write modrinth.index.json.
     progress(0.4, localize(@"i18n_str_1277", nil));
     if (![archive writeData:indexData filePath:@"modrinth.index.json" error:&archiveError]) {
         if (error) *error = archiveError;
         return NO;
     }
 
-    // 写入 overrides
+    // Write overrides.
     if (![self writeOverridesToArchive:archive
                           gameDirAbsolute:gameDirAbsolute
                             fileOptions:fileOptions
@@ -394,7 +394,7 @@
     return YES;
 }
 
-#pragma mark - CurseForge 格式导出
+#pragma mark - Export CurseForge format
 
 - (BOOL)exportCurseForgeFormat:(NSArray<NSDictionary *> *)modFiles
                         toPath:(NSString *)destPath
@@ -413,16 +413,16 @@
     progress(0.2, localize(@"i18n_str_1278", nil));
     NSFileManager *fm = [NSFileManager defaultManager];
 
-    // 构造 modLoaders
+    // Build modLoaders.
     NSMutableArray *modLoaders = [NSMutableArray new];
     if (loader.length > 0 && loaderVersion.length > 0) {
         NSString *loaderId = [NSString stringWithFormat:@"%@-%@", loader, loaderVersion];
         [modLoaders addObject:@{@"id": loaderId, @"primary": @YES}];
     }
 
-    // 构造 manifest.json
-    // 注意：CurseForge 格式需要 projectID/fileID，本地 mod 无法获取。
-    // 简化方案：files 为空，所有 mod 打进 overrides/mods/（与 HMCL 导出策略一致）
+    // Build manifest.json.
+    // Note: CurseForge format requires projectID/fileID, which are unavailable for local mods.
+    // Simplified approach: leave files empty and pack all mods into overrides/mods/ (matches HMCL export strategy).
     NSDictionary *manifest = @{
         @"minecraft": @{
             @"version": mcVersion,
@@ -483,12 +483,12 @@
     return YES;
 }
 
-#pragma mark - MMC (MultiMC/Prism) 格式导出
+#pragma mark - Export MMC (MultiMC/Prism) format
 
-/// MMC 格式：
-///   mmc-pack.json: 包含 components 数组（net.minecraft + 加载器 component）
-///   instance.cfg: key=value 格式，含 name/JvmArgs/InstanceType 等
-///   .minecraft/: 包含 mods/config/options.txt 等（不放在 overrides/ 下，直接是 .minecraft/）
+/// MMC format:
+///   mmc-pack.json: contains a components array (net.minecraft + loader component).
+///   instance.cfg: key=value format, including name/JvmArgs/InstanceType, etc.
+///   .minecraft/: contains mods/config/options.txt, etc. (not under overrides/; stored directly in .minecraft/).
 - (BOOL)exportMMCFormat:(NSArray<NSDictionary *> *)modFiles
                  toPath:(NSString *)destPath
                     name:(NSString *)name
@@ -507,7 +507,7 @@
     progress(0.2, localize(@"i18n_str_1280", nil));
     NSFileManager *fm = [NSFileManager defaultManager];
 
-    // 构造 components 数组
+    // Build the components array.
     NSMutableArray *components = [NSMutableArray array];
     [components addObject:@{
         @"cachedName": @"Minecraft",
@@ -556,7 +556,7 @@
         return NO;
     }
 
-    // 构造 instance.cfg（key=value 格式）
+    // Build instance.cfg (key=value format).
     NSString *instanceName = name.length > 0 ? name : (profileName ?: @"Exported Modpack");
     NSMutableString *cfgContent = [NSMutableString string];
     [cfgContent appendFormat:@"InstanceType=OneSix\n"];
@@ -594,7 +594,7 @@
         return NO;
     }
 
-    // MMC 的 overrides 写入到 .minecraft/ 前缀（MMC 标准结构）
+    // Write MMC overrides with the .minecraft/ prefix (standard MMC structure).
     if (![self writeOverridesToArchive:archive
                           gameDirAbsolute:gameDirAbsolute
                             fileOptions:fileOptions
@@ -614,10 +614,10 @@
     return YES;
 }
 
-#pragma mark - Plain Zip 格式导出（HMCL 兼容）
+#pragma mark - Export Plain Zip format (HMCL compatible)
 
-/// Plain Zip 格式：直接打包 .minecraft 目录，无 manifest/mmc-pack.json
-/// 适合于 PojavLauncher/HMCL 互通：直接将 gameDir 内容打包到 .minecraft/ 前缀下
+/// Plain Zip format: packs the .minecraft directory directly, without manifest/mmc-pack.json.
+/// Suitable for PojavLauncher/HMCL interoperability: packs the gameDir contents under a .minecraft/ prefix.
 - (BOOL)exportPlainZipFormat:(NSArray<NSDictionary *> *)modFiles
                       toPath:(NSString *)destPath
                          name:(NSString *)name
@@ -644,7 +644,7 @@
         return NO;
     }
 
-    // 写入 .minecraft/AMETHYST_INFO.txt 元信息（可选，帮助其他启动器识别来源）
+    // Write .minecraft/AMETHYST_INFO.txt metadata (optional; helps other launchers identify the source).
     NSString *infoContent = [NSString stringWithFormat:
         @"Amethyst Exported Modpack\n"
         @"Minecraft: %@\n"
@@ -659,7 +659,7 @@
         [archive writeData:infoData filePath:@".minecraft/AMETHYST_INFO.txt" error:nil];
     }
 
-    // 写入 .minecraft/<...> 前缀
+    // Write the .minecraft/<...> prefix.
     if (![self writeOverridesToArchive:archive
                           gameDirAbsolute:gameDirAbsolute
                             fileOptions:fileOptions
@@ -679,7 +679,7 @@
     return YES;
 }
 
-#pragma mark - 链接列表格式导出（FCL 支持的简单格式）
+#pragma mark - Export link-list format (simple format supported by FCL)
 
 - (BOOL)exportLinkListFormat:(NSArray<NSDictionary *> *)modFiles
                       toPath:(NSString *)destPath
@@ -689,12 +689,12 @@
                         name:(NSString *)name
                      version:(NSString *)version
                        error:(NSError **)error {
-    // FCL 链接列表格式：
+    // FCL link-list format:
     // # Minecraft: <mcVersion>
     // # Loader: <loader>-<loaderVersion>
     // # Name: <name>
     // # Version: <version>
-    // <zip内路径>|<下载链接或本地路径>
+    // <path inside ZIP>|<download URL or local path>
     NSMutableString *content = [NSMutableString string];
     [content appendFormat:@"# Minecraft: %@\n", mcVersion];
     if (loader.length > 0 && loaderVersion.length > 0) {
@@ -705,7 +705,7 @@
     [content appendString:localize(@"i18n_str_487", nil)];
 
     for (NSDictionary *modFile in modFiles) {
-        // 链接列表格式：mod 路径 + 空下载链接（用户可手动填写）
+        // Link-list format: mod path + empty download URL (users can fill it in manually).
         [content appendFormat:@"%@|\n", modFile[@"path"]];
     }
 
@@ -719,9 +719,9 @@
     return YES;
 }
 
-#pragma mark - 通用 Overrides 写入
+#pragma mark - Write common overrides
 
-/// 通用 overrides 写入：根据 fileOptions 决定哪些目录/文件被打包
+/// Writes common overrides: fileOptions determines which directories/files are packaged.
 - (BOOL)writeOverridesToArchive:(UZKArchive *)archive
                gameDirAbsolute:(NSString *)gameDirAbsolute
                      fileOptions:(ModpackExportFileOptions)fileOptions
@@ -743,7 +743,7 @@
     __block NSUInteger processed = 0;
     __block NSError *blockError = nil;
 
-    // 计算每个目录的文件总数，用于精确进度
+    // Count files in each directory for accurate progress.
     NSUInteger totalFiles = 0;
     for (NSString *dir in overrideDirs) {
         NSString *dirPath = [gameDirAbsolute stringByAppendingPathComponent:dir];
@@ -766,7 +766,7 @@
 
     __block NSUInteger processedFiles = 0;
 
-    // 打包目录
+    // Package directory.
     for (NSString *dir in overrideDirs) {
         if ([self checkCancelledWithError:error]) return NO;
         NSString *dirPath = [gameDirAbsolute stringByAppendingPathComponent:dir];
@@ -786,7 +786,7 @@
         processed++;
     }
 
-    // 打包单个文件
+    // Package a single file.
     for (NSString *file in overrideFiles) {
         if ([self checkCancelledWithError:error]) return NO;
         NSString *filePath = [gameDirAbsolute stringByAppendingPathComponent:file];
@@ -815,7 +815,7 @@
     return YES;
 }
 
-#pragma mark - 辅助方法
+#pragma mark - Helper methods
 
 - (void)addDirectoryToArchive:(UZKArchive *)archive
                       dirPath:(NSString *)dirPath
@@ -823,7 +823,7 @@
                      progress:(void (^_Nullable)(NSUInteger done, NSUInteger total))progress {
     NSFileManager *fileManager = [NSFileManager defaultManager];
 
-    // 先统计文件总数
+    // Count the files first.
     NSUInteger total = 0;
     NSDirectoryEnumerator *counter = [fileManager enumeratorAtPath:dirPath];
     NSString *relPath;
@@ -842,7 +842,7 @@
     NSDirectoryEnumerator *enumerator = [fileManager enumeratorAtPath:dirPath];
     NSUInteger done = 0;
     while ((relPath = [enumerator nextObject])) {
-        // 取消检查点
+        // Cancellation checkpoint.
         @synchronized(self) {
             if (self.cancelled) {
                 if (progress) progress(done, total);
@@ -869,8 +869,8 @@
     @try {
         NSDictionary *prof = PLProfiles.current.profiles[profile];
         if (![prof isKindOfClass:[NSDictionary class]]) return nil;
-        // ★ [VI-SWITCH-UI] 统一 resolver（关 = 共享根；开 = versions/<版本 id>；显式自定义 gameDir 仍优先）。
-        //   原实现自拼 prof[@"gameDir"] ⇒ 隔离开启时该键仍是 "."，导出会去读共享目录。
+        // ★ [VI-SWITCH-UI] Use the unified resolver (off = shared root; on = versions/<version id>; explicit custom gameDir still takes precedence).
+        //   The old code constructed prof[@"gameDir"] directly; when isolation was enabled, that key was still ".", so export read the shared directory.
         return amePCLVersionGameDirAbsolute(prof, nil);
     } @catch (NSException *ex) {
         return nil;
@@ -966,7 +966,7 @@
         return @{@"loader": @"neoforge", @"loaderVersion": loaderVersion, @"minecraft": mcVersion};
     }
 
-    // 纯 mc 版本（无 loader）
+    // Vanilla Minecraft version (no loader).
     return @{@"minecraft": versionId};
 }
 

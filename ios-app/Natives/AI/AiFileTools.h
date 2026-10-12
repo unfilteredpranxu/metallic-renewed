@@ -2,9 +2,9 @@
 //  AiFileTools.h
 //  Amethyst
 //
-//  Air AI Agent 文件工具：list_files / read_file / grep_files（只读）、
-//  write_file / edit_file（受控写入）、delete_file（危险写入）。
-//  所有文件操作经沙盒路径安全检查（resolveSafely）限定在 App 沙盒内。
+//  Air AI Agent file tools: list_files / read_file / grep_files (read-only),
+//  write_file / edit_file (controlled writes), delete_file (dangerous write).
+//  All file operations are restricted to the app sandbox by the sandbox path safety check (resolveSafely).
 //
 
 #import <Foundation/Foundation.h>
@@ -18,12 +18,12 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) NSString *summary;
 @property (nonatomic, readonly) AiToolPermission permission;
 
-/// 指定该实例化对象对应的工具名
+/// Set the tool name for this instance
 - (instancetype)initWithName:(NSString *)name;
 
-/// 沙盒路径安全解析。绝对路径（以 / 开头）从 App 沙盒根（Documents）拼接，
-/// $GAMEDIR 占位符替换为当前实例 gameDir；相对路径相对当前实例根。
-/// 标准化后检查不越出沙盒，越界返回 nil。
+/// Safely resolve a sandbox path. Absolute paths (starting with /) are joined from the app sandbox root (Documents),
+/// and the $GAMEDIR placeholder is replaced with the current instance's gameDir; relative paths are resolved from the current instance root.
+/// After normalization, verify the path remains inside the sandbox; return nil if it escapes.
 + (nullable NSString *)resolveSafely:(NSString *)path;
 
 @end

@@ -2,19 +2,18 @@
 //  gl4es_family_boot.m
 //  AngelAuraAmethyst
 //
-//  ★ [RENDERER-GAP] 新增渲染器运行时引导实现。
-//  来源：Gsjsjzhznsz/Air-Minecraft-iOS-Launcher（同一项目家族更晚的 fork）：
-//    - egl_bridge.m 的 ame204_gl4esProcResolver（Task204 后端符号解析钉扎）
-//    - ame211_gl4eszl2_boot（Task211 ZL2 经典版 gl4es，同构镜像）
-//    - ame208_nggl4es_boot（Task206 NG-GL4ES / "Krypton Wrapper"，同构镜像）
-//    - ctxbridges/virgl_server.m 的 ame_virgl_start_server（Task215 VirGL）
-//  这些逻辑对既有渲染器完全无副作用：
-//    - 每个入口第一件事就是比对手里的 AMETHYST_RENDERER，不匹配立即返回；
-//    - 各自带幂等门，重复调用零成本。
+//  ★ [RENDERER-GAP] Runtime bootstrap implementation for additional renderers.
+//  Source: Gsjsjzhznsz/Air-Minecraft-iOS-Launcher (a later fork in the same project family):
+//    - ame204_gl4esProcResolver in egl_bridge.m (Task204 backend symbol resolver binding).
+//    - ame211_gl4eszl2_boot (Task211 ZL2 classic gl4es, mirrored implementation).
+//    - ame208_nggl4es_boot (Task206 NG-GL4ES / "Krypton Wrapper", mirrored implementation).
+//    - ame_virgl_start_server in ctxbridges/virgl_server.m (Task215 VirGL).
+//  These paths have no side effects on existing renderers:
+//    - Each entry first checks AMETHYST_RENDERER and returns immediately if it does not match.
+//    - Each has an idempotency guard, making repeated calls effectively free.
 //
-//  ⚠ 未在本机编译验证（无 Xcode / iOS 工具链，见报告 ⑦）。所有符号仅为
-//    dlopen/dlsym 动态解析，不静态链接任何渲染器 dylib，故宿主编译不因
-//    缺少这些 dylib 而失败。
+//  ⚠ Not verified with a local build (no Xcode / iOS toolchain; see report ⑦). All symbols are resolved dynamically
+//    with dlopen/dlsym; no renderer dylib is statically linked, so the host build does not fail if they are absent.
 //
 #import <Foundation/Foundation.h>
 #include <stdio.h>
@@ -27,11 +26,11 @@
 #include "ctxbridges/virgl_server.h"
 
 // ---------------------------------------------------------------------------
-// Task204 后端符号解析器：ANGLE 框架里解析 egl*/gl* 符号，钉给 gl4es 家族的
-// proc_address。队友仓库在 egl_bridge.m 内以 ame204_* 命名；此处收敛为静态。
+// Task204 backend symbol resolver: resolve egl*/gl* symbols from the ANGLE frameworks and bind them to the gl4es family's
+// proc_address. In the source fork this is named ame204_* in egl_bridge.m; it is consolidated here as static.
 // ---------------------------------------------------------------------------
-static void *ame_gap_gl4esGles2 = NULL;   // bundled libGLESv2.framework 句柄
-static void *ame_gap_gl4esEgl   = NULL;   // bundled libEGL.framework 句柄
+static void *ame_gap_gl4esGles2 = NULL;   // Handle for bundled libGLESv2.framework.
+static void *ame_gap_gl4esEgl   = NULL;   // Handle for bundled libEGL.framework.
 static void *(*ame_gap_gl4esEgpa)(const char *) = NULL;  // bundled eglGetProcAddress
 
 static void *ame_gap_gl4esProcResolver(const char *name) {
@@ -64,9 +63,9 @@ static void ame_gap_load_bundled_angle_egl(void) {
         : NULL;
 }
 
-// GL4ESZL2 / NG-GL4ES 的 MakeCurrent 后初始化（队友 ame211 / ame208 的收敛）。
-// 二者 vendored 树均构建带 NO_INIT_CONSTRUCTOR + 显式 initialize_gl4es，
-// 故共用同一实现，只是传入的 dylib 名不同。
+// Post-MakeCurrent initialization for GL4ESZL2 / NG-GL4ES (consolidates teammate ame211 / ame208).
+// Both vendored trees are built with NO_INIT_CONSTRUCTOR and explicit initialize_gl4es,
+// so they share this implementation and differ only in the dylib name.
 static void ame_gap_gl4es_family_init(const char *dylib) {
     void *h = dlopen(dylib, RTLD_NOW | RTLD_NOLOAD | RTLD_GLOBAL);
     if (h == NULL) {
@@ -83,7 +82,7 @@ static void ame_gap_gl4es_family_init(const char *dylib) {
             resolver = 1;
         }
     }
-    // 门：确认线程上确有 current 上下文（经捆绑 ANGLE EGL 查询）。
+    // Guard: confirm that a context is current on this thread (queried through bundled ANGLE EGL).
     if (ame_gap_gl4esEgl != NULL) {
         void *(*getCurCtx)(void) = (void *(*)(void))dlsym(ame_gap_gl4esEgl, "eglGetCurrentContext");
         if (getCurCtx != NULL && getCurCtx() == NULL) {
@@ -113,21 +112,21 @@ void ame_gap_gl4es_family_boot(void) {
     if (r == NULL) return;
 
     if (strcmp(r, RENDERER_NAME_GL4ESZL2) == 0) {
-        // GL4ESZL2：纯 C 字符串改写式着色器转换，无 glslang 依赖。
+        // GL4ESZL2: pure C string-rewrite shader conversion; no glslang dependency.
         ame_gap_gl4es_family_init(RENDERER_NAME_GL4ESZL2);
         s_done = 1;
     } else if (strcmp(r, RENDERER_NAME_NGGL4ES) == 0) {
-        // NG-GL4ES（"Krypton Wrapper"，Task206）：glslang + SPIRV-Cross 着色器管线，
-        // 同一 NO_INIT_CONSTRUCTOR 契约——必须在本处（真上下文 current 后）显式
-        // initialize_gl4es()，否则硬件探测会命中系统 GLESv2 stub → SIGSEGV。
+        // NG-GL4ES ("Krypton Wrapper", Task206): glslang + SPIRV-Cross shader pipeline.
+        // It uses the same NO_INIT_CONSTRUCTOR contract: explicitly call initialize_gl4es() here,
+        // after the real context is current, or hardware probing will hit the system GLESv2 stub → SIGSEGV.
         ame_gap_gl4es_family_init(RENDERER_NAME_NGGL4ES);
         s_done = 1;
     } else if (strcmp(r, RENDERER_NAME_VGPU) == 0) {
-        // VGPU 自带惰性装载器（pack/load_all）与构造器，无需宿主显式 initialize。
+        // VGPU has its own lazy loader (pack/load_all) and constructor; the host does not need to call initialize explicitly.
         NSLog(@"[RENDERER-GAP] VGPU selected: lazy loader handles GL init (no host initialize_gl4es)");
         s_done = 1;
     }
-    // 其余渲染器：不置 s_done，保持零成本重入（一次 getenv 比较）。
+    // Other renderers: leave s_done unset for zero-cost re-entry (one getenv comparison).
 }
 
 int ame_gap_virgl_boot(void) {

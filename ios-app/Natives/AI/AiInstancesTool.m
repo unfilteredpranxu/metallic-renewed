@@ -6,7 +6,7 @@
 #import "AiInstancesTool.h"
 #import "PLProfiles.h"
 #import "LauncherPreferences.h"
-#import "utils.h"   // ★ [VER-ISOLATE-PCL] 版本隔离统一解析
+#import "utils.h"   // ★ [VER-ISOLATE-PCL] Shared version-isolation resolution
 
 @interface AiInstancesTool ()
 @property (nonatomic, copy) NSString *internalName;
@@ -32,23 +32,23 @@
 
 - (NSString *)summary {
     if ([self.internalName isEqualToString:@"list_game_versions"]) {
-        return @"拉取 Minecraft Java 版的真实版本列表（默认只返回正式版 release，避免快照等版本过多占用上下文）。"
-               "\n参数：includeSnapshots（boolean，可选，默认 false；为 true 时额外附加最新一条快照版本）。"
-               "\n说明：默认从 BMCLAPI 镜像获取版本清单，失败自动切换官方源重试；返回每个版本的 id（版本号）与 type（release/snapshot）。"
-               "\n内部有 30 分钟缓存（保存在 Documents/AI/game_versions.json，缓存完整清单）。"
-               "\n边界：若网络失败会返回错误信息，不会编造版本号。"
-               "\n示例：调用后得到 [{'id':'1.21.1','type':'release'}, ...]";
+        return @"Fetch the actual Minecraft Java version list (returns releases only by default to avoid using too much context for snapshots and other versions)."
+               "\nParameter: includeSnapshots (boolean, optional, defaults to false; if true, also include the latest snapshot version)."
+               "\nDetails: fetches the version manifest from the BMCLAPI mirror by default and automatically retries with the official source on failure; returns each version's id (version number) and type (release/snapshot)."
+               "\nA 30-minute cache is used internally (stored in Documents/AI/game_versions.json; caches the complete manifest)."
+               "\nBoundary: returns an error if the network request fails; it does not invent version numbers."
+               "\nExample: [{'id':'1.21.1','type':'release'}, ...]";
     }
     // list_instances
-    return @"列出启动器中已创建的游戏实例（即游戏目录下的版本/目录）。"
-           "\n无参数。"
-           "\n说明：每个实例项包含 profile 名称 name、gameDir、lastVersionId、当前是否选中 selected、"
-           "实例完整路径 path，以及已安装的 mods/resourcepacks/shaders/datapacks 数量（counts 子对象）。"
-           "\n数据来源为 POJAV_HOME/instances/ 目录与 launcher_profiles.json 的 profiles。"
-           "\n边界：实例目录不存在时回退返回当前实例信息。";
+    return @"List game instances created in the launcher (versions/directories under the game directory)."
+           "\nNo parameters."
+           "\nDetails: each instance item includes the profile name, name, gameDir, lastVersionId, whether it is currently selected, selected, "
+           "the full instance path, path, and counts of installed mods/resourcepacks/shaders/datapacks (counts sub-object)."
+           "\nData comes from the POJAV_HOME/instances/ directory and the profiles in launcher_profiles.json."
+           "\nBoundary: if the instance directory does not exist, fall back to returning current instance information.";
 }
 
-#pragma mark - 路径与常量
+#pragma mark - Paths and constants
 
 + (NSString *)pojavHome {
     const char *home = getenv("POJAV_HOME");
@@ -71,7 +71,7 @@
     return [[self instancesDirectory] stringByAppendingPathComponent:[self currentInstanceName]];
 }
 
-#pragma mark - 资源计数
+#pragma mark - Asset counts
 
 - (NSUInteger)countOfDirectory:(NSString *)dir {
     NSArray *items = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:nil];
@@ -99,7 +99,7 @@
     return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
 }
 
-#pragma mark - 执行
+#pragma mark - Execute
 
 - (void)execute:(NSDictionary<NSString *, id> *)params
      completion:(void (^)(NSString * _Nullable result, NSError * _Nullable error))completion {
@@ -123,7 +123,7 @@
     }
 
     NSError *err = [NSError errorWithDomain:@"AiTool" code:404
-                                   userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"未知工具 %@", self.internalName]}];
+                                   userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Unknown tool %@", self.internalName]}];
     completion(nil, err);
 }
 
@@ -137,7 +137,7 @@
 
     NSMutableArray *entries = [NSMutableArray array];
 
-    // 列举 instances/ 下的子目录（每个实例 = 一个游戏目录）
+    // List subdirectories under instances/ (each instance is a game directory)
     NSArray *subdirs = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:instancesDir error:nil];
     for (NSString *dirname in subdirs) {
         NSString *fullPath = [instancesDir stringByAppendingPathComponent:dirname];
@@ -147,7 +147,7 @@
         }
         if ([dirname hasPrefix:@"."]) continue;
 
-        // 从 launcher_profiles.json 匹配 profile（按 name 匹配目录名）
+        // Find the profile in launcher_profiles.json (match the name to the directory name)
         NSDictionary *profile = [profileDict isKindOfClass:[NSDictionary class]] ? profileDict[dirname] : nil;
         NSString *profileName = dirname;
         NSString *lastVersionId = @"";
@@ -155,7 +155,7 @@
         if ([profile isKindOfClass:[NSDictionary class]]) {
             if ([profile[@"name"] isKindOfClass:[NSString class]] && [profile[@"name"] length] > 0) profileName = profile[@"name"];
             if ([profile[@"lastVersionId"] isKindOfClass:[NSString class]]) lastVersionId = profile[@"lastVersionId"];
-            // ★ [VER-ISOLATE-PCL] 版本隔离统一解析（隔离开启 → versions/<版本 id>，关闭 → "."）
+            // ★ [VER-ISOLATE-PCL] Shared version-isolation resolution (isolation on → versions/<version id>, off → ".")
             gameDir = amePCLVersionGameDirSubpath(profile, nil);
         }
 
@@ -169,7 +169,7 @@
         }];
     }
 
-    // 取不到实例目录时，回退返回当前实例信息
+    // If no instance directory is available, fall back to current instance information
     if (entries.count == 0) {
         NSString *currentRoot = [[self class] currentGameRoot];
         [entries addObject:@{
@@ -187,7 +187,7 @@
 
 #pragma mark - list_game_versions
 
-/// 版本清单缓存目录：Documents/AI/game_versions.json（30 分钟有效）
+/// Version manifest cache path: Documents/AI/game_versions.json (valid for 30 minutes)
 - (NSString *)gameVersionsCachePath {
     NSString *aiDir = [[NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject]
                        stringByAppendingPathComponent:@"AI"];
@@ -199,10 +199,10 @@
     NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
     NSDate *mtime = attrs[NSFileModificationDate];
     if (!mtime) return NO;
-    return ([[NSDate date] timeIntervalSinceDate:mtime] < 30 * 60); // 30 分钟
+    return ([[NSDate date] timeIntervalSinceDate:mtime] < 30 * 60); // 30 minutes
 }
 
-/// 版本清单源列表：默认 BMCLAPI 镜像，失败自动切官方源重试
+/// Version manifest sources: BMCLAPI mirror by default, automatically retry official source on failure
 - (NSArray<NSString *> *)versionManifestURLStrings {
     return @[
         @"https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json",
@@ -218,7 +218,7 @@
                                      completion:(void (^)(NSString * _Nullable result, NSError * _Nullable error))completion {
     NSString *cachePath = [self gameVersionsCachePath];
 
-    // 命中缓存且未过期（缓存完整清单，含全部类型；按参数过滤后返回）
+    // Cache hit and not expired (cache complete manifest, including all types; filter by parameter before returning)
     if ([self isCacheFreshAtPath:cachePath]) {
         NSData *cached = [NSData dataWithContentsOfFile:cachePath];
         if (cached) {
@@ -242,7 +242,7 @@
             dispatch_async(dispatch_get_main_queue(), ^{ completion(nil, error); });
             return;
         }
-        // 写缓存（完整清单）
+        // Write cache (complete manifest)
         NSString *fullJSON = [self jsonStringFromObject:versions];
         NSData *resultData = [fullJSON dataUsingEncoding:NSUTF8StringEncoding];
         dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
@@ -250,20 +250,20 @@
         });
         NSString *resultJSON = [self filteredVersionsJSON:versions includeSnapshots:includeSnapshots];
         dispatch_async(dispatch_get_main_queue(), ^{
-            completion([NSString stringWithFormat:@"%@\n（数据源：%@）", resultJSON, sourceUsed ?: @"bmclapi"], nil);
+            completion([NSString stringWithFormat:@"%@\n(Data source: %@)", resultJSON, sourceUsed ?: @"bmclapi"], nil);
         });
     }];
 }
 
-/// 依序尝试源列表拉取版本清单（BMCLAPI → official 兜底）
+/// Try the source list in order to fetch the version manifest (BMCLAPI → official fallback)
 - (void)fetchManifestFromSources:(NSArray<NSString *> *)urlStrings
                            index:(NSUInteger)index
                       lastError:(NSError * _Nullable)lastError
                       completion:(void (^)(NSArray * _Nullable versions, NSString * _Nullable sourceUsed, NSError * _Nullable error))completion {
     if (index >= urlStrings.count) {
-        NSString *detail = lastError.localizedDescription ?: @"未知错误";
+        NSString *detail = lastError.localizedDescription ?: @"Unknown error";
         completion(nil, nil, [NSError errorWithDomain:@"AiTool" code:500
-                                             userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"获取版本列表失败（BMCLAPI 与官方源均不可用）:%@", detail]}]);
+                                             userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Failed to fetch version list (BMCLAPI and official source are both unavailable): %@", detail]}]);
         return;
     }
     NSString *urlString = urlStrings[index];
@@ -294,7 +294,7 @@
             }
             if (!versions) {
                 parseError = [NSError errorWithDomain:@"AiTool" code:500
-                                              userInfo:@{NSLocalizedDescriptionKey: @"版本清单格式异常"}];
+                                              userInfo:@{NSLocalizedDescriptionKey: @"Invalid version manifest format"}];
             }
         }
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -303,7 +303,7 @@
                 completion(versions, sourceUsed, nil);
                 return;
             }
-            // 当前源失败 → 切换下一个源重试
+            // Current source failed → try the next source
             NSError *err = error ?: parseError;
             [self fetchManifestFromSources:urlStrings index:index + 1 lastError:err completion:completion];
         });
@@ -311,7 +311,7 @@
     [task resume];
 }
 
-/// 过滤版本清单：默认仅 release；includeSnapshots 时附加最新一条 snapshot
+/// Filter version manifest: releases only by default; append the latest snapshot when includeSnapshots is enabled
 - (NSString *)filteredVersionsJSON:(NSArray *)versions includeSnapshots:(BOOL)includeSnapshots {
     NSMutableArray *filtered = [NSMutableArray array];
     NSDictionary *latestSnapshot = nil;
@@ -321,7 +321,7 @@
         if ([vtype isEqualToString:@"release"]) {
             [filtered addObject:item];
         } else if (includeSnapshots && [vtype isEqualToString:@"snapshot"] && !latestSnapshot) {
-            latestSnapshot = item; // 清单本身按新→旧排序，取首个即最新
+            latestSnapshot = item; // The manifest is sorted newest to oldest; the first is the latest
         }
     }
     if (latestSnapshot) [filtered addObject:latestSnapshot];

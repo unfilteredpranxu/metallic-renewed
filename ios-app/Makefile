@@ -44,18 +44,18 @@ else
 CMAKE_BUILD_TYPE := Debug
 endif
 
-# ★ [RENDERER-GAP] 新增渲染器（VGPU / GL4ESZL2 / NG-GL4ES / VirGL）。
-# 默认 0：VGPU 不参与构建、GL4ESZL2 / VirGL 不进 payload 依赖图
-#          （这几个是可选/实验性的，默认 IPA 与既有渲染器行为零变化）。
-# 置 1 后：native 透传 -DAME_RENDERER_GAP_VGPU=ON（构建 libvgpu.dylib），
-#          且 payload 追加 dep_gl4eszl2 dep_virgl 两个目标。
-# 用法：make RENDERER_GAP_EXTRAS=1 payload
+# ★ [RENDERER-GAP] Additional renderers (VGPU / GL4ESZL2 / NG-GL4ES / VirGL).
+# Default 0: VGPU is not built, and GL4ESZL2 / VirGL are not in the payload dependency graph
+#            (these are optional/experimental; by default the IPA and existing renderer behavior are unchanged).
+# Set to 1: native receives -DAME_RENDERER_GAP_VGPU=ON (builds libvgpu.dylib),
+#           and the payload adds the dep_gl4eszl2 and dep_virgl targets.
+# Usage: make RENDERER_GAP_EXTRAS=1 payload
 #
-# ⚠ NG-GL4ES（"Krypton Wrapper"）【不】受此开关控制：它是用户可见的一等渲染器
-#   （对应原 f907a3f180 的无条件 payload 依赖），dep_nggl4es 直接挂在 payload 上，
-#   CI 的 `gmake dsym package` 每次都会构建 libnggl4es.dylib。
+# ⚠ NG-GL4ES ("Krypton Wrapper") is **not** controlled by this switch: it is a user-visible first-class renderer
+#   (the unconditional payload dependency from f907a3f180); dep_nggl4es is attached directly to payload,
+#   and CI's `gmake dsym package` builds libnggl4es.dylib every time.
 RENDERER_GAP_EXTRAS ?= 0
-# ★ [RENDERER-GAP] 由上面的开关派生：默认空 → payload 依赖图与既有完全一致。
+# ★ [RENDERER-GAP] Derived from the switch above: empty by default → payload dependency graph remains unchanged.
 ifeq (1,$(RENDERER_GAP_EXTRAS))
 RENDERER_GAP_PAYLOAD_DEPS := dep_gl4eszl2 dep_virgl
 else
@@ -76,13 +76,13 @@ IOS         := 1
 SDKPATH     ?= /usr/share/SDKs/iPhoneOS.sdk
 BOOTJDK     ?= /usr/lib/jvm/java-8-openjdk/bin
 ifeq ($(shell test "$(OSVER)" -gt 14; echo $$?),0)
-# ★ [ROOTHIDE] 在 iOS 上就地构建时的安装前缀。
-#   · 普通 rootless：固定 /var/jb/（上一版行为，保持不变）。
-#   · RootHide（Dopamine-roothide/palera1n-roothide）：越狱根【随机化】到
-#     /var/containers/Bundle/Application/.jbroot-<16hex>/，不存在 /var/jb
-#     ⇒ 旧默认会把 App 装到空路径。这里自动探测随机 jbroot（优先）并加尾斜杠
-#     （deploy 用 $(PREFIX)Applications/... 拼接）。显式传 PREFIX=... 仍覆盖（?=）。
-#   注：.ipa/.tipa 打包路径（package target）不使用 PREFIX，不受影响。
+# ★ [ROOTHIDE] Installation prefix when building locally on iOS.
+#   · Standard rootless: fixed /var/jb/ (unchanged from the previous behavior).
+#   · RootHide (Dopamine-roothide/palera1n-roothide): the jailbreak root is randomized to
+#     /var/containers/Bundle/Application/.jbroot-<16hex>/, with no /var/jb.
+#     ⇒ The old default would install the app to an empty path. Detect a randomized jbroot automatically (preferred)
+#     and add a trailing slash (deploy concatenates $(PREFIX)Applications/...). Explicit PREFIX=... still overrides (?=).
+#   Note: .ipa/.tipa packaging (the package target) does not use PREFIX and is unaffected.
 PREFIX      ?= $(shell d=$$(ls -d /var/containers/Bundle/Application/.jbroot-*/ 2>/dev/null | head -1); if [ -n "$$d" ]; then printf '%s' "$$d"; else echo "/var/jb/"; fi)
 else
 PREFIX      ?= /
@@ -99,12 +99,12 @@ $(error This platform is not currently supported for building Angel Aura Amethys
 endif
 
 # ============================================================================
-# ★ [SWIFT-BAR] SwiftUI 底部标签栏(Natives/AmeTabBar.swift)编译变量
+# ★ [SWIFT-BAR] Build variables for the SwiftUI bottom tab bar (Natives/AmeTabBar.swift)
 # ----------------------------------------------------------------------------
-#  与 C 侧同样按平台判定 target:设备 arm64-apple-ios14.0,
-#  模拟器 <arch>-apple-ios14.0-simulator(看 SDKPATH 指向 iPhoneSimulator 与否)。
-#  swiftc 产出 $(WORKINGDIR)/AmeTabBar.o,路径再经 -DAME_TABBAR_OBJ=... 交给 CMake;
-#  CMakeLists.txt 里留着同一条 swiftc 规则,直接跑 cmake 时兜底。
+#  As on the C side, select the target by platform: device arm64-apple-ios14.0,
+#  simulator <arch>-apple-ios14.0-simulator (based on whether SDKPATH points to iPhoneSimulator).
+#  swiftc produces $(WORKINGDIR)/AmeTabBar.o, then passes its path to CMake via -DAME_TABBAR_OBJ=...;
+#  CMakeLists.txt retains the same swiftc rule as a fallback when invoking cmake directly.
 # ============================================================================
 SWIFTC        ?= $(shell xcrun -f swiftc 2>/dev/null || command -v swiftc 2>/dev/null || echo swiftc)
 SWIFT_SRC     ?= $(SOURCEDIR)/Natives/AmeTabBar.swift
@@ -117,7 +117,7 @@ else
 SWIFT_TARGET  ?= $(SWIFT_ARCH)-apple-ios$(SWIFT_MIN_IOS)
 endif
 
-# ★ [SWIFT-BAR] 编译 SwiftUI 底部标签栏(必须先于 native 的 cmake 链接)
+# ★ [SWIFT-BAR] Compile the SwiftUI bottom tab bar (must happen before native CMake linking)
 swift:
 	echo '[Amethyst v$(VERSION)] swift - start'
 	mkdir -p $(WORKINGDIR)
@@ -161,16 +161,16 @@ POJAV_JRE21_DIR       ?= $(SOURCEDIR)/depends/java-21-openjdk
 POJAV_JRE25_DIR       ?= $(SOURCEDIR)/depends/java-25-openjdk
 MOLTENVK_LIBRARY      ?= $(SOURCEDIR)/Natives/resources/Frameworks/libMoltenVK.dylib
 MOBILEGL_SOURCE_DIR   ?= $(SOURCEDIR)/Natives/external/MobileGL
-# MobileGL 源码已 vendoring 在 Natives/external/MobileGL（与 MobileGlues 一样是普通
-# 源码目录，不再是 gitlink），可以直接改源码调 iOS 构建。
-# 上游不发布 iOS 预编译产物。2026-08-31 首次编译成功（提交 55256e33），
-# 两个后端 dylib 已提交在 Natives/resources/Frameworks/ 下，日常构建直接用它，
-# 不必重编（编 glslang + SPIRV-Cross 约 30 分钟，Actions 对 macOS 按 10 倍计费）。
-# 改源码时才用 BUILD_MOBILEGL=1 重开。
-# 更新源码：直接用 git 把 MobileGL-Dev/MobileGL 的 dev 分支（子模块取各自默认
-# 分支）同步进 Natives/external/MobileGL，并保持既有剔除规则（SPIRV-Cross/test、
-# glslang/Test、Vulkan-Headers/tests、DiligentCore/Samples|Tutorials、
-# trace_replay/fixtures、android-plugin）。不依赖任何 workflow。
+# MobileGL source is vendored under Natives/external/MobileGL (a regular source directory like
+# MobileGlues, no longer a gitlink), so it can be edited and built for iOS directly.
+# Upstream does not publish prebuilt iOS artifacts. The first successful build was on 2026-08-31 (commit 55256e33);
+# both backend dylibs are committed under Natives/resources/Frameworks/ and used in normal builds,
+# avoiding a rebuild (building glslang + SPIRV-Cross takes about 30 minutes; macOS Actions minutes cost 10x).
+# Set BUILD_MOBILEGL=1 only when modifying the source.
+# To update source, use git to sync the dev branch of MobileGL-Dev/MobileGL (submodules use their default
+# branches) into Natives/external/MobileGL, preserving existing exclusions (SPIRV-Cross/test,
+# glslang/Test, Vulkan-Headers/tests, DiligentCore/Samples|Tutorials, trace_replay/fixtures,
+# android-plugin). No workflow is required.
 BUILD_MOBILEGL        ?= 0
 MOBILEGL_DYLIB        ?= $(SOURCEDIR)/Natives/resources/Frameworks/libMobileGL.dylib
 MOBILEGL_GLES_DYLIB   ?= $(SOURCEDIR)/Natives/resources/Frameworks/libMobileGL-gles.dylib
@@ -208,7 +208,7 @@ METHOD_CHANGE_PLAT = \
 	fi \
 	
 # Function to package the application
-# 修复：使用统一的命名格式 amethystremastered
+# Fix: use the unified amethystremastered naming format.
 METHOD_PACKAGE = \
 	if [ '$(TROLLSTORE_JIT_ENT)' == '1' ]; then \
 		IPA_SUFFIX="-trollstore.tipa"; \
@@ -225,10 +225,13 @@ METHOD_PACKAGE = \
 	fi
 
 # Function to download and unpack Java runtimes.
-# ★ [JRE-NEST] 原条件把「缺 release」与「无归档」用 && 串起来 ⇒ 只有当两者同时成立才解包：
-#   当 depends/ 里已存在 jreN-*.tar.xz(归档在)而 java-N-openjdk/ 缺失时整块被跳过 ⇒ 运行期读不到 JRE。
-#   现改为：缺 release 就解包；归档不存在才下载；解包后探测并纠正“多套一层”；产物做非空/可运行校验。
-#   注意：本变量在 Makefile 里是单条逻辑行，绝不能塞 `#` 注释(会吃掉其后整行) —— 故提示一律走 echo。
+# ★ [JRE-NEST] The original condition joined "release missing" and "archive missing" with &&, so extraction
+#   happened only when both were true: if depends/ contained jreN-*.tar.xz but java-N-openjdk/ was missing,
+#   the entire block was skipped and the JRE was unavailable at runtime.
+#   Now: extract if release is missing; download only if the archive is absent; detect and fix an extra
+#   directory level after extraction; validate that the output is nonempty and runnable.
+#   Note: this variable is a single logical line in the Makefile; never add a `#` comment (it would consume
+#   the rest of the line), so all messages must use echo.
 METHOD_JAVA_UNPACK = \
 	cd $(SOURCEDIR)/depends; \
 	if [ ! -f "java-$(1)-openjdk/release" ]; then \
@@ -246,16 +249,16 @@ METHOD_JAVA_UNPACK = \
 			if [ ! -f "java-$(1)-openjdk/release" ]; then \
 				for d in java-$(1)-openjdk/*/; do \
 					if [ -f "$$d/release" ] && [ -f "$$d/lib/server/libjvm.dylib" ]; then \
-						echo "★ [JRE-NEST] 检测到多套一层，展开: $$d"; mv "$$d"/* "java-$(1)-openjdk/"; rmdir "$$d"; break; \
+						echo "★ [JRE-NEST] Detected an extra directory level; flattening: $$d"; mv "$$d"/* "java-$(1)-openjdk/"; rmdir "$$d"; break; \
 					fi; \
 				done; \
 			fi; \
 			if [ ! -f "java-$(1)-openjdk/release" ] || [ ! -f "java-$(1)-openjdk/lib/server/libjvm.dylib" ]; then \
-				echo "★ [JRE-NEST] ERROR: java-$(1)-openjdk 解包后缺 release / lib/server/libjvm.dylib"; ls -la "java-$(1)-openjdk"; exit 1; \
+				echo "★ [JRE-NEST] ERROR: java-$(1)-openjdk is missing release / lib/server/libjvm.dylib after extraction"; ls -la "java-$(1)-openjdk"; exit 1; \
 			fi; \
 			echo "★ [JRE-NEST] java-$(1)-openjdk OK (release + lib/server/libjvm.dylib)"; \
 		else \
-			echo "★ [JRE-NEST] ERROR: 缺 java-$(1)-openjdk 且无归档可下载: $(2)"; exit 1; \
+			echo "★ [JRE-NEST] ERROR: java-$(1)-openjdk is missing and no archive is available to download: $(2)"; exit 1; \
 		fi; \
 	fi
 
@@ -341,17 +344,17 @@ help:
 	echo '    make dsym                           Generate debug symbol files'
 	echo '    make clean                          Cleans build directories'
 	echo '    make check                          Dump all variables for checking'
-	echo '    make iris-bridge-on                 ★ 26.2 Iris<->Metal 桥 开 (默认; 见 Natives/shader_iris_bridge.sh)'
-	echo '    make iris-bridge-off                ★ 26.2 Iris<->Metal 桥 关 (回退到旧 classes262/ 类集)'
-	echo '    make shader-glslang-pack            ★ 影光 glslang native 缺口打包 (含 classes262iris 补类)'
-	echo '    make shader-glslang-check           ★ 检查 glslang native 是否已入包'
-	echo '    make verify-iris-integrate          ★ [IRIS-INTEGRATE] 校验 91符号 native 接线 + 类集未回退 r10'
-	echo '    make shader-iris-integrate          ★ [IRIS-INTEGRATE] 接线 26.2-iris → 91符号 libmetallum_iris.dylib'
+	echo '    make iris-bridge-on                 ★ 26.2 Iris<->Metal bridge on (default; see Natives/shader_iris_bridge.sh)'
+	echo '    make iris-bridge-off                ★ 26.2 Iris<->Metal bridge off (revert to the old classes262/ class set)'
+	echo '    make shader-glslang-pack            ★ package the missing glslang native for shaders (including the classes added for classes262iris)'
+	echo '    make shader-glslang-check           ★ check whether the glslang native is included in the package'
+	echo '    make verify-iris-integrate          ★ [IRIS-INTEGRATE] verify the 91-symbol native wiring and ensure the class set has not regressed from r10'
+	echo '    make shader-iris-integrate          ★ [IRIS-INTEGRATE] wire 26.2-iris to the 91-symbol libmetallum_iris.dylib'
 
-# ★ [SHADER-FAST] 26.2 Iris↔Metal 桥 开关（只改 agent jar 内的标记资源 metallum_iris.mode）。
-#   运行期也可覆盖(优先于标记): -Dmetallum.iris.bridge=0|1 / AMETHYST_METALLUM_IRIS=0|1
-#   类集 classes262iris/ + natives/ir1/ 常驻在 jar 内, 关掉只是不再被 routing 选中 ⇒ 零副作用。
-#   ★ 一键回退: `make iris-bridge-off`；整包回退 cp D:/CTF/_510src/_bak_/shaderfast_*/metallum_agent.jar.orig
+# ★ [SHADER-FAST] 26.2 Iris↔Metal bridge switch (only changes the marker resource inside the agent JAR metallum_iris.mode).
+#   Can also be overridden at runtime (takes precedence over the marker): -Dmetallum.iris.bridge=0|1 / AMETHYST_METALLUM_IRIS=0|1
+#   Class sets classes262iris/ + natives/ir1/ remain in the JAR; turning this off only prevents them from being selected by routing, with no side effects.
+#   ★ One-command rollback: `make iris-bridge-off`; full-package rollback: cp D:/CTF/_510src/_bak_/shaderfast_*/metallum_agent.jar.orig
 iris-bridge-on:
 	sh Natives/shader_iris_bridge.sh on
 
@@ -361,40 +364,40 @@ iris-bridge-off:
 iris-bridge-status:
 	sh Natives/shader_iris_bridge.sh status
 
-# ★ [SHADER-GLSLANG] 影光最后一跳 native 缺口打包（幂等）。
-#   ★ [SHADER-SIGBUS] 本目标现在的语义 = **glslang 只走 Frameworks，jar 里必须没有它**：
-#   · libglslang.dylib(带 17 个 glslang C API 符号) 只放在
-#       Natives/resources/Frameworks/libglslang.dylib（+ .16 / .16.4.0 两个同字节别名），
-#     由 GlslangBridge.createIOSGlslangLookup() 的 System.loadLibrary("glslang") 加载
-#     （java.library.path = <app>/Frameworks；payload 的 cp -R Natives/resources/* 自动进包）。
-#     随 app 一起被 ad-hoc 签名的副本 ⇒ dyld 能做成文件后备 RX 映射 ⇒ 不会 SIGBUS。
-#   · 【不再】往 agent jar / MetalUniversal jar 塞 natives/ios|ir1/libglslang.dylib，
-#     并在打包时把已有条目【移除】。原因：MetalNativeBridge.configureBundledGlslangLibrary()
-#     会把 jar 内资源解包到 <home>/libglslang_metallum.dylib 再 System.load ——
-#     那是【没有随包签名】的副本，dyld bypass 对它只能走
-#     "匿名映射 + PrepareRegion + 镜像 memcpy" 兜底路径，首次执行即 SIGBUS
-#     （真机实证：SIGBUS at [libglslang_metallum.dylib+0xccbc4] _GLOBAL__sub_I_Scan.cpp，
-#      且紧邻日志的 PrepareRegion len==2392064==该 dylib __TEXT.vmsize；
-#      历史档案 VERSION_HISTORY.md v378 `noglslanginjar.ipa` 同结论）。
-#   · classes262iris/ + classes262/ 两个类集前缀补 com/mojang/blaze3d【整组】（缺口 B）
-#     ★ [BLAZE3D-ROOT-SHADOW] 【不再】镜像到 jar 根 —— "-javaagent" 的 jar 在 app/system
-#       classpath 上, 根副本会让 app loader 影子化游戏自己的类 (26.4 真机:
-#       RenderSystem$AutoStorageIndexBuffer$IndexGenerator 被 app 装载 ⇒ 同名包不同
-#       runtime package ⇒ IllegalAccessError ⇒ Could not initialize class RenderSystem)。
-#     ★ [SHADER-BLAZE3D-GROUP] 不再是"三个固定名字"：组 = Natives/shader_glslang/blaze3d/**
-#       （清单 blaze3d_group.txt），由 Natives/extract_blaze3d_group.py 从 client-26.2.jar
-#       算出 = agent 真正 define 的 com/metallum/client/** + 3 接口的【链接面闭包】
-#       （超类/接口/字段方法 descriptor/泛型 Signature/throws）。上一轮只补 3 个固定名字，
-#       真机 latestlog-40 立刻在下一层炸：
-#           NoClassDefFoundError: com/mojang/blaze3d/systems/GpuSurface$PresentMode  ← 内部类($)
-#       根那份 com/metallum/** 副本(逐字节 == classes262/) implements/引用它们，根里却没有
-#       com/mojang/blaze3d/ ⇒ "只看得到 jar 根"的 loader 一读就 NoClassDefFoundError。
-#       ★ 组内【不含】mixin 目标本体(opengl/GlStateManager、systems/RenderSystem)：agent 用
-#         原始 defineClass 把它们 define 进 Knot 会绕过 Fabric/Iris mixin。
-#   ★ 重新求组(仅在有 client-26.2.jar 的机器上跑；Mac 出包线【不】跑):
-#       python Natives/extract_blaze3d_group.py --check      # 只核对清单/源目录/闭包
-#       python Natives/extract_blaze3d_group.py              # 重算并落源目录+清单
-#   真机缺口见 latestlog-38.txt：Symbol not found: glslang_initialize_process
+# ★ [SHADER-GLSLANG] Package the final native piece for shader rendering (idempotent).
+#   ★ [SHADER-SIGBUS] This target now means **glslang is loaded only from Frameworks and must not be in the JAR**:
+#   · Place libglslang.dylib (with 17 glslang C API symbols) only in
+#       Natives/resources/Frameworks/libglslang.dylib (+ byte-identical .16 / .16.4.0 aliases),
+#     loaded via System.loadLibrary("glslang") in GlslangBridge.createIOSGlslangLookup()
+#     (java.library.path = <app>/Frameworks; payload automatically bundles it through cp -R Natives/resources/*).
+#     The copy is ad-hoc signed with the app ⇒ dyld can use a file-backed RX mapping ⇒ no SIGBUS.
+#   · Do **not** put natives/ios|ir1/libglslang.dylib in the agent JAR / MetalUniversal JAR;
+#     remove any existing entries during packaging. MetalNativeBridge.configureBundledGlslangLibrary()
+#     extracts the JAR resource to <home>/libglslang_metallum.dylib and calls System.load.
+#     This copy is **not signed with the app**, so dyld bypass can only use its fallback path
+#     ("anonymous mapping + PrepareRegion + image memcpy"), causing SIGBUS on first execution
+#     (on-device evidence: SIGBUS at [libglslang_metallum.dylib+0xccbc4] _GLOBAL__sub_I_Scan.cpp,
+#      and the adjacent PrepareRegion log has len==2392064==that dylib's __TEXT.vmsize;
+#      the historical VERSION_HISTORY.md v378 `noglslanginjar.ipa` reached the same conclusion).
+#   · Add the complete com/mojang/blaze3d group to both class-set prefixes classes262iris/ + classes262/ (gap B).
+#     ★ [BLAZE3D-ROOT-SHADOW] Do **not** mirror it to the JAR root: the "-javaagent" JAR is on the app/system
+#       classpath, and a root copy shadows the game's own classes in the app loader (on-device 26.4:
+#       RenderSystem$AutoStorageIndexBuffer$IndexGenerator was loaded by the app ⇒ same-named package, different
+#       runtime package ⇒ IllegalAccessError ⇒ Could not initialize class RenderSystem).
+#     ★ [SHADER-BLAZE3D-GROUP] The group is no longer "three fixed names": it is Natives/shader_glslang/blaze3d/**
+#       (manifest blaze3d_group.txt), computed by Natives/extract_blaze3d_group.py from client-26.2.jar
+#       as the link-surface closure of com/metallum/client/** actually defined by the agent + 3 interfaces
+#       (superclasses/interfaces/field and method descriptors/generic Signatures/throws). The previous round
+#       added only three fixed names; on-device latestlog-40 immediately failed at the next level:
+#           NoClassDefFoundError: com/mojang/blaze3d/systems/GpuSurface$PresentMode  ← inner class ($)
+#       The root com/metallum/** copies (byte-identical to classes262/) implement/reference those classes,
+#       but the root has no com/mojang/blaze3d/ ⇒ a loader that sees only the JAR root immediately throws NoClassDefFoundError.
+#       ★ The group **excludes** mixin target classes themselves (opengl/GlStateManager, systems/RenderSystem):
+#         the agent's raw defineClass would define them into Knot and bypass Fabric/Iris mixins.
+#   ★ Recompute the group only on a machine with client-26.2.jar (do **not** run on the Mac packaging line):
+#       python Natives/extract_blaze3d_group.py --check      # verify manifest/source directory/closure only
+#       python Natives/extract_blaze3d_group.py              # recompute and write source directory + manifest
+#   The on-device gap is in latestlog-38.txt: Symbol not found: glslang_initialize_process
 shader-glslang-pack:
 	python3 Natives/pack_shader_glslang.py
 
@@ -403,38 +406,38 @@ shader-glslang-check:
 	python3 Natives/verify_iris_integrate.py          # ★ [IRIS-INTEGRATE]
 	python3 Natives/check_spvc_provenance.py          # ★ [26.4-SPVC]
 
-# ★ [26.4-SPVC] spvc native 出处校验（防"搬家漏带"）。
-#   真机 26.4 首次 UI 管线 minecraft:pipeline/gui 崩在
-#   "SPIRV-Cross error at spvc_context_parse_spirv: -1"（-1 = INVALID_SPIRV）。
-#   ★ 关键事实：设备上真正做 SPIR-V→MSL 的 libspvc 不是 Frameworks 里那份 ——
-#   metallum 的 MetalNativeBridge.configureBundledSpvcLibrary() 会从 jar 抽
-#   natives/ios/libspvc.dylib 到 $POJAV_HOME 并 System.load + 设
-#   Configuration.SPVC_LIBRARY_NAME ⇒ LWJGL 的 Spvc 加载的是 jar 里那份，
-#   我们的 spvc 串行化垫片被整体绕过（真机 26.4 日志里 [spvc-shim] 一行都没有，
-#   只有 main_hook 的 "[spvc] dlsym intercepted"）。
-#   ⇒ jar 里的 natives 一旦在搬家/换底时没带对（mlrepo buildIOSSpvc 还有
-#   "libspvc.dylib already exists, skipping build" 的静默跳过 + vendor/SPIRV-Cross
-#   是未初始化的 submodule），构建仍全绿而整个 SPIR-V→MSL 后端已被换掉。
-#   本目标把 jar 内 natives/ios|ir1 的 libspvc.dylib 与树内 canonical 逐字节对齐。
-#   SPVC_PROVENANCE=warn 可降级为告警。
+# ★ [26.4-SPVC] Verify spvc native-library provenance (prevent omissions when moving the build).
+#   On-device, the first 26.4 UI pipeline minecraft:pipeline/gui fails with
+#   "SPIRV-Cross error at spvc_context_parse_spirv: -1" (-1 = INVALID_SPIRV).
+#   ★ Key fact: the libspvc that actually performs SPIR-V→MSL on the device is not the one in Frameworks.
+#   metallum's MetalNativeBridge.configureBundledSpvcLibrary() extracts
+#   natives/ios/libspvc.dylib from the JAR to $POJAV_HOME, calls System.load, and sets
+#   Configuration.SPVC_LIBRARY_NAME ⇒ LWJGL's Spvc loads the JAR copy,
+#   completely bypassing our spvc serialization shim (the on-device 26.4 log has no [spvc-shim] lines,
+#   only main_hook's "[spvc] dlsym intercepted").
+#   ⇒ If the JAR native is not carried over correctly when moving/changing the base (mlrepo buildIOSSpvc
+#   also silently skips with "libspvc.dylib already exists, skipping build", and vendor/SPIRV-Cross
+#   is an uninitialized submodule), the build still succeeds while the entire SPIR-V→MSL backend is replaced.
+#   This target makes the JAR's natives/ios|ir1/libspvc.dylib byte-identical to the canonical copy in the tree.
+#   SPVC_PROVENANCE=warn downgrades mismatches to warnings.
 check-spvc-provenance:
 	python3 Natives/check_spvc_provenance.py
 
-# ★ [SHADER-BLAZE3D-GROUP] blaze3d 整组自检（清单 vs 源目录 vs 闭包）——
-#   只能在有 D:\CTF\client-26.2.jar 的机器上跑（Mac 出包线不需要它）。
+# ★ [SHADER-BLAZE3D-GROUP] Self-check the complete blaze3d group (manifest vs source directory vs closure) —
+#   run only on a machine with D:\CTF\client-26.2.jar (not required on the Mac packaging line).
 blaze3d-group-check:
 	python3 Natives/extract_blaze3d_group.py --check
 
-# ★ [IRIS-INTEGRATE] 让 26.2-iris 吃 91 符号的 libmetallum_iris.dylib，而 26.3/26.1 继续吃
-#   Frameworks/libmetallum.dylib（75 符号，含 getError/getStatus/get_last_error）—— 同一个包两条路线。
-#   做法: 只把两条通道 MetalNativeBridge 的 System.loadLibrary("metallum") 改成 "metallum_iris"
-#         （§6.7「共用文件名」的取舍用**改名接线**解，不覆盖、不重编 native）。
-#   ★ 为什么**不**把 r10 类集搬进来: 本仓库 agent 的 classes262iris 比 r10 **更新** ——
-#     逐类 javap 对比: 21 类不同(9 类只差调试信息)，其余 12 类全部是 agent 侧更大/更多
-#     （SHADER-CAP GL_EXTENSIONS / shadowColorFormatsFrom / sodium(...GpuFormat[]) /
-#       MetalNativeBridge 解包路径 /natives/ir1 vs r10 /natives/ios）。覆盖 = 功能回退。
-#     详见 Natives/pack_iris_integrate.py 头部注释与 Natives/verify_iris_integrate.py。
-#   ★ 幂等；校验用 make verify-iris-integrate（同一份断言也被 shader-glslang-check 调用）
+# ★ [IRIS-INTEGRATE] Make 26.2-iris use the 91-symbol libmetallum_iris.dylib, while 26.3/26.1 continue using
+#   Frameworks/libmetallum.dylib (75 symbols, including getError/getStatus/get_last_error) — two routes in one package.
+#   Method: change only the two MetalNativeBridge routes from System.loadLibrary("metallum") to "metallum_iris"
+#         (resolve the §6.7 "shared filename" tradeoff through **renamed routing**, without overwriting or rebuilding native code).
+#   ★ Why **not** copy in the r10 class set: this repository's agent classes262iris is **newer** than r10 —
+#     per-class javap comparison: 21 classes differ (9 differ only in debug info); all remaining 12 are larger/more complete on the agent side
+#     (SHADER-CAP GL_EXTENSIONS / shadowColorFormatsFrom / sodium(...GpuFormat[]) /
+#       MetalNativeBridge extraction path /natives/ir1 vs r10 /natives/ios). Replacing it would regress functionality.
+#     See the header comments in Natives/pack_iris_integrate.py and Natives/verify_iris_integrate.py.
+#   ★ Idempotent; verify with make verify-iris-integrate (the same assertions are also called by shader-glslang-check).
 shader-iris-integrate:
 	python3 Natives/pack_iris_integrate.py
 
@@ -474,9 +477,9 @@ native: dep_mg swift
 
 java:
 	echo '[Amethyst v$(VERSION)] java - start'
-	# 从 lwjgl-lib/ 源码构建 LWJGL jar（3.3.3 与 3.4.1）。
-	# 默认跳过：预编译 jar 已在 git 中，普通构建与 CI 都不需要 Ant / JDK 8 /
-	# 网络。只有 BUILD_LWJGL=1 时才真正从源码构建（本地改 LWJGL 时用）：
+	# Build LWJGL JARs from lwjgl-lib/ source (3.3.3 and 3.4.1).
+	# Skipped by default: prebuilt JARs are already in git, so normal builds and CI do not need Ant / JDK 8 /
+	# network access. Build from source only when BUILD_LWJGL=1 (for local LWJGL changes):
 	#     BUILD_LWJGL=1 make java
 	if [ "$(BUILD_LWJGL)" = "1" ]; then bash "$(SOURCEDIR)/scripts/build_lwjgl.sh"; else echo '[Amethyst v$(VERSION)] java - using prebuilt LWJGL jars'; fi
 	$(MAKE) -C JavaApp -j$(JOBS) BOOTJDK=$(BOOTJDK)
@@ -500,7 +503,7 @@ jre: native
 	cp -R $(POJAV_JRE25_DIR) $(OUTPUTDIR)/java_runtimes; \
 	for _v in 8 17 21 25; do \
 		if [ ! -f "$(OUTPUTDIR)/java_runtimes/java-$$_v-openjdk/lib/server/libjvm.dylib" ]; then \
-			echo "★ [JRE-NEST] ERROR: 产物 java_runtimes/java-$$_v-openjdk 缺 lib/server/libjvm.dylib(层级不对或复制失败)"; ls -la "$(OUTPUTDIR)/java_runtimes/java-$$_v-openjdk" 2>/dev/null | head -20; exit 1; \
+			echo "★ [JRE-NEST] ERROR: The output java_runtimes/java-$$_v-openjdk is missing lib/server/libjvm.dylib (incorrect directory hierarchy or copy failure)"; ls -la "$(OUTPUTDIR)/java_runtimes/java-$$_v-openjdk" 2>/dev/null | head -20; exit 1; \
 		fi; \
 		echo "★ [JRE-NEST] java_runtimes/java-$$_v-openjdk OK"; \
 	done; \
@@ -513,9 +516,9 @@ jre: native
 dep_mg:
 	echo '[Amethyst v$(VERSION)] dep_mg - start'
 	# ---------------------------------------------------------------------------
-	# 3rdparty 版本对齐 —— 对齐参考仓库 Air 的 .gitmodules pin
+	# 3rd-party version alignment — match the .gitmodules pin in the reference Air repository.
 	#
-	# Air 的 Makefile 原文警告：
+	# Original warning in Air's Makefile:
 	#   "The shader conversion pipeline (desktop GLSL -> ESSL) is only validated
 	#    against the submodule commits pinned in .gitmodules. A 3rdparty/ tree
 	#    populated from arbitrary master snapshots produced ESSL that ANGLE-Metal
@@ -523,18 +526,18 @@ dep_mg:
 	#    screen). Force the pinned versions before configuring cmake, and fail
 	#    loudly if they are still missing afterwards."
 	#
-	# 本仓库该目录是 vendored 而非 submodule，且 blob SHA 逐文件比对证明与 pin
-	# 版本不同源：SPIRV-Cross 的 spirv_cross.cpp / spirv_cross.hpp /
-	# spirv_glsl.cpp / spirv_glsl.hpp / spirv_cfg.cpp 全部不同；glslang 的
+	# This repository vendors this directory rather than using a submodule. Per-file blob SHA comparisons show that it differs from the pinned
+	# revision: SPIRV-Cross's spirv_cross.cpp / spirv_cross.hpp /
+	# spirv_glsl.cpp / spirv_glsl.hpp / spirv_cfg.cpp all differ; glslang's
 	# CHANGES.md / localintermediate.h / Versions.cpp / InfoSink.h /
-	# CMakeLists.txt 也不同；xxhash 已一致故跳过。这是 MG + 26.3 黑屏与静默
-	# 闪退的根因（转换产物 ESSL 不被 ANGLE-Metal 接受）。
+	# CMakeLists.txt also differs; xxhash already matches, so it is skipped. This is the root cause of the MG + 26.3 black screen and silent
+	# crash (ANGLE-Metal rejects the generated ESSL).
 	#
-	# 与 Air 的 git submodule update --init 等价：构建期把这两个目录整体替换为
-	# pin 快照（tar 直接解压到目标目录，规避 BSD cp -R 的目录覆盖陷阱）。哨兵
-	# 文件 .air_pin_<sha> 避免重复下载；glslang 目录内的两个 .patch 先备份、替换
-	# 后放回，交由紧随其后的补丁块应用（pin 版本本身不带防护补丁）。
-	# 逃生阀：AMETHYST_MG_PIN_ALIGN=0 可跳过（离线调试用，产物未经验证）。
+	# Equivalent to Air's git submodule update --init: during the build, replace both directories entirely with
+	# pinned snapshots (extract the tar directly to the target directory to avoid BSD cp -R directory-overwrite pitfalls). The sentinel
+	# file .air_pin_<sha> prevents repeat downloads; back up the two .patch files in the glslang directory before replacement,
+	# then restore them so the following patch block can apply them (the pinned revision itself does not include the guard patches).
+	# Escape hatch: AMETHYST_MG_PIN_ALIGN=0 skips alignment (for offline debugging; output is unverified).
 	# ---------------------------------------------------------------------------
 	@mg3=$(SOURCEDIR)/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty; \
 	if [ "$${AMETHYST_MG_PIN_ALIGN:-1}" = "0" ]; then \
@@ -561,28 +564,28 @@ dep_mg:
 		echo '[dep_mg] 3rdparty pinned: SPIRV-Cross=a0fba56 glslang=f5f664d (xxhash already matches c2866db)'; \
 	fi
 	mkdir -p $(WORKINGDIR)/mobileglues
-	# MG 自带 3rdparty/glslang（CMakeLists 里 add_subdirectory 从源码构建）。参考仓库在 cmake
-	# 配置前对这份 glslang 打两个防护补丁（本仓库该目录是 vendored 而非 submodule，故用
-	# --directory 定位）：
-	#   * glslang-lvalue-nullguard.patch —— TParseContext::lValueErrorCheck 取 swizzle
-	#     选择器聚合前不判空；iOS/arm64 上解析 MC 26.x 的 position_color 顶点着色器时该链
-	#     SIGSEGV，启动/资源重载阶段直接杀进程（无 .ips、无 hs_err，表现为静默闪退）。
-	#   * glslang-pool-zero-and-size-guards.patch —— GlslangToSpv::convertSwizzle 的
-	#     constArray 尺寸判，必须打在 nullguard 之上。
-	# Task 170 —— 补丁必须打在 src/main/cpp 这条真实路径上，不能走 MobileGlues-cpp。
-	# MobileGlues-cpp 是 symlink -> src/main/cpp（本仓库 vendored 布局；参考仓库 Air 该处
-	# 是实体目录）。git apply 拒绝穿过符号链接：
+	# MG includes 3rdparty/glslang (built from source via add_subdirectory in CMakeLists). Before cmake
+	# configuration, the reference repository applies two guard patches to this glslang copy (this repository vendors
+	# the directory rather than using a submodule, so --directory is used to locate it):
+	#   * glslang-lvalue-nullguard.patch — TParseContext::lValueErrorCheck does not check for null before
+	#     aggregating swizzle selectors; on iOS/arm64, this path SIGSEGVs while parsing the MC 26.x position_color
+	#     vertex shader, killing the process during startup/resource reload (no .ips or hs_err; appears as a silent crash).
+	#   * glslang-pool-zero-and-size-guards.patch — adds a constArray size check to GlslangToSpv::convertSwizzle;
+	#     it must be applied after nullguard.
+	# Task 170 — patches must target the actual src/main/cpp path, not MobileGlues-cpp.
+	# MobileGlues-cpp is a symlink -> src/main/cpp (this repository's vendored layout; in the Air reference repository this
+	# is a real directory). git apply refuses to follow symlinks:
 	#   error: affected file '.../MobileGlues-cpp/3rdparty/glslang/...' is beyond a symbolic link
-	# 于是正向 --check 与反向 --check 双双失败，两个 MC 26.x position_color SIGSEGV 防护
-	# 补丁被静默跳过 —— 构建日志里的
+	# As a result, both forward and reverse --check fail, and the two MC 26.x position_color SIGSEGV guard patches
+	# are silently skipped — the build log's
 	#   "[dep_mg] WARNING: ... neither applies nor is applied -- MG glslang left UNPATCHED"
-	# 正是它。pin 对齐又把已内置防护的 vendored 树整体换成上游 f5f664d（无防护），
-	# 于是 libmobileglues 长期是在"零防护"状态下编出来的：26.3 资源重载期解析
-	# position_color 顶点着色器时 SIGSEGV，无 hs_err、无 .ips、表现为静默闪退；
-	# 26.2 不走这条链故不受影响。参考仓库 Air 因是实体目录，补丁正常落地，故其
-	# MG + 26.3 全程可玩。
-	# 顺序有依赖：nullguard 必须先于 pool-zero/size-guard（后者基于前者）。
-	# 现在任一环失败即 exit 1 —— 绝不再静默产出无防护的 MG。
+	# is exactly what that warning describes. Pin alignment then replaces the guarded vendored tree with upstream f5f664d (without guards),
+	# so libmobileglues had long been built with "zero guards": it SIGSEGVs while parsing the position_color vertex shader
+	# during a 26.3 resource reload, with no hs_err or .ips and a silent crash;
+	# 26.2 does not use this path and is unaffected. The patches apply correctly in the Air reference repository because it has a real directory,
+	# so its MG + 26.3 build is playable throughout.
+	# Order matters: nullguard must precede pool-zero/size-guard (the latter depends on the former).
+	# Any failure now exits with status 1 — never silently produce an unguarded MG build again.
 	@mg_3prel=Natives/external/MobileGlues/src/main/cpp/3rdparty; \
 	mg_glrel=$$mg_3prel/glslang; \
 	mg_pdir=$(SOURCEDIR)/$$mg_3prel; \
@@ -601,9 +604,9 @@ dep_mg:
 		fi; \
 	done; \
 	fi
-	# CMAKE_BUILD_TYPE 必须显式给出：--config 对单配置生成器无效。缺失时 CMake 不追加
-	# -O2/-DNDEBUG，整库 -O0 且 glslang/SPIRV-Cross/MG 的 assert() 全部激活 —— assert
-	# 触发即 __assert_rtn->abort()，表现为直接进启动器错误界面且无 .ips/hs_err。
+	# CMAKE_BUILD_TYPE must be specified explicitly: --config is ineffective for single-configuration generators.
+	# If omitted, CMake does not add -O2/-DNDEBUG, the entire library is built with -O0, and all glslang/SPIRV-Cross/MG assert() calls are enabled —
+	# a triggered assert calls __assert_rtn->abort(), immediately showing a launcher error screen with no .ips/hs_err.
 	cd $(WORKINGDIR)/mobileglues && cmake \
 		-DMACOS="1" \
 		-DCMAKE_CROSSCOMPILING=true \
@@ -616,9 +619,9 @@ dep_mg:
 		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
 		$(SOURCEDIR)/Natives/external/MobileGlues/MobileGlues-cpp/
 
-	# 额外显式构建 SPIRV / glslang-default-resource-limits 两个静态库：
-	# dep_shader_shims 从源码链接 libshaderc_impl.dylib 时需要它们，
-	# 而 mobileglues 自身只链接 glslang::glslang，不会带出这两个目标。
+	# Also explicitly build the SPIRV / glslang-default-resource-limits static libraries:
+	# dep_shader_shims needs them when linking libshaderc_impl.dylib from source,
+	# while mobileglues itself links only glslang::glslang and does not build these targets.
 	cmake --build $(WORKINGDIR)/mobileglues --config RelWithDebInfo -j$(JOBS) --target mobileglues SPIRV glslang-default-resource-limits
 	@mg_bindir=$(WORKINGDIR)/mobileglues/3rdparty/glslang; \
 	mg_spirv_a=$$mg_bindir/SPIRV/libSPIRV.a; \
@@ -636,43 +639,43 @@ dep_mg:
 	cp $(WORKINGDIR)/mobileglues/libmobileglues*.dylib $(WORKINGDIR)/
 	echo '[Amethyst v$(VERSION)] dep_mg - end'
 # ---------------------------------------------------------------------------
-# shaderc / spirv-cross 串行化垫片（对齐 Air Task 39/42/47/54）
+# shaderc / spirv-cross serialization shim (aligned with Air Tasks 39/42/47/54)
 #
-# MG + MC 26.3 崩溃家族：资源重载阶段多个 32MB 栈 JVM 线程并发执行 glslang
-# 编译，且 compiler_release 与 in-flight 编译竞态 —— 旧 RenderPearl 管线释放
-# 时拆全局符号表/释放 glslang 池，编译中的 AST 内存被随后的字符串分配复用，
-# ASCII 字节落进 SWIZZLE 节点 constArray 指针字段（偏移 +0xd8），最终在
-# glslang::TParseContext::lValueErrorCheck+0x204 SIGSEGV 拖垮整个进程。
+# MG + MC 26.3 crash family: during resource reload, multiple JVM threads with 32 MB stacks compile shaders with glslang
+# concurrently, while compiler_release races with in-flight compilation. When the old RenderPearl pipeline is released,
+# it tears down the global symbol table and frees the glslang pool; subsequent string allocations reuse AST memory still
+# in use by compilation. ASCII bytes land in the SWIZZLE node's constArray pointer field (offset +0xd8), eventually
+# causing a SIGSEGV at glslang::TParseContext::lValueErrorCheck+0x204 and bringing down the entire process.
 #
-# 修复：真实库以 *_impl.dylib 落地，本垫片顶替原名并以 -reexport_library
-# 透传全部符号；编译入口与 compiler/options 生命周期入口统一收进一把进程级
-# 递归互斥锁，编译期接管 SIGSEGV/SIGBUS 做一次重试（崩溃网），从而把
-# “进程死亡”降级为“单个 shader 编译失败 + 取证日志”。
+# Fix: emit the real library as *_impl.dylib, then use this shim under the original name with -reexport_library
+# to forward all symbols. Protect the compile entry points and compiler/options lifecycle entry points with one process-wide
+# recursive mutex. During compilation, intercept SIGSEGV/SIGBUS and retry once (a crash net), downgrading
+# "process death" to "one shader compilation failure + diagnostic logs."
 #
-# 本仓库 Natives/resources/Frameworks 下为预提交二进制，故在 WORKINGDIR 里
-# 复制出 impl 名字并改写 LC_ID（reexport 记录的是 impl 的 install name，
-# 否则会把构建期绝对路径烧进产物）。
+# This repository has pre-committed binaries under Natives/resources/Frameworks, so copy them to impl-named files in
+# WORKINGDIR and rewrite LC_ID (the re-export records the impl install name; otherwise the build-time absolute path
+# would be baked into the output).
 # ---------------------------------------------------------------------------
-# --- libshaderc_impl.dylib 的来源开关（A/B 用）-------------------------------
-# SHADERC_IMPL_FROM_SOURCE=1 : Air Task 45 路径 —— Natives/shaderc_impl_glue.c
-#                              覆在 dep_mg 刚编出的、已打 nullguard +
-#                              pool-zero/size-guard 补丁的 glslang 静态库上。
-# SHADERC_IMPL_FROM_SOURCE=0 : 垫片引入时的原始行为（3bed818be0）—— 直接用
-#                              Natives/resources/Frameworks/ 下预提交二进制。
-#                              默认 1：两份 hs_err（pid11633 / pid23353）证明两条
-#                              路都崩，且是同一个病 —— 见下方符号围栏注释。围栏
-#                              只能作用于我们自己链接的 impl，预编译二进制改不动，
-#                              故默认走 from-source。变量仍可置 0 做整包 A/B。
+# --- Select the source for libshaderc_impl.dylib (for A/B testing) -----------
+# SHADERC_IMPL_FROM_SOURCE=1 : Air Task 45 path — Natives/shaderc_impl_glue.c
+#                              overlays the glslang static libraries just built by dep_mg, patched with nullguard +
+#                              pool-zero/size-guard.
+# SHADERC_IMPL_FROM_SOURCE=0 : Original behavior when the shim was introduced (3bed818be0) — use the pre-committed
+#                              binaries under Natives/resources/Frameworks/ directly.
+#                              Default 1: two hs_err reports (pid11633 / pid23353) show that both paths crash with the
+#                              same issue — see the symbol-fencing comment below. The fence can only apply to the impl
+#                              we link ourselves; the prebuilt binary cannot be changed, so from-source is the default.
+#                              The variable can still be set to 0 for whole-package A/B testing.
 SHADERC_IMPL_FROM_SOURCE ?= 1
 
 ifeq ($(SHADERC_IMPL_FROM_SOURCE),1)
 dep_shaderc_impl: dep_mg
 	echo '[shaderc-impl] mode=from-source (Air Task 45) - start'
-	# libshaderc_impl.dylib 从源码构建：Natives/shaderc_impl_glue.c 直接覆在
-	# glslang C 接口上，链接 dep_mg 刚构建的（已打 nullguard + pool-zero/size-guard
-	# 补丁的）静态库。预编译的 libshaderc.dylib 内含未打补丁的 glslang，其
-	# TParseContext::lValueErrorCheck / convertSwizzle 会解引用被堆回收字节污染的
-	# swizzle 选择器 constArray（+0xd8）而 SIGSEGV —— 正是 MC 26.3 崩溃家族的成因。
+	# Build libshaderc_impl.dylib from source: Natives/shaderc_impl_glue.c calls the
+	# glslang C interface and links the static libraries just built by dep_mg (patched with nullguard +
+	# pool-zero/size-guard). The prebuilt libshaderc.dylib contains unpatched glslang; its
+	# TParseContext::lValueErrorCheck / convertSwizzle dereferences a swizzle selector constArray (+0xd8)
+	# corrupted by reclaimed heap bytes, causing SIGSEGV — the cause of the MC 26.3 crash family.
 	mg_bindir=$(WORKINGDIR)/mobileglues/3rdparty/glslang; \
 	mg_spirv_a=$$mg_bindir/SPIRV/libSPIRV.a; \
 	[ -f "$$mg_spirv_a" ] || mg_spirv_a=$(SOURCEDIR)/Natives/external/MobileGlues/MobileGlues-cpp/libraries/ios/libSPIRV.a; \
@@ -708,29 +711,29 @@ dep_shaderc_impl: dep_mg
 else
 dep_shaderc_impl:
 	echo '[shaderc-impl] mode=prebuilt (Natives/resources/Frameworks/libshaderc.dylib) - start'
-	# $(WORKINGDIR) 由 dep_mg 内的 cmake 步骤创建；本分支不再依赖 dep_mg，
-	# 故显式建目录（dep_openal_shim 同款处理），无副作用。
+	# $(WORKINGDIR) is created by the cmake step in dep_mg; this branch no longer depends on dep_mg,
+	# so create the directory explicitly (same handling as dep_openal_shim), with no side effects.
 	mkdir -p $(WORKINGDIR)
 	cp $(SOURCEDIR)/Natives/resources/Frameworks/libshaderc.dylib $(WORKINGDIR)/libshaderc_impl.dylib || exit 1
 	install_name_tool -id @rpath/libshaderc_impl.dylib $(WORKINGDIR)/libshaderc_impl.dylib || exit 1
 	echo '[shaderc-impl] mode=prebuilt - end'
 endif
 
-# --- 导出符号围栏（26.3 + MobileGL/MobileGlues SIGSEGV 根因）----------------
-# 两份真机 hs_err 的崩溃栈都跨了两个镜像：
+# --- Export-symbol fence (root cause of 26.3 + MobileGL/MobileGlues SIGSEGV) ---
+# Both on-device hs_err crash stacks cross two images:
 #   pid11633  C [libshaderc.dylib+0x3adafc]      spvtools::opt::Module::ForEachInst
 #             C [libMobileGL-gles.dylib+0xfd3014] spvtools::Optimizer::Run
 #   pid23353  C [libMobileGL-gles.dylib+0xaaff64] TGlslangToSpvTraverser::visitAggregate
 #             C [libshaderc_impl.dylib+0x75230]   glslang::TIntermAggregate::traverse
-# 渲染器镜像内嵌一份 glslang / SPIRV-Tools，shaderc 垫片内嵌另一份。两者都是
-# C++ 头文件内联产生的 weak 符号，在 flat namespace 下被 dyld 合并成同一份：
-# MobileGL 用自己那套 AST 建的节点，却跳进 shaderc 镜像里的 traverse/ForEachInst
-# 去遍历 —— 布局与虚表不匹配，随即 SIGSEGV。
-# 这与 impl 是预编译还是 from-source 无关（两份报告各占一条路），只取决于
-# 这些符号有没有被导出进全局空间。
-# shaderc_impl_glue.c 的公开面只有 shaderc_*（其余全 static），spvc_shim.c 只有
-# spvc_*；glslang / spvtools / spirv-cross 的符号纯粹是静态库顺带泄漏出来的。
-# 因此用 -exported_symbols_list 做白名单即可彻底切断串台，不影响垫片功能。
+# The renderer image embeds one copy of glslang / SPIRV-Tools, and the shaderc shim embeds another. Both contain
+# weak symbols generated by inline C++ header definitions, which dyld merges under the flat namespace:
+# MobileGL builds nodes with its own AST, but jumps into traverse/ForEachInst in the shaderc image to traverse them.
+# The layouts and vtables do not match, causing an immediate SIGSEGV.
+# This is independent of whether the impl is prebuilt or built from source (the two reports cover both paths); it depends only on
+# whether these symbols are exported into the global namespace.
+# shaderc_impl_glue.c exposes only shaderc_* (everything else is static), and spvc_shim.c exposes only
+# spvc_*; glslang / spvtools / spirv-cross symbols leak only as a side effect of the static libraries.
+# An -exported_symbols_list allowlist therefore completely prevents symbol collisions without affecting shim functionality.
 SHADER_SHIM_SYMBOL_FENCE ?= 1
 
 ifeq ($(SHADER_SHIM_SYMBOL_FENCE),1)
@@ -743,12 +746,12 @@ FENCE_SHADERC :=
 FENCE_SPVC    :=
 endif
 
-# --- 垫片总开关 -------------------------------------------------------------
-# SHADER_SHIMS=0 : dep_shader_shims 整体停用，Frameworks 下直接随包携带
-#                  Natives/resources/Frameworks/ 里的原始预提交二进制 —— 即
-#                  3bed818be0 引入垫片之前的状态（26.3 + MG 黑屏但不闪退）。
-#                  payload 的 "cp -R Natives/resources/*" 负责把它们放进 app，
-#                  本目标不产出任何同名 dylib，故不会发生覆盖。
+# --- Overall shim switch ----------------------------------------------------
+# SHADER_SHIMS=0 : disable dep_shader_shims entirely; package the original pre-committed binaries from
+#                  Natives/resources/Frameworks/ directly — the state before the shims were introduced by
+#                  3bed818be0 (black screen with 26.3 + MG, but no crash).
+#                  The payload's "cp -R Natives/resources/*" copies them into the app;
+#                  this target produces no dylibs with matching names, so nothing is overwritten.
 SHADER_SHIMS ?= 1
 
 ifeq ($(SHADER_SHIMS),1)
@@ -773,24 +776,24 @@ dep_shader_shims: dep_shaderc_impl dep_mg
 		-o $(WORKINGDIR)/libspirv-cross-c-shared.0.dylib \
 		$(SOURCEDIR)/Natives/spvc_shim.c || exit 1
 	# -------------------------------------------------------------------
-	# MobileGlues 的 SPIRV-Cross 与上面的 LWJGL spvc 垫片解耦
+	# Decouple MobileGlues' SPIRV-Cross from the LWJGL spvc shim above.
 	#
-	# MG 在 CMakeLists 里链接 libraries/ios/ 下预编译的 libspirv-cross-c-shared.dylib，
-	# 其 LC_ID_DYLIB 与上面产出的 spvc 垫片同名。于是运行时 dyld 把 MG 的每一次
-	# spvc_* 调用都解析进垫片 —— 即 32MB 栈派发线程 + 进程级主编译锁（日志里
-	# "[spvc-shim] ... MG serialization ON" 就是它）。MC 26.3 的 shader 转换量远大于
-	# 26.2，这条共享路径被压满后进程被拖死：静默闪退、无 hs_err、无崩溃报告；
-	# 26.2 量小所以不受影响。（MG 自身跑得完转换 —— 垫片之前 26.3 + MG 是有声音的，
-	# 只是黑屏。）
+	# MG links the prebuilt libspirv-cross-c-shared.dylib under libraries/ios/ in CMakeLists,
+	# whose LC_ID_DYLIB matches the spvc shim produced above. At runtime, dyld therefore routes every MG
+	# spvc_* call through the shim — i.e. onto 32 MB stack worker threads plus the process-wide compile lock
+	# (the log message "[spvc-shim] ... MG serialization ON" confirms this). MC 26.3 converts far more shaders than
+	# 26.2, saturating this shared path and stalling the process: silent crash, no hs_err, no crash report.
+	# 26.2 processes fewer shaders and is unaffected. (MG can complete the conversion itself — before the shim,
+	# 26.3 + MG produced audio but only a black screen.)
 	#
-	# 参考仓库 Air 的 MG 走 add_subdirectory(3rdparty/SPIRV-Cross) 并静态链接
-	# spirv-cross-c，根本不存在这份共享库，因此不受影响。本仓库未纳入 SPIRV-Cross
-	# submodule，故不改 MG 的链接方式，只在打包前把 libmobileglues 对 spirv-cross
-	# 的依赖重定向到一份独立命名的真库；LWJGL 侧仍按原名加载垫片，32MB 栈与
-	# 串行锁保护原样保留，行为完全不变。
+	# The reference Air repository uses add_subdirectory(3rdparty/SPIRV-Cross) for MG and statically links
+	# spirv-cross-c, so this shared library does not exist there and it is unaffected. This repository does not include
+	# the SPIRV-Cross submodule, so the MG link method is unchanged; before packaging, redirect libmobileglues'
+	# spirv-cross dependency to a separately named real library. The LWJGL side continues loading the shim under its
+	# original name, preserving the 32 MB stack and serialization lock exactly as before.
 	#
-	# 依赖名由 otool 现场探测、不写死；源库按两条候选路径查找。任一环节缺失都只
-	# 打印 WARN 并跳过，不会让构建失败。
+	# Probe the dependency name with otool rather than hard-coding it; search for the source library in either of two candidate paths.
+	# If any step is missing, print a WARN and skip without failing the build.
 	# -------------------------------------------------------------------
 	for mg in $(WORKINGDIR)/libmobileglues*.dylib; do \
 		[ -f "$$mg" ] || continue; \
@@ -821,21 +824,21 @@ endif
 
 
 dep_openal_shim:
-	# Task 129：OpenAL ALC_SOFT_system_events 兼容垫片（26.1.2 整合包崩溃修复）。
-	# - 真库已 git mv 为 libopenal_impl.dylib（openal-soft 1.20.1 iOS 构建，无
-	#   ALC_SOFT_system_events 扩展）；本目标构建同名垫片 libopenal.dylib：
-	#   re-export impl 全部符号 + 覆盖 alcGetString/alcIsExtensionPresent 宣称扩展
-	#   + 提供 alcEventIsSupportedSOFT/alcEventControlSOFT/alcEventCallbackSOFT 桩。
-	# - 根因：MC 26.1.2 CallbackDeviceTracker.isSupported 无扩展守卫，直接调
-	#   LWJGL 绑定 -> ICD 槽位 0 -> NPE 崩溃（26.3 有守卫故存活）。
-	#   桩返回 ALC_FALSE 使 MC 干净回退 PollingDeviceTracker。
-	# - 与 dep_shader_shims 同款模式：re-export 必须指向 impl 名（LC_ID 先修正），
-	#   否则加载递归；本地函数定义优先于 re-export 符号（shaderc 先例）。
+	# Task 129: OpenAL ALC_SOFT_system_events compatibility shim (fix for a crash in 26.1.2 modpacks).
+	# - The real library was moved with git mv to libopenal_impl.dylib (openal-soft 1.20.1 iOS build, without
+	#   the ALC_SOFT_system_events extension); this target builds a same-named libopenal.dylib shim:
+	#   re-export all impl symbols + override alcGetString/alcIsExtensionPresent to advertise the extension
+	#   + provide stubs for alcEventIsSupportedSOFT/alcEventControlSOFT/alcEventCallbackSOFT.
+	# - Root cause: MC 26.1.2 CallbackDeviceTracker.isSupported has no extension guard and directly calls
+	#   the LWJGL binding -> ICD slot 0 -> NPE crash (26.3 survives because it has a guard).
+	#   The stubs return ALC_FALSE so MC cleanly falls back to PollingDeviceTracker.
+	# - Same pattern as dep_shader_shims: re-export must point to the impl name (fix LC_ID first),
+	#   otherwise loading recurses; local function definitions take precedence over re-exported symbols (as with shaderc).
 	echo '[Amethyst v$(VERSION)] dep_openal_shim - start'
-	# Task 170：dep_openal_shim 与 dep_mg 同为 payload 前置、并行执行（gmake -j），
-	# 而 $(WORKINGDIR) 由 dep_mg 内的 cmake 步骤创建 —— 本目标先跑到时该目录还不存在，
-	# cp 直接失败（ci: "cp: directory .../Natives/build does not exist"）。
-	# dep_shader_shims 有 dep_mg 依赖故不受影响；这里显式建目录即可，无副作用。
+	# Task 170: dep_openal_shim and dep_mg are both payload prerequisites and run in parallel (gmake -j),
+	# while $(WORKINGDIR) is created by the cmake step inside dep_mg. If this target runs first, the directory does not yet exist,
+	# so cp fails immediately (CI: "cp: directory .../Natives/build does not exist").
+	# dep_shader_shims is unaffected because it depends on dep_mg; explicitly creating the directory here is sufficient and has no side effects.
 	mkdir -p $(WORKINGDIR)
 	cp $(SOURCEDIR)/Natives/resources/Frameworks/libopenal_impl.dylib $(WORKINGDIR)/ || exit 1
 	install_name_tool -id @rpath/libopenal_impl.dylib $(WORKINGDIR)/libopenal_impl.dylib || exit 1
@@ -848,7 +851,7 @@ dep_openal_shim:
 
 dep_angle_freeze:
 	echo '[Amethyst v$(VERSION)] dep_angle_freeze - start'
-	# Task 57 (画面分裂根治): 8-byte machine-code patch -- ANGLE Metal
+	# Task 57 (root-cause fix for split-screen rendering): 8-byte machine-code patch -- ANGLE Metal
 	# WindowSurfaceMtl::checkIfLayerResized: expected size source switched from
 	# bounds*contentsScale (poisoned by windowed-mode background-thread portrait
 	# geometry, CALayer cross-thread split-brain) to the surface's own latched
@@ -858,7 +861,7 @@ dep_angle_freeze:
 	# frozen value back onto the layer. Idempotent; loud failure on byte
 	# mismatch (ANGLE version drift guard); full root-cause chain in script
 	# header comments (scripts/patch_angle_surface_freeze.py).
-	# 补丁改写源文件后签名哈希失效 —— 打包时 ldid -S 全 app 递归重签覆盖。
+	# The patch changes the source file and invalidates its signature hash; packaging recursively re-signs the entire app with ldid -S.
 	if [ -f "$(SOURCEDIR)/scripts/patch_angle_surface_freeze.py" ]; then \
 		python3 "$(SOURCEDIR)/scripts/patch_angle_surface_freeze.py" \
 			"$(SOURCEDIR)/Natives/resources/Frameworks/libGLESv2.framework/libGLESv2" || exit 1; \
@@ -869,15 +872,15 @@ dep_angle_freeze:
 
 dep_sdl3_guard:
 	echo '[Amethyst v$(VERSION)] dep_sdl3_guard - start'
-	# Task 135 (controlify/JNA closure SIGBUS 源头根治): libSDL3.dylib
-	# 入口机器码守卫 -- SDL_SetEventFilter / SDL_AddEventWatch 的非空回调指针
-	# 一律置空/拒绝注册。controlify 经 JNA 回退加载本 Frameworks 的 iOS 版 SDL3
-	# 后, 把 JNA/libffi closure (RW 不可执行 trampoline 页) 注册进 SDL 事件过滤
-	# 器, SDL 调用即 SIGBUS。dlsym 层守卫对 LWJGL/FFM 解析路径有效, 但 JNA 解析
-	# 路径仍可绕行; 本补丁把守卫下沉到 SDL 二进制自身, 与符号解析链路完全无关。
-	# 启动器自身与 MC/LWJGL 均不使用 SDL 事件过滤器 (全仓 grep 验证), 零误伤;
-	# 签名由打包时 ldid -S 全 app 重签覆盖 (dep_angle_freeze 同款流程)。
-	# 幂等; 字节不匹配 (SDL3 版本漂移) 响亮失败。
+	# Task 135 (root-cause fix for the controlify/JNA closure SIGBUS): machine-code guard at the libSDL3.dylib
+	# entry points — null out or reject every non-null callback pointer passed to SDL_SetEventFilter / SDL_AddEventWatch.
+	# controlify falls back to the iOS SDL3 in this Frameworks directory via JNA, then registers a JNA/libffi closure
+	# (an RW, non-executable trampoline page) as an SDL event filter; SDL calls then trigger SIGBUS. The dlsym-layer
+	# guard works for LWJGL/FFM resolution paths, but JNA can bypass it; this patch puts the guard directly in the SDL
+	# binary, completely independent of symbol resolution.
+	# Neither the launcher nor MC/LWJGL uses SDL event filters (verified by repository-wide grep), so there are no side effects;
+	# packaging re-signs the entire app with ldid -S, replacing the signature (same process as dep_angle_freeze).
+	# Idempotent; fail loudly if bytes do not match (SDL3 version drift).
 	if [ -f "$(SOURCEDIR)/scripts/patch_sdl3_eventfilter_guard.py" ]; then \
 		python3 "$(SOURCEDIR)/scripts/patch_sdl3_eventfilter_guard.py" \
 			"$(SOURCEDIR)/Natives/resources/Frameworks/libSDL3.dylib" || exit 1; \
@@ -887,40 +890,41 @@ dep_sdl3_guard:
 	echo '[Amethyst v$(VERSION)] dep_sdl3_guard - end'
 
 # ---------------------------------------------------------------------------
-# dep_sfpew —— SimpleFPEWrapper（MobileGL-Dev，LGPL-3.0）
+# dep_sfpew — SimpleFPEWrapper (MobileGL-Dev, LGPL-3.0)
 #
-# 与安卓 AngelAuraMC/Amethyst-Android @ feat/sfpew_angle 同款接入：SFPEW 位于
-# 渲染器之上，为固定管线（GL 1.x）提供仿真，并把 GL 调用转发给真正的后端。
-# 安卓侧＝Tools.useSFPEW 开关 + SFPEW_EGL 指向后端 EGL + 把 LWJGL 实际加载的库
-# 换成 libSimpleFPEWrapper.so；iOS 侧渲染器列表里多一项 libSimpleFPEWrapper.dylib，
-# JavaLauncher 把 SFPEW_EGL 设为被包裹的真后端（默认 libmobileglues.dylib）。
+# Integrates SFPEW like Android's AngelAuraMC/Amethyst-Android @ feat/sfpew_angle: SFPEW sits above
+# the renderer, emulates the fixed-function pipeline (GL 1.x), and forwards GL calls to the actual backend.
+# Android uses a Tools.useSFPEW toggle, points SFPEW_EGL at the backend EGL, and replaces the library
+# actually loaded by LWJGL with libSimpleFPEWrapper.so. On iOS, the renderer list gains a libSimpleFPEWrapper.dylib
+# option, and JavaLauncher sets SFPEW_EGL to the wrapped real backend (default: libmobileglues.dylib).
 #
-# 依赖 dep_mg：glslang / SPIRV-Cross / glm 直接复用 MobileGlues 的 vendored
-# 3rdparty 树，而 dep_mg 会在同一棵树上做 pin 对齐并打两个防护补丁 —— 串行化
-# 保证 SFPEW 编到的是同一份源码。
+# Depends on dep_mg: glslang / SPIRV-Cross / glm directly reuse MobileGlues' vendored
+# 3rdparty tree. dep_mg aligns its pins and applies two guard patches to that same tree; serialization
+# ensures SFPEW is built from the same source.
 # ---------------------------------------------------------------------------
 dep_sfpew: dep_mg
 	echo '[Amethyst v$(VERSION)] dep_sfpew - start'
-	# iOS 适配补丁（AppleClang 15 + deployment target 14.0 下才暴露的两个问题，
-	# Linux/GCC 与 Android NDK 都不触发，故上游源码里没有处理）：
-	#   1. fpe/types.h: glstate_t 的默认构造函数被隐式删除（匿名 union 内含
-	#      带 NSDMI 的匿名 struct），fpe.cpp 的 no_context_state / make_unique 会炸
-	#   2. fpe/fpe_shadergen.cpp: std::format 依赖 std::to_chars(float)，该重载在
-	#      SDK 里标了 introduced=iOS 16.3，deployment target 14.0 下 "unavailable"。
-	#      两层修复缺一不可：
-	#        a) 编译期 —— 补丁第 3 步把全树 std::format 换成自研的
-	#           fpefmt::format（写 fpe/fpe_format_compat.h，纯 ostringstream，
-	#           不引用 <format> / to_chars）。必须整个换掉而不是只改浮点说明符：
-	#           std::format 的模板展开**无条件**拉进 formatter_floating_point.h，
-	#           实测 fpe_shadergen.cpp 的 std::format<unsigned,string,string>
-	#           照样 error。CI 实测 -Wno-unguarded-availability{,-new} 压不住它
-	#           （那两个旗标只管 warn 级，这条是 err 级），仅作顺手保留。
-	#        b) 运行期 —— 补丁把唯一的 {:.1f} 换成 snprintf。保持 deployment
-	#           target 14.0 使 to_chars 引用成为**弱**引用，旧系统解析为 NULL；
-	#           不走到该路径就不会 NULL 解引用。（反过来把 target 抬到 16.3
-	#           会变成强引用，iOS 14~16.2 真机 dyld 找不到符号直接启动崩。）
-	# 与 patch_mobilegl_ios.py 同款约定：幂等 + 锚点校验，锚点不匹配即 exit 1，
-	# 绝不静默打歪补丁编出坏库。必须在 cmake 之前跑（cmake 直接编译树内源码）。
+	# iOS compatibility patch (two issues exposed only with AppleClang 15 + deployment target 14.0;
+	# Linux/GCC and the Android NDK do not trigger them, so upstream does not handle them):
+	#   1. fpe/types.h: glstate_t's default constructor is implicitly deleted (an anonymous union contains
+	#      an anonymous struct with NSDMI), breaking no_context_state / make_unique in fpe.cpp.
+	#   2. fpe/fpe_shadergen.cpp: std::format depends on std::to_chars(float); that overload is marked as
+	#      introduced in iOS 16.3 in the SDK, so it is "unavailable" with deployment target 14.0.
+	# Both layers of the fix are required:
+	#        a) Compile time — step 3 of the patch replaces std::format throughout the tree with the custom
+	#           fpefmt::format (in fpe/fpe_format_compat.h; pure ostringstream, no <format> / to_chars).
+	#           Replace all of std::format, not just the floating-point specifier:
+	#           template expansion for std::format unconditionally includes formatter_floating_point.h;
+	#           testing confirmed fpe_shadergen.cpp's std::format<unsigned,string,string> still errors.
+	#           CI confirmed -Wno-unguarded-availability{,-new} cannot suppress it
+	#           (those flags handle warnings only; this is an error), but they are retained as a precaution.
+	#        b) Runtime — the patch replaces the only {:.1f} with snprintf. Keeping deployment
+	#           target 14.0 makes the to_chars reference **weak**, so older systems resolve it as NULL;
+	#           the NULL is never dereferenced unless this path is reached. (Raising the target to 16.3
+	#           would create a strong reference, and dyld on physical iOS 14–16.2 devices would fail
+	#           to find the symbol and crash at launch.)
+	# Like patch_mobilegl_ios.py, this is idempotent and validates anchors; a mismatch exits with status 1,
+	# never silently misapplies a patch and produces a broken library. Must run before cmake (which compiles source from the tree).
 	python3 $(SOURCEDIR)/Natives/patch_sfpew_ios.py $(SOURCEDIR)/Natives/external/SimpleFPEWrapper || exit 1
 	mkdir -p $(WORKINGDIR)/sfpew
 	cd $(WORKINGDIR)/sfpew && cmake \
@@ -973,23 +977,23 @@ dep_mobilegl:
 		echo '[Amethyst v$(VERSION)] dep_mobilegl - end (log: $(SOURCEDIR)/mobilegl-build.log)'; \
 	fi
 
-# MobileGL（MobileGL-Dev，LGPL-3.0）：
-# 2026-08-31 首次编译成功（libMobileGL.dylib / libMobileGL-gles.dylib），
-# 产物已提交进仓库（55256e33）并关掉 BUILD_MOBILEGL，改源码时才重开。
-# MobileGL 是桌面 OpenGL 实现，两个后端各一个二进制：
+# MobileGL (MobileGL-Dev, LGPL-3.0):
+# First successful build on 2026-08-31 (libMobileGL.dylib / libMobileGL-gles.dylib);
+# output committed to the repository (55256e33) and BUILD_MOBILEGL disabled; re-enable it only when changing the source.
+# MobileGL is a desktop OpenGL implementation with one binary per backend:
 #   libMobileGL.dylib      -> DirectVulkan (GL -> Vulkan -> MoltenVK -> Metal)
 #   libMobileGL-gles.dylib -> DirectGLES   (GL -> OpenGL ES)
-# 运行时由环境变量 MOBILEGL_BACKEND_TYPE 选择（见 Natives/JavaLauncher.m）。
+# The backend is selected at runtime by the MOBILEGL_BACKEND_TYPE environment variable (see Natives/JavaLauncher.m).
 #
-# 参考实现：Swung0x48/Amethyst-iOS 提交 dc57bfd3d2 "feat: add MobileGL renderer support"。
-# 下面所有 perl 补丁都用 grep -q 做幂等守卫：上游若已自行修复则整条跳过，
-# 不会因为源码变动而重复插入或报错。
+# Reference implementation: Swung0x48/Amethyst-iOS commit dc57bfd3d2 "feat: add MobileGL renderer support".
+# All perl patches below use grep -q idempotency guards: if upstream has already fixed an issue, skip the patch entirely,
+# avoiding duplicate insertions or errors when the source changes.
 dep_mobilegl_build:
-	# asio 是 MobileGL 的 header-only 依赖，但 vendoring 它要额外 636 个文件
-	#（约 5MB），而它只被 MG_Util/Async/ShaderCompilePool.cpp 用到，且 asio
-	# 是极稳定的库 —— 故按 tag 在构建时拉取，不进仓库。
-	# 用 tag（asio-1-38-2）而非分支：tag 不会被 force push，避免上游变动导致
-	# 构建突然中断。以 post.hpp 是否存在为判据（而非目录），残缺目录也能补齐。
+	# asio is a header-only dependency of MobileGL, but vendoring it would add 636 files
+	# (about 5 MB), and it is used only by MG_Util/Async/ShaderCompilePool.cpp. Since asio
+	# is a very stable library, fetch it by tag during the build rather than adding it to the repository.
+	# Use a tag (asio-1-38-2) instead of a branch: tags cannot be force-pushed, avoiding build interruptions
+	# caused by upstream changes. Check for post.hpp (not the directory) so an incomplete directory can be repaired.
 	if [ ! -f "$(MOBILEGL_SOURCE_DIR)/3rdparty/asio/include/asio/post.hpp" ]; then \
 		echo '[Amethyst v$(VERSION)] dep_mobilegl - fetching asio (asio-1-38-2)'; \
 		rm -rf $(MOBILEGL_SOURCE_DIR)/3rdparty/asio; \
@@ -1006,22 +1010,22 @@ dep_mobilegl_build:
 	grep -q '#include <type_traits>' $(MOBILEGL_SOURCE_DIR)/MobileGL/MG_Util/Types.h || perl -i -pe 'if (index($$_, "#include <Includes.h>") == 0) { $$_ .= "#include <type_traits>\n" }' $(MOBILEGL_SOURCE_DIR)/MobileGL/MG_Util/Types.h
 	grep -q 'std::is_aggregate_v<T>' $(MOBILEGL_SOURCE_DIR)/MobileGL/MG_Util/Types.h || perl -i -pe 's/        return std::make_unique\x3CT\x3E\(std::forward\x3CArgs\x3E\(args\)\.\.\.\);/        if constexpr (std::is_aggregate_v<T>) {\n            return std::unique_ptr<T>(new T{std::forward<Args>(args)...});\n        } else {\n            return std::make_unique<T>(std::forward<Args>(args)...);\n        }/' $(MOBILEGL_SOURCE_DIR)/MobileGL/MG_Util/Types.h
 	grep -q 'BufferChange() = default' $(MOBILEGL_SOURCE_DIR)/MobileGL/MG_State/GLState/BufferState/BufferObject.h || perl -i -pe 'if (/struct BufferChange {/) { $$_ .= "        BufferChange() = default; BufferChange(Flags<BufferChangeBits> bits) : Bits(bits) {}\n" }' $(MOBILEGL_SOURCE_DIR)/MobileGL/MG_State/GLState/BufferState/BufferObject.h
-	# AppleClang 15（Xcode 15.4）对 P0960（C++20 聚合体圆括号初始化）支持不完整，
-	# 聚合体（DefaultFramebufferInfo/Error/Range1D/BufferChange）用 std::make_unique 圆括号
-	# new T(args) 初始化会失败；但非聚合体（如 spirvtools Instruction 有 uint32_t 构造函数，
-	# 调用方传 int）用 brace-init new T{args} 会 int->uint32_t narrowing。两者矛盾。
-	# 方案：用 if constexpr + std::is_aggregate_v<T> 分派——
-	#   聚合体  -> brace-init new T{args}（DefaultFramebufferInfo/Error 安全，不 narrowing）
-	#   非聚合体-> make_unique 圆括号（调用构造函数，int->uint32_t 普通隐式转换不 narrowing）
-	# Range1D/BufferChange 加了显式构造函数补丁后不再是聚合体（is_aggregate_v=false），
-	# 走 make_unique 圆括号调用构造函数 Range1D(SizeT,SizeT)（int->size_t 普通转换）。
-	# Range1D/BufferChange 构造函数补丁必须保留：GL_Buffer.cpp 等仍用 Range1D(x,y) 圆括号
-	# 直接构造临时对象（不经 MakeUnique），若无构造函数则 C++17 聚合体圆括号语法不可用。
-	# DirectGLES 后端在 iOS 上的启动崩溃：
-	# ProbeTexture 无条件调用 glTexStorage*Multisample，
-	# 而“指针非空”不等于上下文支持
-	#（GLES 3.1+/3.2+），ANGLE/Metal 下会段错误。
-	# 脚本带幂等与校验，源码变动时会明确报错而非错打。
+	# AppleClang 15 (Xcode 15.4) has incomplete support for P0960 (C++20 parenthesized aggregate initialization).
+	# Initializing aggregates (DefaultFramebufferInfo/Error/Range1D/BufferChange) with std::make_unique parentheses
+	# / new T(args) fails; but brace-initializing non-aggregates (e.g. spirvtools Instruction has a uint32_t constructor
+	# and the caller passes int) with new T{args} causes int->uint32_t narrowing. These requirements conflict.
+	# Solution: dispatch with if constexpr + std::is_aggregate_v<T> —
+	#   Aggregate     -> brace-init new T{args} (safe for DefaultFramebufferInfo/Error; no narrowing)
+	#   Non-aggregate -> make_unique parentheses (calls the constructor; ordinary implicit int->uint32_t conversion is not narrowing)
+	# After adding explicit-constructor patches, Range1D/BufferChange are no longer aggregates (is_aggregate_v=false),
+	# so make_unique parentheses call Range1D(SizeT,SizeT) (ordinary int->size_t conversion).
+	# Keep the Range1D/BufferChange constructor patches: GL_Buffer.cpp and others still use Range1D(x,y) parentheses
+	# to directly construct temporary objects (not through MakeUnique); without the constructors, C++17 parenthesized aggregate initialization is unavailable.
+	# DirectGLES backend startup crash on iOS:
+	# ProbeTexture unconditionally calls glTexStorage*Multisample,
+	# but a non-null function pointer does not mean the context supports it
+	# (GLES 3.1+/3.2+); this can segfault under ANGLE/Metal.
+	# The script is idempotent and validates its anchors, reporting source drift rather than misapplying a patch.
 	python3 $(SOURCEDIR)/Natives/patch_mobilegl_ios.py $(MOBILEGL_SOURCE_DIR)
 	python3 $(SOURCEDIR)/Natives/patch_mobilegl_glslang.py $(MOBILEGL_SOURCE_DIR)
 	mkdir -p $(WORKINGDIR)/mobilegl
@@ -1042,10 +1046,10 @@ dep_mobilegl_build:
 		-DMOBILEGL_VULKAN_LIBRARY="$(MOLTENVK_LIBRARY)" \
 		$(MOBILEGL_SOURCE_DIR)
 	cmake --build $(WORKINGDIR)/mobilegl --config $(CMAKE_BUILD_TYPE) -j$(JOBS) --target MobileGL
-	# MoltenVK 1.4.2 的 install name 已经是 @rpath/libMoltenVK.dylib，与链接时记录的
-	# 完全一致，无需改写。只有老版本（1.2.x，install name 为
-	# @rpath/MoltenVK.framework/MoltenVK）才需要 -change。
-	# 先探测再改：install_name_tool -change 找不到目标时会中断构建，不能无条件执行。
+	# MoltenVK 1.4.2 already uses the install name @rpath/libMoltenVK.dylib, exactly matching the name recorded at link time;
+	# no rewrite is needed. Only older versions (1.2.x, with install name
+	# @rpath/MoltenVK.framework/MoltenVK) require -change.
+	# Detect before changing: install_name_tool -change stops the build if the target is not found, so do not run it unconditionally.
 	if otool -l $(WORKINGDIR)/mobilegl/libMobileGL.dylib | grep -q 'MoltenVK.framework/MoltenVK'; then \
 		install_name_tool -change @rpath/MoltenVK.framework/MoltenVK @rpath/libMoltenVK.dylib $(WORKINGDIR)/mobilegl/libMobileGL.dylib; \
 		echo '[Amethyst v$(VERSION)] dep_mobilegl - rewrote MoltenVK install name (legacy layout)'; \
@@ -1060,17 +1064,17 @@ dep_mobilegl_build:
 	fi
 	install_name_tool -add_rpath @loader_path $(WORKINGDIR)/mobilegl/libMobileGL.dylib
 	cp $(WORKINGDIR)/mobilegl/libMobileGL.dylib $(WORKINGDIR)/libMobileGL.dylib
-	# GLES 变体是同一个二进制的副本，install_name 改掉以便两个 dylib 能同时加载
+	# The GLES variant is a copy of the same binary; change its install_name so both dylibs can be loaded simultaneously.
 	cp $(WORKINGDIR)/mobilegl/libMobileGL.dylib $(WORKINGDIR)/libMobileGL-gles.dylib
 	install_name_tool -id @rpath/libMobileGL-gles.dylib $(WORKINGDIR)/libMobileGL-gles.dylib
 	echo '[Amethyst v$(VERSION)] dep_mobilegl - end'
 
-# Mithril（Uniaball/Mithril-Wrapper）：OpenGL 3.3 Core -> Vulkan -> MoltenVK -> Metal。
-# 与 MobileGL 不同，Mithril 只发布预编译 dylib，本仓库不从源码编译。
-# libmithril.dylib 已提交在 Natives/resources/Frameworks/ 下，payload 的
-# `cp -R Natives/resources/*` 会自动把它打进 app 的 Frameworks 目录。
-# 本目标只做存在性检查并给出提示；缺失时只告警不失败 —— Mithril 是可选渲染器，
-# 且 LauncherPreferences.m 已按 dylib 是否存在决定是否显示该选项。
+# Mithril (Uniaball/Mithril-Wrapper): OpenGL 3.3 Core -> Vulkan -> MoltenVK -> Metal.
+# Unlike MobileGL, Mithril only publishes prebuilt dylibs; this repository does not build it from source.
+# libmithril.dylib is committed under Natives/resources/Frameworks/, and the payload's
+# `cp -R Natives/resources/*` automatically packages it in the app's Frameworks directory.
+# This target only checks for its presence and prints a message; when missing, it warns but does not fail — Mithril is optional,
+# and LauncherPreferences.m checks for the dylib before showing the option.
 dep_mithril:
 	if [ -f "$(MITHRIL_PREBUILT_DIR)/libmithril.dylib" ]; then \
 		cp "$(MITHRIL_PREBUILT_DIR)/libmithril.dylib" $(SOURCEDIR)/Natives/resources/Frameworks/libmithril.dylib; \
@@ -1099,19 +1103,20 @@ assets:
 
 payload: native dep_mg dep_shader_shims dep_openal_shim dep_angle_freeze dep_sdl3_guard dep_nggl4es java jre assets shader-glslang-pack $(RENDERER_GAP_PAYLOAD_DEPS)
 	echo '[Amethyst v$(VERSION)] payload - start'
-	# ★ [26.4-SPVC] 打包前对账 jar 内 natives/ios|ir1 的 libspvc.dylib 与树内
-	#   canonical（设备上真正生效的是 jar 里那份，见 check_spvc_provenance.py）。
-	#   这里刻意**不阻断**主构建（改包链风险大），只把差异写进构建日志；
-	#   要硬门禁用 make check-spvc-provenance / make shader-glslang-check。
+	# ★ [26.4-SPVC] Before packaging, compare libspvc.dylib in the JAR's natives/ios|ir1 with the in-tree
+	#   canonical copy (the JAR copy is actually used on-device; see check_spvc_provenance.py).
+	#   Intentionally **do not block** the main build (packaging-chain changes are risky); only write differences to the build log.
+	#   For a hard gate, use make check-spvc-provenance / make shader-glslang-check.
 	-python3 Natives/check_spvc_provenance.py || echo '[26.4-SPVC] WARNING: spvc native provenance mismatch -- see above (make check-spvc-provenance for the hard gate)'
-	# Mithril / MobileGL 都是可选渲染器：这里用 - 前缀，任一失败都不阻断主构建。
-	# 缺库时对应渲染器会在设置里自动隐藏（见 LauncherPreferences.m 的存在性过滤）。
+	# Mithril / MobileGL are optional renderers: the - prefix here prevents failures from blocking the main build.
+	# If a library is missing, its renderer is automatically hidden in settings (see the existence check in LauncherPreferences.m).
 	-$(MAKE) dep_mithril
 	-$(MAKE) dep_mobilegl
-	# SimpleFPEWrapper：不再用 - 前缀吞失败。之前"可选"开关把编译错误静默成
-	# 绿色，产出的 IPA 里根本没有 libSimpleFPEWrapper.dylib（假绿）。现在 iOS
-	# 适配补丁 + 编译旗标都已就位，构建失败必须响亮红 —— 与 dep_mg 同款约定。
-	# dep_sfpew 内部会把 cmake/编译输出落盘并在失败时 tail 出来，方便定位。
+	# SimpleFPEWrapper: no longer use the - prefix to suppress failures. The previous "optional" switch silently
+	# treated compile errors as success, producing a green build even though the IPA contained no
+	# libSimpleFPEWrapper.dylib (a false green). The iOS compatibility patch and compiler flags are now in place;
+	# build failures must be reported loudly, following the same convention as dep_mg.
+	# dep_sfpew saves cmake/compiler output and prints its tail on failure to aid diagnosis.
 	$(MAKE) dep_sfpew
 	$(call METHOD_DIRCHECK,$(WORKINGDIR)/AngelAuraAmethyst.app/libs)
 	$(call METHOD_DIRCHECK,$(WORKINGDIR)/AngelAuraAmethyst.app/libs_caciocavallo)
@@ -1119,26 +1124,26 @@ payload: native dep_mg dep_shader_shims dep_openal_shim dep_angle_freeze dep_sdl
 	cp -R $(SOURCEDIR)/Natives/resources/en.lproj/LaunchScreen.storyboardc $(WORKINGDIR)/AngelAuraAmethyst.app/Base.lproj/ || exit 1
 	cp -R $(SOURCEDIR)/Natives/resources/* $(WORKINGDIR)/AngelAuraAmethyst.app/ || exit 1
 	cp $(WORKINGDIR)/*.dylib $(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/ || exit 1
-	# spirv-cross 软链接（防御性兜底）：若 MobileGlues 构建产出 libspirv-cross-c-shared.0.dylib，
-	# 创建 libspirv-cross.dylib 软链接，兼容按 macOS 默认名加载的 native 代码。
+	# spirv-cross symlink (defensive fallback): if the MobileGlues build produces libspirv-cross-c-shared.0.dylib,
+	# create a libspirv-cross.dylib symlink for native code that loads the default macOS name.
 	if [ -f "$(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/libspirv-cross-c-shared.0.dylib" ] && [ ! -f "$(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/libspirv-cross.dylib" ]; then \
 		ln -sf libspirv-cross-c-shared.0.dylib $(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/libspirv-cross.dylib; \
 	fi
 
-	# [fix/shim-overwrite-v2] 收尾: resources 里那几份"真库"必须在 shim 之后【再覆盖一次】。
-	# 原因: WORKINGDIR/*.dylib 里有同名 shim(libshaderc.dylib 111KB / libspirv-cross-c-shared.0.dylib 52KB),
-	# 会覆盖先拷进去的真库, 导致 SPIRV-Cross 拒绝 MSL 后端("Invalid backend", create_compiler backend=3 rc=-4)。
-	# 同时断言: 若覆盖后这三份仍 < 1MB, 直接失败(避免再次静默出货)。
-	# 注意: 只覆盖 spirv-cross 两份。libshaderc.dylib 必须保持 WORKINGDIR 产出的"垫片"版本——
-	# 它导出 ame_master_compile_lock, spvc_shim/shaderc_shim 靠 dlopen+dlsym 拿这个符号做跨库编译总锁;
-	# 换成真库会拿不到锁 -> MG/shaderc 并发进 glslang -> SIGSEGV(glslang::TParseContext::lValueErrorCheck)。
-	# 真实现放在 libshaderc_impl.dylib(垫片按 @loader_path 解析), 不受影响。
+	# [fix/shim-overwrite-v2] Final step: the "real" libraries in resources must be copied over the shims again.
+	# Reason: WORKINGDIR/*.dylib contains same-named shims (libshaderc.dylib 111 KB / libspirv-cross-c-shared.0.dylib 52 KB),
+	# which overwrite the real libraries copied earlier, causing SPIRV-Cross to reject the MSL backend ("Invalid backend", create_compiler backend=3 rc=-4).
+	# Also assert that these files are at least 1 MB after restoration, failing immediately to avoid silently shipping them incorrectly again.
+	# Note: restore only the two spirv-cross libraries. libshaderc.dylib must remain the shim produced in WORKINGDIR —
+	# it exports ame_master_compile_lock, which spvc_shim/shaderc_shim retrieve with dlopen+dlsym as a cross-library compile lock;
+	# replacing it with the real library would remove the lock -> MG/shaderc would call glslang concurrently -> SIGSEGV (glslang::TParseContext::lValueErrorCheck).
+	# The real implementation is in libshaderc_impl.dylib (the shim resolves it via @loader_path), so it is unaffected.
 	for f in libspirv-cross-c-shared.0.dylib libspirv-cross.dylib; do 		if [ -f "$(SOURCEDIR)/Natives/resources/Frameworks/$$f" ]; then 			cp -f "$(SOURCEDIR)/Natives/resources/Frameworks/$$f" "$(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/$$f" || exit 1; 		fi; 		sz=$$(stat -f%z "$(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/$$f" 2>/dev/null || echo 0); 		if [ "$$sz" -lt 1048576 ]; then echo "ERROR: $$f is only $$sz bytes after restore"; exit 1; fi; 	done
 		cp -R $(SOURCEDIR)/JavaApp/libs/others/* $(WORKINGDIR)/AngelAuraAmethyst.app/libs/ || exit 1
 	cp $(SOURCEDIR)/JavaApp/build/launcher.jar $(SOURCEDIR)/JavaApp/build/patchjna_agent.jar $(SOURCEDIR)/JavaApp/build/patchsvc.jar $(SOURCEDIR)/JavaApp/build/mojang-stubs.jar $(WORKINGDIR)/AngelAuraAmethyst.app/libs/ || exit 1
-	# LWJGL 以双版本 jar 发布，由启动器按 MC 版本在运行时选择其一。
-	# 必须放进各自的 libs/lwjgl-<ver>/ 子目录：若平铺进 libs/，会被 classpath 中
-	# 的 libs/* 一并加载，使 3.3.3 与 3.4.1 的同名类同时进入 classpath 造成冲突。
+	# LWJGL ships two JAR versions, and the launcher selects one at runtime based on the MC version.
+	# They must be placed in their respective libs/lwjgl-<ver>/ subdirectories: if flattened into libs/, they are both
+	# loaded by libs/* on the classpath, causing duplicate classes from 3.3.3 and 3.4.1 to conflict.
 	mkdir -p $(WORKINGDIR)/AngelAuraAmethyst.app/libs/lwjgl-333 $(WORKINGDIR)/AngelAuraAmethyst.app/libs/lwjgl-341; \
 	cp $(SOURCEDIR)/JavaApp/build/lwjgl-333.jar $(WORKINGDIR)/AngelAuraAmethyst.app/libs/lwjgl-333/lwjgl.jar || exit 1
 	cp $(SOURCEDIR)/JavaApp/build/lwjgl-341.jar $(WORKINGDIR)/AngelAuraAmethyst.app/libs/lwjgl-341/lwjgl.jar || exit 1
@@ -1170,11 +1175,11 @@ payload: native dep_mg dep_shader_shims dep_openal_shim dep_angle_freeze dep_sdl
 		ldid -S$(SOURCEDIR)/entitlements.sideload.xml $(OUTPUTDIR)/Payload/AngelAuraAmethyst.app/AngelAuraAmethyst; \
 	fi
 	chmod -R 755 $(OUTPUTDIR)/Payload
-	# 总是运行平台重打标（对齐 Ynnyny 仓库）—— 对已 iOS 标记的 Mach-O 是幂等的，
-	# 但能捕获从 Maven 直接拉取的新 dylib（如 3.3.5 lwjgl-stb），它们 ship 时
-	# platform=macos，iOS dyld 会静默拒绝加载，导致 LWJGL 抛 UnsatisfiedLinkError。
-	# 原本用 [ PLATFORM != 2 ] 守卫的假设是所有 commit 的 dylib 都已 iOS 标记，
-	# 这个假设在同步 Ynnyny 顶层 dylib 时被打破。
+	# Always run platform re-tagging (aligned with the Ynnyny repository). It is idempotent for Mach-O files already
+	# tagged for iOS, and catches new dylibs pulled directly from Maven (e.g. 3.3.5 lwjgl-stb), which ship with
+	# platform=macos and are silently rejected by iOS dyld, causing LWJGL to throw UnsatisfiedLinkError.
+	# The previous [ PLATFORM != 2 ] guard assumed all committed dylibs were already tagged for iOS;
+	# that assumption was broken when syncing top-level dylibs from Ynnyny.
 	$(call METHOD_MACHO,$(OUTPUTDIR)/Payload/AngelAuraAmethyst.app,$(call METHOD_CHANGE_PLAT,$(PLATFORM),$$file)); \
 	$(call METHOD_MACHO,$(OUTPUTDIR)/java_runtimes,$(call METHOD_CHANGE_PLAT,$(PLATFORM),$$file));
 	echo '[Amethyst v$(VERSION)] payload - end'
@@ -1248,26 +1253,26 @@ clean:
 
 
 # ============================================================================
-# ★ [RENDERER-GAP] 新增渲染器构建目标（来自 Gsjsjzhznsz/Air-Minecraft-iOS-Launcher）。
-#   dep_gl4eszl2 / dep_virgl 默认不参与 `all`/`payload` 依赖图；只有
-#   RENDERER_GAP_EXTRAS=1 时 payload 才追加它们（见文件顶部 RENDERER_GAP_PAYLOAD_DEPS）。
-#   dep_nggl4es（"Krypton Wrapper"）例外：无条件挂在 payload 上，每次都构建。
-#   亦可单独调用：
+# ★ [RENDERER-GAP] Additional renderer build targets (from Gsjsjzhznsz/Air-Minecraft-iOS-Launcher).
+#   dep_gl4eszl2 / dep_virgl are excluded from the `all`/`payload` dependency graph by default; they are added to payload only
+#   when RENDERER_GAP_EXTRAS=1 (see RENDERER_GAP_PAYLOAD_DEPS at the top of this file).
+#   dep_nggl4es ("Krypton Wrapper") is an exception: always included in payload and built every time.
+#   These targets can also be invoked separately:
 #     make dep_nggl4es
 #     make RENDERER_GAP_EXTRAS=1 dep_gl4eszl2 dep_virgl
-#   产出的 *.dylib 落在 $(WORKINGDIR)/，由 payload 的 "cp $(WORKINGDIR)/*.dylib"
-#   自动带进 app 的 Frameworks；LauncherPreferences 的存在性过滤随后才会显示选项。
+#   The resulting *.dylib files are placed in $(WORKINGDIR)/ and automatically copied into the app's Frameworks
+#   by payload's "cp $(WORKINGDIR)/*.dylib"; LauncherPreferences then shows the options based on library presence.
 # ============================================================================
 
-# --- dep_nggl4es：NG-GL4ES（"Krypton Wrapper"，BZLZHH/NG-GL4ES，MIT）-----------
-# ZalithLauncher 2 用的 gl4es 分支：能处理更高级的着色器、几乎全 MC 版本可跑。
-# 源码在固定版本的 ThirdParty/NG-GL4ES 子模块；iOS 适配补丁见 patches/。
-# 作为独立 cmake 树构建，链接 dep_mg 出来的 glslang 静态库（pin f5f664d 15.0.0 +
-# lvalue-nullguard + pool-zero/size-guards 双崩溃补丁，继承崩溃家族修复；NG 自带的
-# 15.4 头已从树中移除，防头/库漂移）与预编译的 SPIRV-Cross C API impl dylib。
-# 产出 libnggl4es.dylib，由 payload 的 "cp $(WORKINGDIR)/*.dylib" 随包带走。
-# 依赖 dep_mg：glslang 静态库必须先就位（-j 并行下无序，需目标级先决条件）。
-# ★ 无条件挂在 payload 上（用户可见的一等渲染器，不受 RENDERER_GAP_EXTRAS 控制）。
+# --- dep_nggl4es: NG-GL4ES ("Krypton Wrapper", BZLZHH/NG-GL4ES, MIT) -----------
+# ZalithLauncher 2's gl4es branch: supports more advanced shaders and runs on nearly all MC versions.
+# Source is in the pinned ThirdParty/NG-GL4ES submodule; see patches/ for iOS compatibility changes.
+# Built as a separate cmake tree, linked against the glslang static libraries from dep_mg (pinned f5f664d 15.0.0 +
+# lvalue-nullguard + pool-zero/size-guards crash-family fixes, carrying forward the crash fixes; NG's bundled
+# 15.4 headers have been removed to prevent header/library drift) and the prebuilt SPIRV-Cross C API impl dylib.
+# Produces libnggl4es.dylib, which payload's "cp $(WORKINGDIR)/*.dylib" packages with the app.
+# Depends on dep_mg: the glslang static libraries must be ready first (order is otherwise unspecified under -j; use a target-level prerequisite).
+# ★ Always included in payload (a first-class, user-visible renderer, not controlled by RENDERER_GAP_EXTRAS).
 dep_nggl4es: dep_mg
 	echo '[Amethyst v$(VERSION)] dep_nggl4es - start'
 	if ! git -C $(SOURCEDIR)/ThirdParty/NG-GL4ES apply --unidiff-zero --reverse --check $(SOURCEDIR)/patches/ng-gl4es-ios-integration.patch >/dev/null 2>&1; then \
@@ -1315,9 +1320,9 @@ dep_nggl4es: dep_mg
 
 dep_gl4eszl2:
 	@echo '[Amethyst v$(VERSION)] [RENDERER-GAP] dep_gl4eszl2 - start'
-	# GL4ESZL2（PojavLauncherTeam/gl4es_extra_extra）—— ZL2 经典版 "gl4es"。
-	# 纯 C 字符串改写式 GLSL→ESSL（shaderconv.c），无 glslang/SPIRV-Cross 依赖，
-	# 故为独立目标（不依赖 dep_mg，不会与 glslang 静态库竞争）。
+	# GL4ESZL2 (PojavLauncherTeam/gl4es_extra_extra) — the classic ZL2 "gl4es" version.
+	# Pure C string-rewriting GLSL→ESSL (shaderconv.c), with no glslang/SPIRV-Cross dependencies,
+	# so it is an independent target (does not depend on dep_mg or compete with the glslang static libraries).
 	mkdir -p $(WORKINGDIR)/gl4eszl2; \
 	cd $(WORKINGDIR)/gl4eszl2 && cmake \
 	-DMACOS="1" \
@@ -1335,11 +1340,11 @@ dep_gl4eszl2:
 	cp $(WORKINGDIR)/gl4eszl2/libgl4eszl2.dylib $(WORKINGDIR)/ || exit 1
 	@echo '[Amethyst v$(VERSION)] [RENDERER-GAP] dep_gl4eszl2 - end'
 
-# VirGLRenderer(<=26.2)（ZL2 移植）三件套：
-#  1. libepoxy            —— vendored Natives/external/libepoxy（iOS 补丁：dlopen 指向 ANGLE 框架）
-#  2. libvtestserver.dylib—— vendored virglrenderer 1.3.0（静态链 epoxy）
-#  3. libOSMesaVirgl.dylib—— Mesa 25.0.7（下载 tar.xz + patches/mesa-215-osmesa-virgl.patch）
-# 快路径：三件套已存在于 Frameworks 时直接跳过整链构建。
+# VirGLRenderer (<=26.2, ZL2 port) consists of three components:
+#  1. libepoxy            — vendored Natives/external/libepoxy (iOS patch: dlopen points to the ANGLE framework)
+#  2. libvtestserver.dylib — vendored virglrenderer 1.3.0 (statically linked with epoxy)
+#  3. libOSMesaVirgl.dylib — Mesa 25.0.7 (download tar.xz + patches/mesa-215-osmesa-virgl.patch)
+# Fast path: if all three are already in Frameworks, skip the entire build chain.
 VIRGL_MESA_VERSION ?= 25.0.7
 dep_virgl:
 	@if [ -f "$(SOURCEDIR)/Natives/resources/Frameworks/libOSMesaVirgl.dylib" ] && \

@@ -4,7 +4,7 @@
 //  AmethystMods
 //
 //  Created by Copilot on 2025-08-22.
-//  Updated: ensure 上网搜索 switch is placed directly left of refresh and visible reliably.
+//  Updated: ensure the online-search switch is placed directly left of refresh and remains visible.
 //
 
 #import "ModTableViewController.h"
@@ -15,19 +15,19 @@
 
 @interface ModTableViewController () <ModTableViewCellDelegate, UISearchBarDelegate>
 @property (nonatomic, strong) NSArray<ModItem *> *mods;
-@property (nonatomic, strong) NSArray<ModItem *> *filteredMods; // 用于存储搜索结果
+@property (nonatomic, strong) NSArray<ModItem *> *filteredMods; // Stores search results.
 @property (nonatomic, strong) UISwitch *onlineSearchSwitch;
-@property (nonatomic, strong) UISearchBar *searchBar; // 搜索栏
+@property (nonatomic, strong) UISearchBar *searchBar; // Search bar.
 @end
 
 @implementation ModTableViewController
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // 适配自定义启动器背景：透明化当前 VC，让全局背景图/毛玻璃透出
-    // ModTableViewController 是 UITableViewController 子类，makeViewControllerTransparent 会自动处理 tableView 背景透明化
+    // Adapt to the custom launcher background: make this view controller transparent so the global background image/blur shows through.
+    // ModTableViewController is a UITableViewController subclass; makeViewControllerTransparent also handles tableView background transparency.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
-    // ★ [AUDIT-DECIDE] A-10：硬编码 "Mods" → 复用已有键 i18n_str_1283。
+    // ★ [AUDIT-DECIDE] A-10: replace hard-coded "Mods" with the existing i18n_str_1283 key.
     self.title = localize(@"i18n_str_1283", nil);
     [self.tableView registerClass:[ModTableViewCell class] forCellReuseIdentifier:@"ModCell"];
     self.tableView.rowHeight = 96;
@@ -55,25 +55,25 @@
     // Put refresh as rightmost, switch container to its left
     self.navigationItem.rightBarButtonItems = @[refresh, switchContainerItem];
 
-    // 创建搜索栏
+    // Create the search bar.
     self.searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 44)];
     self.searchBar.placeholder = localize(@"i18n_str_456", nil);
     self.searchBar.delegate = self;
     self.searchBar.barStyle = UIBarStyleDefault;
     self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
-    // 适配自定义启动器背景：透明化 searchBar 默认不透明背景，让全局背景图/毛玻璃透出
+    // Adapt to the custom launcher background: make the searchBar's default opaque background transparent so the global background image/blur shows through.
     [[BackgroundManager sharedManager] applyEffectToSearchBar:self.searchBar];
 
-    // 将搜索栏添加到tableView的header中
+    // Add the search bar to the tableView header.
     self.tableView.tableHeaderView = self.searchBar;
     
-    // 初始化filteredMods
+    // Initialize filteredMods.
     self.filteredMods = @[];
     
     // Ensure switch reflects current state when view appears
     [self refreshTapped];
 
-    // 监听背景效果变化通知，背景切换时重新应用透明效果
+    // Listen for background-effect changes and reapply transparency when the background changes.
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
@@ -81,15 +81,15 @@
 }
 
 - (void)reapplyBackgroundEffect {
-    // 背景效果改变时重新透明化当前 VC
-    // UITableViewController 的 tableView 背景由 makeViewControllerTransparent 自动处理
+    // Make this view controller transparent again when the background effect changes.
+    // makeViewControllerTransparent handles the UITableViewController tableView background automatically.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
-    // 重新应用 searchBar 透明化效果（毛玻璃↔半透明切换后输入框背景需刷新）
+    // Reapply searchBar transparency (refresh the text-field background after switching between blur and translucency).
     [[BackgroundManager sharedManager] applyEffectToSearchBar:self.searchBar];
 }
 
 - (void)dealloc {
-    // 移除通知观察者，避免dealloc后收到通知导致崩溃
+    // Remove the notification observer to prevent a crash from receiving notifications after dealloc.
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -106,7 +106,7 @@
 - (void)refreshTapped {
     [[ModService sharedService] scanModsForProfile:self.profileName completion:^(NSArray<ModItem *> *mods) {
         self.mods = mods ?: @[];
-        // 如果没有进行搜索，则显示所有Mod；否则显示搜索结果
+        // Display all mods if no search is active; otherwise display the search results.
         if (self.searchBar.text.length == 0) {
             self.filteredMods = self.mods;
         } else {
@@ -151,15 +151,15 @@
 
 - (void)filterModsForSearchText:(NSString *)searchText {
     if (searchText.length == 0) {
-        // 如果搜索文本为空，则显示所有Mod
+        // Display all mods if the search text is empty.
         self.filteredMods = self.mods;
     } else {
-        // 根据搜索文本过滤Mod
+        // Filter mods based on the search text.
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"displayName CONTAINS[cd] %@ OR modDescription CONTAINS[cd] %@", searchText, searchText];
         self.filteredMods = [self.mods filteredArrayUsingPredicate:predicate];
     }
     
-    // 更新表格视图
+    // Update the table view.
     [self.tableView reloadData];
 }
 
@@ -205,7 +205,7 @@
     [ac addAction:[UIAlertAction actionWithTitle:localize(@"i18n_str_306", nil) style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
         NSError *err = nil;
         if ([[ModService sharedService] deleteMod:m error:&err]) {
-            // 从filteredMods和mods中移除
+            // Remove from filteredMods and mods.
             NSMutableArray *newFiltered = [self.filteredMods mutableCopy];
             [newFiltered removeObjectAtIndex:ip.row];
             self.filteredMods = [newFiltered copy];

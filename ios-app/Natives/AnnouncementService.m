@@ -8,10 +8,10 @@
 #import "AnnouncementItem.h"
 #import "LauncherPreferences.h"
 
-/// 缓存有效期：30 分钟
+/// Cache lifetime: 30 minutes.
 static NSTimeInterval const kAnnouncementCacheInterval = 30 * 60;
 
-/// 缓存键
+/// Cache key.
 static NSString * const kCachedAnnouncementsKey = @"cached_announcements";
 static NSString * const kCachedAnnouncementsTimestampKey = @"cached_announcements_timestamp";
 
@@ -27,7 +27,7 @@ static NSString * const kCachedAnnouncementsTimestampKey = @"cached_announcement
 }
 
 - (NSString *)apiURLString {
-    // 从偏好设置读取 news_url，默认为官网 API 地址
+    // Read news_url from preferences, defaulting to the official API URL.
     NSString *url = getPrefObject(@"general.news_url");
     if (url.length == 0) {
         url = @"https://air-api.vercel.app/api/announcements.php";
@@ -52,7 +52,7 @@ static NSString * const kCachedAnnouncementsTimestampKey = @"cached_announcement
 }
 
 - (void)fetchAnnouncementsWithCompletion:(AnnouncementFetchHandler)completion {
-    // 缓存有效时直接返回缓存
+    // Return the cache directly if it is still valid.
     if ([self isCacheValid]) {
         NSArray *cached = [self cachedAnnouncements];
         if (cached) {
@@ -82,7 +82,7 @@ static NSString * const kCachedAnnouncementsTimestampKey = @"cached_announcement
 
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error || !data || ((NSHTTPURLResponse *)response).statusCode != 200) {
-            // 网络失败时尝试返回缓存
+            // Try to return the cache if the network request fails.
             NSArray *cached = [self cachedAnnouncements];
             dispatch_async(dispatch_get_main_queue(), ^{
                 completion(cached ?: @[], error ?: [NSError errorWithDomain:@"AnnouncementService" code:2 userInfo:@{NSLocalizedDescriptionKey: localize(@"i18n_str_24", nil)}]);
@@ -90,12 +90,12 @@ static NSString * const kCachedAnnouncementsTimestampKey = @"cached_announcement
             return;
         }
 
-        // 缓存原始 JSON 数据
+        // Cache the raw JSON data.
         [[NSUserDefaults standardUserDefaults] setObject:data forKey:kCachedAnnouncementsKey];
         [[NSUserDefaults standardUserDefaults] setDouble:[[NSDate date] timeIntervalSince1970] forKey:kCachedAnnouncementsTimestampKey];
         [[NSUserDefaults standardUserDefaults] synchronize];
 
-        // 解析
+        // Parse.
         NSError *parseError = nil;
         NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:&parseError];
         if (parseError || !json) {
@@ -122,7 +122,7 @@ static NSString * const kCachedAnnouncementsTimestampKey = @"cached_announcement
         AnnouncementItem *item = [AnnouncementItem itemFromDictionary:dict];
         if (item) [items addObject:item];
     }
-    // 按日期降序排列
+    // Sort by date in descending order.
     [items sortUsingComparator:^NSComparisonResult(AnnouncementItem *a, AnnouncementItem *b) {
         return [b.date compare:a.date];
     }];

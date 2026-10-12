@@ -2,22 +2,22 @@
 //  AISessionListViewController.m
 //  Amethyst
 //
-//  AI 会话列表页实现：UITableView + UISearchController。
+//  AI session list page implementation: UITableView + UISearchController.
 //
 
 #import "AISessionListViewController.h"
 #import "AiSessionStore.h"
 #import "BackgroundManager.h"
 #import "LauncherPreferences.h"
-#import "utils.h"   // ★ [HOST-BUG-A] 统一取词 localize()
-#import "AIViewController.h"   // ★ [AI-SESSION-TAP] 点会话后打开的聊天页
+#import "utils.h"   // ★ [HOST-BUG-A] Use localize() consistently
+#import "AIViewController.h"   // ★ [AI-SESSION-TAP] Chat page opened when a session is tapped
 
 @interface AISessionListViewController () <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating>
 
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) UISearchController *searchController;
 @property (nonatomic, strong) UILabel *emptyLabel;
-/// 当前要展示的会话（搜索时过滤，否则为全部；内部按置顶优先 + 更新时间倒序）
+/// Sessions to display (filtered during search, otherwise all; sorted with pinned first, then update time descending)
 @property (nonatomic, strong) NSMutableArray<AiSession *> *displayedSessions;
 
 @end
@@ -27,23 +27,22 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    self.title = localize(@"ai.session_list.title", @"会话列表");   // ★ [HOST-BUG-A]
+    self.title = localize(@"ai.session_list.title", @"Sessions");   // ★ [HOST-BUG-A]
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
     self.view.backgroundColor = [[UIColor labelColor] colorWithAlphaComponent:0.04];
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
-    // 左上角「新建会话」按钮
+    // Top-left "New Session" button
     UIBarButtonItem *newItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"plus"]
                                                                 style:UIBarButtonItemStylePlain
                                                                target:self
                                                                action:@selector(newSessionAction)];
     self.navigationItem.leftBarButtonItem = newItem;
 
-    // ★ [LAND-BUG] 本页除「从 AI 会话内 push」外，还会被 LauncherMenuViewController.showAI
-    //   以 UIModalPresentationFullScreen 模态整页弹出；FullScreen 模态不支持下滑关闭，
-    //   而本页原先只有左上「+」、没有任何返回/关闭入口 ⇒ 进入后「退不出去」。
-    //   关闭按钮在 viewWillAppear 里按“是否模态呈现”补上（push 进入时保持用导航返回键），
-    //   见下方 viewWillAppear: / landBugCloseTapped。
+    // ★ [LAND-BUG] Besides being pushed from an AI session, this page is presented full-screen modally by LauncherMenuViewController.showAI.
+    //   Full-screen modals cannot be dismissed by swiping down, and the page previously had only a top-left "+" with no back/close option ⇒ users could not exit.
+    //   Add a Close button in viewWillAppear only when presented modally (keep the navigation back button when pushed).
+    //   See viewWillAppear: / landBugCloseTapped below.
 
     [self setupTable];
     [self setupSearch];
@@ -52,19 +51,19 @@
     [self reloadDisplayedSessions];
 }
 
-#pragma mark - ★ [LAND-BUG] 模态呈现时的关闭入口
+#pragma mark - ★ [LAND-BUG] Close control for modal presentation
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    // 模态整页弹出时（nav 是 presented 的那个），补一个右上「关闭」；
-    // push 进入时 presentingViewController 为 nil，不注入，避免覆盖导航返回键。
+    // When presented full-screen modally (nav is the presented controller), add a top-right "Close";
+    // when pushed, presentingViewController is nil, so do not inject it or override the navigation back button.
     UINavigationController *nav = self.navigationController;
     if (nav.presentingViewController != nil && nav.viewControllers.firstObject == self &&
         self.navigationItem.rightBarButtonItem == nil) {
         UIBarButtonItem *close = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemClose
                                                                               target:self
                                                                               action:@selector(landBugCloseTapped)];
-        close.accessibilityLabel = @"关闭";
+        close.accessibilityLabel = @"Close";
         self.navigationItem.rightBarButtonItem = close;
     }
 }
@@ -78,7 +77,7 @@
     }
 }
 
-#pragma mark - 布局
+#pragma mark - Layout
 
 - (void)setupTable {
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
@@ -108,7 +107,7 @@
     self.searchController.obscuresBackgroundDuringPresentation = NO;
     self.searchController.hidesNavigationBarDuringPresentation = NO;
     self.navigationItem.searchController = self.searchController;
-    // 适配全局背景：透明搜索框，文字随系统
+    // Adapt to global background: transparent search field, text follows the system
     self.searchController.searchBar.barTintColor = [UIColor clearColor];
     self.searchController.searchBar.tintColor = accentColor();
     self.searchController.searchBar.backgroundImage = [UIImage new];
@@ -135,9 +134,9 @@
     ]];
 }
 
-#pragma mark - 数据源处理
+#pragma mark - Data source
 
-/// 重排：置顶会话优先，其余按 updatedAt 倒序（最新在前）
+/// Reorder: pinned sessions first, then the rest by updatedAt descending (newest first)
 - (void)reloadDisplayedSessions {
     NSString *query = self.searchController.active ? self.searchController.searchBar.text : @"";
     NSArray<AiSession *> *base = [[AiSessionStore sharedStore] sessionsMatchingQuery:query ?: @""];
@@ -167,18 +166,18 @@
     if (self.displayedSessions.count == 0) {
         self.emptyLabel.hidden = NO;
         if (!hasAny) {
-            self.emptyLabel.text = @"还没有会话，点左上角 + 新建";
+            self.emptyLabel.text = @"No sessions yet. Tap + in the top left to create one.";
         } else if (searching) {
-            self.emptyLabel.text = @"没有匹配的会话";
+            self.emptyLabel.text = @"No matching sessions";
         } else {
-            self.emptyLabel.text = @"还没有会话";
+            self.emptyLabel.text = @"No sessions yet";
         }
     } else {
         self.emptyLabel.hidden = YES;
     }
 }
 
-#pragma mark - 新建 / 删除
+#pragma mark - Create / delete
 
 - (void)newSessionAction {
     AiSession *session = [[AiSessionStore sharedStore] newSession];
@@ -194,22 +193,22 @@
     [self reloadDisplayedSessions];
 }
 
-#pragma mark - 相对时间
+#pragma mark - Relative time
 
-/// 简单相对时间：刚刚 / X 分钟前 / X 小时前 / X 天前 / 日期
+/// Simple relative time: just now / X minutes ago / X hours ago / X days ago / date
 - (NSString *)relativeTimeString:(NSDate *)date {
     if (!date) return @"";
     NSTimeInterval interval = -[date timeIntervalSinceNow];
     NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
     formatter.locale = [NSLocale localeWithLocaleIdentifier:@"zh_CN"];
     if (interval < 60) {
-        return @"刚刚";
+        return @"Just now";
     } else if (interval < 3600) {
-        return [NSString stringWithFormat:@"%ld 分钟前", (long)(interval / 60)];
+        return [NSString stringWithFormat:@"%ld min ago", (long)(interval / 60)];
     } else if (interval < 86400) {
-        return [NSString stringWithFormat:@"%ld 小时前", (long)(interval / 3600)];
+        return [NSString stringWithFormat:@"%ld hr ago", (long)(interval / 3600)];
     } else if (interval < 7 * 86400) {
-        return [NSString stringWithFormat:@"%ld 天前", (long)(interval / 86400)];
+        return [NSString stringWithFormat:@"%ld days ago", (long)(interval / 86400)];
     }
     formatter.dateFormat = @"MM-dd";
     return [formatter stringFromDate:date];
@@ -229,7 +228,7 @@
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"AiSessionCell" forIndexPath:indexPath];
     AiSession *session = self.displayedSessions[indexPath.row];
 
-    // 清空复用残留
+    // Clear reused view residue
     for (UIView *sub in cell.contentView.subviews) {
         [sub removeFromSuperview];
     }
@@ -239,7 +238,7 @@
     cell.backgroundColor = [UIColor clearColor];
     cell.contentView.backgroundColor = [UIColor clearColor];
 
-    // 卡片容器
+    // Card container
     UIView *cardView = [[UIView alloc] init];
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     cardView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08];
@@ -254,7 +253,7 @@
     [[BackgroundManager sharedManager] applyEffectToView:cardView];
     [cell.contentView addSubview:cardView];
 
-    // 会话图标
+    // Session icon
     UIImageView *iconView = [[UIImageView alloc] init];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
     iconView.image = [UIImage systemImageNamed:@"bubble.left.and.bubble.right.fill"];
@@ -266,20 +265,20 @@
     iconView.layer.masksToBounds = YES;
     [cardView addSubview:iconView];
 
-    // 标题
+    // Title
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.text = session.title.length > 0 ? session.title : @"新会话";
+    titleLabel.text = session.title.length > 0 ? session.title : @"New Session";
     titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
     titleLabel.textColor = [UIColor labelColor];
     titleLabel.numberOfLines = 1;
     titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [cardView addSubview:titleLabel];
 
-    // 副标题：消息数 + 更新时间
+    // Subtitle: message count + update time
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.text = [NSString stringWithFormat:@"%lu 条消息 · %@",
+    subtitleLabel.text = [NSString stringWithFormat:@"%lu messages · %@",
                           (unsigned long)session.messages.count,
                           [self relativeTimeString:session.updatedAt]];
     subtitleLabel.font = [UIFont systemFontOfSize:12];
@@ -288,7 +287,7 @@
     subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [cardView addSubview:subtitleLabel];
 
-    // 置顶图标
+    // Pin icon
     UIImageView *pinView = [[UIImageView alloc] init];
     pinView.translatesAutoresizingMaskIntoConstraints = NO;
     pinView.image = [UIImage systemImageNamed:@"pin.fill"];
@@ -333,7 +332,7 @@
 - (NSArray<UITableViewRowAction *> *)tableView:(UITableView *)tableView editActionsForRowAtIndexPath:(NSIndexPath *)indexPath {
     __weak typeof(self) weakSelf = self;
     UITableViewRowAction *deleteAction = [UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleDestructive
-                                                                           title:@"删除"
+                                                                           title:@"Delete"
                                                                          handler:^(UITableViewRowAction * _Nonnull action, NSIndexPath * _Nonnull ip) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         AiSession *session = strongSelf.displayedSessions[ip.row];
@@ -350,30 +349,30 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    if (indexPath.row >= (NSInteger)self.displayedSessions.count) return;   // ★ [AI-SESSION-TAP] 防越界
+    if (indexPath.row >= (NSInteger)self.displayedSessions.count) return;   // ★ [AI-SESSION-TAP] Prevent out-of-bounds access
     AiSession *session = self.displayedSessions[indexPath.row];
     if (!session) return;
     if (self.onSelectSession) {
-        // ★ [AI-SESSION-TAP] 有回调的入口(聊天页内弹出的会话列表)交给调用方,行为不变
+        // ★ [AI-SESSION-TAP] For entry points with a callback (session list presented from chat), let the caller handle it; behavior is unchanged
         self.onSelectSession(session);
         return;
     }
-    // ★ [AI-SESSION-TAP] 无回调的独立入口兜底,见 ameOpenChatForSession:
+    // ★ [AI-SESSION-TAP] Fallback for standalone entry points without a callback; see ameOpenChatForSession:
     [self ameOpenChatForSession:session];
 }
 
-#pragma mark - ★ [AI-SESSION-TAP] 点会话打开聊天页
+#pragma mark - ★ [AI-SESSION-TAP] Open chat page when a session is tapped
 
-/// ★ [AI-SESSION-TAP] 根因修复(「每一个会话条目都点不进去」):
-///   本页有多个独立入口 —— 根标签栏「AI」标签(AmeRootTabController case 2)、
-///   菜单 showAI(LauncherMenuViewController)、设置「会话列表」(LauncherPreferencesViewController)——
-///   它们都只是 `[[AISessionListViewController alloc] init]`,**没有一个设 onSelectSession**。
-///   于是 didSelectRowAtIndexPath 里 self.onSelectSession == nil ⇒ 点【每一个】会话条目都"没反应";
-///   而左上角「+」是 UIBarButtonItem 的 target/action(newSessionAction),不依赖任何回调,
-///   所以才会"能新建、条目点不动" —— 二者在视图树上的唯一差异就是「这个回调有没有接上」。
-///   修法:无回调时由本页自己打开聊天页(AIViewController),路径是
-///   **本页所在导航栈内 push**(而不是 setContentViewController 换根 —— 那是本仓串台铁律禁止的),
-///   与「返回」语义天然一致;有回调的入口(聊天页内弹出列表)仍走回调,不重复 push。
+/// ★ [AI-SESSION-TAP] Root-cause fix ("none of the session items could be opened"):
+///   This page has several independent entry points — the root tab bar's "AI" tab (AmeRootTabController case 2),
+///   menu showAI (LauncherMenuViewController), and Settings "Sessions" (LauncherPreferencesViewController) —
+///   and each only calls `[[AISessionListViewController alloc] init]`; **none sets onSelectSession**.
+///   So self.onSelectSession == nil in didSelectRowAtIndexPath ⇒ tapping any session item did nothing;
+///   the top-left "+" is a UIBarButtonItem target/action (newSessionAction) and needs no callback,
+///   which explains why creating sessions worked while tapping items did not — the only difference in the view tree is whether that callback is connected.
+///   Fix: when there is no callback, this page opens the chat page (AIViewController) itself by
+///   **pushing onto this page's navigation stack** (rather than replacing the root via setContentViewController — prohibited by this repository's navigation rule),
+///   which naturally preserves Back behavior; entry points with a callback (list presented from chat) still use the callback and do not push again.
 - (void)ameOpenChatForSession:(AiSession *)session {
     if (!session) return;
     AIViewController *chat = [[AIViewController alloc] initWithSession:session];
@@ -382,7 +381,7 @@
         [nav pushViewController:chat animated:YES];
         return;
     }
-    // 兜底:万一本页不在导航栈里(当前所有入口都会包 nav,理论到不了这里),自建 nav 模态呈现
+    // Fallback: if this page is not in a navigation stack (all current entry points wrap it in a nav controller, so this should not happen), present it in a new modal nav controller
     UINavigationController *wrap = [[UINavigationController alloc] initWithRootViewController:chat];
     wrap.modalPresentationStyle = UIModalPresentationFormSheet;
     [self presentViewController:wrap animated:YES completion:nil];

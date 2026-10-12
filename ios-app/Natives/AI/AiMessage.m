@@ -62,7 +62,7 @@
     if ([dict[@"isToolCall"] isKindOfClass:[NSNumber class]]) _isToolCall = [dict[@"isToolCall"] boolValue];
     if ([dict[@"isToolResult"] isKindOfClass:[NSNumber class]]) _isToolResult = [dict[@"isToolResult"] boolValue];
     if ([dict[@"toolSucceeded"] isKindOfClass:[NSNumber class]]) _toolSucceeded = [dict[@"toolSucceeded"] boolValue];
-    // 时间戳（可选）
+    // Timestamp (optional)
     NSNumber *ts = dict[@"createdAt"];
     if ([ts isKindOfClass:[NSNumber class]]) {
         _createdAt = [NSDate dateWithTimeIntervalSince1970:ts.doubleValue];
@@ -75,13 +75,13 @@
     dict[@"role"] = self.role ?: @"";
     dict[@"content"] = self.content ?: @"";
     dict[@"createdAt"] = @([self.createdAt timeIntervalSince1970]);
-    // 仅在有值时写出，保证与旧版会话 JSON 向后兼容
+    // Write only when non-empty to preserve backward compatibility with older session JSON
     if (self.toolCallID.length > 0) dict[@"toolCallID"] = self.toolCallID;
     if (self.toolName.length > 0) dict[@"toolName"] = self.toolName;
     if (self.toolArguments.length > 0) dict[@"toolArguments"] = self.toolArguments;
     if (self.isToolCall) dict[@"isToolCall"] = @YES;
     if (self.isToolResult) dict[@"isToolResult"] = @YES;
-    // 仅写出失败态，成功（默认值）不写，兼容旧版
+    // Write only the failure state; omit success (the default) for backward compatibility
     if (!self.toolSucceeded) dict[@"toolSucceeded"] = @NO;
     return [dict copy];
 }

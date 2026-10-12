@@ -2,8 +2,8 @@
 //  AiSafetyManager.h
 //  Amethyst
 //
-//  Air AI Agent 安全机制：根据 AiSettings.safetyMode 判断某权限级别是否需用户确认，
-//  并在主线程弹出确认框；同时提供安全模式切换的中文提示。
+//  Air AI Agent safety mechanism: checks whether a permission level requires user confirmation based on AiSettings.safetyMode,
+//  and presents a confirmation dialog on the main thread; also provides localized guidance when switching safety modes.
 //
 
 #import <Foundation/Foundation.h>
@@ -13,28 +13,28 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface AiSafetyManager : NSObject
 
-/// 单例
+/// Singleton
 + (instancetype)sharedManager;
 
-/// 当前安全模式（读取 AiSettings.safetyMode）
+/// Current safety mode (read from AiSettings.safetyMode)
 - (AiSafetyMode)currentMode;
 
-/// 判断某权限级别在当前安全模式下是否需要用户确认
+/// Determine whether a permission level requires user confirmation in the current safety mode
 - (BOOL)needsUserConfirmationForPermission:(AiToolPermission)permission;
 
-/// 在主线程弹出确认框；「允许」回调 YES（危险操作按钮为「仍要执行」），「取消」回调 NO。
-/// 若无法拿到可 present 的视图控制器，默认按「不允许」处理。
+/// Present a confirmation dialog on the main thread; "Allow" calls back YES (the dangerous-action button is "Proceed Anyway"), and "Cancel" calls back NO.
+/// If no view controller is available for presentation, default to "not allowed."
 - (void)requestConfirmationWithTitle:(NSString *)title
                              message:(NSString *)message
                           completion:(void (^)(BOOL approved))completion;
 
-/// 安全模式切换时的友好提示（展示当前模式中文说明）
+/// Friendly message shown when switching safety modes (displays a description of the current mode)
 - (void)showSafetyModeChangedHint;
 
-/// 权限级别的中文说明（供提示/确认框复用）
+/// Permission level description (shared by guidance and confirmation dialogs)
 - (NSString *)permissionChineseName:(AiToolPermission)permission;
 
-/// 安全模式的中文说明
+/// Safety mode description
 + (NSString *)safetyModeChineseName:(AiSafetyMode)mode;
 
 @end

@@ -11,21 +11,21 @@
 #import "AiToolRegistry.h"
 #import "AiSafetyManager.h"
 
-/// 工具循环最多轮数
+/// Maximum number of tool-loop rounds
 static const NSInteger kMaxToolRounds = 10;
-/// 同一工具调用最多尝试次数（含失败）
+/// Maximum attempts for the same tool call (including failures)
 static const NSInteger kMaxToolAttempts = 3;
 
-/// 工具调用结果已写入会话的消息变更通知名（object=AiSession）
+/// Message-change notification after tool-call results are written to a session (object=AiSession)
 static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMessagesDidChangeNotification";
 
 @interface AiAgent ()
 @property (nonatomic, strong) AiAPIClient *client;
 
-// 工具循环运行时状态（一次 sendUserMessage 生命周期内有效）
+// Tool-loop runtime state (valid for one sendUserMessage lifecycle)
 @property (nonatomic, assign) BOOL running;
-@property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *attempts; // toolCallID -> 已尝试次数
-@property (nonatomic, assign) NSInteger toolRound;                                   // 当前工具轮数
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *attempts; // toolCallID -> attempt count
+@property (nonatomic, assign) NSInteger toolRound;                                   // Current tool round
 @end
 
 @implementation AiAgent
@@ -48,7 +48,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
     return self;
 }
 
-/// 会话持久化（每轮工具往返后调用，保证打断/杀进程后 history 完整）
+/// Session persistence (called after each tool round trip so history remains complete after interruption/process termination)
 - (void)saveSession:(AiSession *)session {
     if (!session) return;
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -56,7 +56,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
     });
 }
 
-/// 广播会话消息变更（供 UI 监听即时刷新；纯广播，不破坏消息协议顺序）
+/// Broadcast session message changes (for immediate UI refresh; broadcast only, does not disrupt message protocol order)
 - (void)notifyMessagesChanged:(AiSession *)session {
     dispatch_async(dispatch_get_main_queue(), ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:kAiSessionMessagesDidChangeNotification
@@ -64,7 +64,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
     });
 }
 
-/// 累积流式 tool_calls 片段：按 index 合并 name 与 args（arguments 为逐片增量拼接）
+/// Accumulate streaming tool_calls fragments: merge name and args by index (arguments are concatenated incrementally)
 - (void)accumulateToolCalls:(NSArray *)rawToolCalls
                        into:(NSMutableDictionary *)accumulator {
     for (id item in rawToolCalls) {
@@ -78,7 +78,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
             entry[@"index"] = @(idx);
             accumulator[@(idx)] = entry;
         }
-        // id 通常只在首片段出现
+        // id usually appears only in the first fragment
         if ([tc[@"id"] isKindOfClass:[NSString class]] && [tc[@"id"] length] > 0) {
             entry[@"id"] = tc[@"id"];
         }
@@ -92,7 +92,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
                 entry[@"arguments"] = [prev stringByAppendingString:func[@"arguments"]];
             }
         }
-        // 兼容部分兼容 OpenAI 协议的模型把 name 放在 tc 顶层（而非 function.name）
+        // Support models that partially implement the OpenAI protocol and place name at the tc top level (rather than function.name)
         if (![entry[@"name"] isKindOfClass:[NSString class]] || [entry[@"name"] length] == 0) {
             if ([tc[@"name"] isKindOfClass:[NSString class]] && [tc[@"name"] length] > 0) {
                 entry[@"name"] = tc[@"name"];
@@ -101,7 +101,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
     }
 }
 
-/// 解析工具参数 JSON 字符串为字典（失败返回空字典）
+/// Parse the tool arguments JSON string as a dictionary (return an empty dictionary on failure)
 - (NSDictionary *)parseArgumentsJSON:(NSString *)jsonString {
     if (jsonString.length == 0) return @{};
     NSData *data = [jsonString dataUsingEncoding:NSUTF8StringEncoding];
@@ -113,7 +113,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
     return @{};
 }
 
-/// 发送用户消息，驱动工具循环
+/// Send a user message and drive the tool loop
 - (void)sendUserMessage:(NSString *)text
                 session:(AiSession *)session
                provider:(AiProvider *)provider
@@ -123,28 +123,28 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
     if (!session) {
         if (completionHandler) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                completionHandler([NSError errorWithDomain:@"AiAgent" code:1 userInfo:@{NSLocalizedDescriptionKey: @"会话为空"}]);
+                completionHandler([NSError errorWithDomain:@"AiAgent" code:1 userInfo:@{NSLocalizedDescriptionKey: @"Session is empty"}]);
             });
         }
         return;
     }
 
-    // 并发保护：上一个 flow 尚未结束（如工具仍在执行/等待确认）时，直接拒绝新消息
+    // Concurrency protection: reject new messages while the previous flow is still active (e.g. tool executing or awaiting confirmation)
     if (self.running) {
         if (completionHandler) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                completionHandler([NSError errorWithDomain:@"AiAgent" code:3 userInfo:@{NSLocalizedDescriptionKey: @"上一条回复尚未完成，请稍候或先点停止"}]);
+                completionHandler([NSError errorWithDomain:@"AiAgent" code:3 userInfo:@{NSLocalizedDescriptionKey: @"The previous response is not complete. Please wait or stop it first."}]);
             });
         }
         return;
     }
 
-    // 初始化循环状态
+    // Initialize loop state
     self.running = YES;
     self.toolRound = 0;
     [self.attempts removeAllObjects];
 
-    // 追加用户消息
+    // Append user message
     AiMessage *userMessage = [AiMessage messageWithRole:@"user" content:text ?: @""];
     [session.messages addObject:userMessage];
 
@@ -154,7 +154,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
            completionHandler:completionHandler];
 }
 
-#pragma mark - 工具循环：单轮请求
+#pragma mark - Tool loop: single-round request
 
 - (void)startRoundInSession:(AiSession *)session
                    provider:(AiProvider *)provider
@@ -162,9 +162,9 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
          completionHandler:(void (^)(NSError *error))completionHandler {
     if (!self.running) return;
 
-    // 轮数护栏
+    // Round limit
     if (self.toolRound >= kMaxToolRounds) {
-        AiMessage *capMsg = [AiMessage messageWithRole:@"assistant" content:@"本轮工具调用已达上限，请让用户进一步说明。"];
+        AiMessage *capMsg = [AiMessage messageWithRole:@"assistant" content:@"The tool-call limit for this round has been reached. Please ask the user for more details."];
         [session.messages addObject:capMsg];
         [self saveSession:session];
         self.running = NO;
@@ -172,30 +172,30 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
         return;
     }
 
-    // 1. 拼装 payload：system + 历史（剔除流式占位、含 tool 消息）
+    // 1. Assemble payload: system + history (exclude streaming placeholders; include tool messages)
     NSMutableArray *payloadMessages = [NSMutableArray array];
     NSString *systemPrompt = [[AiSettings sharedSettings] systemPrompt];
 
-    // 动态注入今天日期（gameDir 自动命名「MC版本 加载器 YYYY.MM.DD」需要）
+    // Dynamically inject today's date (needed for automatic gameDir naming: "MC version Loader YYYY.MM.DD")
     NSDateFormatter *dateFmt = [[NSDateFormatter alloc] init];
     dateFmt.locale = [[NSLocale alloc] initWithLocaleIdentifier:@"zh_CN"];
-    [dateFmt setDateFormat:@"yyyy 年 M 月 d 日"];
-    NSString *todayLine = [NSString stringWithFormat:@"今天是 %@。若需新建游戏目录，命名格式为「Minecraft版本 加载器 YYYY.MM.DD」。", [dateFmt stringFromDate:[NSDate date]]];
-    systemPrompt = [systemPrompt stringByAppendingString:[NSString stringWithFormat:@"\n\n【今天日期】%@", todayLine]];
+    [dateFmt setDateFormat:@"yyyy-MM-dd"];
+    NSString *todayLine = [NSString stringWithFormat:@"Today is %@. If creating a new game directory, use the naming format \"Minecraft version Loader YYYY.MM.DD\".", [dateFmt stringFromDate:[NSDate date]]];
+    systemPrompt = [systemPrompt stringByAppendingString:[NSString stringWithFormat:@"\n\n[Today's date] %@", todayLine]];
 
-    // 2. 工具定义
+    // 2. Tool definitions
     NSArray *tools = [[AiToolRegistry sharedRegistry] openAIToolSchemas];
 
-    // 关键修复（AI 不知道自己能使用工具）：即便 tools 随请求作为 functions 传入，
-    // 若系统提示未点明，模型往往只给文字建议而不主动调用工具。
-    // 因此在存在工具时向 system prompt 追加一句明确的能力说明（不覆盖用户自定义内容，仅追加其尾）。
+    // Important fix (AI did not know it could use tools): even when tools are passed as functions with the request,
+    // the model often gives text suggestions instead of calling tools unless the system prompt explicitly says so.
+    // Therefore, when tools are available, append a clear capability statement to the system prompt (do not replace user customization; append only).
     if (tools.count > 0) {
-        systemPrompt = [systemPrompt stringByAppendingString:@"\n\n你可以调用内置工具来直接操控启动器，例如：排查并分析崩溃日志、读取已安装的游戏版本与组件状态、直接安装 Minecraft 版本或 Fabric/Quilt 加载器（未装原版会自动先装，Fabric 会自动装 Fabric API）、下载/安装模组、光影、资源包、数据包（自动匹配实例 MC 版本）、查看与修改启动器设置（总设置与实例设置）、新建游戏目录（create_instance）、管理待办清单（todo_*）、查看下载进度（check_downloads）、读取多份日志（read_logs，含启动器日志）。"
-            "版本号约定：install_loader 的 loaderVersion 与 install_* 的 versionId 均可传 \"latest\" 表示最新稳定版，无需先拉版本列表。"
-            "安装顺序纪律：必须先装原版再装加载器——调用 install_loader 前先用 list_instances 确认目标实例的原版已装好，未装则先调 install_game_version 装原版，成功后才装加载器，最后才装 Mod；卸载/切换目录同理，先补原版。"
-            "这些安装全部自动完成，用户可在下载中心实时查看进度，你无需也不应让用户去下载页手动操作（Forge/NeoForge/OptiFine 除外，它们需要图形安装器）。"
-            "你可以并行执行多个工具调用；下载类工具可后台执行（wait=false）后继续做其它事，稍后用 check_downloads 查进度。"
-            "当用户的请求可以通过这些工具完成时，请主动调用合适的工具去执行，而不是只给出文字建议；也请结合工具返回结果继续推进任务。"];
+        systemPrompt = [systemPrompt stringByAppendingString:@"\n\nYou can use built-in tools to directly control the launcher, for example: troubleshoot and analyze crash logs; read installed game versions and component status; directly install Minecraft versions or Fabric/Quilt loaders (the vanilla game is installed first automatically if missing, and Fabric API is installed automatically for Fabric); download/install mods, shaders, resource packs, and data packs (automatically matching the instance's MC version); view and change launcher settings (global and instance settings); create game directories (create_instance); manage to-do lists (todo_*); check download progress (check_downloads); and read multiple logs (read_logs, including launcher logs)."
+            "Version convention: loaderVersion for install_loader and versionId for install_* may be \"latest\" to indicate the latest stable version; there is no need to fetch a version list first."
+            "Installation order: install the vanilla game before the loader — before calling install_loader, use list_instances to confirm the vanilla game is installed in the target instance. If not, call install_game_version first; install the loader only after it succeeds, then install mods. Likewise, install the vanilla game first when uninstalling or switching directories."
+            "These installations are fully automatic. Users can monitor progress in the download center; you should not direct them to download or perform manual actions there (except Forge/NeoForge/OptiFine, which require a graphical installer)."
+            "You can execute multiple tool calls in parallel; download tools can run in the background (wait=false) while you do other work, then use check_downloads to check progress."
+            "When the user's request can be completed using these tools, proactively call the appropriate tool rather than merely giving text suggestions; use the tool results to continue the task."];
     }
     if (systemPrompt.length > 0) {
         [payloadMessages addObject:[AiMessage messageWithRole:@"system" content:systemPrompt]];
@@ -205,7 +205,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
         [payloadMessages addObject:m];
     }
 
-    // 3. 创建助手占位消息（streaming 标记）
+    // 3. Create assistant placeholder message (streaming flag)
     AiMessage *assistantMessage = [AiMessage messageWithRole:@"assistant" content:@""];
     assistantMessage.streaming = YES;
     [session.messages addObject:assistantMessage];
@@ -233,14 +233,14 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
 
         assistantMessage.streaming = NO;
 
-        // 停止请求：直接收尾，不触发 completionHandler（UI 已由停止按钮复位）
+        // Stopped request: finish immediately without invoking completionHandler (the Stop button already reset the UI)
         if (!strongSelf.running) {
             [strongSelf saveSession:session];
             return;
         }
 
         if (error) {
-            // 出错：不追加错误消息到 history，仅 completionHandler 通知 UI 弹错
+            // Error: do not append an error message to history; notify the UI via completionHandler so it can show the error
             if (assistantMessage.content.length == 0) {
                 [session.messages removeObject:assistantMessage];
             }
@@ -251,7 +251,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
         }
 
         if (accToolCalls.count > 0) {
-            // 进入工具执行阶段
+            // Enter tool execution stage
             [strongSelf saveSession:session];
             [strongSelf runToolCalls:accToolCalls
                     assistantMessage:assistantMessage
@@ -260,7 +260,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
                         chunkHandler:chunkHandler
                   completionHandler:completionHandler];
         } else {
-            // 无工具调用，正常结束
+            // No tool calls; finish normally
             [strongSelf saveSession:session];
             strongSelf.running = NO;
             if (completionHandler) completionHandler(nil);
@@ -268,15 +268,15 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
     }];
 }
 
-#pragma mark - 工具执行阶段
+#pragma mark - Tool execution stage
 
-/// 并行执行本轮全部工具调用（enhance-ai-agent Task 15）：
-/// - 无需安全确认的调用并发派发（各工具异步回调）；
-/// - 需要用户确认的调用按 index 顺序串行确认（同一时刻只弹一个确认框）；
-/// - 工具结果消息按工具 index 顺序 append 到会话历史（assistant tool_calls 之后），
-///   各自完成即尽可能早地落盘（appendCursor 从首个未落位槽位起连续推进）；
-/// - 全部完成后统一进入下一轮或以 terminalError 收尾。
-/// 线程安全：工具 completion 与安全确认回调均在主线程，无竞态。
+/// Execute all tool calls in this round in parallel (enhance-ai-agent Task 15):
+/// - Dispatch calls that do not need safety confirmation concurrently (each tool uses an asynchronous callback).
+/// - Confirm calls requiring user approval serially in index order (show only one confirmation dialog at a time).
+/// - Append tool result messages to session history in tool index order (after assistant tool_calls),
+///   persisting each as soon as possible when completed (appendCursor advances continuously from the first unfilled slot).
+/// - Once all are complete, proceed to the next round or finish with terminalError.
+/// Thread safety: tool completion and safety confirmation callbacks are both on the main thread; no race conditions.
 - (void)runToolCalls:(NSDictionary *)accToolCalls
     assistantMessage:(AiMessage *)assistantMessage
              session:(AiSession *)session
@@ -290,8 +290,8 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
         return (ia > ib) ? NSOrderedDescending : ((ia < ib) ? NSOrderedAscending : NSOrderedSame);
     }];
 
-    // 把首个调用挂到助手消息上（isToolCall），其余调用以 toolCallMessage 追加，
-    // 序列化时这些连续的 isToolCall 助手消息被合并为同一条 assistant tool_calls 数组（见 AiAPIClient）。
+    // Attach the first call to the assistant message (isToolCall) and append remaining calls as toolCallMessage,
+    // so serialization merges these consecutive isToolCall assistant messages into one assistant tool_calls array (see AiAPIClient).
     for (NSUInteger i = 0; i < orderedCalls.count; i++) {
         NSDictionary *call = orderedCalls[i];
         NSString *callID = call[@"id"];
@@ -321,13 +321,13 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
     __block NSError *terminalError = nil;
     __weak typeof(self) weakSelf = self;
 
-    // 结果槽位：初始 NSNull；各调用完成即填入自己的槽位
+    // Result slots: initially NSNull; each call fills its slot upon completion
     NSMutableArray *slots = [NSMutableArray arrayWithCapacity:total];
     for (NSUInteger i = 0; i < total; i++) [slots addObject:[NSNull null]];
-    __block NSUInteger appendCursor = 0;   // 下一个待 append 的槽位（保证 tool 结果按工具序落盘）
+    __block NSUInteger appendCursor = 0;   // Next slot to append (keeps tool results persisted in tool order)
     __block NSUInteger completedCount = 0;
 
-    // 填槽并从 appendCursor 起连续 append（保序且尽量即时）
+    // Fill slots and append continuously from appendCursor (preserve order and persist as soon as possible)
     void (^storeResult)(NSUInteger, AiMessage *) = ^(NSUInteger idx, AiMessage *msg) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
@@ -341,12 +341,12 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
         [strongSelf notifyMessagesChanged:session];
     };
 
-    // 该轮全部工具执行完毕
+    // All tools in this round have completed
     void (^finishRound)(void) = ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf || !strongSelf.running) return;
         if (terminalError) {
-            // 达到重试上限，以最终错误结束本轮
+            // Retry limit reached; finish this round with the final error
             strongSelf.running = NO;
             if (completionHandler) completionHandler(terminalError);
             return;
@@ -358,14 +358,14 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
                       completionHandler:completionHandler];
     };
 
-    // 单个调用完成：计数 + 可选的链式推进回调
+    // Single call completed: increment count + optional chained progress callback
     void (^noteCompleted)(dispatch_block_t) = ^(dispatch_block_t done) {
         completedCount++;
         if (completedCount >= total) finishRound();
         if (done) done();
     };
 
-    // 执行第 idx 个调用（完成后调用 done；done 可为 nil）
+    // Execute call at idx (invoke done on completion; done may be nil)
     void (^executeCallAt)(NSUInteger, dispatch_block_t) = ^(NSUInteger idx, dispatch_block_t done) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf || !strongSelf.running) { if (done) done(); return; }
@@ -376,24 +376,24 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
         NSString *arguments = call[@"arguments"] ?: @"";
         if (callID.length == 0) callID = [NSString stringWithFormat:@"call_%ld", (long)[call[@"index"] integerValue]];
 
-        // 重试护栏：同一 callID 已执行 ≥3 次则不再回喂
+        // Retry guard: do not feed the same callID back after it has executed ≥3 times
         NSInteger attempts = [strongSelf.attempts[callID] integerValue];
         if (attempts >= kMaxToolAttempts) {
-            AiMessage *failMsg = [AiMessage toolResultMessageWithContent:[NSString stringWithFormat:@"多次尝试仍失败：%@", name ?: @""] toolCallID:callID];
+            AiMessage *failMsg = [AiMessage toolResultMessageWithContent:[NSString stringWithFormat:@"Failed after multiple attempts: %@", name ?: @""] toolCallID:callID];
             failMsg.toolName = name ?: @"";
             failMsg.toolSucceeded = NO;
             storeResult(idx, failMsg);
             terminalError = [NSError errorWithDomain:@"AiAgent" code:2
-                                            userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"工具 %@ 多次尝试仍失败", name ?: callID]}];
+                                            userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Tool %@ failed after multiple attempts", name ?: callID]}];
             noteCompleted(done);
             return;
         }
         strongSelf.attempts[callID] = @(attempts + 1);
 
-        // 校验工具是否存在
+        // Check whether the tool exists
         id<AiTool> tool = [[AiToolRegistry sharedRegistry] toolForName:name ?: @""];
         if (!tool) {
-            AiMessage *unknownMsg = [AiMessage toolResultMessageWithContent:[NSString stringWithFormat:@"未知工具：%@", name ?: @""] toolCallID:callID];
+            AiMessage *unknownMsg = [AiMessage toolResultMessageWithContent:[NSString stringWithFormat:@"Unknown tool: %@", name ?: @""] toolCallID:callID];
             unknownMsg.toolName = name ?: @"";
             unknownMsg.toolSucceeded = NO;
             storeResult(idx, unknownMsg);
@@ -413,7 +413,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
                 if (!ss3) { if (done) done(); return; }
                 NSString *content = result;
                 if (content.length == 0 && error) content = error.localizedDescription;
-                if (content.length == 0) content = @"（无返回）";
+                if (content.length == 0) content = @"(No response)";
                 AiMessage *resMsg = [AiMessage toolResultMessageWithContent:content toolCallID:callID];
                 resMsg.toolName = name ?: @"";
                 resMsg.toolSucceeded = (error == nil);
@@ -422,15 +422,15 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
             }];
         };
 
-        // 安全确认（DangerousWrite 等需确认时阻塞等待用户选择）
+        // Safety confirmation (wait for the user's choice when DangerousWrite etc. requires confirmation)
         if ([[AiSafetyManager sharedManager] needsUserConfirmationForPermission:tool.permission]) {
-            [[AiSafetyManager sharedManager] requestConfirmationWithTitle:[NSString stringWithFormat:@"AI 请求执行「%@」", name ?: @""]
-                                                                  message:[NSString stringWithFormat:@"该工具需要你确认后才执行。\n参数：%@", arguments]
+            [[AiSafetyManager sharedManager] requestConfirmationWithTitle:[NSString stringWithFormat:@"AI wants to run \"%@\"", name ?: @""]
+                                                                  message:[NSString stringWithFormat:@"This tool requires your confirmation before it can run.\nParameters: %@", arguments]
                                                               completion:^(BOOL approved) {
                 __strong typeof(weakSelf) ss4 = weakSelf;
                 if (!ss4 || !ss4.running) { if (done) done(); return; }
                 if (!approved) {
-                    AiMessage *cancelMsg = [AiMessage toolResultMessageWithContent:@"用户已取消该操作" toolCallID:callID];
+                    AiMessage *cancelMsg = [AiMessage toolResultMessageWithContent:@"The user cancelled this operation" toolCallID:callID];
                     cancelMsg.toolName = name ?: @"";
                     cancelMsg.toolSucceeded = NO;
                     storeResult(idx, cancelMsg);
@@ -444,7 +444,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
         }
     };
 
-    // 分类：需要确认的（串行链，避免同时弹多个确认框）/ 无需确认的（并发派发）
+    // Categorize: calls requiring confirmation (serial chain to avoid showing multiple dialogs at once) / calls not requiring confirmation (dispatch concurrently)
     NSMutableArray<NSNumber *> *immediateIndices = [NSMutableArray array];
     NSMutableArray<NSNumber *> *confirmIndices = [NSMutableArray array];
     for (NSUInteger i = 0; i < total; i++) {
@@ -458,12 +458,12 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
         }
     }
 
-    // 并发派发无需确认的调用
+    // Dispatch calls that do not require confirmation concurrently
     for (NSNumber *idxNum in immediateIndices) {
         executeCallAt(idxNum.unsignedIntegerValue, nil);
     }
 
-    // 串行链处理需确认的调用（一个确认完成后再弹下一个）
+    // Handle calls requiring confirmation in a serial chain (show the next dialog after the current one is resolved)
     __block void (^confirmChain)(NSUInteger);
     confirmChain = ^(NSUInteger ci) {
         if (ci >= confirmIndices.count) { confirmChain = nil; return; }
@@ -474,7 +474,7 @@ static NSString * const kAiSessionMessagesDidChangeNotification = @"AiSessionMes
     confirmChain(0);
 }
 
-#pragma mark - 停止
+#pragma mark - Stop
 
 - (void)stopCurrent {
     if (self.client) [self.client stop];

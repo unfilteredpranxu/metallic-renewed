@@ -35,8 +35,9 @@
     return self;
 }
 
-/// 将 accountName 转换为安全的文件名（移除路径分隔符等非法字符）。
-/// Minecraft 用户名通常为字母数字下划线，但仍做一层防护避免路径穿越。
+/// Convert accountName to a safe filename (remove path separators and other invalid characters).
+/// Minecraft usernames are usually alphanumeric with underscores, but sanitize them anyway to
+/// prevent path traversal.
 - (NSString *)safeFileNameForAccount:(NSString *)accountName {
     if (accountName.length == 0) return @"anonymous";
     NSCharacterSet *invalid = [NSCharacterSet characterSetWithCharactersInString:@"/\\:*?\"<>|"];

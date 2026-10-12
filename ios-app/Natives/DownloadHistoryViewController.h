@@ -3,9 +3,9 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /**
- * 下载历史页（spec Phase 6 Task 6.2）。
- * 数据源为 [DownloadHistoryStore sharedStore].allEntries（新→旧），
- * 展示名称/类型/大小/时间/结果，支持一键清空（确认弹窗）。
+ * Download history screen (spec Phase 6 Task 6.2).
+ * Data source: [DownloadHistoryStore sharedStore].allEntries (newest → oldest).
+ * Displays name/type/size/time/result and supports clearing all at once (with a confirmation dialog).
  */
 @interface DownloadHistoryViewController : UITableViewController
 

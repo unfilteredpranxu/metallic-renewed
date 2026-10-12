@@ -2,8 +2,8 @@
 //  AiToolBootstrapper.h
 //  Amethyst
 //
-//  Air AI Agent 内置工具装配器：集中把 3a 阶段实现的内置工具注册进 AiToolRegistry。
-//  3b 阶段的工具将在此文件追加注册（见 registerBuiltinTools 内的「3b 在此追加」注释）。
+//  Air AI Agent built-in tool bootstrapper: centrally registers the built-in tools implemented in Phase 3a with AiToolRegistry.
+//  Phase 3b tools will be registered in this file (see the "Add Phase 3b here" comment in registerBuiltinTools).
 //
 
 #import <Foundation/Foundation.h>
@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface AiToolBootstrapper : NSObject
 
-/// 把全部内置工具注册进指定 registry（AiToolRegistry 初始化时自动调用，也可外部显式调用）
+/// Register all built-in tools with the specified registry (called automatically during AiToolRegistry initialization, or explicitly from elsewhere)
 + (void)registerBuiltinToolsIntoRegistry:(AiToolRegistry *)registry;
 
 @end

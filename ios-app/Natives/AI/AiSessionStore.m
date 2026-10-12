@@ -11,7 +11,7 @@
 }
 
 static NSString * const kLastSessionIdKey = @"ai.last_session_id";
-/// 自动命名时最多取前 20 个字符
+/// Maximum of the first 20 characters used for automatic naming
 static const NSUInteger kAutoTitleMaxLength = 20;
 
 + (instancetype)sharedStore {
@@ -32,7 +32,7 @@ static const NSUInteger kAutoTitleMaxLength = 20;
     return self;
 }
 
-#pragma mark - 文件路径
+#pragma mark - File path
 
 - (NSString *)aiDirectoryPath {
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
@@ -49,20 +49,20 @@ static const NSUInteger kAutoTitleMaxLength = 20;
     return [[self aiDirectoryPath] stringByAppendingPathComponent:@"sessions.json"];
 }
 
-#pragma mark - 排序
+#pragma mark - Sorting
 
-/// 按 updatedAt 倒序（最新在前）
+/// Sort by updatedAt descending (newest first)
 - (void)reloadSort {
     [_sessions sortUsingComparator:^NSComparisonResult(AiSession *a, AiSession *b) {
         return [b.updatedAt compare:a.updatedAt];
     }];
 }
 
-#pragma mark - 加载 / 保存
+#pragma mark - Load / save
 
 - (NSMutableArray<AiSession *> *)sessions {
     [self loadIfNeeded];
-    // 返回内部可变引用，但外部调用方应避免直接乱序修改；如需修改请走 updateSession
+    // Returns an internal mutable reference, but callers should avoid modifying it out of order; use updateSession to make changes
     return _sessions;
 }
 
@@ -116,7 +116,7 @@ static const NSUInteger kAutoTitleMaxLength = 20;
     if (!session) return;
     [self loadIfNeeded];
     [_sessions removeObject:session];
-    // 若删除的是最近会话，清空记录
+    // If deleting the most recent session, clear the record
     NSString *lastId = [[NSUserDefaults standardUserDefaults] stringForKey:kLastSessionIdKey];
     if ([session.identifier isEqualToString:lastId]) {
         [[NSUserDefaults standardUserDefaults] removeObjectForKey:kLastSessionIdKey];
@@ -156,7 +156,7 @@ static const NSUInteger kAutoTitleMaxLength = 20;
 }
 
 + (NSString *)autoTitleForMessage:(NSString *)message {
-    if (message.length == 0) return @"新会话";
+    if (message.length == 0) return @"New Session";
     NSString *trimmed = [message stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     NSString *single = [[trimmed stringByReplacingOccurrencesOfString:@"\n" withString:@" "] stringByReplacingOccurrencesOfString:@"\r" withString:@" "];
     if (single.length <= kAutoTitleMaxLength) {
@@ -165,14 +165,14 @@ static const NSUInteger kAutoTitleMaxLength = 20;
     return [[single substringToIndex:kAutoTitleMaxLength] stringByAppendingString:@"…"];
 }
 
-#pragma mark - 最近会话
+#pragma mark - Most recent session
 
 - (nullable AiSession *)lastActiveSession {
     [self loadIfNeeded];
     NSString *lastId = [[NSUserDefaults standardUserDefaults] stringForKey:kLastSessionIdKey];
     AiSession *byId = [self sessionById:lastId];
     if (byId) return byId;
-    // 无记录或记录失效：返回最新会话（sessions 已按 updatedAt 倒序）
+    // No record or invalid record: return the newest session (sessions are sorted by updatedAt descending)
     return _sessions.count > 0 ? _sessions[0] : nil;
 }
 

@@ -9,18 +9,19 @@ TARGETS := $(shell find $(SOURCEDIR) -mindepth 1 -maxdepth 1 -type d)
 TARGETS := $(TARGETS:$(SOURCEDIR)/%=$(OUTPUTDIR)/%.jar)
 
 # Add all jars to classpath and allow compiling with private API
-# 编译期 classpath 顺序说明：$(wildcard libs/*/*.jar) 按字典序展开，
-# libs/lwjgl < libs/lwjgl-333 < libs/lwjgl-341，因此老版 Amethyst 预编译 jar
-# （含 GLFW.mGLFWWindowWidth 等扩展 API 表面）会排在版本化集合之前。
-# 参考仓库显式列出各目录是为了固定该顺序，此处 wildcard 的字典序已等价满足。
-# 运行时只使用 lwjgl-333.jar / lwjgl-341.jar，不依赖 libs/lwjgl。
+# Compile-time classpath ordering: `$(wildcard libs/*/*.jar)` expands in lexicographic order.
+# `libs/lwjgl < libs/lwjgl-333 < libs/lwjgl-341`, so the older precompiled Amethyst JAR
+# (containing extension API members such as `GLFW.mGLFWWindowWidth`) comes before the versioned sets.
+# The reference repository lists each directory explicitly to fix this order; wildcard sorting is equivalent here.
+# At runtime, only `lwjgl-333.jar` / `lwjgl-341.jar` are used; `libs/lwjgl` is not a dependency.
 JCFLAGS := -cp "$(subst $() $(),:,$(wildcard $(SOURCEDIR)/*/):$(wildcard libs/*/*.jar))" -XDignore.symbol.file
 
 all: $(TARGETS) $(OUTPUTDIR)/mojang-stubs.jar
 
 # Sometimes the CI produces empty class file resulting in broken jar, so we check and abort here
-# 改进：发现空 class 文件时先从 classes/ 目录重新复制（修复 cp 与 javac 并行竞态
-# 导致次级 class 文件如 NarratorDummy.class 为空的偶发问题），重试后仍为空才报错。
+# Improvement: when an empty class file is found, copy it again from the `classes/` directory
+# (fixes an occasional race between `cp` and `javac` that left secondary class files such as
+# `NarratorDummy.class` empty); report an error only if the file is still empty after retrying.
 check_empty_classes:
 	@set -e
 	@echo "Checking for empty class files"
@@ -49,8 +50,8 @@ $(CLASSES): $(OUTPUTDIR)/%.class: $(SOURCEDIR)/%.java
 	@echo "Compiling $<"
 	@$(BOOTJDK)/javac $(JCFLAGS) -d $(OUTPUTDIR)/classes $<
 	@cp $(@:$(OUTPUTDIR)/$(TARGET)/%.class=$(OUTPUTDIR)/classes/%*.class) $(dir $@)/
-	@# 防御性校验：CI 偶发产生空 class 文件（cp 与 javac/并行任务竞态），
-	@# 复制后若主 class 仍为 0 字节则重试一次，避免 check_empty_classes 误报中断构建。
+	@# Defensive check: CI occasionally creates empty class files (a race between cp and javac/parallel tasks).
+	@# If the primary class is still 0 bytes after copying, retry once to avoid a false positive from check_empty_classes interrupting the build.
 	@if [ -e "$@" ] && [ ! -s "$@" ]; then \
 		echo "Warning: $@ is empty after cp, retrying copy"; \
 		cp -f $(@:$(OUTPUTDIR)/$(TARGET)/%.class=$(OUTPUTDIR)/classes/%*.class) $(dir $@)/; \
@@ -61,20 +62,21 @@ $(OUTPUTDIR)/launcher.jar: $(CLASSES) check_empty_classes
 	@echo "Creating $@"
 	@cp -r $(SOURCEDIR)/launcher/META-INF $(basename $@)/ 2>/dev/null || true
 	@$(BOOTJDK)/jar -cf $@ -C $(basename $@) .
-	@# Forge/BootstrapLauncher 的模块解析【只看包名由谁 export】: launcher.jar 与
-	@# mojang-stubs.jar 都带 com/mojang/text2speech 时, 会以
+	@# Forge/BootstrapLauncher module resolution only considers which module exports a package:
+	@# if both launcher.jar and mojang-stubs.jar contain com/mojang/text2speech, it raises
 	@#   java.lang.module.ResolutionException:
 	@#     Modules launcher and mojang.stubs export package com.mojang.text2speech to module logging
-	@# 直接杀掉进程。Task158 已该桩【必须】由 mojang-stubs.jar 提供(它才会被模块化并落在
-	@# MC-BOOTSTRAP 层), 所以这里从 launcher.jar 中剔除该包, 让它只有唯一提供者。
-	@# 注意: 只删【打好的 jar 内条目】, 不动 $(basename $@) 的 class 目录 ——
-	@# mojang-stubs.jar 依赖该目录取类, 不受影响。
-	@# 用"解包 -> 删 -> 重打"而不是 `jar -d`(部分 JDK 的 jar 不支持 -d, 会被 || true 静默吞掉,
-	@# 于是 CI 包里 launcher.jar 仍带着该包 -> Forge 继续 module ResolutionException)。
+	@# and terminate the process. Task158 requires mojang-stubs.jar to provide these stubs (it is modularized
+	@# into the MC-BOOTSTRAP layer), so remove the package from launcher.jar to leave a single provider.
+	@# Note: remove entries only from the packaged JAR; do not touch the class directory in $(basename $@) —
+	@# mojang-stubs.jar reads classes from that directory and is unaffected.
+	@# Use "extract -> delete -> repackage" rather than `jar -d` (some JDK versions do not support `-d`;
+	@# `|| true` would silently ignore the failure, leaving the package in launcher.jar in the CI artifact
+	@# and causing Forge to keep throwing a module ResolutionException).
 	@rm -rf $(OUTPUTDIR)/launcher_strip && mkdir -p $(OUTPUTDIR)/launcher_strip
 	@(cd $(OUTPUTDIR)/launcher_strip && $(BOOTJDK)/jar -xf $(abspath $@))
 	@rm -rf $(OUTPUTDIR)/launcher_strip/com/mojang/text2speech
-	@# [fix/forge-split] MC 自己提供 com/mojang/blaze3d/**; launcher.jar 再带一份会让 Forge 报
+	@# [fix/forge-split] MC itself provides com/mojang/blaze3d/**; including another copy in launcher.jar makes Forge report
 	@#   ResolutionException: Module minecraft contains package com.mojang.blaze3d.platform,
 	@#     module launcher exports package com.mojang.blaze3d.platform to minecraft
 	@rm -rf $(OUTPUTDIR)/launcher_strip/com/mojang/blaze3d
@@ -82,44 +84,44 @@ $(OUTPUTDIR)/launcher.jar: $(CLASSES) check_empty_classes
 	@rm -rf $(OUTPUTDIR)/launcher_strip
 	@$(BOOTJDK)/jar -tf $@ | grep -qE '^com/mojang/(text2speech|blaze3d)' && { echo "ERROR: text2speech still present in $@ (Forge split-package guard failed)"; exit 1; } || true
 
-# 按 LWJGL 版本分别产出一个合并 jar（3.3.3 与 3.4.1）。
+# Produce a merged JAR for each LWJGL version (3.3.3 and 3.4.1).
 #
-# 解压顺序即覆盖优先级（后者覆盖前者）：
-#   1) 仓库根 lwjgl.jar —— iOS 专用 LWJGL 补丁层，同时提供 LWJGL2 兼容类
-#      （org/lwjgl/opengl/Display、org/lwjgl/input/Keyboard、LWJGLException 等），
-#      老版本 MC（Java 8 / 1.12.2 及以下）依赖这些类，必须作为基底保留。
-#   2) libs/lwjgl-<ver>/*.jar —— 版本化的 LWJGL3。341 集合含真正的
-#      lwjgl-sdl.jar（加载真实 libSDL3），是 SDL3 输入注入的前提。
-#      放在基底之后，以便版本化的 LWJGL3 核心类（GLFW / MemoryUtil / SDL 等）
-#      覆盖根 jar 中的同名旧类。
-#   3) build/lwjgl/ —— Amethyst overlay（GLFW.java 等带 iOS 桥接的改写类），
-#      必须最后覆盖。
+# Extraction order determines overwrite priority (later entries overwrite earlier ones):
+#   1) Repository-root lwjgl.jar — the iOS-specific LWJGL patch layer, also providing LWJGL2 compatibility classes
+#      (org/lwjgl/opengl/Display, org/lwjgl/input/Keyboard, LWJGLException, etc.),
+#      Older MC versions (Java 8 / 1.12.2 and earlier) depend on these classes, so keep them as the base.
+#   2) libs/lwjgl-<ver>/*.jar — versioned LWJGL3. The 341 set contains the actual
+#      lwjgl-sdl.jar (loads the real libSDL3), required for SDL3 input injection.
+#      Extract it after the base so versioned LWJGL3 core classes (GLFW / MemoryUtil / SDL, etc.)
+#      overwrite same-named older classes from the root JAR.
+#   3) build/lwjgl/ — Amethyst overlay (rewritten classes such as GLFW.java with the iOS bridge),
+#      which must be applied last.
 $(OUTPUTDIR)/lwjgl-%.jar: $(CLASSES) check_empty_classes
 	@set -e
 	@echo "Creating $@"
 	@mkdir -p $(OUTPUTDIR)/lwjgl_lib_$*
 	@cd $(OUTPUTDIR)/lwjgl_lib_$* && $(BOOTJDK)/jar -xf "../../../lwjgl.jar" && rm -rf META-INF
-	# 仓库根 lwjgl.jar 里混入了 3 个用 JDK 25 编译的类（major 69）：
+	# The repository-root lwjgl.jar includes 3 classes compiled with JDK 25 (major version 69):
 	#   org/lwjgl/openal/SOFTSystemEvent{,s,ProcI}.class
-	# 它是"3.3.3 提供 3.4.1 API 兼容"的定制版，这 3 个类是从 3.4.1 一并塞进来的。
-	# 3.4.1 自带它们的 Java 8 版本，下一步解压后会被覆盖回来；但 3.3.3 没有这些
-	# 类，若保留 JDK 25 版本，Java 8 上的老版本 MC 一旦碰到就会抛
-	# UnsupportedClassVersionError。因此在叠加版本化 jar 之前先删掉。
+	# This is a custom build where "3.3.3 provides 3.4.1 API compatibility"; these 3 classes were copied from 3.4.1.
+	# 3.4.1 includes Java 8 versions of them, which will overwrite these when extracted next. But 3.3.3 lacks
+	# these classes, so keeping the JDK 25 versions would cause older MC versions on Java 8 to throw
+	# UnsupportedClassVersionError when they load them. Remove them before overlaying the versioned JARs.
 	@cd $(OUTPUTDIR)/lwjgl_lib_$* && find org/lwjgl/openal -maxdepth 1 -name 'SOFTSystemEvent*.class' -delete 2>/dev/null || true
 	@cd $(OUTPUTDIR)/lwjgl_lib_$* && find ../../libs/lwjgl-$* -name 'lwjgl*.jar' -exec $(BOOTJDK)/jar -xf {} \; && rm -rf META-INF
 	@cp -R $(OUTPUTDIR)/lwjgl/* $(OUTPUTDIR)/lwjgl_lib_$*/
-	@# Forge / NeoForge 的 bootstraplauncher 把整条 classpath 交给 JPMS 解析，classpath 上每个 jar
-	@# 各自成为一个自动模块；任何同时存在于 launcher.jar 与 lwjgl-<ver>.jar 的包都会导致 split
-	@# package 解析失败（ResolutionException: Modules launcher and lwjgl export package …）。
-	@# launcher.jar 已自带这些类与 SPI，故此处直接剔除 lwjgl jar 中的重复包（不生成中间清单文件）。
+	@# Forge / NeoForge's bootstraplauncher passes the entire classpath to JPMS for resolution; each classpath JAR
+	@# becomes an automatic module. Any package present in both launcher.jar and lwjgl-<ver>.jar causes split-package
+	@# resolution to fail (ResolutionException: Modules launcher and lwjgl export package …).
+	@# launcher.jar already includes these classes and SPI, so remove the duplicate packages from lwjgl JARs here (without an intermediate list file).
 	@rm -rf $(OUTPUTDIR)/lwjgl_lib_$*/com/apple/ios/audio
 	@rm -rf $(OUTPUTDIR)/lwjgl_lib_$*/com/mojang
 	@rm -f  $(OUTPUTDIR)/lwjgl_lib_$*/META-INF/services/javax.sound.sampled.spi.MixerProvider
 	@$(BOOTJDK)/jar -cf $@ -C $(OUTPUTDIR)/lwjgl_lib_$* .
 
-# lwjgl.jar 仅作占位：all 目标因 src/lwjgl 是源码目录而列出它，但运行时使用
-# lwjgl-333.jar / lwjgl-341.jar。build/lwjgl.jar 不得进入 app 的 libs 目录，
-# 否则会被 classpath 中的 libs/* 与版本化 jar 一并加载，造成同名类冲突。
+# lwjgl.jar is only a placeholder: the all target lists it because src/lwjgl is a source directory,
+# but runtime uses lwjgl-333.jar / lwjgl-341.jar. build/lwjgl.jar must not be placed in the app's libs directory,
+# or it will load alongside libs/* and the versioned JARs on the classpath, causing same-name class conflicts.
 $(OUTPUTDIR)/lwjgl.jar: $(OUTPUTDIR)/lwjgl-333.jar $(OUTPUTDIR)/lwjgl-341.jar
 	@echo "Skipping $@ (lwjgl-333.jar / lwjgl-341.jar are used instead)"
 
@@ -141,17 +143,17 @@ $(OUTPUTDIR)/patchsvc.jar: $(CLASSES)
 	@echo "Creating $@"
 	@$(BOOTJDK)/jar -cfm $@ $(SOURCEDIR)/patchsvc.txt -C $(basename $@) .
 
-# Task 158（Forge 模块层 mojang 桩）：Forge 的 MC-BOOTSTRAP/GAME 模块层对
-# 系统类加载器完全不可见（securejarhandler ModuleClassLoader 的父链是
-# boot/platform 层），而 launcher.jar 被 -DignoreList 排除在模块层外
-#（Task154 的 split-package 根治）——模块层内 GameNarrator 需要的
-# com.mojang.text2speech 桩必须由一个【会被 BootstrapLauncher 模块化】的
-# jar 提供。本 jar 只含 com/mojang/text2speech 桩类（与 launcher.jar 同源
-# 同字节，getNarrator() 恒返回 NarratorDummy，iOS 无叙述器副作用），随包放
-# app/libs/ → 恒在 -cp → 恒在 java.class.path → 自动成为 MC-BOOTSTRAP 层的
-# 自动模块（文件名不含任何 ignoreList 前缀）。真实 text2speech 库继续被
-# Java 侧 preProcessLibraries _skip（进 classpath 会与桩 split-package）。
-# 装机锚点：Forge 1.20.1 过 GameNarrator（NoClassDefFoundError: Narrator 消失）。
+# Task 158 (Forge module-layer Mojang stubs): Forge's MC-BOOTSTRAP/GAME module layers
+# cannot see the system class loader (securejarhandler ModuleClassLoader's parent chain is
+# the boot/platform layer), while launcher.jar is excluded from the module layer by -DignoreList
+# (Task154's split-package fix). The com.mojang.text2speech stubs required by GameNarrator inside
+# the module layer must therefore be provided by a JAR that BootstrapLauncher will modularize.
+# This JAR contains only com/mojang/text2speech stubs (same source and bytecode as launcher.jar;
+# getNarrator() always returns NarratorDummy, with no narrator side effects on iOS). It is bundled in
+# app/libs/ → always on -cp → always in java.class.path → automatically becomes an automatic module
+# in MC-BOOTSTRAP (its filename has no ignoreList prefix). The real text2speech library remains
+# _skipped by Java-side preProcessLibraries (adding it to the classpath would split the package with the stubs).
+# Device validation: Forge 1.20.1 passes GameNarrator (NoClassDefFoundError: Narrator no longer occurs).
 $(OUTPUTDIR)/mojang-stubs.jar: $(OUTPUTDIR)/launcher.jar
 	@set -e
 	@rm -rf $(OUTPUTDIR)/mojang-stubs

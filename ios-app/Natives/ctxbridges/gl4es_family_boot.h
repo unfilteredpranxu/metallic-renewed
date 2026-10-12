@@ -2,10 +2,10 @@
 //  gl4es_family_boot.h
 //  AngelAuraAmethyst
 //
-//  ★ [RENDERER-GAP] 新增渲染器（VGPU / GL4ESZL2 / NG-GL4ES / VirGL）的运行时引导接口。
-//  来源：Gsjsjzhznsz/Air-Minecraft-iOS-Launcher（同一项目家族更晚的 fork）。
-//  本文件把队友散落在 egl_bridge.m 里的 Task204/206/211/215 引导逻辑收敛到一处，
-//  使宿主文件（egl_bridge.m）只留极少量、且对既有渲染器零影响的调用点。
+//  ★ [RENDERER-GAP] Runtime bootstrap interface for additional renderers (VGPU / GL4ESZL2 / NG-GL4ES / VirGL).
+//  Source: Gsjsjzhznsz/Air-Minecraft-iOS-Launcher (a later fork in the same project family).
+//  Consolidates the Task204/206/211/215 bootstrap logic scattered across teammates' egl_bridge.m,
+//  leaving only a few call sites in the host file (egl_bridge.m), with no impact on existing renderers.
 //
 #ifndef AMETHYST_GL4ES_FAMILY_BOOT_H
 #define AMETHYST_GL4ES_FAMILY_BOOT_H
@@ -16,20 +16,20 @@
 extern "C" {
 #endif
 
-/// 是否任一「新增（gap）渲染器」正在被选中（读 AMETHYST_RENDERER）。
+/// Whether any additional ("gap") renderer is selected (reads AMETHYST_RENDERER).
 bool ame_gap_renderer_selected(void);
 
-/// gl4es 家族（VGPU / GL4ESZL2 / NG-GL4ES）的 MakeCurrent 后引导（幂等）。
-/// 必须在【真实游戏上下文已 current】之后调用（pojavMakeCurrent 尾部）。
-/// - GL4ESZL2 / NG-GL4ES：dlopen(RTLD_NOLOAD) + set_getprocaddress(resolver) +
-///   initialize_gl4es()（构建带 NO_INIT_CONSTRUCTOR，构造器不跑）。
-/// - VGPU：其自带惰性装载器接管，这里只做日志/幂等。
-/// 非 gap 渲染器时立即返回（一次 getenv 比较，零副作用）。
+/// Idempotent post-MakeCurrent bootstrap for the gl4es family (VGPU / GL4ESZL2 / NG-GL4ES).
+/// Must be called after the actual game context is current (at the end of pojavMakeCurrent).
+/// - GL4ESZL2 / NG-GL4ES: dlopen(RTLD_NOLOAD) + set_getprocaddress(resolver) +
+///   initialize_gl4es() (built with NO_INIT_CONSTRUCTOR, so the constructor does not run).
+/// - VGPU: its own lazy loader takes over; this function only logs and enforces idempotency.
+/// Returns immediately for non-gap renderers (one getenv comparison, no side effects).
 void ame_gap_gl4es_family_boot(void);
 
-/// VirGL 服务端引导（幂等）。仅当 AMETHYST_RENDERER == libOSMesaVirgl.dylib 时
-/// 转调 ame_virgl_start_server()（启动进程内 vtest server、建 ANGLE 离屏宿主上下文）。
-/// 返回 0 = 成功或未选中；非 0 = 引导失败（调用方记录日志后仍走 osm 桥）。
+/// Idempotent VirGL server bootstrap. Calls ame_virgl_start_server() only when AMETHYST_RENDERER == libOSMesaVirgl.dylib
+/// (starts the in-process vtest server and creates an ANGLE offscreen host context).
+/// Returns 0 for success or when unselected; nonzero indicates bootstrap failure (the caller logs it and continues through the OSM bridge).
 int ame_gap_virgl_boot(void);
 
 #ifdef __cplusplus

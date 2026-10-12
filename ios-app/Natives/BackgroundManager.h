@@ -18,8 +18,8 @@ typedef NS_ENUM(NSInteger, BackgroundType) {
 };
 
 typedef NS_ENUM(NSInteger, BackgroundUIEffect) {
-    BackgroundUIEffectTranslucent = 0,  // 半透明
-    BackgroundUIEffectBlur              // 毛玻璃效果
+    BackgroundUIEffectTranslucent = 0,  // Translucent
+    BackgroundUIEffectBlur              // Frosted-glass effect
 };
 
 @interface BackgroundManager : NSObject
@@ -33,7 +33,7 @@ typedef NS_ENUM(NSInteger, BackgroundUIEffect) {
 // UI effect settings (for custom background)
 @property (nonatomic, assign) BackgroundUIEffect uiEffect;
 @property (nonatomic, assign) CGFloat uiOpacity;  // 0.0 ~ 1.0
-@property (nonatomic, assign) CGFloat blurIntensity; // 0.0 ~ 1.0, 背景模糊程度
+@property (nonatomic, assign) CGFloat blurIntensity; // 0.0 ~ 1.0, background blur intensity
 
 // Global background container
 @property (nonatomic, strong, readonly, nullable) UIView *globalBackgroundContainer;
@@ -72,15 +72,15 @@ typedef NS_ENUM(NSInteger, BackgroundUIEffect) {
 - (void)makeSplitViewControllerTransparent:(UISplitViewController *)splitVC;
 
 // Apply UI effect to any UIView (blur or translucent based on settings)
-/// ★ [RIM-UI] 高光描边开关(默认开;背景设置页可关)
+/// ★ [RIM-UI] Highlight-stroke switch (on by default; can be turned off on the Background Settings screen).
 @property(nonatomic, assign) BOOL glassRimEnabled;
-/// ★ [RIM-UI] 高光强度 0…1(默认 1.0;设置页可调,0 等于关)
+/// ★ [RIM-UI] Highlight intensity 0…1 (1.0 by default; adjustable in Settings; 0 means off).
 @property(nonatomic, assign) CGFloat glassRimStrength;
 
 - (void)applyEffectToView:(UIView *)view;
 - (void)applyEffectToCollectionViewCell:(UICollectionViewCell *)cell;
 - (void)applyEffectToCell:(UITableViewCell *)cell;
-// 适配 UISearchBar：移除默认不透明背景，让 searchBar 透出底层自定义启动器背景
+// Adapt UISearchBar: remove its default opaque background so the custom launcher background shows through.
 - (void)applyEffectToSearchBar:(UISearchBar *)searchBar;
 
 // Apply UI effect to navigation bar and toolbar

@@ -18,9 +18,11 @@ extern dispatch_group_t fatalExitGroup;
 #pragma mark - UISceneSession lifecycle
 
 - (UISceneConfiguration *)application:(UIApplication *)application configurationForConnectingSceneSession:(UISceneSession *)connectingSceneSession options:(UISceneConnectionOptions *)options {
-    // ★ [I18N-ORDER] 全 App 最早入口:在任何 UI 构建之前解析并缓存"生效语言"（幂等）。
+    // ★ [I18N-ORDER] Earliest entry point for the app: resolve and cache the "effective language"
+    // before building any UI (idempotent).
     AmeLauncherPrimeLanguage();
-    // 一次性迁移旧版全局下载源偏好到分类镜像策略键（幂等，早于任何 UI 读取偏好）
+    // One-time migration of the legacy global download-source preference to category-specific mirror
+    // strategy keys (idempotent; happens before any UI reads preferences).
     migrateDownloadSourcePreferences();
     // Called when a new scene session is being created.
     return [[UISceneConfiguration alloc] initWithName:@"Default Configuration" sessionRole:connectingSceneSession.role];
@@ -62,11 +64,12 @@ extern dispatch_group_t fatalExitGroup;
 #pragma mark - Orientation Support
 
 - (UIInterfaceOrientationMask)application:(UIApplication *)application supportedInterfaceOrientationsForWindow:(UIWindow *)window {
-    // ★ [GAME-LANDSCAPE] 启动中/游戏中本层也收窄为仅横屏（与根 VC 层取交集 ⇒ 双保险；
-    //   未锁时返回值与改动前逐字一致）。
+    // ★ [GAME-LANDSCAPE] Also restrict this layer to landscape during launch/in-game (intersection with
+    //   the root VC layer provides a second safeguard; when not locked, the returned value is byte-for-byte
+    //   identical to the pre-change value).
     if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
     // Force landscape only
-    return UIInterfaceOrientationMaskAllButUpsideDown;   // ★ [PORTRAIT] 窗口层放开(游戏页单独锁横屏)
+    return UIInterfaceOrientationMaskAllButUpsideDown;   // ★ [PORTRAIT] Allow all orientations at the window level (the game page locks landscape separately).
 }
 
 @end

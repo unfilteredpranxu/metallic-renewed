@@ -3,15 +3,15 @@
 //  CurseForgeAPIKeyViewController.m
 //  Amethyst
 //
-//  CurseForge API Key 运行时设置页实现
-//  UI 风格：Bento Grid + Material Design 3
+//  CurseForge API Key runtime-settings page implementation
+//  UI style: Bento Grid + Material Design 3
 //
 
-// 必须首先导入 Foundation/UIKit，避免其他头文件中的宏定义与 Objective-C 关键字冲突
+// Import Foundation/UIKit first to avoid macros in other headers conflicting with Objective-C keywords.
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
-// 取消可能存在的 interface 宏定义，避免与 Objective-C 的 @interface 关键字冲突
+// Undefine any existing interface macro to avoid conflicts with Objective-C's @interface keyword.
 #ifdef interface
 #undef interface
 #endif
@@ -22,7 +22,7 @@
 #import "config.h"
 #import "BackgroundManager.h"
 
-/// Material Design 3 主色调（CurseForge 橙色调，与品牌呼应）
+/// Material Design 3 primary color (CurseForge orange, matching the brand).
 static UIColor *CFKMD3PrimaryColor(void) {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -32,12 +32,12 @@ static UIColor *CFKMD3PrimaryColor(void) {
     }];
 }
 
-/// Material Design 3 主色调上的文字颜色（始终白色）
+/// Text color on the Material Design 3 primary color (always white).
 static UIColor *CFKMD3OnPrimaryColor(void) {
     return [UIColor whiteColor];
 }
 
-/// Material Design 3 描边按钮的描边颜色
+/// Stroke color for Material Design 3 outlined buttons.
 static UIColor *CFKMD3OutlineColor(void) {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -47,7 +47,7 @@ static UIColor *CFKMD3OutlineColor(void) {
     }];
 }
 
-/// 卡片背景色（适配深浅色）
+/// Card background color (adapts to light/dark mode).
 static UIColor *CFKCardBackgroundColor(void) {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -57,7 +57,7 @@ static UIColor *CFKCardBackgroundColor(void) {
     }];
 }
 
-/// 卡片描边色
+/// Card stroke color.
 static UIColor *CFKCardBorderColor(void) {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -67,7 +67,7 @@ static UIColor *CFKCardBorderColor(void) {
     }];
 }
 
-/// 页面背景色
+/// Page background color.
 static UIColor *CFKPageBackgroundColor(void) {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -77,7 +77,7 @@ static UIColor *CFKPageBackgroundColor(void) {
     }];
 }
 
-/// 主要文字颜色
+/// Primary text color.
 static UIColor *CFKPrimaryTextColor(void) {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -87,7 +87,7 @@ static UIColor *CFKPrimaryTextColor(void) {
     }];
 }
 
-/// 次要文字颜色
+/// Secondary text color.
 static UIColor *CFKSecondaryTextColor(void) {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -97,7 +97,7 @@ static UIColor *CFKSecondaryTextColor(void) {
     }];
 }
 
-/// 输入框背景色
+/// Input-field background color.
 static UIColor *CFKFieldBackgroundColor(void) {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -107,61 +107,62 @@ static UIColor *CFKFieldBackgroundColor(void) {
     }];
 }
 
-/// 成功状态颜色
+/// Success-state color.
 static UIColor *CFKSuccessColor(void) {
     return [UIColor colorWithRed:0.18 green:0.69 blue:0.45 alpha:1.0];
 }
 
-/// 失败状态颜色
+/// Failure-state color.
 static UIColor *CFKErrorColor(void) {
     return [UIColor colorWithRed:0.86 green:0.27 blue:0.27 alpha:1.0];
 }
 
 @interface CurseForgeAPIKeyViewController () <UITextFieldDelegate>
 
-// 容器与滚动
+// Container and scrolling.
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
 
-// 说明卡片（Bento Grid 风格）
+// Information card (Bento Grid style).
 @property (nonatomic, strong) UIView *infoCardView;
 @property (nonatomic, strong) UILabel *infoTitleLabel;
 @property (nonatomic, strong) UILabel *infoDescLabel;
 
-// 输入区卡片
+// Input-area card.
 @property (nonatomic, strong) UIView *inputCardView;
 @property (nonatomic, strong) UILabel *inputCardTitleLabel;
 @property (nonatomic, strong) UITextField *apiKeyTextField;
 @property (nonatomic, strong) UILabel *sourceHintLabel;
 
-// 按钮区卡片
+// Button-area card.
 @property (nonatomic, strong) UIView *actionCardView;
 @property (nonatomic, strong) UIButton *saveButton;
 @property (nonatomic, strong) UIButton *testButton;
 @property (nonatomic, strong) UIButton *clearButton;
 @property (nonatomic, strong) UIActivityIndicatorView *testActivityIndicator;
 
-// 状态标签
+// Status label.
 @property (nonatomic, strong) UILabel *statusLabel;
 
-// 键盘适配
+// Keyboard adaptation.
 @property (nonatomic, assign) CGFloat keyboardOffset;
 @property (nonatomic, strong) NSLayoutConstraint *scrollViewBottomConstraint;
 
-// 状态
+// State.
 @property (nonatomic, assign) BOOL isTesting;
 
 @end
 
 @implementation CurseForgeAPIKeyViewController
 
-#pragma mark - 生命周期
+#pragma mark - Lifecycle
 
-// ★ [LAND-BUG] 本页由 4 处调用方以 UIModalPresentationFormSheet + UINavigationController 整页弹出
-//   （LauncherPreferencesViewController ×2、DownloadViewController、ServerListViewController）。
-//   iPhone 上 formSheet 会自适应为全屏，而本页原先没有设置任何 navigationItem，
-//   底部「保存」按钮也只保存不 dismiss ⇒ 保存完仍然退不出去。
-//   此处补一个左上「关闭」按钮（模态时注入，push 进入时不注入）。
+// ★ [LAND-BUG] Four callers present this page as a full-screen UIModalPresentationFormSheet +
+//   UINavigationController (LauncherPreferencesViewController ×2, DownloadViewController,
+//   ServerListViewController). On iPhone, formSheet adapts to full screen; this page previously
+//   had no navigationItem and its bottom "Save" button saved without dismissing ⇒ users still
+//   could not leave after saving.
+//   Add a top-left "Close" button here (inject it for modal presentation, not for push navigation).
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     UINavigationController *nav = self.navigationController;
@@ -170,7 +171,7 @@ static UIColor *CFKErrorColor(void) {
         UIBarButtonItem *landBugCloseItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemClose
                                                                                           target:self
                                                                                           action:@selector(landBugCloseTapped)];
-        landBugCloseItem.accessibilityLabel = @"关闭";
+        landBugCloseItem.accessibilityLabel = @"Close";
         self.navigationItem.leftBarButtonItem = landBugCloseItem;
     }
 }
@@ -186,24 +187,25 @@ static UIColor *CFKErrorColor(void) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // 适配自定义启动器背景：将当前视图控制器透明化，使全局背景壁纸能够透出
+    // Adapt to the custom launcher background: make this view controller transparent so the global wallpaper shows through.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
-    self.title = localize(@"preference.title.curseforge_api_key", nil);  // ★ [AUDIT-DECIDE] A-10：硬编码 "CurseForge API Key" → 复用已有键
+    self.title = localize(@"preference.title.curseforge_api_key", nil);  // ★ [AUDIT-DECIDE] A-10: replace hard-coded "CurseForge API Key" with the existing key.
     self.view.backgroundColor = CFKPageBackgroundColor();
 
     [self setupUI];
     [self loadInitialValue];
     [self registerKeyboardNotifications];
 
-    // 监听背景 UI 效果变化通知，当用户切换背景效果（半透明/毛玻璃）时重新应用透明化
+    // Listen for background UI-effect changes and reapply transparency when the user switches
+    // background effects (translucent/frosted glass).
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
                                                object:nil];
 }
 
-/// 背景效果改变时重新应用透明化（由 BackgroundUIEffectChanged 通知触发）
+/// Reapply transparency when the background effect changes (triggered by the BackgroundUIEffectChanged notification).
 - (void)reapplyBackgroundEffect {
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 }
@@ -216,7 +218,7 @@ static UIColor *CFKErrorColor(void) {
     } completion:nil];
 }
 
-#pragma mark - UI 搭建
+#pragma mark - Build UI
 
 - (void)setupUI {
     [self setupScrollView];
@@ -238,7 +240,7 @@ static UIColor *CFKErrorColor(void) {
     _contentView.translatesAutoresizingMaskIntoConstraints = NO;
     [_scrollView addSubview:_contentView];
 
-    // 基础约束（宽度自适应）
+    // Basic constraints (adaptive width).
     _scrollViewBottomConstraint = [_scrollView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor];
     [NSLayoutConstraint activateConstraints:@[
         [_scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
@@ -280,7 +282,7 @@ static UIColor *CFKErrorColor(void) {
 
     _inputCardTitleLabel = [[UILabel alloc] init];
     _inputCardTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _inputCardTitleLabel.text = localize(@"curseforge.api_key", nil);  // ★ [AUDIT-DECIDE] A-10：硬编码 "API Key" → 新增键 curseforge.api_key
+    _inputCardTitleLabel.text = localize(@"curseforge.api_key", nil);  // ★ [AUDIT-DECIDE] A-10: replace hard-coded "API Key" with new key curseforge.api_key.
     _inputCardTitleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
     _inputCardTitleLabel.textColor = CFKPrimaryTextColor();
     [_inputCardView addSubview:_inputCardTitleLabel];
@@ -301,7 +303,7 @@ static UIColor *CFKErrorColor(void) {
     _apiKeyTextField.delegate = self;
     _apiKeyTextField.layer.cornerRadius = 12;
     _apiKeyTextField.layer.cornerCurve = kCACornerCurveContinuous;
-    // 文本左侧留白
+    // Left padding for the text.
     _apiKeyTextField.leftView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 12, 1)];
     _apiKeyTextField.leftViewMode = UITextFieldViewModeAlways;
     _apiKeyTextField.rightView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 12, 1)];
@@ -349,7 +351,7 @@ static UIColor *CFKErrorColor(void) {
     [_contentView addSubview:_statusLabel];
 }
 
-#pragma mark - 卡片与按钮工厂
+#pragma mark - Card and button factories
 
 - (UIView *)makeCardView {
     UIView *card = [[UIView alloc] init];
@@ -388,17 +390,17 @@ static UIColor *CFKErrorColor(void) {
     return button;
 }
 
-#pragma mark - 布局
+#pragma mark - Layout
 
 - (void)installLayoutConstraintsForWidth:(CGFloat)width {
-    // 移除旧约束（如有重建）
+    // Remove old constraints (if rebuilding).
     [self removeConstraintsOnContentView];
 
-    CGFloat horizontalPadding = MAX(16, (width - 600) / 2.0); // 大屏居中限宽
+    CGFloat horizontalPadding = MAX(16, (width - 600) / 2.0); // Center and limit width on large screens.
     CGFloat cardSpacing = 12;
     CGFloat contentPadding = 16;
 
-    // 说明卡片
+    // Information card.
     [NSLayoutConstraint activateConstraints:@[
         [_infoCardView.topAnchor constraintEqualToAnchor:_contentView.topAnchor constant:contentPadding],
         [_infoCardView.leadingAnchor constraintEqualToAnchor:_contentView.leadingAnchor constant:horizontalPadding],
@@ -414,7 +416,7 @@ static UIColor *CFKErrorColor(void) {
         [_infoDescLabel.bottomAnchor constraintEqualToAnchor:_infoCardView.bottomAnchor constant:-16],
     ]];
 
-    // 输入区卡片
+    // Input-area card.
     [NSLayoutConstraint activateConstraints:@[
         [_inputCardView.topAnchor constraintEqualToAnchor:_infoCardView.bottomAnchor constant:cardSpacing],
         [_inputCardView.leadingAnchor constraintEqualToAnchor:_contentView.leadingAnchor constant:horizontalPadding],
@@ -435,7 +437,7 @@ static UIColor *CFKErrorColor(void) {
         [_sourceHintLabel.bottomAnchor constraintEqualToAnchor:_inputCardView.bottomAnchor constant:-16],
     ]];
 
-    // 按钮区卡片
+    // Button-area card.
     [NSLayoutConstraint activateConstraints:@[
         [_actionCardView.topAnchor constraintEqualToAnchor:_inputCardView.bottomAnchor constant:cardSpacing],
         [_actionCardView.leadingAnchor constraintEqualToAnchor:_contentView.leadingAnchor constant:horizontalPadding],
@@ -463,7 +465,7 @@ static UIColor *CFKErrorColor(void) {
         [_saveButton.bottomAnchor constraintEqualToAnchor:_actionCardView.bottomAnchor constant:-16],
     ]];
 
-    // 状态标签
+    // Status label.
     [NSLayoutConstraint activateConstraints:@[
         [_statusLabel.topAnchor constraintEqualToAnchor:_actionCardView.bottomAnchor constant:cardSpacing],
         [_statusLabel.leadingAnchor constraintEqualToAnchor:_contentView.leadingAnchor constant:horizontalPadding + 4],
@@ -473,14 +475,14 @@ static UIColor *CFKErrorColor(void) {
 }
 
 - (void)removeConstraintsOnContentView {
-    // 仅移除与本次布局相关的视图约束（避免重复添加导致冲突）
+    // Remove only view constraints related to this layout (avoid conflicts from duplicate additions).
     NSArray<UIView *> *related = @[_infoCardView, _infoDescLabel, _infoTitleLabel,
                                     _inputCardView, _inputCardTitleLabel, _apiKeyTextField, _sourceHintLabel,
                                     _actionCardView, _saveButton, _testButton, _clearButton, _testActivityIndicator,
                                     _statusLabel];
     for (UIView *v in related) {
         for (NSLayoutConstraint *c in v.constraints) {
-            // 仅移除自身参与的、并指向 _contentView 体系内的约束
+            // Remove only constraints involving this view and targeting the _contentView hierarchy.
             if (c.firstAttribute != NSLayoutAttributeWidth && c.firstAttribute != NSLayoutAttributeHeight) {
                 [v removeConstraint:c];
             }
@@ -489,7 +491,7 @@ static UIColor *CFKErrorColor(void) {
     for (UIView *v in related) {
         [v removeFromSuperview];
     }
-    // 重新加回 contentView（保持引用与层级）
+    // Add back to contentView (preserve references and hierarchy).
     [_contentView addSubview:_infoCardView];
     [_infoCardView addSubview:_infoTitleLabel];
     [_infoCardView addSubview:_infoDescLabel];
@@ -509,10 +511,10 @@ static UIColor *CFKErrorColor(void) {
     [self installLayoutConstraintsForWidth:width];
 }
 
-#pragma mark - 初始值加载
+#pragma mark - Load initial value
 
 - (void)loadInitialValue {
-    // 优先级：运行时偏好 -> 编译时宏 -> Info.plist
+    // Priority: runtime preference -> compile-time macro -> Info.plist.
     NSString *runtimeKey = [PLPreferences curseForgeAPIKey];
     NSString *compiledKey = @CONFIG_CURSEFORGE_API_KEY;
     if ([compiledKey isEqualToString:@"nil"]) {
@@ -525,7 +527,7 @@ static UIColor *CFKErrorColor(void) {
     NSString *displayKey = runtimeKey.length > 0 ? runtimeKey : (compiledKey.length > 0 ? compiledKey : infoPlistKey);
     _apiKeyTextField.text = displayKey;
 
-    // 显示来源提示
+    // Show source hint.
     NSString *sourceHint;
     if (runtimeKey.length > 0) {
         sourceHint = localize(@"i18n_str_90", nil);
@@ -539,7 +541,7 @@ static UIColor *CFKErrorColor(void) {
     _sourceHintLabel.text = sourceHint;
 }
 
-#pragma mark - 按钮事件
+#pragma mark - Button actions
 
 - (void)saveButtonTapped {
     NSString *key = [_apiKeyTextField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -554,7 +556,7 @@ static UIColor *CFKErrorColor(void) {
 
 - (void)clearButtonTapped {
     [PLPreferences setCurseForgeAPIKey:nil];
-    // 清空后回显到编译时默认值，便于用户参考
+    // After clearing, display the compile-time default as a reference for the user.
     NSString *compiledKey = @CONFIG_CURSEFORGE_API_KEY;
     if ([compiledKey isEqualToString:@"nil"]) {
         compiledKey = @"";
@@ -568,7 +570,7 @@ static UIColor *CFKErrorColor(void) {
     if (_isTesting) {
         return;
     }
-    // 1. 先保存当前输入的 Key 到偏好
+    // 1. Save the currently entered key to preferences.
     NSString *key = [_apiKeyTextField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     [PLPreferences setCurseForgeAPIKey:key.length > 0 ? key : nil];
 
@@ -579,7 +581,7 @@ static UIColor *CFKErrorColor(void) {
 
     [self beginTesting];
 
-    // 2. 用 sharedInstance 发起一次轻量搜索（pageSize=1）
+    // 2. Use sharedInstance to run a lightweight search (pageSize=1).
     NSDictionary *filters = @{
         @"projectType": @"mod",
         @"query": @"",
@@ -600,13 +602,13 @@ static UIColor *CFKErrorColor(void) {
             } else {
                 [strongSelf setStatusText:localize(@"i18n_str_100", nil) success:NO];
             }
-            // 重新刷新来源提示（保存后状态可能变化）
+            // Refresh the source hint (the state may have changed after saving).
             [strongSelf loadInitialValue];
         });
     }];
 }
 
-#pragma mark - 测试状态
+#pragma mark - Test status
 
 - (void)beginTesting {
     _isTesting = YES;
@@ -648,11 +650,11 @@ static UIColor *CFKErrorColor(void) {
 }
 
 - (void)textFieldDidEndEditing:(UITextField *)textField {
-    // 即时刷新来源提示
+    // Refresh the source hint immediately.
     [self loadInitialValue];
 }
 
-#pragma mark - 键盘适配
+#pragma mark - Keyboard adaptation
 
 - (void)registerKeyboardNotifications {
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -669,7 +671,7 @@ static UIColor *CFKErrorColor(void) {
     NSValue *endFrameValue = notification.userInfo[UIKeyboardFrameEndUserInfoKey];
     CGRect endFrame = [endFrameValue CGRectValue];
     NSTimeInterval duration = [notification.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
-    // 转换到当前视图坐标系
+    // Convert to the current view's coordinate system.
     CGRect converted = [self.view convertRect:endFrame fromView:nil];
     CGFloat overlap = MAX(0, self.view.bounds.size.height - converted.origin.y);
     _keyboardOffset = overlap;
@@ -683,7 +685,7 @@ static UIColor *CFKErrorColor(void) {
 }
 
 - (void)updateScrollViewBottomWithOffset:(CGFloat)offset duration:(NSTimeInterval)duration {
-    // 当键盘弹出时，将 scrollView 底部上移，避免输入框被遮挡
+    // Move the scrollView bottom up when the keyboard appears to prevent the input field from being covered.
     [self.view layoutIfNeeded];
     self.scrollViewBottomConstraint.constant = -offset;
     [UIView animateWithDuration:duration animations:^{

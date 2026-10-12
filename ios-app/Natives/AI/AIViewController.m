@@ -13,10 +13,10 @@
 #import "BackgroundManager.h"
 #import "LauncherPreferences.h"
 #import "AISessionListViewController.h"
-#import "utils.h"   // ★ [HOST-BUG-A] 统一取词 localize()
+#import "utils.h"   // ★ [HOST-BUG-A] Use localize() consistently
 #import "AIProviderConfigViewController.h"
 
-/// 流式 UI 刷新节流阈值，避免 Markdown 反复重算
+/// Streaming UI refresh throttle threshold; avoids repeated Markdown recalculation
 static const NSTimeInterval kUIThrottleInterval = 0.2;
 
 @interface AIViewController () <UITableViewDataSource, UITableViewDelegate>
@@ -27,7 +27,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
 @property (nonatomic, assign) NSTimeInterval lastStreamUpdateTime;
 @property (nonatomic, strong) UIActivityIndicatorView *activityIndicator;
 
-// 空态视图
+// Empty-state view
 @property (nonatomic, strong) UIView *emptyStateView;
 @property (nonatomic, strong) UIImageView *emptyIcon;
 @property (nonatomic, strong) UILabel *emptyTitle;
@@ -37,7 +37,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
 
 @implementation AIViewController
 
-#pragma mark - 初始化
+#pragma mark - Initialization
 
 - (instancetype)initWithSession:(AiSession *)session {
     self = [super init];
@@ -50,20 +50,20 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    // 懒创建会话
+    // Lazily create a session
     if (!self.session) {
         self.session = [[AiSessionStore sharedStore] newSession];
         [[AiSessionStore sharedStore] updateSession:self.session];
     }
     if (self.session.title.length == 0) {
-        self.session.title = localize(@"ai.assistant.title", @"AI 助手");
+        self.session.title = localize(@"ai.assistant.title", @"AI Assistant");
     }
 
-    // 浅色背景（内容区整体毛玻璃由外层 BackgroundManager 提供），不加额外毛玻璃
+    // Light background (the outer BackgroundManager provides blur for the entire content area); do not add extra blur
     self.view.backgroundColor = [[UIColor labelColor] colorWithAlphaComponent:0.04];
-    // ★ [PAGE-GLASS] 与同族三页(AISessionList / AIProviderConfig / AISystemPromptEditor)完全一致:
-    //   调色底之后再交给全局界面风格层 —— iOS≥26 系统液态玻璃、<26 系统原生材质。
-    //   原先本页是【唯一】不调用风格层的 AI 页 ⇒ 会话页背景与其余 AI 页/设置页不一致。
+    // ★ [PAGE-GLASS] Match the three related pages (AISessionList / AIProviderConfig / AISystemPromptEditor):
+    //   after applying the tint, let the global interface style layer handle the background — system Liquid Glass on iOS≥26, native material on earlier versions.
+    //   This page was previously the only AI page that did not use the style layer ⇒ its background differed from other AI pages and Settings.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
     self.navigationItem.title = self.session.title;
@@ -75,15 +75,15 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     [self updateModelLabel];
     [self updateEmptyState];
 
-    // 监听会话消息变更通知：AiAgent 在 tool_calls / tool 结果消息追加后发出（object=session），
-    // 收到后即时整表刷新，保证「assistant tool_calls → tool 结果 → 下一轮回复」按序显示。
+    // Observe session message-change notifications, sent by AiAgent after appending tool_calls / tool result messages (object=session),
+    // and immediately reload the table so "assistant tool_calls → tool result → next response" appear in order.
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(handleSessionMessagesChanged:)
                                                  name:@"AiSessionMessagesDidChangeNotification"
                                                object:nil];
 }
 
-/// 会话消息变更通知回调：仅当通知携带的正是当前会话时才整表刷新并滚底
+/// Session message-change notification callback: reload the table and scroll to the bottom only if the notification is for the current session
 - (void)handleSessionMessagesChanged:(NSNotification *)note {
     if (note.object && ![note.object isEqual:self.session]) return;
     [self reloadAndScrollToBottom];
@@ -96,7 +96,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    // 进入会话页滚动到底；无动画避免进场跳动。空会话不滚动。
+    // Scroll to the bottom when entering a session; no animation to avoid a jump on appearance. Do not scroll for an empty session.
     if (self.session.messages.count > 0) {
         [self scrollToBottomAnimated:NO];
     }
@@ -105,13 +105,13 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
 #pragma mark - Nav Bar
 
 - (void)setupNavBar {
-    // 右侧「会话」图标（Phase 2 接入会话列表，本期占位）
+    // Right-side "Sessions" icon (placeholder for Phase 2 session list integration)
     UIBarButtonItem *sessionsItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"rectangle.stack.badge.person.crop"]
                                                                      style:UIBarButtonItemStylePlain
                                                                     target:self
                                                                     action:@selector(sessionsAction)];
     self.navigationItem.rightBarButtonItem = sessionsItem;
-    // 返回键由导航栈提供，不需要额外设置
+    // The navigation stack provides the Back button; no additional setup is needed
 }
 
 - (void)sessionsAction {
@@ -139,17 +139,17 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     }
 }
 
-/// 切换到指定会话并刷新界面
+/// Switch to the specified session and refresh the interface
 - (void)switchToSession:(AiSession *)session {
     if (!session) return;
     self.session = session;
-    NSString *title = session.title.length > 0 ? session.title : localize(@"ai.assistant.title", @"AI 助手");
+    NSString *title = session.title.length > 0 ? session.title : localize(@"ai.assistant.title", @"AI Assistant");
     self.navigationItem.title = title;
     [self reloadAndScrollToBottom];
     [self updateEmptyState];
 }
 
-/// 进入提供商配置页
+/// Open the provider configuration page
 - (void)presentProviderConfig {
     AIProviderConfigViewController *vc = [[AIProviderConfigViewController alloc] init];
     if (self.navigationController) {
@@ -161,10 +161,10 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     }
 }
 
-#pragma mark - 布局
+#pragma mark - Layout
 
 - (void)setupUI {
-    // 表格
+    // Table
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
     self.tableView.dataSource = self;
@@ -177,7 +177,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     [self.tableView registerClass:[AIMessageCell class] forCellReuseIdentifier:@"AIMessageCell"];
     [self.view addSubview:self.tableView];
 
-    // 底部输入栏
+    // Bottom input bar
     self.inputBar = [[AIInputBarView alloc] init];
     [self.view addSubview:self.inputBar];
     self.inputBar.bottomInset = self.view.safeAreaInsets.bottom;
@@ -196,7 +196,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
         [strongSelf handleModelTap];
     };
 
-    // 空态视图
+    // Empty-state view
     [self setupEmptyState];
 
     self.inputBarBottomConstraint = [self.inputBar.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
@@ -211,7 +211,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
         self.inputBarBottomConstraint,
     ]];
 
-    // loading 指示器：用于发送消息时的加载反馈（简单实现）
+    // Loading indicator: simple loading feedback when sending a message
     self.activityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
     self.activityIndicator.translatesAutoresizingMaskIntoConstraints = NO;
     self.activityIndicator.hidesWhenStopped = YES;
@@ -224,7 +224,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
 
 - (void)viewSafeAreaInsetsDidChange {
     [super viewSafeAreaInsetsDidChange];
-    // 旋转/分屏等导致安全区变化时同步输入栏底部垫高
+    // Keep the input bar's bottom inset in sync when rotation/split-screen changes the safe area
     self.inputBar.bottomInset = self.view.safeAreaInsets.bottom;
 }
 
@@ -235,8 +235,8 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     self.emptyStateView.backgroundColor = [UIColor clearColor];
     [self.view addSubview:self.emptyStateView];
 
-    // 关键修复（空态图标显示成一串英文字母）：原为 UILabel 却填入 SF Symbol 名（"sparkles"）
-    // 导致显示成文字。改为 UIImageView + systemImageNamed: 真正渲染图标。
+    // Important fix (empty-state icon appeared as a string of letters): it was a UILabel filled with an SF Symbol name ("sparkles"),
+    // so it displayed as text. Use UIImageView + systemImageNamed: to render the icon properly.
     self.emptyIcon = [[UIImageView alloc] init];
     self.emptyIcon.translatesAutoresizingMaskIntoConstraints = NO;
     self.emptyIcon.contentMode = UIViewContentModeScaleAspectFit;
@@ -265,9 +265,9 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     self.configureButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.configureButton.hidden = YES;
     self.configureButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
-    [self.configureButton setTitle:@"去配置" forState:UIControlStateNormal];
+    [self.configureButton setTitle:@"Configure" forState:UIControlStateNormal];
     [self.configureButton addTarget:self action:@selector(configureAction) forControlEvents:UIControlEventTouchUpInside];
-    // 胶囊按钮
+    // Capsule button
     self.configureButton.backgroundColor = [accentColor() colorWithAlphaComponent:0.15];
     self.configureButton.layer.cornerRadius = 16;
     self.configureButton.layer.cornerCurve = kCACornerCurveContinuous;
@@ -300,7 +300,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     ]];
 }
 
-#pragma mark - 键盘
+#pragma mark - Keyboard
 
 - (void)setupKeyboardObservers {
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -320,7 +320,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     CGFloat overlap = self.view.bounds.size.height - converted.origin.y;
     if (overlap < 0) overlap = 0;
     self.inputBarBottomConstraint.constant = -overlap;
-    // 输入框底部锚定 view.bottomAnchor，键盘弹起时底部安全区消失，直接抬升即可
+    // The input field's bottom is anchored to view.bottomAnchor; the bottom safe area disappears when the keyboard appears, so simply lift it
     [self animateLayoutWithUserInfo:userInfo];
     [self scrollToBottomAnimated:YES];
 }
@@ -337,7 +337,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     }];
 }
 
-#pragma mark - 模型 / 提供商
+#pragma mark - Model / provider
 
 - (AiProvider *)currentProvider {
     return [[AiProviderStore sharedStore] selectedProvider];
@@ -346,25 +346,25 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
 - (void)updateModelLabel {
     AiProvider *provider = [self currentProvider];
     if (provider && provider.name.length > 0) {
-        NSString *model = provider.model.length > 0 ? provider.model : @"默认模型";
+        NSString *model = provider.model.length > 0 ? provider.model : @"Default Model";
         self.inputBar.modelLabel.text = [NSString stringWithFormat:@"%@ / %@", provider.name, model];
         self.inputBar.modelLabel.textColor = [UIColor labelColor];
     } else {
-        self.inputBar.modelLabel.text = @"未配置 AI 提供商";
+        self.inputBar.modelLabel.text = @"No AI Provider Configured";
         self.inputBar.modelLabel.textColor = [UIColor secondaryLabelColor];
     }
 }
 
 - (void)handleModelTap {
-    // Phase 2：点击模型标签直接进入提供商配置页（切换/配置服务）
+    // Phase 2: tap the model label to open the provider configuration page (switch/configure service)
     [self presentProviderConfig];
 }
 
 - (void)showConfigureHint {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"尚未配置 AI 提供商"
-                                                                    message:@"请在设置 → AI 助手 中配置 API 服务。"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"No AI Provider Configured"
+                                                                    message:@"Configure the API service in Settings → AI Assistant."
                                                              preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleDefault handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
 
@@ -372,7 +372,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     [self presentProviderConfig];
 }
 
-#pragma mark - 发送 / 停止
+#pragma mark - Send / stop
 
 - (void)handleSend:(NSString *)text {
     NSString *trimmed = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -387,7 +387,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     [self.inputBar clearText];
     [self.inputBar setIsSending:YES];
 
-    // 发送流程：AiAgent 会追加用户消息 + 助手占位消息并处理持久化
+    // Send flow: AiAgent appends the user message + assistant placeholder and handles persistence
     __weak typeof(self) weakSelf = self;
     [[AiAgent sharedAgent] sendUserMessage:trimmed
                                    session:self.session
@@ -400,7 +400,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     } completionHandler:^(NSError *error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-        // 关键修复（发送消息崩溃）：completionHandler 同样来自后台队列，UI 更新须回主线程
+        // Important fix (crash when sending a message): completionHandler also runs on a background queue; UI updates must run on the main thread
         dispatch_async(dispatch_get_main_queue(), ^{
             [strongSelf.inputBar setIsSending:NO];
             [strongSelf.activityIndicator stopAnimating];
@@ -413,24 +413,24 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
         });
     }];
 
-    // 关键修复（发送后用户消息不立即显示）：sendUserMessage 已同步把用户消息与助手占位
-    // 追加进 session.messages，此刻再 reloadData 即可让用户消息立即显示；此前在调用前刷新，
-    // 用户消息尚未加入，只有等首个 AI chunk 到来才显示。
+    // Important fix (user message did not appear immediately after sending): sendUserMessage synchronously appends the user message and assistant placeholder
+    // to session.messages, so calling reloadData now displays the user message immediately. Previously the table was refreshed before the call,
+    // before the user message had been added, so it did not appear until the first AI chunk arrived.
     [self reloadAndScrollToBottom];
-    // 首条消息发送后欢迎语立即消失：用户消息已同步加入 session.messages，立刻刷新空态。
+    // Hide the welcome text immediately after the first message is sent: the user message is synchronously added to session.messages, so refresh the empty state now.
     [self updateEmptyState];
 }
 
-/// 节流刷新正在流式生成的最后一条助手消息
+/// Throttled refresh of the last assistant message currently being streamed
 - (void)updateStreamingCell {
     NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
     if ((now - self.lastStreamUpdateTime) < kUIThrottleInterval) return;
     self.lastStreamUpdateTime = now;
 
-    // 关键修复（发送消息崩溃）：chunkHandler 由 AiAPIClient 的后台 dispatch 队列回调，
-    // 但 UITableView 只能在主线程更新。原实现直接在回调线程 reloadRows 导致 UIKit 断言崩溃。
-    // 这里统一派发到主线程，且行数与数据源不一致时用 reloadData 同步（避免 reloadRows
-    // 触发 "invalid update: invalid number of rows"）。
+    // Important fix (crash when sending a message): chunkHandler is called on AiAPIClient's background dispatch queue,
+    // but UITableView can only be updated on the main thread. The previous implementation called reloadRows directly on the callback thread, causing a UIKit assertion crash.
+    // Always dispatch to the main thread here, and use reloadData to synchronize when the row count differs from the data source
+    // (preventing reloadRows from triggering "invalid update: invalid number of rows").
     dispatch_async(dispatch_get_main_queue(), ^{
         __strong typeof(self) strongSelf = self;
         if (!strongSelf) return;
@@ -439,7 +439,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
         if (modelCount == 0) return;
         NSInteger tableCount = [strongSelf.tableView numberOfRowsInSection:0];
 
-        // 从末尾向前找第一条 streaming==YES 的流式占位消息；找不到则整表刷新
+        // Search backward for the first streaming==YES placeholder message; reload the whole table if none is found
         NSInteger streamingRow = NSNotFound;
         for (NSInteger i = modelCount - 1; i >= 0; i--) {
             AiMessage *m = strongSelf.session.messages[i];
@@ -450,10 +450,10 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
         }
 
         if (streamingRow == NSNotFound) {
-            // 没有流式占位行：整表刷新兜底
+            // No streaming placeholder row: fall back to reloading the entire table
             [strongSelf.tableView reloadData];
         } else if (modelCount != tableCount) {
-            // 数据源已新增行但表尚未同步：整表刷新让行数一致
+            // Data source has a new row but the table is not synchronized yet: reload the entire table to align row counts
             [strongSelf.tableView reloadData];
         } else {
             NSIndexPath *idx = [NSIndexPath indexPathForRow:streamingRow inSection:0];
@@ -470,7 +470,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     [self reloadAndScrollToBottom];
 }
 
-#pragma mark - 表格
+#pragma mark - Table
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     return 1;
@@ -494,7 +494,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     return [AIMessageCell cellHeightForMessage:message width:tableView.bounds.size.width markdownEnabled:md];
 }
 
-#pragma mark - 空态
+#pragma mark - Empty state
 
 - (void)updateEmptyState {
     if (!self.emptyStateView) return;
@@ -502,24 +502,24 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
     BOOL hasMessages = self.session.messages.count > 0;
 
     if (!hasProvider) {
-        // 未配置提供商：无论是否已有消息都显示配置引导
+        // Provider is not configured: show setup guidance regardless of whether there are messages
         self.emptyStateView.hidden = NO;
         self.emptyIcon.image = [UIImage systemImageNamed:@"gearshape.2" withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:56 weight:UIImageSymbolWeightRegular]];
-        self.emptyTitle.text = @"尚未配置 AI 提供商";
-        self.emptySubtitle.text = @"请到 设置 → AI 助手 配置 API 服务";
+        self.emptyTitle.text = @"No AI Provider Configured";
+        self.emptySubtitle.text = @"Go to Settings → AI Assistant to configure the API service";
         self.configureButton.hidden = NO;
     } else if (!hasMessages) {
         self.emptyStateView.hidden = NO;
         self.emptyIcon.image = [UIImage systemImageNamed:@"sparkles" withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:56 weight:UIImageSymbolWeightRegular]];
-        self.emptyTitle.text = @"和 AI 助手打个招呼吧";
-        self.emptySubtitle.text = @"向 Air 询问启动器问题或 Minecraft 知识";
+        self.emptyTitle.text = @"Say hello to the AI assistant";
+        self.emptySubtitle.text = @"Ask Air about the launcher or Minecraft";
         self.configureButton.hidden = YES;
     } else {
         self.emptyStateView.hidden = YES;
     }
 }
 
-#pragma mark - 辅助
+#pragma mark - Helpers
 
 - (void)reloadAndScrollToBottom {
     [self.tableView reloadData];
@@ -534,10 +534,10 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
 }
 
 - (void)showErrorAlert:(NSError *)error {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"请求失败"
-                                                                    message:error.localizedDescription ?: @"未知错误"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Request Failed"
+                                                                    message:error.localizedDescription ?: @"Unknown error"
                                                              preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleDefault handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
 

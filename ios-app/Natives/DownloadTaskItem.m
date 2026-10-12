@@ -10,7 +10,8 @@ NSString * const DownloadTaskResourceTypeModpack      = @"modpack";
 NSString * const DownloadTaskResourceTypeWorld        = @"world";
 NSString * const DownloadTaskResourceTypeJavaRuntime  = @"javaruntime";
 
-/// 快照取值辅助：仅接受非空 NSString，否则返回兜底值（快照内容不可信，需类型清洗）
+/// Snapshot-value helper: accept only a non-empty NSString; otherwise return a fallback value
+/// (snapshot contents are untrusted and must be type-checked).
 static NSString *PLSnapshotString(id value, NSString *fallback) {
     if ([value isKindOfClass:[NSString class]] && [(NSString *)value length] > 0) {
         return value;
@@ -57,7 +58,7 @@ static NSString *PLSnapshotString(id value, NSString *fallback) {
     return self;
 }
 
-#pragma mark - 阶段化进度
+#pragma mark - Staged progress
 
 - (PLTaskStage *)currentStage {
     if (self.currentStageIndex < 0) return nil;
@@ -67,10 +68,10 @@ static NSString *PLSnapshotString(id value, NSString *fallback) {
     return [stage isKindOfClass:[PLTaskStage class]] ? stage : nil;
 }
 
-#pragma mark - 快照序列化
+#pragma mark - Snapshot serialization
 
 - (NSDictionary *)snapshotDictionary {
-    // 阶段快照逐项导出（stages 为空数组时序列化为空列表）
+    // Export each stage snapshot (serialize an empty list when stages is empty).
     NSMutableArray<NSDictionary *> *stageSnapshots = [NSMutableArray array];
     for (PLTaskStage *stage in self.stages) {
         if ([stage isKindOfClass:[PLTaskStage class]]) {
@@ -115,7 +116,7 @@ static NSString *PLSnapshotString(id value, NSString *fallback) {
                                iconURL:PLSnapshotString(iconURL, nil)];
     if (!self) return nil;
 
-    // 沿用原 taskId（保持与持久化快照/断点数据文件的对应关系）
+    // Retain the original taskId (preserve its association with the persisted snapshot/resume-data file).
     _taskId = [taskId copy];
     _state = [snapshot[@"state"] integerValue];
     _progress = [snapshot[@"progress"] doubleValue];
@@ -139,7 +140,8 @@ static NSString *PLSnapshotString(id value, NSString *fallback) {
         _createdDate = [NSDate dateWithTimeIntervalSince1970:timestamp.doubleValue];
     }
 
-    // 阶段列表（旧版快照无 stages 字段：保持空数组，回退纯进度展示，不崩溃）
+    // Stage list (older snapshots have no stages field: keep it empty, fall back to plain progress
+    // display, and avoid a crash).
     NSArray *stageSnapshots = snapshot[@"stages"];
     if ([stageSnapshots isKindOfClass:[NSArray class]]) {
         NSMutableArray *stages = [NSMutableArray array];
@@ -152,7 +154,8 @@ static NSString *PLSnapshotString(id value, NSString *fallback) {
     } else {
         _stages = @[];
     }
-    // currentStageIndex 越界（含空阶段列表）一律回退 -1，避免 UI 数组越界访问
+    // If currentStageIndex is out of range (including an empty stage list), fall back to -1 to
+    // prevent out-of-bounds UI array access.
     NSInteger stageIndex = [snapshot[@"currentStageIndex"] integerValue];
     _currentStageIndex = (stageIndex >= 0 && (NSUInteger)stageIndex < _stages.count) ? stageIndex : -1;
     return self;

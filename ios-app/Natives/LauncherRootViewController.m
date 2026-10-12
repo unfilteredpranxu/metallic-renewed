@@ -1211,9 +1211,9 @@ static const CGFloat kPortraitCardCorner      = 16.0;   // 竖屏底部卡圆角
     //   必须跟着锁横屏；否则「启动中/加载中」这一段时间会竖过来。
     //   状态由 AmeGameLandscapeLockEnter/Exit 维护（幂等同拍），此处只读。
     if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
-    // ★ [PORTRAIT] 放开竖屏:原来是写死 Landscape ⇒ 竖屏进不去。
-    // 竖屏排布由 LauncherCardLayoutViewController 切换(三卡竖摞 + 菜单横排);
-    // 游戏(SurfaceViewController)单独锁横屏,保证游戏内不会竖过来。
+    // ★ [PORTRAIT] Allow portrait orientation: it was previously hardcoded to Landscape, preventing portrait mode.
+    // LauncherCardLayoutViewController switches to a portrait layout (three stacked cards + horizontal menu);
+    // the game (SurfaceViewController) remains separately locked to landscape.
     // ★ [PORTRAIT] 游戏页锁横屏:窗口层已放开竖屏(SceneDelegate/AppDelegate),
     //   若当前内容是游戏(SurfaceViewController,可能在导航栈里),这里必须把它锁回横屏,
     //   否则游戏内会跟着竖过来。启动器各页则允许竖屏。

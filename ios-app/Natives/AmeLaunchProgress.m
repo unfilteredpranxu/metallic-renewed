@@ -1,15 +1,17 @@
 //
 //  AmeLaunchProgress.m
-//  ★ [LAUNCH-PROGRESS] 启动阶段上报 API 的实现
+//  ★ [LAUNCH-PROGRESS] Implementation of the launch-stage reporting API
 //
-//  只做三件事：存状态、加锁、广播。不引用任何启动器内部逻辑，便于单独演进。
+//  Does only three things: store state, lock, and broadcast. It does not depend on launcher internals,
+//  so it can evolve independently.
 //
 
 #import "AmeLaunchProgress.h"
 
-// 每个阶段的「起始比例」：阶段推进时，进度条跳到该比例。
-// 单调递增，Completed = 1.0。数值是经验值：前段（环境 / JIT / 渲染器解析）
-// 很快，真正耗时在最后「等待游戏画面」，所以给它留了较大的区间（0.90 → 1.00）。
+// Starting fraction for each stage: the progress bar jumps to this fraction when a stage begins.
+// Monotonically increasing; Completed = 1.0. These are empirical values: the early stages
+// (environment / JIT / renderer resolution) are fast, while the final "wait for game frame" takes
+// the most time, so it gets a larger range (0.90 → 1.00).
 static double const kAmeStageFractions[] = {
     0.00,  // AmeLaunchStagePrepareEnv
     0.10,  // AmeLaunchStageJITReady
@@ -23,13 +25,13 @@ static double const kAmeStageFractions[] = {
 
 NSNotificationName const AmeLaunchProgressChangedNotification = @"AmeLaunchProgressChanged";
 
-// ---- 内部状态（受 sAmeLock 保护） ----
+// ---- Internal state (protected by sAmeLock) ----
 static NSLock *sAmeLock = nil;
 static AmeLaunchStage sAmeStage = AmeLaunchStagePrepareEnv;
 static double sAmeFraction = 0.0;
 static NSString *sAmeKey = nil;
 
-/// 惰性建锁。dispatch_once 本身线程安全，任意线程首调都安全。
+/// Lazily create the lock. dispatch_once is thread-safe, so the first call is safe on any thread.
 static NSLock *AmeLaunchProgressLock(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -38,7 +40,7 @@ static NSLock *AmeLaunchProgressLock(void) {
     return sAmeLock;
 }
 
-/// 统一在主队列广播，订阅方（UI）无须自己切线程。
+/// Always broadcast on the main queue, so subscribers (the UI) do not need to switch threads.
 static void AmeLaunchProgressPostChanged(void) {
     dispatch_async(dispatch_get_main_queue(), ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:AmeLaunchProgressChangedNotification
@@ -62,7 +64,7 @@ void AmeLaunchProgressReset(void) {
 
 void AmeLaunchProgressSetStage(AmeLaunchStage stage) {
     if (stage < 0 || stage >= AmeLaunchProgressStageCount()) {
-        return;   // 越界忽略，防御性：上报点写崩也不要连累启动流程
+        return;   // Ignore out-of-range values defensively; a broken reporting call must not disrupt launch.
     }
     NSLock *lock = AmeLaunchProgressLock();
     [lock lock];
@@ -79,7 +81,7 @@ void AmeLaunchProgressReport(NSString *key, double fraction) {
     NSLock *lock = AmeLaunchProgressLock();
     [lock lock];
     sAmeFraction = fraction;
-    sAmeKey = [key copy];   // key 可为 nil
+    sAmeKey = [key copy];   // key may be nil
     [lock unlock];
     AmeLaunchProgressPostChanged();
 }

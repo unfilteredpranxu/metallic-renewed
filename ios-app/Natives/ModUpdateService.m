@@ -3,7 +3,7 @@
 #import "installer/modpack/CurseForgeAPI.h"
 #import "CurseForgeMurmurHash.h"
 
-#pragma mark - ModUpdateResult 实现
+#pragma mark - ModUpdateResult implementation
 
 @implementation ModUpdateResult
 
@@ -17,17 +17,17 @@
     return self;
 }
 
-/// 是否有可用更新：候选版本列表非空即视为有更新
+/// Whether an update is available: a nonempty candidate-version list means an update exists.
 - (BOOL)hasUpdate {
     return self.candidateVersions.count > 0;
 }
 
 @end
 
-#pragma mark - ModUpdateService 实现
+#pragma mark - ModUpdateService implementation
 
 @interface ModUpdateService ()
-/// 并发反查使用的串行队列（仅用于隔离双源任务派发）
+/// Serial queue used for concurrent reverse lookups (only isolates dispatch to both sources).
 @property (nonatomic, strong) dispatch_queue_t lookupQueue;
 @end
 
@@ -45,60 +45,60 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        // 使用全局并发队列派发反查任务，这里仅作为标识保留
+        // Reverse-lookup tasks use the global concurrent queue; keep this only as an identifier.
         _lookupQueue = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
     }
     return self;
 }
 
-#pragma mark - 单个 Mod 更新检查（双源抢答）
+#pragma mark - Check a single mod for updates (race both sources)
 
 - (void)checkUpdateForMod:(ModItem *)mod
               gameVersion:(NSString *)gameVersion
                    loader:(nullable NSString *)loader
               projectType:(NSString *)projectType
                completion:(void (^)(ModUpdateResult *_Nullable result))completion {
-    // 参数校验：必须有本地文件路径
+    // Validate parameters: a local file path is required.
     if (!mod || mod.filePath.length == 0) {
         [self callCompletionOnMain:nil completion:completion];
         return;
     }
 
-    // 共享状态：用于双源抢答的同步控制
+    // Shared state: synchronization for racing the two sources.
     NSObject *lock = [[NSObject alloc] init];
-    __block BOOL resolved = NO;            // 是否已经决定（命中或两个源都失败）
-    __block BOOL modrinthDone = NO;        // Modrinth 反查是否完成
-    __block BOOL curseforgeDone = NO;      // CurseForge 反查是否完成
-    __block NSMutableDictionary *winnerResult = nil;  // 命中源返回的项目字典
-    __block NSNumber *winnerSource = nil;              // 命中源（1=Modrinth, 2=CurseForge）
+    __block BOOL resolved = NO;            // Whether a decision has been made (a match or both sources failed).
+    __block BOOL modrinthDone = NO;        // Whether the Modrinth reverse lookup finished.
+    __block BOOL curseforgeDone = NO;      // Whether the CurseForge reverse lookup finished.
+    __block NSMutableDictionary *winnerResult = nil;  // Project dictionary from the winning source.
+    __block NSNumber *winnerSource = nil;              // Winning source (1=Modrinth, 2=CurseForge).
 
-    // 抢答核心逻辑：任一源返回非空即采用，若先返回者为空则等待另一源
+    // Race logic: use the first nonempty result; if the first result is empty, wait for the other source.
     void (^tryResolve)(NSMutableDictionary *_Nullable, NSNumber *) = ^(NSMutableDictionary *_Nullable result, NSNumber *source) {
         @synchronized(lock) {
-            // 已决定则直接丢弃后到的结果（软取消）
+            // If already resolved, discard the late result (soft cancellation).
             if (resolved) return;
 
             if (result && result.count > 0) {
-                // 命中：采用该源结果
+                // Match: use this source's result.
                 resolved = YES;
                 winnerResult = result;
                 winnerSource = source;
             } else {
-                // 当前源未命中，检查是否两个源都已完成
+                // No match from this source; check whether both sources have finished.
                 if (modrinthDone && curseforgeDone) {
-                    // 两个源都未命中，整体失败
+                    // Neither source matched; overall failure.
                     resolved = YES;
                 }
             }
         }
 
-        // 在锁外判断是否需要继续推进（避免持锁回调）
+        // Determine whether to continue outside the lock (avoid callbacks while holding the lock).
         BOOL shouldFetch = NO;
         BOOL shouldFail = NO;
         @synchronized(lock) {
             if (winnerResult && [winnerSource isEqual:source]) {
                 shouldFetch = YES;
-                // 取一次后清空，避免重复触发
+                // Take the result once and clear it to prevent duplicate callbacks.
                 winnerSource = nil;
             } else if (resolved && !winnerResult) {
                 shouldFail = YES;
@@ -106,7 +106,7 @@
         }
 
         if (shouldFetch) {
-            // 命中后拉取该项目全部版本列表
+            // After a match, fetch all versions for the project.
             [self fetchVersionsAndBuildResultWithProjectDict:result
                                                        source:source
                                                           mod:mod
@@ -115,16 +115,16 @@
                                                   projectType:projectType
                                                    completion:completion];
         } else if (shouldFail) {
-            // 两个源都未命中，主线程回调 nil
+            // Neither source matched; call back with nil on the main thread.
             [self callCompletionOnMain:nil completion:completion];
         }
     };
 
-    // Modrinth 反查：使用 mod.fileSHA1（同步方法，放到后台队列执行）
+    // Modrinth reverse lookup: use mod.fileSHA1 (synchronous method; run on a background queue).
     dispatch_async(self.lookupQueue, ^{
         @autoreleasepool {
             NSMutableDictionary *r = nil;
-            // Modrinth 必须依赖 fileSHA1
+            // Modrinth requires fileSHA1.
             if (mod.fileSHA1.length > 0) {
                 @try {
                     r = [[ModrinthAPI sharedInstance] projectForFileHash:mod.fileSHA1 projectType:projectType];
@@ -139,9 +139,9 @@
         }
     });
 
-    // CurseForge 反查：先用文件路径本地计算 MurmurHash2 指纹，再传指纹数字反查（同步方法）
-    // 修复：原实现直接把 mod.filePath 字符串传给 projectForFileHash，内部
-    // [murmurHash longLongValue] 对非数字的路径恒为 0，指纹永不命中
+    // CurseForge reverse lookup: calculate the MurmurHash2 fingerprint locally from the file path, then look it up by fingerprint (synchronous method).
+    // Fix: the original implementation passed the mod.filePath string directly to projectForFileHash. Internally,
+    // [murmurHash longLongValue] always returned 0 for a nonnumeric path, so the fingerprint never matched.
     dispatch_async(self.lookupQueue, ^{
         @autoreleasepool {
             NSMutableDictionary *r = nil;
@@ -163,7 +163,7 @@
     });
 }
 
-#pragma mark - 拉取版本列表并构建结果
+#pragma mark - Fetch version list and build result
 
 - (void)fetchVersionsAndBuildResultWithProjectDict:(NSMutableDictionary *)projectDict
                                             source:(NSNumber *)source
@@ -172,14 +172,14 @@
                                             loader:(nullable NSString *)loader
                                        projectType:(NSString *)projectType
                                         completion:(void (^)(ModUpdateResult *_Nullable))completion {
-    // 从反查返回的字典中提取项目 ID
+    // Extract the project ID from the reverse-lookup result dictionary.
     NSString *projectID = [self extractProjectIDFromDict:projectDict source:source];
     if (projectID.length == 0) {
         [self callCompletionOnMain:nil completion:completion];
         return;
     }
 
-    // 选择对应源的 API 实例拉取版本列表
+    // Fetch the version list from the API instance for the matching source.
     id api = ([source intValue] == 1) ? [ModrinthAPI sharedInstance] : [CurseForgeAPI sharedInstance];
     if (![api respondsToSelector:@selector(getVersionsForModWithID:completion:)]) {
         [self callCompletionOnMain:nil completion:completion];
@@ -187,7 +187,7 @@
     }
 
     [api getVersionsForModWithID:projectID completion:^(NSArray<ModVersion *> *_Nullable versions, NSError *_Nullable error) {
-        // 注意：现有 API 实现在主线程回调此 block
+        // Note: the existing API implementation calls this block on the main thread.
         if (error || !versions || versions.count == 0) {
             [self callCompletionOnMain:nil completion:completion];
             return;
@@ -205,7 +205,7 @@
     }];
 }
 
-#pragma mark - 版本筛选与结果构建
+#pragma mark - Filter versions and build result
 
 - (ModUpdateResult *)buildResultWithMod:(ModItem *)mod
                               projectID:(NSString *)projectID
@@ -215,49 +215,49 @@
                            gameVersion:(NSString *)gameVersion
                                 loader:(nullable NSString *)loader
                            projectDict:(NSDictionary *)projectDict {
-    // 1. 识别当前版本（反查命中的版本）
+    // 1. Identify the current version (the version matched by reverse lookup).
     ModVersion *currentVersion = [self findCurrentVersionIn:versions
                                                         mod:mod
                                               projectDict:projectDict
                                                    apiSource:apiSource];
 
-    // 2. 全部版本按 datePublished 降序排序（最新在前）
+    // 2. Sort all versions by datePublished descending (newest first).
     NSArray<ModVersion *> *sortedAll = [versions sortedArrayUsingComparator:^NSComparisonResult(ModVersion *_Nonnull v1, ModVersion *_Nonnull v2) {
         NSDate *d1 = [self parseISO8601:v1.datePublished];
         NSDate *d2 = [self parseISO8601:v2.datePublished];
         if (!d1 && !d2) return NSOrderedSame;
         if (!d1) return NSOrderedAscending;
         if (!d2) return NSOrderedDescending;
-        return [d2 compare:d1]; // 降序
+        return [d2 compare:d1]; // Descending.
     }];
 
-    // 3. 计算当前版本的发布日期（用于严格大于比较）
+    // 3. Get the current version's publish date (for strict greater-than comparisons).
     NSDate *currentDate = [self parseISO8601:currentVersion.datePublished];
     if (!currentDate && currentVersion.datePublished.length > 0) {
         currentDate = [self parseISO8601:currentVersion.datePublished];
     }
 
-    // 4. 确定加载器过滤策略（智能回退）
+    // 4. Determine the loader-filtering strategy (smart fallback).
     NSArray<NSString *> *effectiveLoaders = [self effectiveLoadersForMod:mod inputLoader:loader];
 
-    // 5. 筛选更新候选：datePublished 严格大于当前版本 + 游戏版本过滤 + 加载器过滤
+    // 5. Filter update candidates: datePublished strictly later than the current version + game-version filter + loader filter.
     NSMutableArray<ModVersion *> *candidates = [NSMutableArray array];
     for (ModVersion *v in sortedAll) {
-        // 5.1 必须能解析出发布日期
+        // 5.1 The publish date must be parseable.
         NSDate *vDate = [self parseISO8601:v.datePublished];
         if (!vDate) continue;
 
-        // 5.2 必须严格大于当前版本日期（当前版本日期未知时跳过该过滤）
+        // 5.2 Must be strictly later than the current version's date (skip this filter if the current date is unknown).
         if (currentDate && [vDate compare:currentDate] != NSOrderedDescending) {
             continue;
         }
 
-        // 5.3 游戏版本过滤（传入 gameVersion 时必须包含）
+        // 5.3 Game-version filter (must include the provided gameVersion).
         if (gameVersion.length > 0 && ![v.gameVersions containsObject:gameVersion]) {
             continue;
         }
 
-        // 5.4 加载器过滤（智能回退策略，effectiveLoaders 为空时不过滤）
+        // 5.4 Loader filter (smart fallback; do not filter when effectiveLoaders is empty).
         if (effectiveLoaders.count > 0) {
             BOOL loaderMatch = NO;
             for (NSString *l in effectiveLoaders) {
@@ -272,11 +272,11 @@
         [candidates addObject:v];
     }
 
-    // 6. 构建结果对象
+    // 6. Build the result object.
     ModUpdateResult *result = [[ModUpdateResult alloc] init];
     result.localFilePath = mod.filePath;
     result.currentVersion = currentVersion;
-    result.candidateVersions = [candidates copy]; // 已是降序
+    result.candidateVersions = [candidates copy]; // Already in descending order.
     result.allVersions = sortedAll;
     result.projectID = projectID;
     result.apiSource = apiSource;
@@ -284,17 +284,17 @@
     return result;
 }
 
-#pragma mark - 当前版本识别
+#pragma mark - Identify current version
 
-/// 在全部版本列表中识别当前版本（反查命中的版本）
-/// 优先级：fileId（CurseForge） > fileSHA1（Modrinth primaryFile） > versionNumber > 最新版本兜底
+/// Identifies the current version in the full version list (the version matched by reverse lookup).
+/// Priority: fileId (CurseForge) > fileSHA1 (Modrinth primaryFile) > versionNumber > latest-version fallback.
 - (ModVersion *)findCurrentVersionIn:(NSArray<ModVersion *> *)versions
                                  mod:(ModItem *)mod
                         projectDict:(NSDictionary *)projectDict
                             apiSource:(NSNumber *)apiSource {
     if (versions.count == 0) return nil;
 
-    // 策略 1：CurseForge 用 fileId 匹配（反查返回字典里有 fileId）
+    // Strategy 1: match CurseForge by fileId (the reverse-lookup result includes fileId).
     if ([apiSource intValue] == 2) {
         NSString *curFileId = [projectDict[@"fileId"] isKindOfClass:[NSString class]] ? projectDict[@"fileId"] : nil;
         if (curFileId.length > 0) {
@@ -306,12 +306,12 @@
         }
     }
 
-    // 策略 2：Modrinth 用 fileSHA1 匹配 primaryFile 的 hashes.sha1
+    // Strategy 2: match Modrinth using fileSHA1 against primaryFile hashes.sha1.
     if (mod.fileSHA1.length > 0) {
         for (ModVersion *v in versions) {
             NSDictionary *primaryFile = v.primaryFile;
             if (![primaryFile isKindOfClass:[NSDictionary class]]) continue;
-            // Modrinth 格式：hashes[@"sha1"]
+            // Modrinth format: hashes[@"sha1"].
             id hashesVal = primaryFile[@"hashes"];
             if ([hashesVal isKindOfClass:[NSDictionary class]]) {
                 NSString *sha1 = [hashesVal[@"sha1"] isKindOfClass:[NSString class]] ? hashesVal[@"sha1"] : nil;
@@ -319,7 +319,7 @@
                     return v;
                 }
             }
-            // 兜底：URL 中包含 sha1（Modrinth 文件 URL 通常以 sha1 为文件名）
+            // Fallback: sha1 is included in the URL (Modrinth file URLs usually use sha1 as the filename).
             NSString *url = [primaryFile[@"url"] isKindOfClass:[NSString class]] ? primaryFile[@"url"] : nil;
             if (url && [url containsString:mod.fileSHA1]) {
                 return v;
@@ -327,7 +327,7 @@
         }
     }
 
-    // 策略 3：用版本号匹配（mod.version 与 versionNumber 比较）
+    // Strategy 3: match by version number (compare mod.version with versionNumber).
     if (mod.version.length > 0) {
         for (ModVersion *v in versions) {
             if ([v.versionNumber isEqualToString:mod.version]) {
@@ -336,14 +336,14 @@
         }
     }
 
-    // 策略 4：CurseForge 用 fileId 与 ModVersion.fileId 匹配（mod 无 fileId 字段，跳过）
+    // Strategy 4: match CurseForge fileId against ModVersion.fileId (Mod has no fileId field, so skip).
 
-    // 策略 5：兜底，只有一个版本时直接返回
+    // Strategy 5: fallback; if there is only one version, return it.
     if (versions.count == 1) {
         return versions.firstObject;
     }
 
-    // 策略 6：兜底，返回降序排序后的第一个（最新版本）
+    // Strategy 6: fallback; return the first in descending order (the latest version).
     NSArray<ModVersion *> *sorted = [versions sortedArrayUsingComparator:^NSComparisonResult(ModVersion *_Nonnull v1, ModVersion *_Nonnull v2) {
         NSDate *d1 = [self parseISO8601:v1.datePublished];
         NSDate *d2 = [self parseISO8601:v2.datePublished];
@@ -355,67 +355,67 @@
     return sorted.firstObject;
 }
 
-#pragma mark - 加载器智能回退
+#pragma mark - Smart loader fallback
 
-/// 计算用于版本过滤的加载器集合
-/// 策略：
-///   - 若 mod 声明的加载器（isFabric/isForge/isNeoForge）包含传入的 loader，用传入的 loader 过滤
-///   - 若不一致（信雅互联等场景），沿用文件自身声明的加载器集合过滤
-///   - 若 mod 未声明加载器且 loader 为 nil，返回空数组（不过滤）
+/// Computes the set of loaders to use when filtering versions.
+/// Strategy:
+///   - If the mod's declared loaders (isFabric/isForge/isNeoForge) include the provided loader, filter by the provided loader.
+///   - If they do not match (e.g. cross-platform use), filter using the loaders declared by the file itself.
+///   - If the mod declares no loader and loader is nil, return an empty array (no filtering).
 - (NSArray<NSString *> *)effectiveLoadersForMod:(ModItem *)mod inputLoader:(nullable NSString *)loader {
-    // 收集 mod 声明的加载器
+    // Collect loaders declared by the mod.
     NSMutableArray<NSString *> *declared = [NSMutableArray array];
     if (mod.isFabric) [declared addObject:@"fabric"];
     if (mod.isForge) [declared addObject:@"forge"];
     if (mod.isNeoForge) [declared addObject:@"neoforge"];
 
-    // 检查传入的 loader 是否与 mod 声明一致
+    // Check whether the provided loader matches the mod's declaration.
     if (loader.length > 0) {
         NSString *lowerLoader = [loader lowercaseString];
         for (NSString *l in declared) {
             if ([l isEqualToString:lowerLoader]) {
-                // 一致：用传入的 loader 过滤
+                // Match: filter using the provided loader.
                 return @[lowerLoader];
             }
         }
-        // 不一致：若 mod 完全未声明加载器，则信任传入的 loader
+        // Mismatch: if the mod declares no loaders at all, trust the provided loader.
         if (declared.count == 0) {
             return @[lowerLoader];
         }
-        // 否则落入回退分支（沿用 mod 声明的加载器集合）
+        // Otherwise, use the fallback branch (keep the mod's declared loader set).
     }
 
-    // 不一致或 loader 为空：沿用文件自身声明的加载器集合
+    // Mismatch or empty loader: use the loaders declared by the file itself.
     if (declared.count > 0) {
         return [declared copy];
     }
 
-    // 都没有：返回空数组，表示不进行加载器过滤
+    // Neither has a loader: return an empty array to indicate no loader filtering.
     return @[];
 }
 
-#pragma mark - 工具方法
+#pragma mark - Utility methods
 
-/// 从反查返回的项目字典中提取项目 ID
+/// Extracts the project ID from the reverse-lookup result dictionary.
 - (nullable NSString *)extractProjectIDFromDict:(NSDictionary *)dict source:(NSNumber *)source {
     if (!dict || dict.count == 0) return nil;
 
     if ([source intValue] == 1) {
-        // Modrinth：projectForFileHash 返回的字典中 id 字段即为 project_id
+        // Modrinth: the id field in the dictionary returned by projectForFileHash is the project_id.
         id v = dict[@"id"];
         if ([v isKindOfClass:[NSString class]]) return v;
         if ([v isKindOfClass:[NSNumber class]]) return [v stringValue];
-        // 兜底尝试 project_id 键
+        // Fallback: try the project_id key.
         id pid = dict[@"project_id"];
         if ([pid isKindOfClass:[NSString class]]) return pid;
         if ([pid isKindOfClass:[NSNumber class]]) return [pid stringValue];
         return nil;
     } else {
-        // CurseForge：projectForFileHash 返回的字典中 id 字段为 modId
+        // CurseForge: the id field in the dictionary returned by projectForFileHash is modId.
         id v = dict[@"id"];
         if ([v isKindOfClass:[NSString class]]) return v;
         if ([v isKindOfClass:[NSNumber class]]) return [v stringValue];
-        // 兜底尝试 modId 键
+        // Fallback: try the modId key.
         id mid = dict[@"modId"];
         if ([mid isKindOfClass:[NSString class]]) return mid;
         if ([mid isKindOfClass:[NSNumber class]]) return [mid stringValue];
@@ -423,22 +423,22 @@
     }
 }
 
-/// 解析 ISO8601 日期字符串为 NSDate（兼容带毫秒和不带毫秒两种格式）
+/// Parses an ISO8601 date string into NSDate (supports formats both with and without milliseconds).
 - (nullable NSDate *)parseISO8601:(NSString *)dateString {
     if (![dateString isKindOfClass:[NSString class]] || dateString.length == 0) return nil;
     NSISO8601DateFormatter *formatter = [[NSISO8601DateFormatter alloc] init];
-    // 先尝试带毫秒的格式（CurseForge fileDate 常见格式）
+    // First try the format with milliseconds (common for CurseForge fileDate).
     formatter.formatOptions = NSISO8601DateFormatWithInternetDateTime | NSISO8601DateFormatWithFractionalSeconds;
     NSDate *date = [formatter dateFromString:dateString];
     if (!date) {
-        // 降级尝试不带毫秒的格式
+        // Fall back to the format without milliseconds.
         formatter.formatOptions = NSISO8601DateFormatWithInternetDateTime;
         date = [formatter dateFromString:dateString];
     }
     return date;
 }
 
-/// 在主线程回调 completion
+/// Calls completion on the main thread.
 - (void)callCompletionOnMain:(ModUpdateResult *_Nullable)result
                   completion:(void (^)(ModUpdateResult *_Nullable))completion {
     if (!completion) return;
@@ -451,7 +451,7 @@
     }
 }
 
-#pragma mark - 批量检查更新（并发限流 3）
+#pragma mark - Batch update checks (limited to 3 concurrent requests)
 
 - (void)checkUpdatesForMods:(NSArray<ModItem *> *)mods
                gameVersion:(NSString *)gameVersion
@@ -461,34 +461,34 @@
                 completion:(void (^)(NSArray<ModUpdateResult *> *results))completion {
     NSInteger total = mods.count;
 
-    // 空数组直接回调
+    // Immediately call back for an empty array.
     if (total == 0) {
         [self callProgressOnMain:0 total:0 progress:progress];
         [self callBatchCompletionOnMain:@[] completion:completion];
         return;
     }
 
-    // 并发限流信号量（最多 3 个并发）
+    // Concurrency-limit semaphore (maximum of 3).
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(3);
     dispatch_queue_t workQueue = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
 
-    // 收集结果用的同步锁
+    // Synchronization lock for collecting results.
     NSObject *lock = [[NSObject alloc] init];
     __block NSMutableArray<ModUpdateResult *> *results = [NSMutableArray array];
     __block NSInteger completed = 0;
 
     for (ModItem *mod in mods) {
         dispatch_async(workQueue, ^{
-            // 等待信号量（限流）
+            // Wait on the semaphore (rate limit).
             dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
 
-            // 调用单个 Mod 的更新检查
+            // Check a single mod for updates.
             [self checkUpdateForMod:mod
                         gameVersion:gameVersion
                              loader:loader
                         projectType:projectType
                          completion:^(ModUpdateResult *_Nullable result) {
-                // 此回调在主线程
+                // This callback runs on the main thread.
                 @synchronized(lock) {
                     if (result && [result hasUpdate]) {
                         [results addObject:result];
@@ -497,22 +497,22 @@
                     NSInteger c = completed;
                     NSArray<ModUpdateResult *> *snapshot = [results copy];
 
-                    // 进度回调
+                    // Progress callback.
                     [self callProgressOnMain:c total:total progress:progress];
 
-                    // 全部完成时回调最终结果
+                    // Call back with the final result when all checks finish.
                     if (c >= total) {
                         [self callBatchCompletionOnMain:snapshot completion:completion];
                     }
                 }
-                // 释放信号量，允许下一个任务进入
+                // Release the semaphore to let the next task proceed.
                 dispatch_semaphore_signal(semaphore);
             }];
         });
     }
 }
 
-/// 在主线程回调进度
+/// Calls back with progress on the main thread.
 - (void)callProgressOnMain:(NSInteger)completed
                      total:(NSInteger)total
                   progress:(void (^)(NSInteger completed, NSInteger total))progress {
@@ -526,7 +526,7 @@
     }
 }
 
-/// 在主线程回调批量完成
+/// Calls back with batch completion on the main thread.
 - (void)callBatchCompletionOnMain:(NSArray<ModUpdateResult *> *)results
                        completion:(void (^)(NSArray<ModUpdateResult *> *results))completion {
     if (!completion) return;

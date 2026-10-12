@@ -2,7 +2,7 @@
 //  AIProviderConfigViewController.m
 //  Amethyst
 //
-//  AI 提供商配置页 + 提供商编辑表单（同文件私有类）+ 连通性测试。
+//  AI provider configuration page + provider edit form (private class in same file) + connectivity test.
 //
 
 #import "AIProviderConfigViewController.h"
@@ -11,26 +11,26 @@
 #import "AiAPIClient.h"
 #import "BackgroundManager.h"
 #import "LauncherPreferences.h"
-#import "utils.h"   // ★ [HOST-BUG-A] 统一取词 localize()
+#import "utils.h"   // ★ [HOST-BUG-A] Use localize() consistently
 #import <objc/runtime.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-#pragma mark - 提供商编辑表单（私有）
+#pragma mark - Provider edit form (private)
 
-/// 编辑 / 新增提供商表单页
+/// Provider form page for editing / adding
 @interface AIProviderEditViewController : UITableViewController
 
-/// 待编辑的提供商（nil 表示新增）
+/// Provider to edit (nil means add)
 @property (nonatomic, strong, nullable) AiProvider *provider;
-/// 保存成功回调（用于父列表刷新）
+/// Save success callback (used to refresh the parent list)
 @property (nonatomic, copy, nullable) void (^onSaved)(void);
 
 @end
 
 NS_ASSUME_NONNULL_END
 
-#pragma mark - 提供商配置列表
+#pragma mark - Provider configuration list
 
 @interface AIProviderConfigViewController () <UITableViewDataSource, UITableViewDelegate>
 @property (nonatomic, strong) UITableView *tableView;
@@ -40,7 +40,7 @@ NS_ASSUME_NONNULL_END
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = localize(@"ai.provider_config.title", @"提供商配置");   // ★ [HOST-BUG-A]
+    self.title = localize(@"ai.provider_config.title", @"Provider Configuration");   // ★ [HOST-BUG-A]
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
     self.view.backgroundColor = [[UIColor labelColor] colorWithAlphaComponent:0.04];
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
@@ -51,19 +51,19 @@ NS_ASSUME_NONNULL_END
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    // 从编辑页返回后刷新（选中态 / 列表）
+    // Refresh after returning from the edit page (selection / list)
     [self.tableView reloadData];
 
-    // ★ [LAND-BUG] 本页会被「设置 ▸ AI ▸ 提供商配置」(LauncherPreferencesViewController:1167)
-    //   与 AI 会话页以模态 UINavigationController(root) 弹出；本页原先没有任何 navigationItem，
-    //   全屏模态下没有返回/关闭 ⇒ 退不出去。补一个左上「关闭」（pushed 进栈时不注入）。
+    // ★ [LAND-BUG] This page is presented as the root of a modal UINavigationController from "Settings ▸ AI ▸ Provider Configuration" (LauncherPreferencesViewController:1167)
+    //   and from the AI session page. It previously had no navigationItem, so a full-screen modal had no back/close control ⇒ users could not exit.
+    //   Add a top-left "Close" button (do not inject it when pushed onto a navigation stack).
     UINavigationController *landBugNav = self.navigationController;
     if (landBugNav.presentingViewController != nil && landBugNav.viewControllers.firstObject == self &&
         self.navigationItem.leftBarButtonItem == nil) {
         UIBarButtonItem *landBugCloseItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemClose
                                                                                           target:self
                                                                                           action:@selector(landBugCloseTapped)];
-        landBugCloseItem.accessibilityLabel = @"关闭";
+        landBugCloseItem.accessibilityLabel = @"Close";
         self.navigationItem.leftBarButtonItem = landBugCloseItem;
     }
 }
@@ -97,12 +97,12 @@ NS_ASSUME_NONNULL_END
     ]];
 }
 
-#pragma mark - 顶部说明/新增卡
+#pragma mark - Top information / add card
 
 - (UIView *)headerView {
     UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 0)];
 
-    // 说明卡
+    // Information card
     UIView *infoCard = [[UIView alloc] init];
     infoCard.translatesAutoresizingMaskIntoConstraints = NO;
     infoCard.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08];
@@ -115,16 +115,16 @@ NS_ASSUME_NONNULL_END
 
     UILabel *infoLabel = [[UILabel alloc] init];
     infoLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    infoLabel.text = @"支持 OpenAI / DeepSeek / Kimi / GLM / Ollama 等任意 OpenAI 兼容接口。填写 Base URL 与模型名即可使用。";
+    infoLabel.text = @"Supports any OpenAI-compatible endpoint, including OpenAI / DeepSeek / Kimi / GLM / Ollama. Enter the Base URL and model name to get started.";
     infoLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightRegular];
     infoLabel.textColor = [UIColor secondaryLabelColor];
     infoLabel.numberOfLines = 0;
     [infoCard addSubview:infoLabel];
 
-    // 新增按钮
+    // Add button
     UIButton *addButton = [UIButton buttonWithType:UIButtonTypeSystem];
     addButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [addButton setTitle:@"＋ 新增提供商" forState:UIControlStateNormal];
+    [addButton setTitle:@"＋ Add Provider" forState:UIControlStateNormal];
     addButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
     [addButton setTitleColor:accentColor() forState:UIControlStateNormal];
     addButton.backgroundColor = [accentColor() colorWithAlphaComponent:0.15];
@@ -151,7 +151,7 @@ NS_ASSUME_NONNULL_END
         [addButton.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-4],
     ]];
 
-    // 计算高度
+    // Calculate height
     CGFloat width = self.tableView.bounds.size.width ?: [UIScreen mainScreen].bounds.size.width;
     header.frame = CGRectMake(0, 0, width, 0);
     [header setNeedsLayout];
@@ -163,7 +163,7 @@ NS_ASSUME_NONNULL_END
     return header;
 }
 
-#pragma mark - 动作
+#pragma mark - Actions
 
 - (void)addProviderAction {
     AIProviderEditViewController *editVC = [[AIProviderEditViewController alloc] init];
@@ -196,7 +196,7 @@ NS_ASSUME_NONNULL_END
     return 1;
 }
 
-// 说明卡 + 新增按钮作为表头，其余为提供商卡片
+// Information card + add button as the header; provider cards follow
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return [AiProviderStore sharedStore].providers.count;
 }
@@ -216,7 +216,7 @@ NS_ASSUME_NONNULL_END
     AiProvider *selected = [[AiProviderStore sharedStore] selectedProvider];
     BOOL isSelected = (selected != nil && [selected.identifier isEqualToString:provider.identifier]);
 
-    // 卡片容器
+    // Card container
     UIView *cardView = [[UIView alloc] init];
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     cardView.backgroundColor = isSelected ? [accentColor() colorWithAlphaComponent:0.15]
@@ -233,19 +233,19 @@ NS_ASSUME_NONNULL_END
     [[BackgroundManager sharedManager] applyEffectToView:cardView];
     [cell.contentView addSubview:cardView];
 
-    // 名称
+    // Name
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    nameLabel.text = provider.name.length > 0 ? provider.name : @"未命名提供商";
+    nameLabel.text = provider.name.length > 0 ? provider.name : @"Unnamed Provider";
     nameLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
     nameLabel.textColor = [UIColor labelColor];
     nameLabel.numberOfLines = 1;
     [cardView addSubview:nameLabel];
 
-    // 模型
+    // Model
     UILabel *modelLabel = [[UILabel alloc] init];
     modelLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    modelLabel.text = provider.model.length > 0 ? provider.model : @"未设置模型";
+    modelLabel.text = provider.model.length > 0 ? provider.model : @"Model Not Set";
     modelLabel.font = [UIFont monospacedSystemFontOfSize:12 weight:UIFontWeightRegular];
     modelLabel.textColor = [UIColor secondaryLabelColor];
     modelLabel.numberOfLines = 1;
@@ -255,14 +255,14 @@ NS_ASSUME_NONNULL_END
     // Base URL
     UILabel *urlLabel = [[UILabel alloc] init];
     urlLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    urlLabel.text = provider.baseURL.length > 0 ? provider.baseURL : @"未设置 Base URL";
+    urlLabel.text = provider.baseURL.length > 0 ? provider.baseURL : @"Base URL Not Set";
     urlLabel.font = [UIFont systemFontOfSize:12];
     urlLabel.textColor = [UIColor secondaryLabelColor];
     urlLabel.numberOfLines = 1;
     urlLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
     [cardView addSubview:urlLabel];
 
-    // 选中勾
+    // Selected checkmark
     UIImageView *checkView = [[UIImageView alloc] init];
     checkView.translatesAutoresizingMaskIntoConstraints = NO;
     checkView.image = [UIImage systemImageNamed:@"checkmark.circle.fill"];
@@ -271,14 +271,14 @@ NS_ASSUME_NONNULL_END
     checkView.hidden = !isSelected;
     [cardView addSubview:checkView];
 
-    // 编辑按钮
+    // Edit button
     UIButton *editButton = [UIButton buttonWithType:UIButtonTypeSystem];
     editButton.translatesAutoresizingMaskIntoConstraints = NO;
     [editButton setImage:[UIImage systemImageNamed:@"pencil"] forState:UIControlStateNormal];
     editButton.tintColor = accentColor();
     __weak typeof(self) weakSelf = self;
     [editButton addTarget:weakSelf action:@selector(editProviderAction:) forControlEvents:UIControlEventTouchUpInside];
-    // 用关联对象传 provider 引用
+    // Pass provider reference using an associated object
     objc_setAssociatedObject(editButton, "provider", provider, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [cardView addSubview:editButton];
 
@@ -341,7 +341,7 @@ NS_ASSUME_NONNULL_END
 - (nullable NSArray<UITableViewRowAction *> *)tableView:(UITableView *)tableView editActionsForRowAtIndexPath:(NSIndexPath *)indexPath {
     __weak typeof(self) weakSelf = self;
     UITableViewRowAction *deleteAction = [UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleDestructive
-                                                                           title:@"删除"
+                                                                           title:@"Delete"
                                                                          handler:^(UITableViewRowAction * _Nonnull action, NSIndexPath * _Nonnull ip) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         AiProvider *provider = [AiProviderStore sharedStore].providers[ip.row];
@@ -357,7 +357,7 @@ NS_ASSUME_NONNULL_END
 
 @end
 
-#pragma mark - AIProviderEditViewController 实现
+#pragma mark - AIProviderEditViewController implementation
 
 @implementation AIProviderEditViewController {
     UITextField *_nameField;
@@ -382,12 +382,12 @@ NS_ASSUME_NONNULL_END
 - (void)viewDidLoad {
     [super viewDidLoad];
     _isEditing = (self.provider != nil);
-    self.title = _isEditing ? localize(@"ai.provider_config.edit", @"编辑提供商") : localize(@"ai.provider_config.add", @"新增提供商");   // ★ [HOST-BUG-A]
+    self.title = _isEditing ? localize(@"ai.provider_config.edit", @"Edit Provider") : localize(@"ai.provider_config.add", @"Add Provider");   // ★ [HOST-BUG-A]
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
     self.view.backgroundColor = [[UIColor labelColor] colorWithAlphaComponent:0.04];
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
-    UIBarButtonItem *saveItem = [[UIBarButtonItem alloc] initWithTitle:@"保存"
+    UIBarButtonItem *saveItem = [[UIBarButtonItem alloc] initWithTitle:@"Save"
                                                                  style:UIBarButtonItemStyleDone
                                                                 target:self
                                                                 action:@selector(saveAction)];
@@ -397,7 +397,7 @@ NS_ASSUME_NONNULL_END
     [self loadValues];
 }
 
-#pragma mark - 构建字段
+#pragma mark - Build fields
 
 - (UITextField *)makeTextField:(NSString *)placeholder keyboard:(UIKeyboardType)keyboard secure:(BOOL)secure {
     UITextField *field = [[UITextField alloc] init];
@@ -412,12 +412,12 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)buildFields {
-    _nameField = [self makeTextField:@"例如 DeepSeek / OpenAI / Ollama" keyboard:UIKeyboardTypeDefault secure:NO];
+    _nameField = [self makeTextField:@"e.g. DeepSeek / OpenAI / Ollama" keyboard:UIKeyboardTypeDefault secure:NO];
     _baseURLField = [self makeTextField:@"https://api.deepseek.com/v1" keyboard:UIKeyboardTypeURL secure:NO];
     _apiKeyField = [self makeTextField:@"API Key" keyboard:UIKeyboardTypeDefault secure:YES];
-    _modelField = [self makeTextField:@"例如 deepseek-chat" keyboard:UIKeyboardTypeDefault secure:NO];
-    _maxTokensField = [self makeTextField:@"留空使用默认 4096" keyboard:UIKeyboardTypeNumberPad secure:NO];
-    _contextWindowField = [self makeTextField:@"留空使用默认 8192" keyboard:UIKeyboardTypeNumberPad secure:NO];
+    _modelField = [self makeTextField:@"e.g. deepseek-chat" keyboard:UIKeyboardTypeDefault secure:NO];
+    _maxTokensField = [self makeTextField:@"Leave blank to use default 4096" keyboard:UIKeyboardTypeNumberPad secure:NO];
+    _contextWindowField = [self makeTextField:@"Leave blank to use default 8192" keyboard:UIKeyboardTypeNumberPad secure:NO];
 
     _temperatureSlider = [[UISlider alloc] init];
     _temperatureSlider.minimumValue = 0;
@@ -426,13 +426,13 @@ NS_ASSUME_NONNULL_END
     [_temperatureSlider addTarget:self action:@selector(temperatureChanged:) forControlEvents:UIControlEventValueChanged];
 }
 
-/// 将 provider 的值载入字段
+/// Load provider values into the fields
 - (void)loadValues {
     if (!self.provider) {
         _temperatureSlider.value = 0.7;
         [self refreshTemperatureLabel];
         if ([AiProviderStore sharedStore].providers.count == 0) {
-            // 无任何提供商时，预填 DeepSeek 预设，减少输入成本
+            // When no providers exist, prefill the DeepSeek preset to reduce setup effort
             AiProvider *preset = [AiProvider providerWithDictionary:[AiProviderStore defaultPresets].firstObject];
             _nameField.text = preset.name;
             _baseURLField.text = preset.baseURL;
@@ -442,9 +442,9 @@ NS_ASSUME_NONNULL_END
     }
     _nameField.text = self.provider.name;
     _baseURLField.text = self.provider.baseURL;
-    // API Key 已存在时不回显明文，仅显示占位提示，留空表示保留原密钥
+    // Do not display an existing API Key in plain text; show a placeholder instead. Leave blank to keep the existing key.
     if (self.provider.apiKey.length > 0) {
-        _apiKeyField.placeholder = @"已保存（重新输入以修改）";
+        _apiKeyField.placeholder = @"Saved (re-enter to change)";
     }
     _modelField.text = self.provider.model;
     _temperatureSlider.value = self.provider.temperature;
@@ -460,26 +460,26 @@ NS_ASSUME_NONNULL_END
 
 - (void)temperatureChanged:(UISlider *)sender {
     [self refreshTemperatureLabel];
-    // 直接更新当前温度 cell 的详情文本，避免整行重建中断滑动
+    // Update the current temperature cell's detail text directly to avoid rebuilding the row and interrupting scrolling
     UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:1]];
     cell.detailTextLabel.text = _temperatureLabel.text;
 }
 
-#pragma mark - 表格
+#pragma mark - Table
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     return 3;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    if (section == 0) return 4; // 名称 / Base URL / API Key / 模型
-    if (section == 1) return 3; // 温度 / 最大 Token / 上下文窗口
-    return 1;                    // 测试连接
+    if (section == 0) return 4; // Name / Base URL / API Key / Model
+    if (section == 1) return 3; // Temperature / max tokens / context window
+    return 1;                    // Test connection
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    if (section == 0) return @"连接信息";
-    if (section == 1) return @"参数";
+    if (section == 0) return @"Connection Details";
+    if (section == 1) return @"Parameters";
     return nil;
 }
 
@@ -492,7 +492,7 @@ NS_ASSUME_NONNULL_END
     if (indexPath.section == 0) {
         switch (indexPath.row) {
             case 0:
-                [self configureInputCell:cell label:@"名称" field:_nameField];
+                [self configureInputCell:cell label:@"Name" field:_nameField];
                 break;
             case 1:
                 [self configureInputCell:cell label:@"Base URL" field:_baseURLField];
@@ -501,13 +501,13 @@ NS_ASSUME_NONNULL_END
                 [self configureInputCell:cell label:@"API Key" field:_apiKeyField];
                 break;
             case 3:
-                [self configureInputCell:cell label:@"模型" field:_modelField];
+                [self configureInputCell:cell label:@"Model" field:_modelField];
                 break;
         }
     } else if (indexPath.section == 1) {
         switch (indexPath.row) {
             case 0: {
-                cell.textLabel.text = @"温度";
+                cell.textLabel.text = @"Temperature";
                 if (!_temperatureLabel) {
                     _temperatureLabel = [[UILabel alloc] init];
                     _temperatureLabel.font = [UIFont monospacedSystemFontOfSize:15 weight:UIFontWeightRegular];
@@ -516,7 +516,7 @@ NS_ASSUME_NONNULL_END
                 }
                 [self refreshTemperatureLabel];
                 cell.detailTextLabel.text = _temperatureLabel.text;
-                // 滑块放入 contentView 右侧撑满，避免 accessoryView 区域过窄
+                // Place the slider on the right side of contentView and let it fill the space to avoid a narrow accessoryView area
                 _temperatureSlider.translatesAutoresizingMaskIntoConstraints = NO;
                 [cell.contentView addSubview:_temperatureSlider];
                 [NSLayoutConstraint activateConstraints:@[
@@ -527,24 +527,24 @@ NS_ASSUME_NONNULL_END
                 break;
             }
             case 1:
-                [self configureInputCell:cell label:@"最大 Token 上限" field:_maxTokensField];
+                [self configureInputCell:cell label:@"Maximum Token Limit" field:_maxTokensField];
                 break;
             case 2:
-                [self configureInputCell:cell label:@"上下文窗口" field:_contextWindowField];
+                [self configureInputCell:cell label:@"Context Window" field:_contextWindowField];
                 break;
         }
     } else {
-        cell.textLabel.text = @"测试连接";
+        cell.textLabel.text = @"Test Connection";
         cell.textLabel.textAlignment = NSTextAlignmentCenter;
         cell.textLabel.textColor = accentColor();
     }
     return cell;
 }
 
-/// 把输入框放入 cell.contentView 右侧并撑满可点区域。
-/// 关键修复（Base URL 等输入框点不动/视觉错位）：此前输入框放在 cell.accessoryView，
-/// 该区域窄、靠近 cell 最右，触摸面积小且易被遮挡；改用 contentView + AutoLayout 后
-/// 输入框紧贴标签右侧并延伸至 cell 右缘，点击区显著变大、布局稳定。
+/// Place the input field on the right side of cell.contentView and expand its tappable area.
+/// Important fix (Base URL and other fields were not tappable / visually misaligned): the input field was previously in cell.accessoryView,
+/// which is narrow, near the far right of the cell, and has a small, easily obscured touch area. Using contentView + AutoLayout
+/// places the field next to its label and extends it to the cell's right edge, making the tap area much larger and the layout stable.
 - (void)configureInputCell:(UITableViewCell *)cell label:(NSString *)label field:(UITextField *)field {
     cell.textLabel.text = label;
     field.translatesAutoresizingMaskIntoConstraints = NO;
@@ -565,7 +565,7 @@ NS_ASSUME_NONNULL_END
         footer.textColor = [UIColor secondaryLabelColor];
         footer.textAlignment = NSTextAlignmentCenter;
         footer.numberOfLines = 0;
-        footer.text = @"测试连接会向此提供商发送一条极短的 \"ping\" 请求以验证可用性。";
+        footer.text = @"Test Connection sends this provider a very short \"ping\" request to verify availability.";
         return footer;
     }
     return nil;
@@ -575,15 +575,15 @@ NS_ASSUME_NONNULL_END
     return section == 2 ? 44 : CGFLOAT_MIN;
 }
 
-#pragma mark - 键盘
+#pragma mark - Keyboard
 - (BOOL)textFieldShouldReturn:(UITextField *)textField {
     [textField resignFirstResponder];
     return YES;
 }
 
-#pragma mark - 保存 / 测试
+#pragma mark - Save / test
 
-/// 由当前表单字段构造一个 AiProvider（编辑时沿用原 identifier）
+/// Create an AiProvider from the current form fields (reuse the original identifier when editing)
 - (AiProvider *)providerFromForm {
     AiProvider *provider = nil;
     if (_isEditing && self.provider) {
@@ -606,7 +606,7 @@ NS_ASSUME_NONNULL_END
         provider.contextWindow = ctxText.integerValue;
     }
 
-    // API Key：编辑且留空则保留原密钥
+    // API Key: when editing, keep the original key if left blank
     if (_apiKeyField.text.length > 0) {
         provider.apiKey = _apiKeyField.text;
     } else if (!_isEditing) {
@@ -619,15 +619,15 @@ NS_ASSUME_NONNULL_END
     AiProvider *provider = [self providerFromForm];
     NSString *name = [provider.name stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (name.length == 0) {
-        [self showMessage:@"提示" body:@"请填写提供商名称"];
+        [self showMessage:@"Notice" body:@"Enter a provider name"];
         return;
     }
     if (provider.baseURL.length == 0) {
-        [self showMessage:@"提示" body:@"请填写 Base URL"];
+        [self showMessage:@"Notice" body:@"Enter a Base URL"];
         return;
     }
     if (provider.model.length == 0) {
-        [self showMessage:@"提示" body:@"请填写模型名称"];
+        [self showMessage:@"Notice" body:@"Enter a model name"];
         return;
     }
 
@@ -653,11 +653,11 @@ NS_ASSUME_NONNULL_END
 - (void)testConnectionAction {
     AiProvider *provider = [self providerFromForm];
     if (provider.baseURL.length == 0 || provider.model.length == 0) {
-        [self showMessage:@"无法测试" body:@"请先填写 Base URL 与模型名称。"];
+        [self showMessage:@"Unable to Test" body:@"Enter a Base URL and model name first."];
         return;
     }
 
-    UIAlertController *loading = [UIAlertController alertControllerWithTitle:@"测试连接" message:@"正在测试，请稍候…" preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *loading = [UIAlertController alertControllerWithTitle:@"Test Connection" message:@"Testing, please wait…" preferredStyle:UIAlertControllerStyleAlert];
     [self presentViewController:loading animated:YES completion:nil];
 
     AiAPIClient *client = [[AiAPIClient alloc] init];
@@ -665,9 +665,9 @@ NS_ASSUME_NONNULL_END
         dispatch_async(dispatch_get_main_queue(), ^{
             [loading dismissViewControllerAnimated:YES completion:^{
                 if (error) {
-                    [self showMessage:@"连接失败" body:error.localizedDescription ?: @"未知错误"];
+                    [self showMessage:@"Connection Failed" body:error.localizedDescription ?: @"Unknown error"];
                 } else {
-                    [self showMessage:@"连接成功" body:successMessage ?: @"连接成功"];
+                    [self showMessage:@"Connection Successful" body:successMessage ?: @"Connection successful"];
                 }
             }];
         });
@@ -678,7 +678,7 @@ NS_ASSUME_NONNULL_END
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
                                                                    message:body
                                                             preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleDefault handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
 

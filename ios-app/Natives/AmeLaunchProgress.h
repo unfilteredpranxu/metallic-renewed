@@ -1,61 +1,63 @@
 //
 //  AmeLaunchProgress.h
-//  ★ [LAUNCH-PROGRESS] 启动阶段上报 API
+//  ★ [LAUNCH-PROGRESS] Launch-stage reporting API
 //
-//  设计目标：让「启动到哪一步了」有一个统一、可观察的单一事实来源。
-//  启动流水线散布在 JavaLauncher.m / SurfaceViewController.m，遮罩 UI 在
-//  SurfaceViewController.m。这里做一层极薄的「阶段 + 比例」发布/订阅：
+//  Design goal: provide a single, observable source of truth for the current launch stage.
+//  The launch pipeline is spread across JavaLauncher.m / SurfaceViewController.m, while the
+//  overlay UI is in SurfaceViewController.m. This provides a very thin "stage + fraction" pub/sub layer:
 //
-//    - 上报方（任意线程）：AmeLaunchProgressSetStage(...) / Report(...)
-//    - 订阅方（主线程）：监听 AmeLaunchProgressChangedNotification 后读 getter
+//    - Reporter (any thread): AmeLaunchProgressSetStage(...) / Report(...)
+//    - Subscriber (main thread): listen for AmeLaunchProgressChangedNotification, then read the getters.
 //
-//  线程安全：内部用 NSLock 保护状态；通知统一投递到主队列，UI 侧无需自己切线程。
-//  本层不改动任何启动逻辑，只做「告知现在到哪了」。
+//  Thread-safe: NSLock protects the state internally; notifications are always dispatched to the main
+//  queue, so the UI does not need to switch threads itself.
+//  This layer does not change any launch logic; it only reports the current stage.
 //
 
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// 启动阶段（按真实流水线顺序排列，便于「步骤骨架」自上而下阅读）。
+/// Launch stages (listed in actual pipeline order so the "step skeleton" reads top to bottom).
 ///
-/// 说明：任务书给的顺序是「渲染器 → 运行环境 → JIT 就绪」，但代码里
-/// JIT26 建区/挂脚本（JavaLauncher.m 的 requiresDebugJITMapping 分支）发生在
-/// 渲染器解析之前，故此处按实际执行顺序排列 —— 否则步骤骨架会跳步，
-/// 反而看不出「卡在哪一步」。
+/// Note: the requested order was "renderer → runtime → JIT ready", but JIT26 region setup/script
+/// attachment (the requiresDebugJITMapping branch in JavaLauncher.m) occurs before renderer
+/// resolution in the code. These stages are therefore listed in execution order; otherwise the
+/// step skeleton would skip ahead and obscure where progress is stuck.
 typedef NS_ENUM(NSInteger, AmeLaunchStage) {
-    AmeLaunchStagePrepareEnv = 0,      ///< 准备环境
-    AmeLaunchStageJITReady,            ///< JIT 就绪
-    AmeLaunchStageRenderer,            ///< 渲染器与图形 API
-    AmeLaunchStageRuntime,             ///< 运行环境（Java · 内存）
-    AmeLaunchStageArgsReady,           ///< 组装启动参数
-    AmeLaunchStageJVMStarting,         ///< 启动 JVM
-    AmeLaunchStageWaitingFirstFrame,   ///< 等待游戏画面
-    AmeLaunchStageCompleted,           ///< 完成
+    AmeLaunchStagePrepareEnv = 0,      ///< Prepare environment
+    AmeLaunchStageJITReady,            ///< JIT ready
+    AmeLaunchStageRenderer,            ///< Renderer and graphics API
+    AmeLaunchStageRuntime,             ///< Runtime (Java · memory)
+    AmeLaunchStageArgsReady,           ///< Assemble launch arguments
+    AmeLaunchStageJVMStarting,         ///< Start JVM
+    AmeLaunchStageWaitingFirstFrame,   ///< Wait for game frame
+    AmeLaunchStageCompleted,           ///< Completed
 };
 
-/// 阶段总数（供步骤骨架遍历）。
+/// Number of stages (for iterating over the step skeleton).
 FOUNDATION_EXPORT NSInteger AmeLaunchProgressStageCount(void);
 
-/// 广播：阶段 / 比例发生变化。主队列投递，供遮罩订阅。
+/// Broadcast when the stage / fraction changes. Dispatched on the main queue for the overlay to observe.
 FOUNDATION_EXPORT NSNotificationName const AmeLaunchProgressChangedNotification;
 
-/// 重置为初始状态（一次启动开始前调用；会广播一次）。
+/// Reset to the initial state (call before each launch; broadcasts once).
 FOUNDATION_EXPORT void AmeLaunchProgressReset(void);
 
-/// 上报「进入某阶段」。阶段比例取该阶段的起始权重，线程安全。
+/// Report entry into a stage. The stage fraction is set to its starting weight; thread-safe.
 FOUNDATION_EXPORT void AmeLaunchProgressSetStage(AmeLaunchStage stage);
 
-/// 细粒度上报：直接给一个 0..1 的比例，并可附带一个文案键（nil = 沿用阶段文案）。
-/// 线程安全。用于阶段内部的平滑推进（例如等待游戏画面期间）。
+/// Fine-grained report: set a 0..1 fraction directly and optionally attach a text key
+/// (nil = keep the stage's text). Thread-safe. Used for smooth progress within a stage
+/// (for example, while waiting for the game frame).
 FOUNDATION_EXPORT void AmeLaunchProgressReport(NSString * _Nullable key, double fraction);
 
-/// 读取当前状态（供遮罩渲染）。线程安全。
+/// Read the current state (for overlay rendering). Thread-safe.
 FOUNDATION_EXPORT AmeLaunchStage AmeLaunchProgressCurrentStage(void);
 FOUNDATION_EXPORT double AmeLaunchProgressCurrentFraction(void);
 FOUNDATION_EXPORT NSString * _Nullable AmeLaunchProgressCurrentKey(void);
 
-/// 阶段 → 本地化键（当前阶段文字 + 步骤骨架文案都用它）。
+/// Stage → localization key (used for both the current-stage text and step-skeleton text).
 FOUNDATION_EXPORT NSString *AmeLaunchStageLocalizationKey(AmeLaunchStage stage);
 
 NS_ASSUME_NONNULL_END

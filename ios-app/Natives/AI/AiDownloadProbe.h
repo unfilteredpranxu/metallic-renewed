@@ -2,9 +2,9 @@
 //  AiDownloadProbe.h
 //  Amethyst
 //
-//  下载进度查询工具（check_downloads）：遍历 DownloadTaskManager 全部任务，
-//  返回名称/资源类型/状态/进度/速度/下载源。
-//  供 AI 在 install_* wait=false 后台下载后轮询进度（enhance-ai-agent Task 8.2）。
+//  Download progress query tool (check_downloads): iterates over all DownloadTaskManager tasks,
+//  returning the name/asset type/status/progress/speed/download source.
+//  Lets the AI poll progress after install_* starts a background download with wait=false (enhance-ai-agent Task 8.2).
 //
 
 #import <Foundation/Foundation.h>
@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface AiDownloadProbe : NSObject <AiTool>
 
-/// internalName 当前仅支持 check_downloads
+/// Currently, internalName supports only check_downloads
 - (instancetype)initWithName:(NSString *)name;
 
 @end

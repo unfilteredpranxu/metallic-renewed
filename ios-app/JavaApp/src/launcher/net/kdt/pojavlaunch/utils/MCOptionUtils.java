@@ -30,11 +30,13 @@ public class MCOptionUtils
     }
     
     public static void set(String key, String value) {
-        // Task 104：去重写入。MC 的 Options.load 逐行 putString —— 同 key
-        // 多行时【后出现的行覆盖先前的行】。旧实现对重复行只改第一处，
-        // 残留的后续旧行会在 MC 侧覆盖我们的值（例：历史遗留的
-        // inactivityFpsLimit:afk 会让写入的 minimized 失效 → 26.3 的
-        // SHORT_AFK 限帧 30fps）。现在第一处替换、后续重复全部删除。
+        // Task 104: Deduplicate writes. MC's Options.load calls putString for each line;
+        // when a key appears multiple times, the last line overrides earlier ones.
+        // The old implementation changed only the first duplicate, so later stale
+        // values overrode ours (for example, a leftover inactivityFpsLimit:afk
+        // made the minimized setting ineffective and triggered MC 26.3's
+        // SHORT_AFK 30 FPS limit). Now the first occurrence is replaced and all
+        // subsequent duplicates are removed.
         String prefix = key + ":";
         boolean replaced = false;
         ListIterator<String> it = mLineList.listIterator();
@@ -45,7 +47,7 @@ public class MCOptionUtils
                     it.set(key + ":" + value);
                     replaced = true;
                 } else {
-                    it.remove(); // 重复行：MC 侧后行覆盖前行，必须清除
+                    it.remove(); // Remove duplicates because MC uses the last matching line.
                 }
             }
         }
@@ -61,9 +63,10 @@ public class MCOptionUtils
     }
 
     /**
-     * 移除 options.txt 中指定 key 的行（如果存在）。
-     * 用于在用户选择"默认"时清除之前写入的值，让 MC 使用内部默认行为。
-     * 注意：调用前必须先 load()。
+     * Remove the line for the specified key from options.txt, if present.
+     * Used when the user selects "Default" to clear a previously written value
+     * and let MC use its internal default behavior.
+     * Call load() first.
      */
     public static void remove(String key) {
         if (mLineList == null) return;
@@ -109,10 +112,11 @@ public class MCOptionUtils
     }
 
     /**
-     * Task 104：从磁盘【重新读取】指定 key 的值（绕过内存链表）。
-     * 用途：save() 后的落盘校验——内存 get() 只能证明内存态，不能证明
-     * MC 即将读取的文件内容（写入路径错位/写入失败/重复行残留都会让
-     * 内存态与磁盘态分叉，26.3 的 30fps 限帧正是这种分叉的实锤现场）。
+     * Task 104: Read the specified key's value back from disk (bypassing the in-memory list).
+     * Used to verify the file after save(): an in-memory get() confirms only the
+     * in-memory state, not what MC will read. A wrong path, failed write, or
+     * leftover duplicate can make memory and disk diverge; MC 26.3's 30 FPS
+     * throttling was a confirmed example.
      */
     public static String getFromFile(String key) {
         try {

@@ -10,8 +10,8 @@ public class MinecraftAccount
     public String profileId = "00000000-0000-0000-0000-000000000000"; // authenticate UUID
     public String username = "Steve";
     public String xuid;
-    // 账户唯一标识：微软账户=xuid，第三方账户=profileId，本地账户=UUID
-    // 与原生端 BaseAuthenticator.authData[@"accountId"] 一致，用作账户文件名
+    // Unique account ID: xuid for Microsoft accounts, profileId for third-party accounts, UUID for local accounts.
+    // Matches native BaseAuthenticator.authData[@"accountId"] and is used as the account filename.
     public String accountId = "";
 
     public String save(String outPath) throws IOException {
@@ -20,7 +20,7 @@ public class MinecraftAccount
     }
 
     public String save() throws IOException {
-        // 文件名使用 accountId（唯一标识），同名账户不再冲突
+        // Use accountId (the unique identifier) as the filename to avoid collisions between accounts with the same name.
         String id = (accountId != null && !accountId.isEmpty()) ? accountId : username;
         return save(Tools.DIR_ACCOUNT_NEW + "/" + id + ".json");
     }
@@ -35,7 +35,7 @@ public class MinecraftAccount
     }
 
     public static MinecraftAccount load(String name) throws IOException, JsonSyntaxException {
-        // name 即 accountId（由原生端 launchJVM 的 args[0] 传入），用作账户文件名
+        // name is accountId (passed as args[0] to native launchJVM) and is used as the account filename.
         MinecraftAccount acc = parse(Tools.read(Tools.DIR_ACCOUNT_NEW + "/" + name + ".json"));
         if (acc.accessToken == null) {
             acc.accessToken = "0";
@@ -48,7 +48,7 @@ public class MinecraftAccount
         } if (acc.xuid == null) {
             acc.xuid = "0";
         }
-        // 兜底 accountId：优先用入参 name（原生端传入的 accountId），其次 xuid，最后 profileId
+        // Fallback accountId: prefer the name argument (native accountId), then xuid, and finally profileId.
         if (acc.accountId == null || acc.accountId.isEmpty()) {
             acc.accountId = name;
         }

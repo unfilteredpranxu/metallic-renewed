@@ -25,9 +25,9 @@
     self = [super init];
     if (self) {
         _tools = [NSMutableDictionary dictionary];
-        // 关键修复（AI 不知道自己能用工具）：此前 [AiToolBootstrapper registerBuiltinTools]
-        // 从未被任何地方调用，工具列表始终为空，openAIToolSchemas 返回空数组，
-        // 模型收不到任何工具定义，表现为 AI 完全不知道能调用工具。这里在单例 init 时自动注册。
+        // Important fix (AI did not know which tools it could use): [AiToolBootstrapper registerBuiltinTools]
+        // was never called, so the tool list remained empty and openAIToolSchemas returned an empty array.
+        // The model received no tool definitions and behaved as if it had no available tools. Register automatically during singleton initialization.
         [AiToolBootstrapper registerBuiltinToolsIntoRegistry:self];
     }
     return self;
@@ -43,8 +43,8 @@
     return self.tools[name];
 }
 
-/// OpenAI 风格 schema：description 直接用 summary；parameters 用宽松 object 描述，
-/// 让模型可自由传参（宁可宽松，参数说明已写入 summary）。
+/// OpenAI-style schema: use summary directly as the description; describe parameters as a permissive object,
+/// allowing the model to provide arguments freely (prefer permissive validation; parameter details are in summary).
 - (NSArray<NSDictionary *> *)openAIToolSchemas {
     NSMutableArray<NSDictionary *> *schemas = [NSMutableArray array];
     NSArray<NSString *> *sortedNames = [self.tools.allKeys sortedArrayUsingSelector:@selector(compare:)];
@@ -66,20 +66,20 @@
     return schemas;
 }
 
-#pragma mark - 参数规范化
+#pragma mark - Parameter normalization
 
-/// 把一个键规范化成小写 camelCase（例如 "game-version"→"gameVersion"、"InstanceName"→"instanceName"）。
+/// Normalize a key to lowercase camelCase (e.g. "game-version"→"gameVersion", "InstanceName"→"instanceName").
 - (NSString *)normalizedKeyCamel:(NSString *)key {
     if (key.length == 0) return key;
 
     NSUInteger length = key.length;
-    // 记录每个"词"的起始下标（词与词之间由分隔符或大小写驼峰边界隔开）
+    // Record the start index of each "word" (words are separated by delimiters or camel-case boundaries)
     NSMutableIndexSet *wordStarts = [NSMutableIndexSet indexSet];
     [wordStarts addIndex:0];
     for (NSUInteger i = 1; i < length; i++) {
         unichar c = [key characterAtIndex:i];
         if (c == '_' || c == '-' || c == '.' || c == ' ' || c == '/') {
-            continue; // 分隔符本身不成为词头
+            continue; // A delimiter does not start a word
         }
         unichar prev = [key characterAtIndex:i - 1];
         BOOL prevIsSep = (prev == '_' || prev == '-' || prev == '.' || prev == ' ' || prev == '/');
@@ -88,7 +88,7 @@
         if (prevIsSep) {
             [wordStarts addIndex:i];
         } else if (isUpper && prevIsLower) {
-            // 驼峰边界：小写/数字后紧跟大写（兼顾 PascalCase 与 camelCase）
+            // Camel-case boundary: lowercase/digit followed by uppercase (covers both PascalCase and camelCase)
             [wordStarts addIndex:i];
         }
     }
@@ -100,11 +100,11 @@
     void (^flush)(void) = ^{
         if (currentWord.length == 0) return;
         if (isFirstWord) {
-            // 首词整体保持小写
+            // Keep the first word entirely lowercase
             [result appendString:currentWord];
             isFirstWord = NO;
         } else {
-            // 后续词首字母大写、其余小写
+            // Capitalize the first letter of subsequent words and lowercase the rest
             NSString *word = currentWord;
             NSString *capitalized = [word stringByReplacingCharactersInRange:NSMakeRange(0, 1)
                                                                   withString:[[word substringToIndex:1] uppercaseString]];
@@ -122,7 +122,7 @@
         if (i > 0 && [wordStarts containsIndex:i]) {
             flush();
         }
-        // 统一转小写
+        // Convert to lowercase
         unichar lower = (c >= 'A' && c <= 'Z') ? (unichar)(c - 'A' + 'a') : c;
         [currentWord appendString:[NSString stringWithFormat:@"%C", lower]];
     }
@@ -130,7 +130,7 @@
     return result;
 }
 
-/// 判断 value 是否"为空"（丢弃的键包括 nil、NSNull、空字符串）
+/// Determine whether value is "empty" (discard keys with nil, NSNull, or an empty string)
 - (BOOL)isEmptyValue:(id)value {
     if (value == nil || [value isKindOfClass:[NSNull class]]) return YES;
     if ([value isKindOfClass:[NSString class]]) {
@@ -146,13 +146,13 @@
         NSString *key = [rawKey isKindOfClass:[NSString class]] ? (NSString *)rawKey : [rawKey description];
         NSString *camelKey = [self normalizedKeyCamel:key];
         if (camelKey.length == 0) return;
-        if ([self isEmptyValue:value]) return; // 丢弃 value 为空 的键
+        if ([self isEmptyValue:value]) return; // Discard keys with empty values
         normalized[camelKey] = value;
     }];
     return normalized;
 }
 
-#pragma mark - 执行
+#pragma mark - Execute
 
 - (void)executeToolNamed:(NSString *)name
                   params:(NSDictionary *)params
@@ -162,17 +162,17 @@
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 NSError *err = [NSError errorWithDomain:@"AiTool" code:404
-                                               userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"未知工具 %@", name ?: @""]}];
+                                               userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Unknown tool %@", name ?: @""]}];
                 completion(nil, err);
             });
         }
         return;
     }
 
-    // 先规范化参数再透传给工具 execute
+    // Normalize parameters before passing them to tool execute
     NSDictionary *normalized = [self normalizedParams:params];
     [tool execute:normalized completion:^(NSString * _Nullable result, NSError * _Nullable error) {
-        // 统一把结果回调到主线程
+        // Always deliver the result callback on the main thread
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) {
                 completion(result, error);

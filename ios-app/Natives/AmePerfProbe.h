@@ -1,26 +1,28 @@
 //
 //  AmePerfProbe.h
-//  ★ [PERF] 低开销滚动帧率探针（默认关闭）
+//  ★ [PERF] Low-overhead scrolling frame-rate probe (disabled by default)
 //
-//  目的：用日志回答「滚动期间到底还有没有超过一帧预算（16.7ms @60Hz）的卡顿帧」。
+//  Purpose: use logs to determine whether scrolling still produces stuttering frames that exceed
+//  the per-frame budget (16.7ms at 60Hz).
 //
-//  ★ 判据（单一口径，写在 AmePerfProbe.m 里，改那里即改口径）：
-//    · 帧间隔 > 16.7ms  ⇒ 记一次 jank   （已经掉到 60fps 以下，丢了一帧）
-//    · 帧间隔 > 33.4ms  ⇒ 记一次 severe （已经掉到 30fps 以下）
-//    · 单帧 > 500ms     ⇒ 视作会话断档，不计入统计
-//    · 一次滚动会话结束时打印一行：
-//        [PERF][scroll] tag=<页面> frames=N avg=?ms p95=?ms max=?ms
-//                       jank(>16.7ms)=n(P%) severe(>33.4ms)=m ⇒ 判定:流畅/有卡顿
-//      判「流畅」的条件：severe == 0 且 jank 占比 < 1%。
-//    · 若 severe > 0，再补一行打印最重的几帧耗时，便于定位。
+//  ★ Criteria (single source of truth in AmePerfProbe.m; change it there to change the criteria):
+//    · Frame interval > 16.7ms ⇒ count one jank (below 60fps; a frame was dropped)
+//    · Frame interval > 33.4ms ⇒ count one severe event (below 30fps)
+//    · A single frame > 500ms ⇒ treat as a session gap and exclude from statistics
+//    · At the end of each scrolling session, print one line:
+//        [PERF][scroll] tag=<page> frames=N avg=?ms p95=?ms max=?ms
+//                       jank(>16.7ms)=n(P%) severe(>33.4ms)=m ⇒ result: smooth/stuttering
+//      "Smooth" means severe == 0 and the jank percentage is < 1%.
+//    · If severe > 0, print one additional line with the slowest frame times to help locate the issue.
 //
-//  ★ 开销：不滚动时探针【完全不运行】—— 没有 CADisplayLink、没有定时器、没有轮询。
-//    滚动时每帧只做十几次浮点比较 + 一次静态数组写入；不分配对象、不加锁、不拼字符串
-//    （字符串只在会话结束那一次拼）。因此探针本身不会制造卡顿。
+//  ★ Overhead: when not scrolling, the probe does not run at all—no CADisplayLink, timer, or polling.
+//    While scrolling, each frame requires only a dozen or so floating-point comparisons and one static
+//    array write; it allocates no objects, takes no locks, and builds no strings (the string is built
+//    only once, at the end of a session). The probe therefore does not itself cause stuttering.
 //
-//  ★ 开启方式（任一，默认关）：
-//    1) 环境变量   AME_PERF_PROBE=1
-//    2) 偏好键     debug.perf_probe = YES   （setPrefObject(@"debug.perf_probe", @YES)）
+//  ★ Enable it with either of the following (disabled by default):
+//    1) Environment variable: AME_PERF_PROBE=1
+//    2) Preference key: debug.perf_probe = YES (setPrefObject(@"debug.perf_probe", @YES))
 //
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
@@ -29,13 +31,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface AmePerfProbe : NSObject
 
-/// 探针是否启用（环境变量 AME_PERF_PROBE=1 或偏好键 debug.perf_probe=YES）。结果只解析一次并缓存。
+/// Whether the probe is enabled (environment variable AME_PERF_PROBE=1 or preference key debug.perf_probe=YES).
+/// The result is read and cached only once.
 + (BOOL)isEnabled;
 
-/// 在滚动回调里调用（每个 scrollViewDidScroll 调一次即可）。
-/// 首次调用开启 CADisplayLink，之后约 0.25s 无滚动活动即自动结束并输出一次统计。
-/// 未启用时本方法立即返回（一次静态 BOOL 判断）。
-/// tag 用于区分页面（如 @"VersionManager" / @"ProfileSettings"）；同一会话只记第一个 tag。
+/// Call from the scrolling callback (once per scrollViewDidScroll is sufficient).
+/// The first call starts CADisplayLink; the session ends and emits statistics after about 0.25s
+/// without scrolling activity.
+/// If disabled, this method returns immediately (one static BOOL check).
+/// tag distinguishes pages (e.g. @"VersionManager" / @"ProfileSettings"); only the first tag per
+/// session is recorded.
 + (void)noteScrollActivity:(NSString *)tag;
 
 @end

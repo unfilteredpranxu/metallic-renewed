@@ -9,7 +9,7 @@
 
 NSString * const MCNewsErrorDomain = @"MCNewsErrorDomain";
 
-/// 基础 API URL（locale 段由实例 locale 属性决定）
+/// Base API URL (the locale segment is determined by the instance's locale property).
 static NSString * const MCNewsBaseAPIURL = @"https://net-secondary.web.minecraft-services.net/api/v1.0";
 
 @interface MinecraftNewsService ()
@@ -30,9 +30,9 @@ static NSString * const MCNewsBaseAPIURL = @"https://net-secondary.web.minecraft
 - (instancetype)init {
     self = [super init];
     if (self) {
-        // 默认跟随系统语言：zh-Hans/zh-Hant -> zh-cn，其他默认 en-us
-        // ★ [I18N-ORDER] 走统一入口:"生效语言"(用户选择→系统匹配→en),不再读 Bundle 系统首选,
-        //   否则手动切语言后这里仍用系统语言 ⇒ 新闻语言与界面不一致。
+        // Follow the system language by default: zh-Hans/zh-Hant -> zh-cn; otherwise default to en-us.
+        // ★ [I18N-ORDER] Use the unified "effective language" entry point (user selection → system match → en);
+        //   do not read the Bundle system preference, or manually changing the language would leave news in the system language.
         NSString *preferredLang = AmeLauncherEffectiveLanguageCode();
         if ([preferredLang hasPrefix:@"zh-Hans"] || [preferredLang hasPrefix:@"zh-CN"]) {
             _locale = @"zh-cn";
@@ -80,7 +80,7 @@ static NSString * const MCNewsBaseAPIURL = @"https://net-secondary.web.minecraft
                                                             cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
                                                         timeoutInterval:30.0];
     [request setHTTPMethod:@"GET"];
-    // 参考 PCL-CE HttpSenderExtension：自定义 UA 提升稳定性，避免被识别为爬虫拦截
+    // Based on PCL-CE HttpSenderExtension: a custom UA improves reliability and avoids crawler blocking.
     [request setValue:@"AngelAuraAmethyst/1.0 (iOS; Minecraft Launcher)" forHTTPHeaderField:@"User-Agent"];
     [request setValue:@"application/json" forHTTPHeaderField:@"Accept"];
     [request setValue:@"gzip, deflate" forHTTPHeaderField:@"Accept-Encoding"];
@@ -119,10 +119,10 @@ static NSString * const MCNewsBaseAPIURL = @"https://net-secondary.web.minecraft
             return;
         }
 
-        // 响应结构：{ "result": { "results": [...], "numFound": N, "page": N } }
+        // Response structure: { "result": { "results": [...], "numFound": N, "page": N } }
         NSDictionary *result = json[@"result"];
         if (![result isKindOfClass:[NSDictionary class]]) {
-            // 某些 locale 可能返回空 result，做容错
+            // Some locales may return an empty result; handle this gracefully.
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (completion) completion(@[], 0, nil);
             });
@@ -158,7 +158,7 @@ static NSString * const MCNewsBaseAPIURL = @"https://net-secondary.web.minecraft
     if (![scheme isEqualToString:@"http"] && ![scheme isEqualToString:@"https"]) return NO;
     NSString *host = url.host.lowercaseString;
     if (host.length == 0) return NO;
-    // 白名单：minecraft.net / minecraft-services.net / microsoft.com 及其子域
+    // Allowlist: minecraft.net, minecraft-services.net, microsoft.com, and their subdomains.
     NSArray<NSString *> *allowedSuffixes = @[@"minecraft.net", @"minecraft-services.net", @"microsoft.com"];
     for (NSString *suffix in allowedSuffixes) {
         if ([host isEqualToString:suffix] || [host hasSuffix:[NSString stringWithFormat:@".%@", suffix]]) {

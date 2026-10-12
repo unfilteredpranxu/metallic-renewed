@@ -7,21 +7,21 @@
 #import "MarkdownParser.h"
 #import "LauncherPreferences.h"
 
-// 说明：助手气泡采用白 0.08 半透明底，聊天气泡不叠加 UIVisualEffectView 毛玻璃，
-// 以避免滚动表格中反复插入模糊视图导致的性能/复用问题；外层内容区已由
-// BackgroundManager 提供整体毛玻璃，气泡透出即可。参考 AnnouncementCardCell 的处理。
+// Note: Assistant bubbles use a translucent white 0.08 background and do not add a UIVisualEffectView blur,
+// to avoid performance/reuse issues caused by repeatedly inserting blur views in a scrolling table. The outer content area
+// already gets an overall blur from BackgroundManager, so the bubbles can remain transparent. See AnnouncementCardCell.
 
-/// 内容字体
+/// Content font
 static const CGFloat kMsgFontSize = 16.0;
-/// 气泡内边距
+/// Bubble padding
 static const CGFloat kMsgBubblePadding = 10.0;
-/// 气泡最大宽度占容器比例
+/// Maximum bubble width as a proportion of the container
 static const CGFloat kMsgMaxBubbleWidthRatio = 0.72;
-/// 水平外边距
+/// Horizontal outer margin
 static const CGFloat kMsgHMargin = 12.0;
-/// cell 上下留白
+/// Vertical cell spacing
 static const CGFloat kMsgVerticalPadding = 10.0;
-/// 气泡圆角（连续圆角）
+/// Bubble corner radius (continuous corners)
 static const CGFloat kMsgCornerRadius = 12.0;
 
 @interface AIMessageCell ()
@@ -57,23 +57,23 @@ static const CGFloat kMsgCornerRadius = 12.0;
         self.contentTextView.textContainer.lineFragmentPadding = 0;
         [self.bubbleView addSubview:self.contentTextView];
 
-        // 约束：文本顶/左/右贴气泡内边距，从内容尺寸撑起气泡高度（不主动撑起）
+        // Constraints: text top/left/right align to the bubble padding; content size determines bubble height (no forced height)
         [NSLayoutConstraint activateConstraints:@[
             [self.contentTextView.topAnchor constraintEqualToAnchor:self.bubbleView.topAnchor constant:kMsgBubblePadding],
             [self.contentTextView.leadingAnchor constraintEqualToAnchor:self.bubbleView.leadingAnchor constant:kMsgBubblePadding],
             [self.contentTextView.trailingAnchor constraintEqualToAnchor:self.bubbleView.trailingAnchor constant:-kMsgBubblePadding],
             [self.contentTextView.bottomAnchor constraintEqualToAnchor:self.bubbleView.bottomAnchor constant:-kMsgBubblePadding],
-            // 限制气泡最大宽度
+            // Limit the maximum bubble width
             [self.bubbleView.widthAnchor constraintLessThanOrEqualToAnchor:self.contentView.widthAnchor multiplier:kMsgMaxBubbleWidthRatio],
         ]];
 
-        // 气泡垂直方向由内容顶/底撑起，再由 cell 上下留白约束 min 高度
+        // Content determines the bubble's vertical size; cell top/bottom spacing constrains the minimum height
         [NSLayoutConstraint activateConstraints:@[
             [self.bubbleView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kMsgVerticalPadding],
             [self.bubbleView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kMsgVerticalPadding],
         ]];
 
-        // 工具卡片：居中紧凑系统样式（隐藏时不影响气泡布局）
+        // Tool card: compact centered system style (does not affect bubble layout when hidden)
         self.toolCardView = [[UIView alloc] init];
         self.toolCardView.translatesAutoresizingMaskIntoConstraints = NO;
         self.toolCardView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.06];
@@ -92,12 +92,12 @@ static const CGFloat kMsgCornerRadius = 12.0;
         [self.toolCardView addSubview:self.toolCardLabel];
 
         [NSLayoutConstraint activateConstraints:@[
-            // 卡片水平居中，两侧保留边距
+            // Center the card horizontally, leaving margins on both sides
             [self.toolCardView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
             [self.toolCardView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:kMsgHMargin],
             [self.toolCardView.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-kMsgHMargin],
             [self.toolCardView.widthAnchor constraintLessThanOrEqualToAnchor:self.contentView.widthAnchor multiplier:kMsgMaxBubbleWidthRatio],
-            // 卡片垂直居中，cell 上下留白包裹（内边距 6）
+            // Center the card vertically, with cell spacing around it (padding 6)
             [self.toolCardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6],
             [self.toolCardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6],
             [self.toolCardLabel.topAnchor constraintEqualToAnchor:self.toolCardView.topAnchor constant:5],
@@ -112,7 +112,7 @@ static const CGFloat kMsgCornerRadius = 12.0;
 - (void)configureWithMessage:(AiMessage *)message markdownEnabled:(BOOL)enabled {
     if (!message) return;
 
-    // 工具结果：渲染为居中系统卡片（仅显示成功/失败状态）
+    // Tool result: render as a centered system card (show only success/failure status)
     if (message.isToolResult) {
         self.bubbleView.hidden = YES;
         self.toolCardView.hidden = NO;
@@ -123,11 +123,11 @@ static const CGFloat kMsgCornerRadius = 12.0;
     self.toolCardView.hidden = YES;
     self.bubbleView.hidden = NO;
     BOOL isUser = [message.role isEqualToString:@"user"];
-    // 工具调用消息与 AI 的话共存：气泡显示 AI 文本并附加工具调用提示
+    // Tool-call message coexists with AI text: show the AI text and append a tool-call hint in the bubble
     NSString *content = message.isToolCall ? [[self class] displayContentForMessage:message] : (message.content ?: @"");
     UIColor *contentColor = [UIColor labelColor];
 
-    // 文本内容
+    // Text content
     if (isUser || !enabled) {
         UIFont *font = [UIFont systemFontOfSize:kMsgFontSize];
         self.contentTextView.font = font;
@@ -138,22 +138,22 @@ static const CGFloat kMsgCornerRadius = 12.0;
         self.contentTextView.attributedText = attr;
     }
 
-    // 气泡样式
+    // Bubble style
     if (isUser) {
-        // 用户消息：右对齐，accent 色调 0.10 底 + labelColor 文字
+        // User message: right aligned, accent-tinted 0.10 background + labelColor text
         self.bubbleView.backgroundColor = [accentColor() colorWithAlphaComponent:0.10];
         self.contentTextView.textColor = contentColor;
         [self rebuildHorizontalConstraintsForUser:YES];
     } else {
-        // 助手消息：左对齐，白 0.08 底 + MarkdownParser 内置系统文字色 + 毛玻璃
+        // Assistant message: left aligned, white 0.08 background + MarkdownParser's built-in system text color + blur
         self.bubbleView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
         [self rebuildHorizontalConstraintsForUser:NO];
     }
 }
 
-/// 重建气泡水平对齐约束（用户右对齐，助手左对齐）
+/// Rebuild the bubble's horizontal alignment constraints (user right aligned, assistant left aligned)
 - (void)rebuildHorizontalConstraintsForUser:(BOOL)isUser {
-    // 移除此前添加的水平对齐约束（识别存储的标记）
+    // Remove previously added horizontal alignment constraints (identified by the stored marker)
     NSMutableArray *toRemove = [NSMutableArray array];
     for (NSLayoutConstraint *c in [self.contentView constraints]) {
         BOOL touchesBubble = (c.firstItem == self.bubbleView || c.secondItem == self.bubbleView);
@@ -170,13 +170,13 @@ static const CGFloat kMsgCornerRadius = 12.0;
     }
 
     if (isUser) {
-        // 右对齐
+        // Right aligned
         [NSLayoutConstraint activateConstraints:@[
             [self.bubbleView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kMsgHMargin],
             [self.bubbleView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:kMsgHMargin],
         ]];
     } else {
-        // 左对齐
+        // Left aligned
         [NSLayoutConstraint activateConstraints:@[
             [self.bubbleView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kMsgHMargin],
             [self.bubbleView.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-kMsgHMargin],
@@ -184,41 +184,41 @@ static const CGFloat kMsgCornerRadius = 12.0;
     }
 }
 
-#pragma mark - 工具卡片文本
+#pragma mark - Tool card text
 
-/// 工具调用消息用于气泡显示的内容：AI 的话 + 工具调用提示（共存）
+/// Content shown in the bubble for a tool-call message: AI text + tool-call hint (coexist)
 + (NSString *)displayContentForMessage:(AiMessage *)message {
     if (message.isToolCall) {
-        NSString *base = message.content.length > 0 ? message.content : @"（正在调用工具…）";
-        // 关键修复（工具名显示 call_00_...）：toolName 缺失时显示通用"工具"，
-        // 绝不用 toolCallID（形如 call_xxx 的一串 id）顶替真实工具名
-        NSString *name = message.toolName.length > 0 ? message.toolName : @"工具";
-        return [base stringByAppendingFormat:@"\n\n⚙️ 工具：%@", name];
+        NSString *base = message.content.length > 0 ? message.content : @"(Calling tool…)";
+        // Important fix (tool name displayed as call_00_...): show generic "Tool" if toolName is missing,
+        // never substitute toolCallID (an ID such as call_xxx) for the actual tool name
+        NSString *name = message.toolName.length > 0 ? message.toolName : @"Tool";
+        return [base stringByAppendingFormat:@"\n\n⚙️ Tool: %@", name];
     }
     return message.content ?: @"";
 }
 
 + (NSString *)toolCardTextForMessage:(AiMessage *)message {
     if (!message) return @"";
-    // 关键修复（工具名显示 call_00_...）：toolName 缺失时显示通用"工具"，
-    // 不用 toolCallID（call_xxx）顶替真实工具名
-    NSString *name = message.toolName.length > 0 ? message.toolName : @"工具";
+    // Important fix (tool name displayed as call_00_...): show generic "Tool" if toolName is missing,
+    // never substitute toolCallID (call_xxx) for the actual tool name
+    NSString *name = message.toolName.length > 0 ? message.toolName : @"Tool";
     if (message.isToolResult) {
-        // 只显示执行成功/失败状态，不展示冗长的工具返回正文（避免占满屏幕）
-        return message.toolSucceeded ? [NSString stringWithFormat:@"✅ %@ 执行成功", name] : [NSString stringWithFormat:@"❌ %@ 执行失败", name];
+        // Show only the success/failure status; omit verbose tool output to avoid filling the screen
+        return message.toolSucceeded ? [NSString stringWithFormat:@"✅ %@ succeeded", name] : [NSString stringWithFormat:@"❌ %@ failed", name];
     }
-    return [NSString stringWithFormat:@"⚙️ 工具：%@", name];
+    return [NSString stringWithFormat:@"⚙️ Tool: %@", name];
 }
 
-#pragma mark - 高度估算
+#pragma mark - Height estimation
 
 + (CGFloat)cellHeightForMessage:(AiMessage *)message width:(CGFloat)width markdownEnabled:(BOOL)enabled {
     if (!message || !width) return 60.0;
 
-    // 工具结果：渲染为小卡片，仅按状态文本行高估算
+    // Tool result: rendered as a small card; estimate using only the status text line height
     if (message.isToolResult) {
         NSString *cardText = [self toolCardTextForMessage:message];
-        CGFloat maxCardWidth = width * kMsgMaxBubbleWidthRatio - 20; // 扣左右内边距
+        CGFloat maxCardWidth = width * kMsgMaxBubbleWidthRatio - 20; // Subtract left and right padding
         if (maxCardWidth < 20) maxCardWidth = 20;
         UIFont *font = [UIFont systemFontOfSize:11.0];
         CGRect r = [cardText boundingRectWithSize:CGSizeMake(maxCardWidth, CGFLOAT_MAX)
@@ -227,12 +227,12 @@ static const CGFloat kMsgCornerRadius = 12.0;
                                           context:nil];
         CGFloat textHeight = ceil(r.size.height);
         if (textHeight < 16) textHeight = 16;
-        // 文字上下内边距 5*2 + 卡片上下留白 6*2
+        // Text top/bottom padding 5*2 + card top/bottom spacing 6*2
         CGFloat total = textHeight + 5 * 2 + 6 * 2;
         return MAX(total, 40.0);
     }
 
-    // 工具调用消息与 AI 的话共存在气泡中，按普通气泡文本计算高度
+    // Tool-call message and AI text coexist in the bubble; calculate height as for regular bubble text
     NSString *content = message.isToolCall ? [self displayContentForMessage:message] : (message.content ?: @"");
     CGFloat maxBubbleWidth = width * kMsgMaxBubbleWidthRatio;
     CGFloat textWidth = maxBubbleWidth - 2 * kMsgBubblePadding;

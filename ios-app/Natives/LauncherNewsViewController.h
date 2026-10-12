@@ -11,26 +11,26 @@ typedef NS_ENUM(NSInteger, HomeTileType) {
     HomeTileTypeShortcut,
 };
 
-// ★ [FIX511] 换底到 5.1.0 时本头文件误取了上游 5.1.0 的 2 档枚举,丢掉了 fork 的
-//   [SIZE4] 四档跨度枚举 + 4 个 helper 原型。而 tree510 的 LauncherNewsViewController.m /
-//   HomeCustomizeViewController.m 用的是四档符号 ⇒ 会报
-//   "use of undeclared identifier 'HomeTileSizeSmall' / no prototype for AmeTileSizeShortName"。
-//   现整块从 fork 版取回(同值别名保证旧的 Compact/Full 调用点零改动)。
+// ★ [FIX511] When rebasing to 5.1.0, this header was mistakenly replaced with the upstream two-size enum, dropping
+//   the fork's [SIZE4] four-span enum and four helper prototypes. LauncherNewsViewController.m /
+//   HomeCustomizeViewController.m in tree510 use the four-size symbols, which caused
+//   "use of undeclared identifier 'HomeTileSizeSmall' / no prototype for AmeTileSizeShortName".
+//   Restored the full block from the fork (same-value aliases keep old Compact/Full call sites unchanged).
 typedef NS_ENUM(NSInteger, HomeTileSize) {
-    HomeTileSizeSmall   = 0,   // 1×1(旧 HomeTileSizeCompact)
-    HomeTileSizeWide    = 1,   // 2×1(旧 HomeTileSizeFull)
+    HomeTileSizeSmall   = 0,   // 1×1 (formerly HomeTileSizeCompact).
+    HomeTileSizeWide    = 1,   // 2×1 (formerly HomeTileSizeFull).
     HomeTileSizeTall    = 2,   // 1×2
     HomeTileSizeLarge   = 3,   // 2×2
 
-    HomeTileSizeCompact = HomeTileSizeSmall,  // ★ [SIZE4] 旧符号别名(同值)
-    HomeTileSizeFull    = HomeTileSizeWide,   // ★ [SIZE4] 旧符号别名(同值)
+    HomeTileSizeCompact = HomeTileSizeSmall,  // ★ [SIZE4] Alias for the old symbol (same value).
+    HomeTileSizeFull    = HomeTileSizeWide,   // ★ [SIZE4] Alias for the old symbol (same value).
 };
 
-// ★ [SIZE4] 跨度 / 名称 helper(实现见 LauncherNewsViewController.m)。
-NSInteger AmeTileSpanColumns(HomeTileSize size);    // 列跨度:Small/Tall⇒1,Wide/Large⇒2
-NSInteger AmeTileSpanRows(HomeTileSize size);       // 行跨度:Small/Wide⇒1,Tall/Large⇒2
-NSString *AmeTileSizeShortName(HomeTileSize size);  // "1×1"/"2×1"/"1×2"/"2×2"(几何,无需本地化)
-NSString *AmeTileSizeDisplayName(HomeTileSize size);// 本地化名称(Half Width / Full Width / Tall / Large)
+// ★ [SIZE4] Span / name helpers (implemented in LauncherNewsViewController.m).
+NSInteger AmeTileSpanColumns(HomeTileSize size);    // Column span: Small/Tall ⇒ 1, Wide/Large ⇒ 2.
+NSInteger AmeTileSpanRows(HomeTileSize size);       // Row span: Small/Wide ⇒ 1, Tall/Large ⇒ 2.
+NSString *AmeTileSizeShortName(HomeTileSize size);  // "1×1"/"2×1"/"1×2"/"2×2" (geometric; does not need localization).
+NSString *AmeTileSizeDisplayName(HomeTileSize size);// Localized name (Half Width / Full Width / Tall / Large).
 
 // MARK: - HomeTileConfig
 
@@ -61,7 +61,7 @@ extern NSString * const kShortcutActionShaders;
 extern NSString * const kShortcutActionModpack;
 extern NSString * const kShortcutActionBackground;
 extern NSString * const kShortcutActionVersions;
-extern NSString * const kShortcutActionMultiplayer;   // ★ [MP-RESTORE] 联机快捷入口
+extern NSString * const kShortcutActionMultiplayer;   // ★ [MP-RESTORE] Multiplayer shortcut entry.
 
 // MARK: - LauncherNewsViewController
 

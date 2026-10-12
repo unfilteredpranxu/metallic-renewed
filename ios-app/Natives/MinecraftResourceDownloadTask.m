@@ -18,7 +18,7 @@
 
 NSString * const kMinecraftResourceDownloadBackgroundSessionIdentifier = @"com.air-devs.air.MinecraftResourceDownloadTask";
 
-// 原版安装 6 步的阶段下标（与 PLTaskStagesVanilla() 一致，redesign-download-ui Phase 3 Task 3.1）
+// Indices for the six vanilla-install stages (matches PLTaskStagesVanilla(), redesign-download-ui Phase 3 Task 3.1).
 static const NSUInteger kMCStageIndexFetchManifest = 0;
 static const NSUInteger kMCStageIndexVersionJSON = 1;
 static const NSUInteger kMCStageIndexDownloadClient = 2;
@@ -34,41 +34,41 @@ static const NSUInteger kMCStageIndexVerify = 5;
 @property (nonatomic, assign) NSTimeInterval progressLastTime;
 @property (nonatomic, assign) int64_t progressLastCompleted;
 
-// ===== 阶段上报（redesign-download-ui Phase 3 Task 3.1）=====
-// 仅 downloadVersion:（原版安装链路）启用阶段上报；整合包下载走 ModpackImportService 自行上报
+// ===== Stage reporting (redesign-download-ui Phase 3 Task 3.1) =====
+// Stage reporting is enabled only for downloadVersion: (vanilla install flow); modpack downloads are reported by ModpackImportService.
 @property (nonatomic, assign) BOOL stageReportingEnabled;
-// 库文件/资源文件双维度计数（按下载目标路径分类；versions/ 下的 version JSON 不计入）
+// Dual file counts for libraries/assets (classified by destination path; version JSON files under versions/ are excluded).
 @property (nonatomic, assign) NSInteger libTotalFileCount;
 @property (nonatomic, assign) NSInteger libCompletedFileCount;
 @property (nonatomic, assign) NSInteger assetTotalFileCount;
 @property (nonatomic, assign) NSInteger assetCompletedFileCount;
 
-// Task 5.10：在线整合包 zip 下载完成后的统一导入入口（复用 ModpackImportService）
+// Task 5.10: Unified import entry point after an online modpack ZIP download completes (reuses ModpackImportService).
 - (void)importDownloadedModpackPackage:(NSString *)packagePath;
 @end
 
 @implementation MinecraftResourceDownloadTask
 
 + (AFURLSessionManager *)sharedBackgroundSessionManager {
-    // 参照 main 分支：使用前台 defaultSessionConfiguration 而非后台 backgroundSessionConfiguration。
+    // Based on the main branch: use foreground defaultSessionConfiguration instead of backgroundSessionConfiguration.
     //
-    // 为什么不用后台 URLSession：
-    // 1. 后台会话由系统守护进程 nsurlsessiond 调度，会限流并发数、串行化任务，
-    //    导致原版下载（数百个 asset + 数十个 library）极慢，"转圈不下载"。
-    // 2. 后台会话的未完成任务会被系统持久化，失败/取消不干净时残留 task 卡住新下载。
-    // 3. 前台会话 resume 即立即并发执行，适合启动器这种前台活跃下载场景。
+    // Why not use a background URLSession:
+    // 1. Background sessions are scheduled by the nsurlsessiond system daemon, which limits concurrency and serializes tasks,
+    //    making vanilla installs (hundreds of assets and dozens of libraries) extremely slow, appearing to "spin without downloading."
+    // 2. The system persists unfinished background tasks; stale tasks from failures or incomplete cancellations can block new downloads.
+    // 3. Foreground sessions start concurrent work immediately on resume, which suits an actively used launcher.
     //
-    // 保留单例模式（避免每次 init 都创建新会话），但使用前台配置。
+    // Keep the singleton pattern (to avoid creating a new session on every init), but use the foreground configuration.
     static AFURLSessionManager *manager = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
         configuration.timeoutIntervalForRequest = 86400;
-        // 参考 FCL（FoldCraftLauncher）和 ZalithLauncher2：高并发下载加速。
-        // FCL 在 Java 端使用 OkHttp 的线程池并发下载，本项目对应在 NSURLSession
-        // 层面提升 HTTPMaximumConnectionsPerHost。从 16 提升到 24，加速原版数百个
-        // asset 的并发下载。注意 iOS 系统对单 host 实际并发有调度上限，过高的设置
-        // 会被系统降级，24 是经验值。完整性仍由 SHA1 校验保证。
+        // Based on FCL (FoldCraftLauncher) and ZalithLauncher2: improve speed with concurrent downloads.
+        // FCL uses an OkHttp thread pool for concurrent downloads on Java. Here, increase NSURLSession's
+        // HTTPMaximumConnectionsPerHost from 16 to 24 to speed up concurrent downloads of hundreds of vanilla assets.
+        // iOS imposes a scheduling limit on actual per-host concurrency, so overly high settings may be reduced by the system;
+        // 24 is an empirically chosen value. Integrity is still ensured by SHA1 checks.
         configuration.HTTPMaximumConnectionsPerHost = 24;
         manager = [[AFURLSessionManager alloc] initWithSessionConfiguration:configuration];
     });
@@ -91,20 +91,20 @@ static const NSUInteger kMCStageIndexVerify = 5;
     self.manager = [MinecraftResourceDownloadTask sharedBackgroundSessionManager];
     self.fileList = [NSMutableArray new];
     self.progressList = [NSMutableArray new];
-    // 阶段5修复：初始化失败文件列表（参照 FCL 的失败汇总机制）
+    // Phase 5 fix: initialize the failed-file list (based on FCL's failure summary mechanism).
     self.failedFiles = [NSMutableArray new];
     return self;
 }
 
-// 根据配置选择下载源并替换URL
+// Selects and substitutes the download source according to configuration.
 - (NSString *)replaceURLWithDownloadSource:(NSString *)originalURL {
     return [self replaceURLWithDownloadSource:originalURL forceSource:nil];
 }
 
-/// 生成游戏文件的镜像候选列表（接入 PLMirrorCenter 镜像中心）
-/// 候选包含原始（官方）URL 与 BMCLAPI 镜像 URL，已去重并按当前镜像策略排序；
-/// 无法识别的主机仅返回原始 URL。镜像前缀映射统一收敛在 PLMirrorCenter，
-/// 本类不再硬编码镜像根 URL。
+/// Generates mirror candidates for game files (using the PLMirrorCenter mirror hub).
+/// Candidates include the original (official) URL and BMCLAPI mirror URLs, deduplicated and sorted according to the current mirror policy.
+/// Unrecognized hosts return only the original URL. Mirror-prefix mapping is centralized in PLMirrorCenter;
+/// this class no longer hard-codes mirror root URLs.
 - (NSArray<NSURL *> *)mirrorCandidatesForOriginalURL:(NSString *)originalURL {
     NSURL *url = [NSURL URLWithString:originalURL];
     if (!url) return @[];
@@ -112,14 +112,14 @@ static const NSUInteger kMCStageIndexVerify = 5;
                                           resourceType:PLMirrorResourceTypeGameFile];
 }
 
-/// 镜像源替换核心实现（接入 PLMirrorCenter，spec Task 4.2）。
-/// 参考 FCL（FoldCraftLauncher）和 ZalithLauncher2：支持多镜像源 fallback。
-/// @param originalURL 原始 URL
-/// @param forceSource 强制使用的源（保留旧参数语义）：
-///                    nil=按 PLMirrorCenter 当前策略取首选（策略内部含旧键回退）；
-///                    @"official"=锁定官方原始 URL；
-///                    @"bmclapi"=锁定 BMCLAPI 镜像候选（无镜像候选时回退原始 URL）；
-///                    @"mcim"=沿用旧行为：MCIM 不覆盖 Mojang 系游戏文件，原样返回。
+/// Core mirror-source substitution implementation (integrated with PLMirrorCenter, spec Task 4.2).
+/// Based on FCL (FoldCraftLauncher) and ZalithLauncher2: supports fallback across multiple mirrors.
+/// @param originalURL Original URL.
+/// @param forceSource Source to force (retains the semantics of the legacy parameter):
+///                    nil=choose the preferred source according to PLMirrorCenter's current policy (which includes legacy-key fallback);
+///                    @"official"=lock to the original official URL;
+///                    @"bmclapi"=lock to a BMCLAPI mirror candidate (fall back to the original URL if none is available);
+///                    @"mcim"=retain legacy behavior: MCIM does not override Mojang game files, so return the original URL.
 - (NSString *)replaceURLWithDownloadSource:(NSString *)originalURL forceSource:(nullable NSString *)forceSource {
     if (!originalURL) return originalURL;
 
@@ -127,15 +127,15 @@ static const NSUInteger kMCStageIndexVerify = 5;
     if (candidates.count == 0) return originalURL;
 
     if (forceSource.length == 0) {
-        // nil → 按 PLMirrorCenter 策略取首选候选
+        // nil → select the preferred candidate according to PLMirrorCenter policy.
         return candidates.firstObject.absoluteString ?: originalURL;
     }
     if ([forceSource isEqualToString:@"official"] || [forceSource isEqualToString:@"mcim"]) {
-        // 官方源直连；mcim 沿用旧行为（游戏文件不走 MCIM 改写）
+        // Connect directly to the official source; mcim retains legacy behavior (game files are not rewritten by MCIM).
         return originalURL;
     }
     if ([forceSource isEqualToString:@"bmclapi"]) {
-        // 锁定 BMCLAPI 镜像候选（候选中与原始 URL 不同的那一项）
+        // Lock to the BMCLAPI mirror candidate (the candidate that differs from the original URL).
         for (NSURL *candidate in candidates) {
             if (![candidate.absoluteString isEqualToString:originalURL]) {
                 return candidate.absoluteString;
@@ -143,7 +143,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
         }
         return originalURL;
     }
-    // 未知源值：按策略取首选
+    // Unknown source value: select the preferred source according to policy.
     return candidates.firstObject.absoluteString ?: originalURL;
 }
 
@@ -156,7 +156,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
     BOOL fileExists = [NSFileManager.defaultManager fileExistsAtPath:path];
     // logSuccess?
     if (fileExists && [self checkSHA:sha forFile:path altName:altName]) {
-        // 阶段计数：已存在且校验通过的文件计入"库/资源"维度（重试调用不会进入此分支）
+        // Stage count: existing files that pass validation count toward the "libraries/assets" dimension (retries do not enter this branch).
         if (retryCount == 0) {
             [self mc_recordStageFileStartedAtPath:path];
             [self mc_recordStageFileFinishedAtPath:path];
@@ -166,27 +166,27 @@ static const NSUInteger kMCStageIndexVerify = 5;
     } else if (![self checkAccessWithDialog:YES]) {
         return nil;
     }
-    // 阶段计数：首次创建时计入总量（重试轮换不重复计数）
+    // Stage count: add to the total on first creation (do not count retry rotations again).
     if (retryCount == 0) {
         [self mc_recordStageFileStartedAtPath:path];
     }
 
     NSString *name = altName ?: path.lastPathComponent;
-    // 镜像候选与故障转移（接入 PLMirrorCenter，spec Task 4.2）：
-    // 候选列表按当前镜像策略排序（如 [官方, BMCLAPI 镜像]）。重试时同一候选耗尽
-    // 单候选重试预算后轮换到下一候选继续重试，全部候选耗尽才最终失败，
-    // 避免单一镜像源故障导致整批下载卡死（参考 FCL / ZalithLauncher2 的多源 fallback）。
-    // SHA1 校验仍照常进行，不破坏下载完整性。
+    // Mirror candidates and failover (integrated with PLMirrorCenter, spec Task 4.2):
+    // Candidates are sorted according to the current mirror policy (e.g. [official, BMCLAPI mirror]). During retries,
+    // move to the next candidate after exhausting the retry budget for the current one; fail only after all candidates are exhausted.
+    // This prevents a single mirror failure from stalling the entire download (based on the multi-source fallback in FCL / ZalithLauncher2).
+    // SHA1 validation still runs as usual, preserving download integrity.
     NSArray<NSURL *> *mirrorCandidates = [self mirrorCandidatesForOriginalURL:url];
     if (mirrorCandidates.count == 0) {
-        // URL 无法解析的极端情况：退化为仅含原始 URL 的单候选，保持旧行为
+        // Edge case where the URL cannot be parsed: use a single candidate containing the original URL, preserving legacy behavior.
         NSURL *fallbackURL = [NSURL URLWithString:url];
         mirrorCandidates = fallbackURL ? @[fallbackURL] : @[];
     }
     NSInteger maxRetry = self.maxRetryCount > 0 ? self.maxRetryCount : 3;
-    // 总尝试次数 = 单候选重试预算 × 候选数（全部候选耗尽才最终失败）
+    // Total attempts = per-candidate retry budget × number of candidates (fail only after all candidates are exhausted).
     NSInteger attemptCount = MAX((NSInteger)mirrorCandidates.count, 1) * maxRetry;
-    // 当前尝试对应的候选索引：第 0~(maxRetry-1) 次尝试用候选 0，耗尽后轮换下一候选
+    // Candidate index for the current attempt: attempts 0 through (maxRetry-1) use candidate 0, then rotate to the next candidate.
     NSUInteger candidateIndex = mirrorCandidates.count > 0
         ? MIN((NSUInteger)(MAX(retryCount, 0) / MAX(maxRetry, 1)), mirrorCandidates.count - 1)
         : 0;
@@ -221,7 +221,8 @@ static const NSUInteger kMCStageIndexVerify = 5;
         if (self.progress.cancelled) {
             // Ignore any further errors
         } else if (error != nil) {
-            // 重试机制（候选轮换故障转移：同候选耗尽预算换下一候选，全部候选耗尽才最终失败）
+            // Retry mechanism (candidate-rotation failover: move to the next candidate when the current one's budget is exhausted;
+            // fail only after all candidates are exhausted).
             if (retryCount + 1 < attemptCount) {
                 NSInteger nextRetry = retryCount + 1;
                 NSLog(@"[MCDL] Retrying %@ (attempt %ld/%ld)", name, (long)(nextRetry + 1), (long)attemptCount);
@@ -232,7 +233,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
                     });
                 }
                 
-                // 延迟重试（缩短到 0.5 秒，避免数百个文件重试时累加延迟过长）
+                // Delayed retry (reduced to 0.5 seconds to avoid long cumulative delays when hundreds of files retry).
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     NSURLSessionDownloadTask *retryTask = [weakSelf createDownloadTask:url size:size sha:sha altName:altName toPath:path retryCount:nextRetry success:success];
                     if (retryTask) {
@@ -241,13 +242,12 @@ static const NSUInteger kMCStageIndexVerify = 5;
                 });
             } else {
                 [weakSelf finishDownloadWithError:error file:name];
-                // 阶段计数：最终失败的文件也计入完成数（避免计数卡住）
+                // Stage count: count files that ultimately fail as completed too (to prevent the count from stalling).
                 [weakSelf mc_recordStageFileFinishedAtPath:path];
-                // 阶段5修复（参照 FCL）：单文件失败后必须手动推进进度，否则父 progress
-                // 永远不会达到 100%（failed 子 progress 的份额无人填补），
-                // 用户会看到下载条卡住不动，误以为下载未完成。
-                // 注意：destination block 只在下载成功时才会被调用，所以这里 progress
-                // 可能为 nil。需要重新从 manager 取该 task 对应的子 progress。
+                // Phase 5 fix (based on FCL): manually advance progress after a single-file failure; otherwise, parent progress
+                // never reaches 100% because no one fills the failed child progress's share, making users think the download is stuck.
+                // Note: the destination block is called only on successful downloads, so progress may be nil here.
+                // Retrieve the child progress for this task from the manager again.
                 NSProgress *taskProgress = progress ?: [weakSelf.manager downloadProgressForTask:task];
                 if (taskProgress) {
                     int64_t pending = taskProgress.totalUnitCount - taskProgress.completedUnitCount;
@@ -255,21 +255,21 @@ static const NSUInteger kMCStageIndexVerify = 5;
                         taskProgress.completedUnitCount = taskProgress.totalUnitCount;
                     }
                 } else if (weakSelf.progress.totalUnitCount > weakSelf.progress.completedUnitCount) {
-                    // 极端兜底：连子 progress 都拿不到（如 size 未知且 destination 未触发），
-                    // 直接给父 progress 推 1 个单位，避免下载条卡死。
+                    // Extreme fallback: if even the child progress is unavailable (e.g. unknown size and destination was not called),
+                    // advance the parent progress by one unit to prevent the download indicator from getting stuck.
                     weakSelf.progress.completedUnitCount += 1;
                 }
             }
         } else if (![self checkSHA:sha forFile:path altName:altName]) {
-            // SHA1 校验失败也尝试重试（同样按候选列表轮换故障转移）
+            // Retry SHA1 validation failures too (also rotate through candidates for failover).
             if (retryCount + 1 < attemptCount) {
                 NSInteger nextRetry = retryCount + 1;
                 NSLog(@"[MCDL] SHA1 mismatch, retrying %@ (attempt %ld/%ld)", name, (long)(nextRetry + 1), (long)attemptCount);
 
-                // 删除损坏的文件
+                // Delete the corrupted file.
                 [NSFileManager.defaultManager removeItemAtPath:path error:nil];
 
-                // SHA 失败重试延迟缩短到 0.3 秒
+                // Reduce the retry delay for SHA failures to 0.3 seconds.
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     NSURLSessionDownloadTask *retryTask = [weakSelf createDownloadTask:url size:size sha:sha altName:altName toPath:path retryCount:nextRetry success:success];
                     if (retryTask) {
@@ -277,7 +277,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
                     }
                 });
             } else {
-                // 阶段5修复（参照 FCL）：SHA1 校验失败也记录到 failedFiles，不取消整批任务
+                // Phase 5 fix (based on FCL): record SHA1 validation failures in failedFiles too; do not cancel the whole task.
                 @synchronized(weakSelf.failedFiles) {
                     [weakSelf.failedFiles addObject:@{
                         @"name": path.lastPathComponent ?: @"unknown",
@@ -286,9 +286,9 @@ static const NSUInteger kMCStageIndexVerify = 5;
                 }
                 NSLog(@"[MCDL] SHA1 mismatch for '%@', added to failedFiles (total failed: %lu), other downloads will continue",
                       path.lastPathComponent, (unsigned long)weakSelf.failedFiles.count);
-                // 阶段计数：SHA 校验最终失败的文件也计入完成数
+                // Stage count: count files that ultimately fail SHA validation as completed too.
                 [weakSelf mc_recordStageFileFinishedAtPath:path];
-                // 阶段5修复：与上面 error 分支一致，推进父 progress 避免卡死
+                // Phase 5 fix: as in the error branch above, advance the parent progress to prevent it from getting stuck.
                 NSProgress *taskProgress2 = progress ?: [weakSelf.manager downloadProgressForTask:task];
                 if (taskProgress2) {
                     int64_t pending = taskProgress2.totalUnitCount - taskProgress2.completedUnitCount;
@@ -356,13 +356,13 @@ static const NSUInteger kMCStageIndexVerify = 5;
         }
         if (self.metadata[@"inheritsFrom"]) {
             NSMutableDictionary *inheritsFromDict = parseJSONFromFile([NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), self.metadata[@"inheritsFrom"]]);
-            if (inheritsFromDict && !inheritsFromDict[@"NSErrorObject"]) {  // 添加错误字典检测
-                // 修复：parseJSONFromFile 返回错误字典而非 nil，
-                //   导致 inheritsFrom 父版本缺失时错误字典被当作 metadata
+            if (inheritsFromDict && !inheritsFromDict[@"NSErrorObject"]) {  // Check for an error dictionary.
+                // Fix: parseJSONFromFile returns an error dictionary instead of nil,
+                //   so a missing inheritsFrom parent version could cause the error dictionary to be treated as metadata.
                 [MinecraftResourceUtils processVersion:self.metadata inheritsFrom:inheritsFromDict];
                 self.metadata = inheritsFromDict;
             } else {
-                // 父版本不存在或损坏，报错
+                // Parent version is missing or corrupted; report an error.
                 [self finishDownloadWithErrorString:[NSString stringWithFormat:localize(@"i18n_str_446", nil), self.metadata[@"inheritsFrom"]]];
                 return;
             }
@@ -382,12 +382,12 @@ static const NSUInteger kMCStageIndexVerify = 5;
             if (version) {
                 path = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), json[@"inheritsFrom"]];
             } else {
-                // 阶段5修复（参照 FCL ModpackHelper.ensureCompleteVersion）：
-                // findVersion 失败通常因为 remoteVersionList 尚未加载（整合包导入在后台线程，
-                // 不经过 DownloadViewController 的清单加载流程）。
-                // 此时检查父版本 JSON 是否已由 ensureParentVersionExists 预先下载：
-                //   - 已存在 → 直接走 completionBlock，后续 libraries/assets 下载照常进行
-                //   - 不存在 → 报错（启动器无法继续）
+                // Phase 5 fix (based on FCL ModpackHelper.ensureCompleteVersion):
+                // findVersion usually fails because remoteVersionList has not loaded (modpack import runs on a background thread
+                // and does not go through DownloadViewController's manifest-loading flow).
+                // Check whether ensureParentVersionExists has already downloaded the parent version JSON:
+                //   - If present → call completionBlock directly; subsequent libraries/assets downloads proceed as usual.
+                //   - If absent → report an error (the launcher cannot continue).
                 NSString *parentJsonPath = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json",
                                             getenv("POJAV_GAME_DIR"), json[@"inheritsFrom"]];
                 if ([NSFileManager.defaultManager fileExistsAtPath:parentJsonPath]) {
@@ -445,8 +445,9 @@ static const NSUInteger kMCStageIndexVerify = 5;
             artifact = [[NSMutableDictionary alloc] init];
             NSString *prefix = library[@"url"] == nil ? @"https://libraries.minecraft.net/" : [library[@"url"] stringByReplacingOccurrencesOfString:@"http://" withString:@"https://"];
             NSArray *libParts = [name componentsSeparatedByString:@":"];
-            // ★ [DEMINE] 原为 libParts[2] 直接下标：name 只有 1 个冒号(2 段，非标准 Maven
-            //   三段坐标)时越界 NSRangeException 崩 App。缺段则跳过该库(不再生成 artifact)。
+            // ★ [DEMINE] Previously indexed libParts[2] directly; if name had only one colon (two segments, not a standard
+            //   three-part Maven coordinate), this caused an out-of-bounds NSRangeException and crashed the app.
+            //   Skip libraries with missing segments (do not generate an artifact).
             if (libParts.count < 3) {
                 NSLog(@"[DEMINE] skip artifact generation for non-3-part lib name: %@", name);
                 continue;
@@ -519,22 +520,22 @@ static const NSUInteger kMCStageIndexVerify = 5;
     self.stageReportingEnabled = YES;
     [self prepareForDownload];
 
-    // ===== 阶段上报初始化（redesign-download-ui Phase 3 Task 3.1）=====
-    // 原版 6 步：获取版本清单→下载版本JSON→下载客户端→下载库文件→下载资源文件→验证完整性
+    // ===== Initialize stage reporting (redesign-download-ui Phase 3 Task 3.1) =====
+    // Six vanilla-install stages: fetch version manifest → download version JSON → download client → download libraries → download assets → verify integrity.
     DownloadTaskManager *manager = [DownloadTaskManager sharedManager];
     NSString *taskId = self.currentDownloadTaskItem.taskId;
     [manager setTaskWithId:taskId stages:PLTaskStagesVanilla()];
     self.currentDownloadTaskItem.autoPresentDetail = YES;
-    // 阶段0 版本清单：版本对象由调用方（版本列表/预装流程）解析提供，直接标记完成
+    // Stage 0, version manifest: the caller (version list/preinstall flow) provides the parsed version object; mark complete directly.
     [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexFetchManifest status:PLTaskStageStatusCompleted];
-    // ★ [158-FIX] 阶段2「下载客户端」不再无条件标 Skipped。
-    //   事实：客户端 jar 由 tweakVersionJson 追加为伪库条目
-    //   （path=../versions/<id>/<id>.jar），随「下载库文件」阶段真实下载；
-    //   旧代码这里恒标 Skipped ⇒ UI 永远渲染 ⊖（PLTaskProgressViewController
-    //   把 Skipped 画成 minus.circle），被误读为「从未下载 / 恒为 -」（issue #158）。
-    //   改为在拿到版本 JSON 后按 downloads.client 是否存在决定 Running / Skipped
-    //   （见下方 downloadVersionMetadata 的 success 块）。
-    // 阶段1 下载版本 JSON 进行中（不确定进度：JSON 较小无需百分比）
+    // ★ [158-FIX] Do not unconditionally mark stage 2, "Download client," as Skipped.
+    //   The client JAR is added by tweakVersionJson as a pseudo-library entry
+    //   (path=../versions/<id>/<id>.jar) and actually downloads during the "Download libraries" stage.
+    //   The old code always marked it Skipped, so the UI always rendered ⊖ (PLTaskProgressViewController
+    //   displays Skipped as minus.circle), which looked like "never downloaded / always -" (issue #158).
+    //   After receiving the version JSON, determine Running / Skipped based on whether downloads.client exists
+    //   (see the success block in downloadVersionMetadata below).
+    // Stage 1, downloading version JSON (progress is indeterminate; the JSON is small, so a percentage is unnecessary).
     [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexVersionJSON status:PLTaskStageStatusRunning];
     [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexVersionJSON progress:-1 message:nil];
     [manager updateTaskWithId:taskId currentStageIndex:kMCStageIndexVersionJSON];
@@ -544,12 +545,11 @@ static const NSUInteger kMCStageIndexVerify = 5;
         __strong MinecraftResourceDownloadTask *strongSelf = weakSelf;
         if (!strongSelf) return;
         [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexVersionJSON status:PLTaskStageStatusCompleted];
-        // ★ [158-FIX] 阶段2「下载客户端」：该版本确有 downloads.client（原版/26.x 都有）时
-        //   标为进行中——client.jar 由 tweakVersionJson 追加的伪库条目随「下载库文件」
-        //   阶段一起落地，收尾循环（mc_finishAllStagesWithFailure:nil 把 Running→Completed）
-        //   会把它升级为 Completed；只有当版本 JSON 确实没有客户端下载信息
-        //   （如 inheritsFrom 骨架版本）时才保持 Skipped。
-        //   这样「下载客户端」不会再永远停在 ⊖（issue #158 的「恒为 -」）。
+        // ★ [158-FIX] Stage 2, "Download client": mark as in progress when the version has downloads.client (as vanilla/26.x versions do).
+        //   client.jar is added by tweakVersionJson as a pseudo-library entry and is downloaded during the "Download libraries"
+        //   stage. The finalization loop (mc_finishAllStagesWithFailure:nil changes Running → Completed) then marks it complete.
+        //   Keep it Skipped only when the version JSON truly has no client download information (e.g. an inheritsFrom skeleton version).
+        //   This prevents "Download client" from staying at ⊖ indefinitely (issue #158's "always -").
         if (strongSelf.metadata[@"downloads"][@"client"] != nil) {
             [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexDownloadClient status:PLTaskStageStatusRunning];
             [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexDownloadClient progress:-1 message:nil];
@@ -570,7 +570,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
                 strongSelf.textProgress.completedUnitCount = 1;
                 return;
             }
-            // 阶段3/4：库文件与资源文件并发下载（progress 不确定，靠双维度文件计数推进）
+            // Stages 3/4: download libraries and assets concurrently (indeterminate progress; advance using dual file counts).
             [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexLibraries status:PLTaskStageStatusRunning];
             [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexAssets status:PLTaskStageStatusRunning];
             [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexLibraries progress:-1 message:nil];
@@ -592,9 +592,9 @@ static const NSUInteger kMCStageIndexVerify = 5;
 #pragma mark - Modpack installation
 
 - (void)downloadModpackFromAPI:(ModpackAPI *)api detail:(NSDictionary *)modDetail atIndex:(NSUInteger)selectedVersion {
-    self.stageReportingEnabled = NO; // 整合包阶段上报由 ModpackImportService 负责（Phase 5）
-    // Task 5.10：zip 下载阶段以整合包身份展示（显示名/类型/图标），
-    // 导入阶段由 ModpackImportService 注册 6 阶段整合包主任务承接。
+    self.stageReportingEnabled = NO; // ModpackImportService reports modpack stages (Phase 5).
+    // Task 5.10: display the ZIP download stage as a modpack (name/type/icon);
+    // ModpackImportService registers the six-stage main modpack task for the import stage.
     NSString *title = [modDetail[@"title"] isKindOfClass:[NSString class]] ? modDetail[@"title"] : nil;
     self.currentVersionId = title.length > 0 ? title : localize(@"i18n_str_118", nil);
     [self prepareForDownload];
@@ -612,20 +612,20 @@ static const NSUInteger kMCStageIndexVerify = 5;
     NSString *packagePath = [NSTemporaryDirectory() stringByAppendingFormat:@"/%@.zip", name];
 
     NSURLSessionDownloadTask *task = [self createDownloadTask:url size:size sha:sha altName:nil toPath:packagePath success:^{
-        // Task 5.10：在线整合包下载路径统一——zip 下载完成后复用 ModpackImportService
-        // 统一导入流程（解析 → 6 阶段主任务 → 解压/依赖下载/加载器/游戏文件/profile），
-        // 消除 ModrinthAPI/CurseForgeAPI submitDownloadTasksFromPackage: 双轨逻辑。
+        // Task 5.10: unify the online modpack download path. After the ZIP download completes, reuse ModpackImportService's
+        // unified import flow (parse → six-stage main task → extract/dependency downloads/loader/game files/profile),
+        // removing the parallel ModrinthAPI/CurseForgeAPI submitDownloadTasksFromPackage: logic.
         [self importDownloadedModpackPackage:packagePath];
     }];
     [task resume];
 }
 
-/// Task 5.10：在线整合包 zip 下载完成后的统一导入入口。
-///   1. 用 ModpackImportService 解析 zip（Modrinth/CurseForge/MMC/MCBBS/Plain ZIP 均可识别）；
-///   2. 解析失败走 finishDownloadWithErrorString:（任务标失败 + 弹窗 + 恢复 UI）；
-///   3. 解析成功后收口 zip 下载任务（推满父 progress → KVO 标记任务完成 →
-///      LauncherNavigationController 移除观察并恢复交互），再后台执行 importModpack:，
-///      由 service 注册 6 阶段整合包主任务（autoPresentDetail 自动弹统一进度页）。
+/// Task 5.10: Unified import entry point after an online modpack ZIP download completes.
+///   1. Parse the ZIP with ModpackImportService (recognizes Modrinth/CurseForge/MMC/MCBBS/plain ZIP formats).
+///   2. On parse failure, call finishDownloadWithErrorString: (mark task failed, show alert, restore UI).
+///   3. On success, finalize the ZIP download task (fill parent progress → KVO marks task complete →
+///      LauncherNavigationController removes its observer and restores interaction), then run importModpack: in the background.
+///      The service registers the six-stage main modpack task (autoPresentDetail automatically presents the unified progress page).
 - (void)importDownloadedModpackPackage:(NSString *)packagePath {
     ModpackImportService *service = [[ModpackImportService alloc] init];
     [service resetCancelState];
@@ -638,8 +638,8 @@ static const NSUInteger kMCStageIndexVerify = 5;
         return;
     }
 
-    // 在线整合包补充 API 图标：zip 内无 icon 时回退列表图标
-    // （ModpackInstallViewController 触发下载前已写入 tmp icon.png）
+    // Add the API icon for online modpacks: use the list icon if the ZIP has no icon
+    // (ModpackInstallViewController writes tmp icon.png before starting the download).
     NSMutableDictionary *info = [modpackInfo mutableCopy];
     NSString *archiveIcon = info[@"iconBase64"];
     if (![archiveIcon isKindOfClass:[NSString class]] || archiveIcon.length == 0) {
@@ -651,14 +651,14 @@ static const NSUInteger kMCStageIndexVerify = 5;
         }
     }
 
-    // 收口 zip 下载任务：推满父 progress（清掉 prepareForDownload 预留的 1 字节单位），
-    // KVO 完成分支将 DownloadTaskItem 标记为完成，LauncherNavigationController 同步恢复交互；
-    // 后续导入进度全部由 service 的整合包主任务（统一进度页）承接。
+    // Finalize the ZIP download task: fill the parent progress (clears the one-byte unit reserved by prepareForDownload).
+    // The KVO completion branch marks DownloadTaskItem complete, and LauncherNavigationController restores interaction;
+    // all subsequent import progress is handled by the service's main modpack task (unified progress page).
     if (self.progress.totalUnitCount > self.progress.completedUnitCount) {
         self.progress.completedUnitCount = self.progress.totalUnitCount;
     }
 
-    // 后台执行统一导入（6 阶段进度上报 + autoPresentDetail 统一进度页）
+    // Run the unified import in the background (six-stage progress reporting + autoPresentDetail unified progress page).
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSError *importError = nil;
         BOOL success = [service importModpack:info progress:nil error:&importError];
@@ -667,9 +667,9 @@ static const NSUInteger kMCStageIndexVerify = 5;
         } else {
             NSLog(@"[ModpackImport] Online modpack import failed: %@", importError.localizedDescription);
         }
-        // 导入结束（成功/失败/取消）后清理 zip 临时文件
+        // Clean up the temporary ZIP file after import finishes (success/failure/cancellation).
         [NSFileManager.defaultManager removeItemAtPath:packagePath error:nil];
-        // 成功后刷新 profile 列表（与 Fabric/Forge 安装完成后的 ReloadProfileList 通知一致）
+        // Refresh the profile list on success (same as the ReloadProfileList notification after Fabric/Forge installation).
         if (success) {
             [[NSNotificationCenter defaultCenter] postNotificationName:@"ReloadProfileList" object:nil];
         }
@@ -679,9 +679,9 @@ static const NSUInteger kMCStageIndexVerify = 5;
 #pragma mark - Utilities
 
 - (void)prepareForDownload {
-    // 清理单例会话上残留的上一次下载任务（前台会话单例模式下必须清理，
-    // 否则上一次失败/取消的 task 残留在会话中可能影响新下载）。
-    // 注意：不能 invalidate 单例会话（会破坏后续所有下载），只取消任务。
+    // Clear leftover download tasks from the previous run on the singleton session (required for a foreground singleton session,
+    // otherwise a task left behind by a previous failure/cancellation may affect new downloads).
+    // Do not invalidate the singleton session (that would break all subsequent downloads); cancel tasks only.
     NSString *oldTaskId = self.currentDownloadTaskItem.taskId;
     if (oldTaskId.length > 0) {
         [self.manager.session getTasksWithCompletionHandler:^(NSArray<NSURLSessionDataTask *> *dataTasks,
@@ -707,19 +707,19 @@ static const NSUInteger kMCStageIndexVerify = 5;
     self.progress.totalUnitCount = 1;
     [self.fileList removeAllObjects];
     [self.progressList removeAllObjects];
-    // 阶段5修复：重置失败文件列表（参照 FCL）
+    // Phase 5 fix: reset the failed-file list (based on FCL).
     [self.failedFiles removeAllObjects];
-    // 阶段计数重置（stageReportingEnabled 由各入口自行设置：
-    // downloadVersion: 置 YES，downloadModpackFromAPI: 置 NO）
+    // Reset stage counts (each entry point sets stageReportingEnabled itself:
+    // downloadVersion: sets YES; downloadModpackFromAPI: sets NO).
     self.libTotalFileCount = 0;
     self.libCompletedFileCount = 0;
     self.assetTotalFileCount = 0;
     self.assetCompletedFileCount = 0;
 
-    // 注册/更新到统一下载任务管理器
+    // Register/update with the unified download task manager.
     [self registerOrUpdateTaskItem];
 
-    // 监听总体进度
+    // Observe overall progress.
     if (!self.isObservingTaskProgress) {
         [self.progress addObserver:self
                         forKeyPath:@"fractionCompleted"
@@ -732,7 +732,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
 }
 
 - (void)registerOrUpdateTaskItem {
-    // 悬浮球已移除，始终注册到统一下载任务管理器，以便下载任务列表跟踪
+    // The floating bubble has been removed; always register with the unified download task manager so the download list can track tasks.
     NSString *displayName = self.currentVersionId ?: (self.metadata[@"id"] ?: @"Minecraft");
     NSString *downloadSource = getPrefObject(@"general.download_source") ?: @"official";
 
@@ -759,7 +759,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
 
 #pragma mark - Stage Reporting Helpers (redesign-download-ui Phase 3 Task 3.1)
 
-/// 按下载目标路径分类计入阶段文件总量（库文件/资源文件；version JSON 不计入）
+/// Classifies by destination path and adds to the stage file total (libraries/assets; version JSON is excluded).
 - (void)mc_recordStageFileStartedAtPath:(NSString *)path {
     if (!self.stageReportingEnabled) return;
     if ([path containsString:@"/libraries/"]) {
@@ -767,12 +767,12 @@ static const NSUInteger kMCStageIndexVerify = 5;
     } else if ([path containsString:@"/assets/"] || [path containsString:@"/resources/"]) {
         self.assetTotalFileCount++;
     } else {
-        return; // versions/ 下的 version JSON、asset index 归属阶段1/4 的 JSON 下载，不计双维度
+        return; // Version JSON and asset indexes under versions/ belong to the stage 1/4 JSON downloads; exclude from dual counts.
     }
     [self mc_reportStageFileCounts];
 }
 
-/// 文件到达终态（跳过/成功/最终失败）时计入阶段文件完成数
+/// Counts a file toward the stage completion total when it reaches a terminal state (skipped/succeeded/ultimately failed).
 - (void)mc_recordStageFileFinishedAtPath:(NSString *)path {
     if (!self.stageReportingEnabled) return;
     if ([path containsString:@"/libraries/"]) {
@@ -785,7 +785,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
     [self mc_reportStageFileCounts];
 }
 
-/// 上报库/资源阶段的双维度文件计数
+/// Reports the dual file counts for library/asset stages.
 - (void)mc_reportStageFileCounts {
     if (!self.stageReportingEnabled || !self.currentDownloadTaskItem) return;
     NSString *taskId = self.currentDownloadTaskItem.taskId;
@@ -800,8 +800,8 @@ static const NSUInteger kMCStageIndexVerify = 5;
                totalFileCount:self.assetTotalFileCount];
 }
 
-/// 收敛全部阶段状态：error 为 nil 时全部标 Completed（验证阶段先 Running 再 Completed）；
-/// 非 nil 时当前阶段标 Failed 并带上错误信息，其后阶段保持 Pending。
+/// Finalizes all stage states: if error is nil, mark all Completed (the validation stage transitions through Running first);
+/// otherwise mark the current stage Failed with the error, leaving subsequent stages Pending.
 - (void)mc_finishAllStagesWithFailure:(nullable NSString *)error {
     if (!self.stageReportingEnabled || !self.currentDownloadTaskItem) return;
     NSString *taskId = self.currentDownloadTaskItem.taskId;
@@ -809,7 +809,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
     NSInteger idx = self.currentDownloadTaskItem.currentStageIndex;
 
     if (error != nil) {
-        // 失败：当前阶段 Failed + message；已完成阶段保持不变
+        // Failure: current stage is Failed + message; completed stages remain unchanged.
         if (idx >= 0 && (NSUInteger)idx < self.currentDownloadTaskItem.stages.count) {
             [manager updateTaskWithId:taskId
                          stageAtIndex:(NSUInteger)idx
@@ -822,14 +822,14 @@ static const NSUInteger kMCStageIndexVerify = 5;
         return;
     }
 
-    // 成功：未完成阶段全部标记完成（下载客户端保持 Skipped）
+    // Success: mark all incomplete stages complete (leave Download client as Skipped).
     NSArray<PLTaskStage *> *stages = self.currentDownloadTaskItem.stages;
     for (NSUInteger i = 0; i < stages.count; i++) {
         if (stages[i].status == PLTaskStageStatusPending || stages[i].status == PLTaskStageStatusRunning) {
             [manager updateTaskWithId:taskId stageAtIndex:i status:PLTaskStageStatusCompleted];
         }
     }
-    // 验证完整性：SHA1 校验已随每个文件完成，快速推进
+    // Verify integrity: SHA1 checks run as each file completes, so advance quickly.
     [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexVerify status:PLTaskStageStatusRunning];
     [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexVerify progress:1 message:nil];
     [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexVerify status:PLTaskStageStatusCompleted];
@@ -838,12 +838,12 @@ static const NSUInteger kMCStageIndexVerify = 5;
 }
 
 - (void)cancel {
-    // 取消根 NSProgress：各子任务进度被级联取消，KVO 的 cancelled 分支按既有路径收尾
+    // Cancel the root NSProgress: all child task progress is cancelled recursively, and the KVO cancelled branch handles cleanup as before.
     [self.progress cancel];
 }
 
 - (void)finishDownloadWithErrorString:(NSString *)error {
-    // 阶段上报：整流程失败时把当前阶段标记为 Failed
+    // Stage reporting: mark the current stage Failed when the overall flow fails.
     if (self.stageReportingEnabled) {
         [self mc_finishAllStagesWithFailure:error ?: localize(@"i18n_str_448", nil)];
     }
@@ -857,7 +857,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
 
     [self.progress cancel];
 
-    // 取消属于当前任务的所有后台下载任务，避免失败后继续浪费流量
+    // Cancel all background downloads belonging to this task to avoid wasting bandwidth after failure.
     NSString *taskId = self.currentDownloadTaskItem.taskId;
     [self.manager.session getTasksWithCompletionHandler:^(NSArray<NSURLSessionDataTask *> *dataTasks,
                                                           NSArray<NSURLSessionUploadTask *> *uploadTasks,
@@ -877,20 +877,19 @@ static const NSUInteger kMCStageIndexVerify = 5;
     NSString *errorStr = [NSString stringWithFormat:localize(@"launcher.mcl.error_download", NULL), file, error.localizedDescription];
     NSLog(@"[MCDL] Error: %@ %@", errorStr, NSThread.callStackSymbols);
 
-    // 阶段5修复（参照 FCL）：单文件下载失败不再取消整批任务。
+    // Phase 5 fix (based on FCL): a single-file download failure no longer cancels the entire task.
     //
-    // 之前调用 finishDownloadWithErrorString: 会：
-    //   1. 取消所有同 taskId 的下载任务（正在下载的其他文件全部被取消）
-    //   2. 弹出错误对话框中断整个下载流程
-    //   3. 导致整合包"下载不完全"——用户报告"下载的模组名称不对、下载不完全"
+    // Previously, calling finishDownloadWithErrorString: would:
+    //   1. Cancel all downloads with the same taskId (including other files currently downloading).
+    //   2. Show an error dialog and interrupt the entire download flow.
+    //   3. Leave the modpack incomplete — users reported incorrect mod names and incomplete downloads.
     //
-    // FCL 做法：单文件失败记录到 failedFiles 数组，其他文件继续下载，
-    // 最终汇总报告给用户。这与 FCL "单文件失败不影响其他文件"的设计完全一致。
+    // FCL's approach records individual failures in failedFiles and continues downloading other files,
+    // then reports a summary to the user. This matches FCL's design that a single-file failure does not affect other files.
     //
-    // 注意：仅整合包多文件下载场景适用此容错策略。单文件版本下载（downloadVersion:）
-    // 不应进入此方法（其 completionHandler 已有自己的错误处理路径），但若意外进入，
-    // 由于 failedFiles.count == 0 时 finishDownloadWithErrorString: 不会被触发，
-    // 行为与原逻辑保持兼容。
+    // This recovery strategy applies only to multi-file modpack downloads. Single-version downloads (downloadVersion:)
+    // should not reach this method (their completionHandler has its own error path). If one does, finishDownloadWithErrorString:
+    // is not triggered when failedFiles.count == 0, preserving the original behavior.
     @synchronized(self.failedFiles) {
         [self.failedFiles addObject:@{
             @"name": file ?: @"unknown",
@@ -916,7 +915,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
     int64_t total = progress.totalUnitCount;
     int64_t completed = (int64_t)(total * fraction);
 
-    // 速度 / 预计剩余时间（每秒计算一次）
+    // Speed / estimated time remaining (calculated once per second).
     struct timeval tv;
     gettimeofday(&tv, NULL);
     NSTimeInterval now = tv.tv_sec + tv.tv_usec / 1000000.0;
@@ -948,7 +947,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
                         speed:speed
        estimatedTimeRemaining:eta];
 
-    // 阶段上报：并发下载的库/资源阶段共享全局速率（progress 为不确定模式，靠文件计数推进）
+    // Stage reporting: concurrent library/asset stages share the global rate (indeterminate progress, advanced by file counts).
     if (self.stageReportingEnabled) {
         [manager updateTaskWithId:self.currentDownloadTaskItem.taskId
                     stageAtIndex:kMCStageIndexLibraries
@@ -969,18 +968,18 @@ static const NSUInteger kMCStageIndexVerify = 5;
     }
 
     if (progress.finished) {
-        // 阶段上报：收尾——库/资源阶段完成，验证完整性阶段快速推进后完成
-        //（SHA1 校验内嵌于每个文件的下载完成回调中，此处仅收敛阶段状态）
+        // Stage reporting: finalize — library/asset stages are complete; quickly advance and complete the integrity-validation stage.
+        // (SHA1 validation is embedded in each file's download completion callback; this only finalizes stage states.)
         if (self.stageReportingEnabled) {
             [self mc_finishAllStagesWithFailure:nil];
         }
         if (self.currentDownloadTaskItem.state != DownloadTaskStateCompleted &&
             self.currentDownloadTaskItem.state != DownloadTaskStateFailed &&
             self.currentDownloadTaskItem.state != DownloadTaskStateCancelled) {
-            // 阶段5修复（参照 FCL DownloadList.finishAll）：下载流程结束后，
-            // 若有失败文件，不能简单标记为"成功完成"——这会让用户以为整合包完整。
-            // 应将失败文件信息汇总为 NSError，让 DownloadTaskManager 显示为失败状态，
-            // 用户可在下载任务列表中看到具体缺失的文件。
+            // Phase 5 fix (based on FCL DownloadList.finishAll): after the download flow ends,
+            // do not simply mark it "successfully completed" if there are failed files — users would think the modpack is complete.
+            // Aggregate failed-file details into an NSError so DownloadTaskManager shows a failed status,
+            // and users can see exactly which files are missing in the download task list.
             NSArray<NSDictionary *> *failedSnapshot = [self.failedFiles copy];
             if (failedSnapshot.count > 0) {
                 NSMutableString *msg = [NSMutableString stringWithFormat:localize(@"i18n_str_449", nil), (unsigned long)failedSnapshot.count];
@@ -1019,9 +1018,9 @@ static const NSUInteger kMCStageIndexVerify = 5;
     }
 }
 
-// 关键修改：移除本地账户下载限制和提示
+// Key change: remove the local-account download restriction and warning.
 - (BOOL)checkAccessWithDialog:(BOOL)show {
-    // 无条件允许所有下载请求
+    // Allow all download requests unconditionally.
     return YES;
 }
 
@@ -1063,9 +1062,9 @@ static const NSUInteger kMCStageIndexVerify = 5;
     if (getPrefBool(@"general.check_sha")) {
         return [self checkSHAIgnorePref:sha forFile:path altName:altName logSuccess:logSuccess];
     } else {
-        // 不仅检查文件存在性，还要检查文件大小 > 0（防止空文件被误判为已下载）
-        // 修复：原版安装时若文件被错误创建为 0 字节，会被视为已下载，
-        //   导致 totalUnitCount 从 1 变 0，触发强制完成（0 字节下载）
+        // Check not only that the file exists, but also that its size is > 0 (to avoid treating empty files as downloaded).
+        // Fix: if a file was incorrectly created with 0 bytes during a vanilla install, it was treated as downloaded,
+        //   causing totalUnitCount to go from 1 to 0 and triggering forced completion (a zero-byte download).
         if (![NSFileManager.defaultManager fileExistsAtPath:path]) return NO;
         NSDictionary *attrs = [NSFileManager.defaultManager attributesOfItemAtPath:path error:nil];
         unsigned long long fileSize = [attrs fileSize];

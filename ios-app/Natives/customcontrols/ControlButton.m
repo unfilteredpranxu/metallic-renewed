@@ -14,16 +14,16 @@
 
 @implementation ControlButton
 
-// ★ [KB-SPACE] 屏幕上的自定义控件(含 SPECIALBTN_MENU 圆形菜单键、摇杆、子按钮等)
-//   一律不参与 UIKit 键盘焦点:游戏内按空格/回车/方向键/Tab 不会激活它们。
-//   这些控件本就只走触摸/手势(null/长按/滑动),禁用焦点不影响任何既有行为。
+// ★ [KB-SPACE] On-screen custom controls (including the SPECIALBTN_MENU circular menu key, joystick, sub-buttons, etc.)
+//   never participate in UIKit keyboard focus: Space/Return/arrow/Tab keys in-game will not activate them.
+//   These controls already use touch/gestures (tap/long-press/swipe), so disabling focus does not change existing behavior.
 - (BOOL)canBecomeFocused { return NO; }
 
 + (void)load {
-    // ★ [DEMINE] objc_getMetaClass("_NSPredicateUtilities") 是 Apple 私有类：某些 iOS 版本
-    //   上不存在时返回 nil，紧随其后的 class_addMethod(nil, ...) 会在 +load(镜像加载期、
-    //   main 之前)直接崩。缺类则跳过整套 predicate 函数注入(这些函数只被自定义控件的
-    //   表达式求值用到，缺失时由 -processFunctions 的显式替换兜底)。
+    // ★ [DEMINE] _NSPredicateUtilities is an Apple private class. On some iOS versions
+    //   objc_getMetaClass may return nil; the following class_addMethod(nil, ...) would crash in +load (during image loading,
+    //   before main). If the class is absent, skip predicate function injection (these functions are only used to evaluate
+    //   custom-control expressions; -processFunctions provides explicit replacements as a fallback).
     Class NSPredicateUtilities = objc_getMetaClass("_NSPredicateUtilities");
     if (NSPredicateUtilities == nil) {
         return;
@@ -35,7 +35,7 @@
         Method method = list[i];
         class_addMethod(NSPredicateUtilities, method_getName(method), method_getImplementation(method), method_getTypeEncoding(method));
     }
-    if (list) free(list);   // ★ [DEMINE] class_copyMethodList 返回 malloc 的数组，原来未释放(一次性泄漏)
+    if (list) free(list);   // ★ [DEMINE] class_copyMethodList returns a malloc-allocated array; it was previously leaked (one-time leak).
 }
 
 + (id)buttonWithProperties:(NSMutableDictionary *)propArray {
@@ -125,10 +125,9 @@
 }
 
 - (CGFloat)calculateDynamicPos:(NSString *)string {
-    // ★ [DEMINE] 本工程 Release 未定义 NS_BLOCK_ASSERTIONS ⇒ NSAssert 在发布包中
-    //   仍然生效。按钮被移出父视图后若仍触发一次坐标计算(布局/编辑收尾竞态)，
-    //   NSAssert 会让【整个 App】崩。降级为记日志并返回 0 —— 正常运行 superview
-    //   非 nil，行为不变。
+    // ★ [DEMINE] NS_BLOCK_ASSERTIONS is undefined in this project's Release build, so NSAssert remains active.
+    //   If a button is removed from its parent view and a coordinate calculation still runs (layout/edit-finish race),
+    //   NSAssert would crash the entire app. Log and return 0 instead; superview is non-nil in normal operation, so behavior is unchanged.
     if (self.superview == nil) {
         NSLog(@"[DEMINE] ControlButton -calculateDynamicPos called with nil superview; returning 0");
         return 0;
@@ -186,8 +185,8 @@
 }
 
 - (void)update {
-    // ★ [DEMINE] 见 -calculateDynamicPos：NSAssert 在发布包中仍生效，按钮脱离父视图
-    //   后的一次 update 会崩整个 App。降级为记日志并跳过本次更新(正常路径不变)。
+    // ★ [DEMINE] See -calculateDynamicPos: NSAssert remains active in Release builds, so an update
+    //   after the button leaves its parent view would crash the entire app. Log and skip this update instead (normal path unchanged).
     if (self.superview == nil) {
         NSLog(@"[DEMINE] ControlButton -update called with nil superview; skipping");
         return;

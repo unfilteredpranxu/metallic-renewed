@@ -1,17 +1,17 @@
 #import "LauncherLanguageViewController.h"
 
 #import "utils.h"
-#import "BackgroundManager.h"   // ★ [PAGE-GLASS] 走全局界面风格层
+#import "BackgroundManager.h"   // ★ [PAGE-GLASS] Use the global interface style layer
 
-// ★ [I18N] 语言切换后广播：SceneDelegate 收到后会重建启动器根 UI（所有页面重跑
-// localize 文案 ⇒ 真正即时生效）；本页与其它页面也可监听做局部刷新。
+// ★ [I18N] Broadcast language changes. SceneDelegate rebuilds the launcher root UI so all
+// pages resolve localized text again; this and other pages can also observe for local refreshes.
 NSString * const AmeLauncherLanguageChangedNotification = @"AmeLauncherLanguageChanged";
 
 @interface LauncherLanguageViewController () <UISearchResultsUpdating>
 
-// ★ [I18N] 选单语言代码（= 支持白名单，按显示名排序；空壳 .lproj 不列）
+// ★ [I18N] Selected language code (= supported-language allowlist, sorted by display name; omit empty .lproj shells)
 @property (nonatomic, copy) NSArray<NSString *> *availableCodes;
-// ★ [I18N] 搜索过滤后的结果；nil 表示未搜索（直接显示 availableCodes）
+// ★ [I18N] Search-filtered results; nil means no search (show availableCodes directly)
 @property (nonatomic, copy) NSArray<NSString *> *filteredCodes;
 @property (nonatomic, strong) UISearchController *searchController;
 
@@ -20,14 +20,14 @@ NSString * const AmeLauncherLanguageChangedNotification = @"AmeLauncherLanguageC
 @implementation LauncherLanguageViewController
 
 - (instancetype)init {
-    // ★ [I18N] 与设置页一致的 insetGrouped 分组样式（iOS 设置 App 观感）。
+    // ★ [I18N] insetGrouped style, matching the Settings page (like iOS Settings).
     return [super initWithStyle:UITableViewStyleInsetGrouped];
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    // ★ [I18N] 标题/占位在 ameRelocalize 里统一重取（切语言后要能刷新）。
+    // ★ [I18N] The title and placeholder are refreshed together in ameRelocalize after a language change.
     self.availableCodes = AmeLauncherAvailableLanguageCodes();
 
     self.searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
@@ -41,7 +41,7 @@ NSString * const AmeLauncherLanguageChangedNotification = @"AmeLauncherLanguageC
 
     self.tableView.rowHeight = 44;
 
-    // ★ [I18N] 语言变化时（若本页未被根 UI 重建）即时刷新标题与勾选。
+    // ★ [I18N] Refresh the title and selection immediately when the language changes (if the root UI has not rebuilt this page).
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(handleLanguageChanged:)
                                                  name:AmeLauncherLanguageChangedNotification
@@ -49,9 +49,9 @@ NSString * const AmeLauncherLanguageChangedNotification = @"AmeLauncherLanguageC
 
     [self ameRelocalize];
 
-    // ★ [PAGE-GLASS] 与其余设置子页(控制设置 / JRE 管理 / 实例设置…)一致:交给全局界面风格层 ——
-    //   iOS≥26 走系统液态玻璃、iOS<26 走系统原生材质;iOS 会把 tableView 底清透让壁纸/背景透出。
-    //   原先本页从不调用风格层 ⇒ 列表底是不透明系统底,与同族子页观感割裂。
+    // ★ [PAGE-GLASS] Match the other settings subpages (Controls / JRE Management / Instance Settings…) by using the global interface style layer —
+    //   iOS ≥26 uses system Liquid Glass; iOS <26 uses the native system material. iOS clears the tableView background to reveal the wallpaper/background.
+    //   This page previously never used the style layer, leaving an opaque system background that looked inconsistent with related subpages.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 }
 
@@ -61,12 +61,12 @@ NSString * const AmeLauncherLanguageChangedNotification = @"AmeLauncherLanguageC
                                                   object:nil];
 }
 
-#pragma mark - ★ [I18N] 文案重取
+#pragma mark - ★ [I18N] Reload localized text
 
-// 重取本页自身文案（标题 / 搜索占位 / 分组头）并刷新列表。语言变化时调用。
+// Reload this page's text (title / search placeholder / section headers) and refresh the list. Called when the language changes.
 - (void)ameRelocalize {
-    self.title = localize(@"preference.lang.title", @"语言");
-    self.searchController.searchBar.placeholder = localize(@"preference.lang.search_placeholder", @"搜索语言");
+    self.title = localize(@"preference.lang.title", @"Language");
+    self.searchController.searchBar.placeholder = localize(@"preference.lang.search_placeholder", @"Search languages");
     [self.tableView reloadData];
 }
 
@@ -76,9 +76,9 @@ NSString * const AmeLauncherLanguageChangedNotification = @"AmeLauncherLanguageC
     });
 }
 
-#pragma mark - 数据
+#pragma mark - Data
 
-// section 0 → nil（= 跟随系统）；section 1 → 具体语言代码。
+// Section 0 → nil (= follow system); section 1 → a specific language code.
 - (nullable NSString *)codeForRowAtIndexPath:(NSIndexPath *)indexPath {
     if (indexPath.section == 0) return nil;
     if (self.filteredCodes) {
@@ -99,8 +99,8 @@ NSString * const AmeLauncherLanguageChangedNotification = @"AmeLauncherLanguageC
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    if (section == 0) return localize(@"preference.lang.section.system", @"系统");
-    return localize(@"preference.lang.section.available", @"可用语言");
+    if (section == 0) return localize(@"preference.lang.section.system", @"System");
+    return localize(@"preference.lang.section.available", @"Available languages");
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -115,27 +115,27 @@ NSString * const AmeLauncherLanguageChangedNotification = @"AmeLauncherLanguageC
     NSString *currentOverride = AmeLauncherPreferredLanguageOverride();
 
     if (indexPath.section == 0) {
-        // ★ [I18N]「跟随系统」：副标题给出"跟随系统时实际生效的语言"，含义明确，
-        // 直接回答"系统英文→英文、系统中文→中文"。显示与实际渲染同一事实源。
-        cell.textLabel.text = localize(@"preference.lang.follow_system", @"跟随系统");
-        // ★ [I18N-PARTIAL] 生效语言若是"部分翻译"语言（如日语），这里同样带「部分翻译」标注。
+        // ★ [I18N] "Follow System": the subtitle states which language is actually active when following the system,
+        // directly answering "English system → English, Chinese system → Chinese". Uses the same source of truth as rendering.
+        cell.textLabel.text = localize(@"preference.lang.follow_system", @"Follow System");
+        // ★ [I18N-PARTIAL] If the active language is partially translated (such as Japanese), mark it as "Partially Translated" here too.
         cell.detailTextLabel.text = AmeLauncherDisplayNameAnnotatedForLanguageCode(AmeLauncherEffectiveLanguageCode());
         cell.accessoryType = (currentOverride.length == 0) ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
     } else {
         NSString *code = [self codeForRowAtIndexPath:indexPath];
-        // ★ [I18N-PARTIAL] 部分翻译语言（单一事实源）显示为「日本語（部分翻译）」。
+        // ★ [I18N-PARTIAL] Show partially translated languages (single source of truth) as "Japanese (Partially Translated)".
         cell.textLabel.text = AmeLauncherDisplayNameAnnotatedForLanguageCode(code);
         NSString *subtitle = code;
-        // ★ [I18N-PARTIAL] 部分翻译语言：副标题一律给出说明行（如「部分界面仍为中文」），
-        // 比只报翻译率百分比更直接地回答"选了会怎样"，杜绝"选了才发现大半是中文"。
+        // ★ [I18N-PARTIAL] For partially translated languages, always show an explanatory subtitle (e.g. "Some of the interface is still in Chinese"),
+        // which answers "what happens if I select this?" more clearly than a translation percentage and avoids surprises.
         NSString *partialNote = AmeLauncherPartiallyTranslatedNoteForLanguageCode(code);
         if (partialNote.length > 0) {
             subtitle = [NSString stringWithFormat:@"%@ · %@", code, partialNote];
         } else {
-            // ★ [I18N] 副标题：原始代码 +（部分翻译时）人工翻译率百分比 —— 一眼看出
-            // "哪些完整、哪些只译了一部分"，杜绝"选了才发现大半是英文"。
-            // ★ [I18N-ORDER] 阈值放宽到 0.85:完整语言里"AI/%d"等与英文同形的值会拉低比例,
-            // 只对"大面积未翻译"的壳子语言标百分比,避免完整语言也显示 ·98% 之类噪音。
+            // ★ [I18N] Subtitle: original code + (for partial translations) the human-translated percentage, making it easy to see
+            // which languages are complete and which are only partially translated.
+            // ★ [I18N-ORDER] Relaxed the threshold to 0.85: values such as "AI/%d" that match English can lower the ratio in complete locales.
+            // Show a percentage only for shell locales that are largely untranslated, avoiding noise such as "·98%" for complete locales.
             double ratio = AmeLauncherLanguageTranslatedRatio(code);
             if (ratio > 0.0 && ratio < 0.85) {
                 subtitle = [NSString stringWithFormat:@"%@ · %.0f%%", code, ratio * 100.0];
@@ -153,11 +153,11 @@ NSString * const AmeLauncherLanguageChangedNotification = @"AmeLauncherLanguageC
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 
-    // section 0 → nil（跟随系统）
+    // Section 0 → nil (follow system)
     NSString *code = [self codeForRowAtIndexPath:indexPath];
 
     NSString *before = AmeLauncherPreferredLanguageOverride() ?: @"";
-    // ★ [I18N] 持久化到自定义键（不碰系统 AppleLanguages）。
+    // ★ [I18N] Persist using a custom key (do not touch system AppleLanguages).
     AmeLauncherSetPreferredLanguageOverride(code);
     NSString *after = AmeLauncherPreferredLanguageOverride() ?: @"";
 
@@ -167,9 +167,10 @@ NSString * const AmeLauncherLanguageChangedNotification = @"AmeLauncherLanguageC
     }
 
     if (![before isEqualToString:after]) {
-        // ★ [I18N] 即时生效：异步广播 —— 由 SceneDelegate 重建启动器根 UI，所有页面
-        // 重跑 localize 文案（含本页）。异步是为了让本次 didSelect 先干净返回，
-        // 避免本控制器在自身回调栈里被替换/释放。
+        // ★ [I18N] Apply immediately: broadcast asynchronously — SceneDelegate rebuilds the launcher's root UI and all pages
+        // Resolve localized text again (including this page). Dispatch asynchronously so didSelect
+        // can return cleanly first,
+        // Avoid replacing/releasing this controller within its own callback stack.
         dispatch_async(dispatch_get_main_queue(), ^{
             [[NSNotificationCenter defaultCenter] postNotificationName:AmeLauncherLanguageChangedNotification
                                                                 object:nil];

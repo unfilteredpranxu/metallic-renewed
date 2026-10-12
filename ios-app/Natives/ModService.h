@@ -29,16 +29,16 @@ typedef void(^ModDownloadHandler)(NSError * _Nullable error); // Added for downl
 // --- Online Mod Downloading ---
 - (void)downloadMod:(ModItem *)mod toProfile:(NSString *)profileName completion:(ModDownloadHandler)completion;
 
-/// 下载 Mod 并上报进度
+/// Downloads a mod and reports progress.
 - (void)downloadMod:(ModItem *)mod
           toProfile:(NSString *)profileName
             progress:(void (^)(NSProgress *downloadProgress))progress
           completion:(ModDownloadHandler)completion;
 
-/// 下载 Mod 并启用 SHA1 校验（spec Task 5.1）。
-/// expectedSHA1 来自版本模型 primaryFile[@"hashes"][@"sha1"]（Modrinth files[].hashes.sha1 /
-/// CurseForge hashes algo=1），传入即启用校验，校验失败由统一下载器按镜像/退避节奏重试；
-/// 为 nil 时不做 SHA1 校验，靠 zip EOCD 兜底校验保证完整性。
+/// Downloads a mod with SHA1 validation (spec Task 5.1).
+/// expectedSHA1 comes from the version model's primaryFile[@"hashes"][@"sha1"] (Modrinth files[].hashes.sha1 /
+/// CurseForge hashes algo=1). Providing it enables validation; failures are retried by the unified downloader using mirror/backoff logic.
+/// If nil, SHA1 validation is skipped and ZIP EOCD validation is used as a fallback integrity check.
 - (void)downloadMod:(ModItem *)mod
           toProfile:(NSString *)profileName
        expectedSHA1:(nullable NSString *)expectedSHA1
@@ -48,7 +48,7 @@ typedef void(^ModDownloadHandler)(NSError * _Nullable error); // Added for downl
 // --- Utility ---
 - (NSString *)iconCachePathForURL:(NSString *)urlString;
 
-/// 获取当前 profile 的 mods 目录，不存在时自动创建
+/// Gets the current profile's mods directory, creating it if it does not exist.
 - (nullable NSString *)ensureModsFolderForProfile:(NSString *)profileName error:(NSError **)error;
 
 @end

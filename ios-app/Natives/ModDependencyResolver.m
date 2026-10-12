@@ -1,39 +1,39 @@
 //
 //  ModDependencyResolver.m
-//  模组依赖（前置）自动解析
+//  Automatic mod dependency resolution (prerequisites)
 //
-//  依赖字段结构（两侧不同，此处统一归一化）：
+//  The dependency-field structures differ between the two sources; normalize them here:
 //
-//    Modrinth  GET /project/{id}/version 的每一项：
+//    Modrinth  Each item from GET /project/{id}/version:
 //      "dependencies": [
 //        { "version_id": "xxx", "project_id": "yyy",
 //          "file_name": null, "dependency_type": "required" }
 //      ]
 //      dependency_type ∈ required / optional / incompatible / embedded
 //
-//    CurseForge GET /mods/{id}/files/{fid} 的 data：
+//    CurseForge The data from GET /mods/{id}/files/{fid}:
 //      "dependencies": [ { "modId": 394468, "relationType": 3 } ]
 //      relationType: 1=Embedded 2=Optional 3=Required 4=Tool
 //                    5=Incompatible 6=Include
 //
-//  只自动安装 required；optional 收集起来交给 UI 提示。incompatible /
-//  embedded / tool 不处理（前者是冲突声明，后两者随包自带或非模组）。
+//  Install only required dependencies automatically; collect optional ones for a UI notice.
+//  Do not handle incompatible / embedded / tool dependencies (the first declares a conflict; the latter two are bundled or are not mods).
 //
 
 #import "ModDependencyResolver.h"
 #import "installer/modpack/ModrinthAPI.h"
 #import "installer/modpack/CurseForgeAPI.h"
 
-/// 同时进行的前置查询数。ZL2 用 4，这里保持一致：
-/// 太低会让链式依赖解析很慢，太高容易触发源站限流。
+/// Number of prerequisite lookups to run concurrently. ZL2 uses 4; keep the same limit here.
+/// A lower value makes chained dependency resolution slow; a higher value may trigger source rate limiting.
 static const NSInteger kMaxConcurrentLookups = 4;
 
-/// 最多解析多少个项目。ZL2 的 MAX_DEPENDENCY_PROJECTS = 64。
-/// 超出即停止并在 plan.truncated 里列出，避免恶意/异常的依赖图把
-/// 启动器拖死（环形依赖也靠这个上限兜底）。
+/// Maximum number of projects to resolve. ZL2's MAX_DEPENDENCY_PROJECTS = 64.
+/// Stop once exceeded and list the omitted projects in plan.truncated to prevent malicious/abnormal dependency graphs
+/// from hanging the launcher (also protects against cycles).
 static const NSInteger kMaxProjects = 64;
 
-/// 最大解析深度。正常模组链很少超过 6 层，超出视为异常依赖图。
+/// Maximum resolution depth. Normal mod dependency chains rarely exceed 6 levels; deeper graphs are considered abnormal.
 static const NSInteger kMaxDepth = 8;
 
 #pragma mark -
@@ -62,7 +62,7 @@ static const NSInteger kMaxDepth = 8;
 #pragma mark -
 
 @interface ModDependencyResolver ()
-@property(nonatomic, strong) dispatch_queue_t stateQueue;   /* 保护 visited/collected */
+@property(nonatomic, strong) dispatch_queue_t stateQueue;   /* Protects visited/collected. */
 @property(nonatomic, strong) NSMutableSet<NSString *> *visitedKeys;
 @property(nonatomic, strong) NSMutableArray<ModDependencyItem *> *collectedRequired;
 @property(nonatomic, strong) NSMutableArray<ModDependencyItem *> *collectedOptional;
@@ -85,7 +85,7 @@ static const NSInteger kMaxDepth = 8;
     return self;
 }
 
-#pragma mark - 入口
+#pragma mark - Entry point
 
 - (void)resolveDependenciesFromVersionDetail:(NSDictionary *)versionDetail
                                    apiSource:(NSInteger)apiSource
@@ -96,15 +96,15 @@ static const NSInteger kMaxDepth = 8;
     if (!completion) return;
 
     if (![versionDetail isKindOfClass:[NSDictionary class]]) {
-        // 没有版本详情时不要报错阻塞下载，给空计划即可。
+        // If there are no version details, do not block downloads with an error; return an empty plan.
         dispatch_async(dispatch_get_main_queue(), ^{
             completion([[ModDependencyPlan alloc] init], nil);
         });
         return;
     }
 
-    // 每次解析重置状态。resolver 是单例，但解析过程是「一次调用一批」，
-    // 不共享状态；若将来要并发解析多个主模组，需要改成实例化而非单例。
+    // Reset state for each resolution. The resolver is a singleton, but each resolution is a separate batch
+    // and does not share state; if multiple root mods must be resolved concurrently later, use instances instead.
     self.visitedKeys = [NSMutableSet new];
     self.collectedRequired = [NSMutableArray new];
     self.collectedOptional = [NSMutableArray new];
@@ -112,7 +112,7 @@ static const NSInteger kMaxDepth = 8;
 
     NSSet<NSString *> *installed = installedProjectIds ?: [NSSet set];
     NSString *key = [self dependencyKeyForProjectId:[self projectIdFromVersionDetail:versionDetail apiSource:apiSource]];
-    if (key) [self.visitedKeys addObject:key];   // 主模组自身也标记，防止依赖环回到自己
+    if (key) [self.visitedKeys addObject:key];   // Mark the root mod too, to prevent a dependency cycle returning to itself.
 
     [self expandFromVersionDetail:versionDetail
                         apiSource:apiSource
@@ -130,9 +130,9 @@ static const NSInteger kMaxDepth = 8;
     }];
 }
 
-#pragma mark - 递归展开
+#pragma mark - Recursive expansion
 
-/// 从一份版本详情取出直接依赖，逐个处理（必要时继续向下展开）。
+/// Extracts direct dependencies from version details and processes them one by one (recursing as needed).
 - (void)expandFromVersionDetail:(NSDictionary *)detail
                       apiSource:(NSInteger)apiSource
                      installed:(NSSet<NSString *> *)installed
@@ -157,18 +157,18 @@ static const NSInteger kMaxDepth = 8;
         return;
     }
 
-    // 逐个处理：已访问/已安装的跳过，新项目入队后按需继续展开版本详情。
+    // Process each dependency: skip visited/installed projects; enqueue new ones and expand their version details as needed.
     NSMutableArray<ModDependencyItem *> *toProcess = [NSMutableArray new];
     for (ModDependencyItem *dep in direct) {
         NSString *depKey = [self dependencyKeyForProjectId:dep.projectId];
         if (depKey == nil) continue;
 
         @synchronized (self.visitedKeys) {
-            if ([self.visitedKeys containsObject:depKey]) continue;   // 环 / 重复
+            if ([self.visitedKeys containsObject:depKey]) continue;   // Cycle / duplicate.
             [self.visitedKeys addObject:depKey];
         }
         if (dep.projectId.length > 0 && [installed containsObject:dep.projectId]) {
-            continue;   // 已安装同项目（任一版本）→ 不重复装
+            continue;   // Another version of the same project is already installed; do not install it again.
         }
         if (dep.kind == ModDependencyKindRequired) {
             @synchronized (self.collectedRequired) {
@@ -187,7 +187,7 @@ static const NSInteger kMaxDepth = 8;
         return;
     }
 
-    // 并发上限：分批查版本详情。
+    // Enforce the concurrency limit by fetching version details in batches.
     dispatch_group_t group = dispatch_group_create();
     dispatch_semaphore_t sem = dispatch_semaphore_create(kMaxConcurrentLookups);
     __block NSError *firstError = nil;
@@ -201,7 +201,7 @@ static const NSInteger kMaxDepth = 8;
                                    completion:^(NSDictionary *detail2, NSError *error) {
             if (error && firstError == nil) firstError = error;
             if ([detail2 isKindOfClass:[NSDictionary class]]) {
-                // 继续向下展开。用同一把信号量串行化，深度由 depth+1 控制。
+                // Continue expansion. Use the same semaphore to serialize work; depth+1 controls recursion depth.
                 [self expandFromVersionDetail:detail2
                                     apiSource:dep.apiSource
                                    installed:installed
@@ -225,9 +225,9 @@ static const NSInteger kMaxDepth = 8;
     });
 }
 
-#pragma mark - 取依赖
+#pragma mark - Get dependencies
 
-/// 从版本详情里取出直接依赖（归一化两种源的字段）。
+/// Extracts direct dependencies from version details (normalizes fields from both sources).
 - (NSArray<ModDependencyItem *> *)parseDependenciesFromDetail:(NSDictionary *)detail apiSource:(NSInteger)apiSource {
     NSMutableArray<ModDependencyItem *> *out = [NSMutableArray new];
     id deps = detail[@"dependencies"];
@@ -249,13 +249,13 @@ static const NSInteger kMaxDepth = 8;
             } else if ([type isEqualToString:@"optional"]) {
                 item.kind = ModDependencyKindOptional;
             } else {
-                continue;   // incompatible / embedded / 未知 → 不处理
+                continue;   // incompatible / embedded / unknown → do not handle.
             }
-            // Modrinth 有时只给 version_id 不给 project_id，此时无法按项目去重，
-            // 也无法查可选版本；跳过而不是瞎猜。
+            // Modrinth sometimes provides only version_id, not project_id. In that case, dependencies cannot be deduplicated by project
+            // or optional versions looked up; skip it rather than guessing.
             if (item.projectId.length == 0) continue;
         } else {
-            // CurseForge：modId 是数字，relationType 是枚举
+            // CurseForge: modId is numeric, and relationType is an enum.
             id modId = d[@"modId"];
             if (![modId respondsToSelector:@selector(description)]) continue;
             item.projectId = [modId description];
@@ -273,26 +273,26 @@ static const NSInteger kMaxDepth = 8;
     return out;
 }
 
-#pragma mark - 查版本详情
+#pragma mark - Fetch version details
 
-/// 拉某个依赖项目的「可用版本详情」，用于继续向下解析。
-/// 优先用 versionId 直取（Modrinth），否则按 loader/gameVersion 过滤取最新。
+/// Fetches the "available version details" for a dependency project to continue resolution.
+/// Prefer a direct lookup by versionId (Modrinth); otherwise filter by loader/gameVersion and choose the latest.
 - (void)fetchVersionDetailForDependency:(ModDependencyItem *)dep
                                  loader:(NSString *)loader
                             gameVersion:(NSString *)gameVersion
                              completion:(void (^)(NSDictionary *, NSError *))completion {
     if (!completion) return;
 
-    // 两个源都用 getVersionsForModWithID:（已存在），拿到 ModVersion 列表后
-    // 挑一个与本实例兼容的，取其 rawDictionary 作为 version detail 继续展开。
+    // Both sources use the existing getVersionsForModWithID:. After receiving ModVersion entries,
+    // select one compatible with this instance and use its rawDictionary as version details for further expansion.
     void (^handle)(NSArray<ModVersion *> *, NSError *) = ^(NSArray<ModVersion *> *versions, NSError *error) {
         if (error || versions.count == 0) {
             completion(nil, error);
             return;
         }
         ModVersion *picked = nil;
-        // 优先精确匹配 gameVersions + loaders；都不匹配时退回第一个版本
-        // （宁可多装一个可能不兼容的前置，也好过整条依赖链断掉不提示）。
+        // Prefer an exact match for gameVersions + loaders; if none match, fall back to the first version
+        // (a potentially incompatible prerequisite is preferable to silently breaking the entire dependency chain).
         for (ModVersion *v in versions) {
             if (gameVersion.length > 0 && ![v.gameVersions containsObject:gameVersion]) continue;
             if (loader.length > 0 && v.loaders.count > 0) {
@@ -318,7 +318,7 @@ static const NSInteger kMaxDepth = 8;
     }
 }
 
-#pragma mark - 工具
+#pragma mark - Utilities
 
 - (NSString *)dependencyKeyForProjectId:(NSString *)projectId {
     if (projectId.length == 0) return nil;
@@ -328,8 +328,8 @@ static const NSInteger kMaxDepth = 8;
 - (NSString *)projectIdFromVersionDetail:(NSDictionary *)detail apiSource:(NSInteger)apiSource {
     id pid = detail[@"project_id"];
     if ([pid isKindOfClass:[NSString class]] && [pid length] > 0) return pid;
-    // Modrinth 的 version 详情里项目 id 也可能只在 "project_id"；
-    // CurseForge 的文件详情用 "modId"。
+    // A Modrinth version detail may provide the project ID only as "project_id";
+    // CurseForge file details use "modId".
     id modId = detail[@"modId"];
     if ([modId respondsToSelector:@selector(description)]) return [modId description];
     return nil;

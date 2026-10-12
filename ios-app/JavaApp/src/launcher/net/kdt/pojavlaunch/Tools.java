@@ -54,35 +54,41 @@ public final class Tools {
 
     public static void launchMinecraft(MinecraftAccount profile, final JMinecraftVersionList.Version versionInfo, String serverIp) throws Throwable {
         // --- BEGIN AMETHYST UPSTREAM LWJGL 3.4.1 COMPLIANCE OVERRIDE ---
-        // 关闭 native libffi 检查（防止 LibFFI <clinit> 中的 NoSuchFieldError）
-        // 注意：allocator 由 JavaLauncher.m 通过 -Dorg.lwjgl.system.allocator=system 统一配置，
-        // 这里不再重复设置。原代码 System.setProperty("org.lwjgl.system.Allocator", "Custom")
-        // 存在两个致命问题导致其从未生效，且会误导调试：
-        //   1) 属性名大小写错误：LWJGL 实际读取小写 org.lwjgl.system.allocator，大写 Allocator 被忽略
-        //   2) "Custom" 不是 LWJGL 有效 allocator 值（有效值仅 system/jemalloc/rpmalloc）
+        // Disable native libffi checks (prevents NoSuchFieldError in LibFFI <clinit>).
+        // JavaLauncher.m configures the allocator globally with
+        // -Dorg.lwjgl.system.allocator=system, so do not set it again here. The old
+        // System.setProperty("org.lwjgl.system.Allocator", "Custom") had two fatal issues
+        // that kept it from working and made debugging misleading:
+        //   1) The property name had incorrect capitalization: LWJGL reads lowercase
+        //      org.lwjgl.system.allocator and ignores uppercase Allocator.
+        //   2) "Custom" is not a valid LWJGL allocator value (only system/jemalloc/rpmalloc are valid).
         System.setProperty("org.lwjgl.system.libffi.enabled", "false");
         System.setProperty("org.lwjgl.system.libffi.initialize", "false"); // Prevents NoSuchFieldError in LibFFI <clinit>
 
-        // spvc / openal 库加载说明：
-        // spvc 库名由 JavaLauncher.m 显式设置 -Dorg.lwjgl.spvc.libname=spirv-cross-c-shared.0
-        // （参照 catsruledogs/Amethyst-iOS-25，能正常启动 26.2 + Java 25）。
-        // LWJGL Library.loadNative 在 macOS 上对 libname 的处理：
-        //   - 若 libname 已含 "lib" 前缀和 ".dylib" 后缀，直接使用
-        //   - 否则加 "lib" 前缀和 ".dylib" 后缀
-        // "spirv-cross-c-shared.0" -> "libspirv-cross-c-shared.0.dylib"（正确，不会二次包装）。
-        // spirv-cross 作为共享 dylib 放在根目录 Frameworks/，从 library.path
-        // （Frameworks:Frameworks/lwjglXX）的根目录 Frameworks/ 加载。
+        // spvc/openal library loading:
+        // JavaLauncher.m explicitly sets the spvc name with
+        // -Dorg.lwjgl.spvc.libname=spirv-cross-c-shared.0 (based on
+        // catsruledogs/Amethyst-iOS-25, which launches 26.2 + Java 25 successfully).
+        // On macOS, LWJGL Library.loadNative handles libname as follows:
+        //   - If libname already has the "lib" prefix and ".dylib" suffix, use it as-is.
+        //   - Otherwise, add the "lib" prefix and ".dylib" suffix.
+        // "spirv-cross-c-shared.0" -> "libspirv-cross-c-shared.0.dylib" (correct; no double wrapping).
+        // spirv-cross is a shared dylib in the root Frameworks/ directory, loaded from
+        // the root Frameworks/ location in library.path (Frameworks:Frameworks/lwjglXX).
         //
-        // openal 用 LWJGL 默认名加载 libopenal.dylib（libopenal.dylib 直接存在于根目录 Frameworks/），
-        // 无需 override。
+        // LWJGL loads openal as libopenal.dylib by its default name (the dylib exists
+        // directly in the root Frameworks/ directory), so no override is needed.
         //
-        // 历史教训：曾尝试移除 spvc.libname override 改用 Makefile 软链接
-        // （libspirv-cross.dylib -> libspirv-cross-c-shared.0.dylib）+ LWJGL 默认名 "spirv-cross"，
-        // 但 26.2 启动时在 "Now starting game" 阶段 SIGSEGV at get_method_id。根因：软链接方案
-        // 依赖构建阶段正确创建符号链接，一旦构建环境差异导致软链接缺失或指向错误，spvc 加载
-        // 进入异常状态，JNI 注册状态不一致，get_method_id 访问已损坏类元数据导致 SIGSEGV
-        // （而非抛出 UnsatisfiedLinkError）。显式指定完整 SO 名直接定位实际文件，无需软链接，
-        // 是最稳妥的方案。
+        // Historical lesson: Removing the spvc.libname override and using a Makefile
+        // symlink (libspirv-cross.dylib -> libspirv-cross-c-shared.0.dylib) with the
+        // LWJGL default name "spirv-cross" caused a SIGSEGV at get_method_id during
+        // the "Now starting game" stage on MC 26.2. The symlink approach depends on
+        // the build creating the link correctly; build-environment differences can
+        // leave it missing or pointing to the wrong file. spvc then loads abnormally,
+        // JNI registration becomes inconsistent, and get_method_id accesses corrupted
+        // class metadata, causing a SIGSEGV rather than UnsatisfiedLinkError. Explicitly
+        // specifying the complete SO name locates the real file without a symlink and
+        // is the most reliable approach.
         // --- END AMETHYST UPSTREAM LWJGL 3.4.1 COMPLIANCE OVERRIDE ---
 
         String[] launchArgs = getMinecraftArgs(profile, versionInfo, serverIp);
@@ -117,8 +123,8 @@ public final class Tools {
 
         File gameDir = new File(Tools.DIR_GAME_PROFILE);
         gameDir.mkdirs();
-        // 确保 logs 目录存在，防止 Log4j RollingRandomAccessFileAppender
-        // 因 logs/latest.log 路径不存在而抛出 FileNotFoundException
+        // Ensure the logs directory exists so Log4j RollingRandomAccessFileAppender
+        // does not throw FileNotFoundException because logs/latest.log is missing.
         new File(gameDir, "logs").mkdirs();
 
         Map<String, String> varArgMap = new ArrayMap<String, String>();
@@ -141,20 +147,20 @@ public final class Tools {
         List<String> minecraftArgs = new ArrayList<String>();
         if (versionInfo.arguments != null) {
             // Support Minecraft 1.13+
-            // 检测当前账户是否为第三方认证账户（authlib-injector / Yggdrasil）
-            // 第三方账户的特征：clientToken 非 "0" 且 xuid 为 null 或 "0"
-            // （Microsoft 账户有 xuid，本地账户 clientToken 为 "0"）
-            // 对第三方账户，即使版本 JSON 含 --xuid 参数，user_type 也必须保持 "mojang"
-            // 而不能改为 "msa"，否则 Minecraft 26.x 内部会按 MSA 流程处理
-            // 导致认证失败（无法加载皮肤 / 无法加入服务器 / 崩溃）
+            // Detect third-party authentication accounts (authlib-injector / Yggdrasil).
+            // They have a clientToken other than "0" and a null or "0" xuid
+            // (Microsoft accounts have an xuid; local accounts have clientToken "0").
+            // For third-party accounts, keep user_type="mojang" even if the version JSON
+            // contains --xuid; changing it to "msa" makes Minecraft 26.x use the MSA flow
+            // and causes authentication failures (missing skins, inability to join servers, or crashes).
             boolean isThirdPartyAccount = !"0".equals(profile.clientToken)
                 && (profile.xuid == null || "0".equals(profile.xuid));
             for (Object arg : versionInfo.arguments.game) {
                 if (arg instanceof String) {
                     minecraftArgs.add((String) arg);
                     if (arg.equals("--xuid") && !isThirdPartyAccount) {
-                        // 仅对 Microsoft 账户（有 xuid）设置 user_type=msa
-                        // 第三方账户保持 "mojang"，避免 26.x 认证流程错误
+                        // Set user_type=msa only for Microsoft accounts (with an xuid).
+                        // Keep "mojang" for third-party accounts to avoid 26.x auth-flow errors.
                         varArgMap.put("user_type", "msa");
                     }
                 } else {
@@ -183,9 +189,10 @@ public final class Tools {
             ), varArgMap
         );
 
-        // FCL 风格：启动后自动加入服务器。serverIp 为空时不追加任何参数，
-        // 行为与原启动流程完全一致。版本判定使用解析后的基础 MC 版本号
-        // （versionName 优先取 inheritsFrom，避免 modded 版本 id 干扰比较）
+        // FCL-style automatic server join after launch. If serverIp is empty, no
+        // arguments are added and launch behavior remains unchanged. Version checks
+        // use the resolved base MC version (versionName prefers inheritsFrom so a
+        // modded version ID does not affect the comparison).
         argsFromJson = appendServerArgs(argsFromJson, serverIp, versionName);
 
         // Tools.dialogOnUiThread(this, "Result args", Arrays.asList(argsFromJson).toString());
@@ -193,12 +200,12 @@ public final class Tools {
     }
 
     /**
-     * 根据 serverIp 和 MC 版本追加服务器加入参数（FCL/ZL2 风格）。
-     * - MC < 1.20：--server <host> --port <port>（端口缺省补 25565）
-     * - MC >= 1.20：--quickPlayMultiplayer <host:port>（端口缺省补 :25565）
-     * - 地址格式：host / host:port / [ipv6]:port
-     * - 解析失败仅告警不加入，不抛出异常
-     * - serverIp 为 null 或空字符串时直接返回原参数
+     * Append server-join arguments based on serverIp and the MC version (FCL/ZL2 style).
+     * - MC < 1.20: --server <host> --port <port> (default port: 25565)
+     * - MC >= 1.20: --quickPlayMultiplayer <host:port> (default port: 25565)
+     * - Address formats: host / host:port / [ipv6]:port
+     * - On parse failure, log a warning and do not join; do not throw an exception.
+     * - If serverIp is null or empty, return the original arguments unchanged.
      */
     private static String[] appendServerArgs(String[] args, String serverIp, String versionId) {
         if (serverIp == null || serverIp.isEmpty()) {
@@ -210,11 +217,11 @@ public final class Tools {
         }
 
         String host = null;
-        String port = "25565"; // 默认端口
+        String port = "25565"; // Default port.
 
-        // 地址解析：支持 host / host:port / [ipv6]:port
+        // Parse the address; supports host / host:port / [ipv6]:port.
         if (trimmed.startsWith("[")) {
-            // IPv6 形如 [::1]:25565 或 [::1]
+            // IPv6 examples: [::1]:25565 or [::1].
             int close = trimmed.indexOf("]");
             if (close <= 0) {
                 System.err.println("[Tools] Invalid server address (unterminated IPv6 bracket): " + serverIp);
@@ -222,7 +229,7 @@ public final class Tools {
             }
             host = trimmed.substring(1, close);
             if (close + 1 < trimmed.length()) {
-                // 括号后应跟 :port
+                // A port must follow the closing bracket.
                 String rest = trimmed.substring(close + 1);
                 if (rest.startsWith(":")) {
                     String portStr = rest.substring(1);
@@ -235,7 +242,7 @@ public final class Tools {
                 }
             }
         } else {
-            // 普通地址：以最后一个 : 分割端口
+            // Regular address: split the port at the last colon.
             int lastColon = trimmed.lastIndexOf(":");
             if (lastColon > 0) {
                 host = trimmed.substring(0, lastColon);
@@ -254,7 +261,7 @@ public final class Tools {
         }
 
         List<String> argList = new ArrayList<String>(Arrays.asList(args));
-        // 版本判定：MC < 1.20 用 --server/--port，MC >= 1.20 用 --quickPlayMultiplayer
+        // Version check: MC < 1.20 uses --server/--port; MC >= 1.20 uses --quickPlayMultiplayer.
         if (versionId.compareTo("1.20") < 0) {
             argList.add("--server");
             argList.add(host);
@@ -298,8 +305,10 @@ public final class Tools {
             library.downloads.artifact.path != null)
             return library.downloads.artifact.path;
         String[] libInfos = library.name.split(":");
-        // ★ [DEMINE] 原为 libInfos[1]/[2] 直接下标：库名不足三段(非标准 Maven 坐标)时
-        //   ArrayIndexOutOfBoundsException 会冒泡到 main 线程 ⇒ 未捕获处理器 System.exit(1) 杀掉 App。
+        // ★ [DEMINE] Previously indexed libInfos[1]/[2] directly. A library name with
+        //   fewer than three parts (non-standard Maven coordinate) caused
+        //   ArrayIndexOutOfBoundsException to reach the main thread, whose uncaught
+        //   exception handler called System.exit(1) and killed the app.
         if (libInfos.length < 3) {
             System.err.println("[DEMINE] artifactToPath: non-3-part library name: " + library.name);
             return library.name.replaceAll("\\.", "/") + ".jar";
@@ -400,8 +409,9 @@ public final class Tools {
                     continue;
             }
 
-            // ★ [DEMINE] 原为 libItem.name.split(":")[2] 直接下标：库名不足三段时
-            //   ArrayIndexOutOfBoundsException 冒泡到 main ⇒ System.exit(1) 杀掉 App。缺段则跳过该库。
+            // ★ [DEMINE] Previously indexed libItem.name.split(":")[2] directly.
+            //   Names with fewer than three parts caused ArrayIndexOutOfBoundsException
+            //   to reach main and call System.exit(1). Skip libraries with missing parts.
             String[] libNameParts = libItem.name.split(":");
             if (libNameParts.length < 3) {
                 System.err.println("[DEMINE] preProcessLibraries: non-3-part library name: " + libItem.name);
@@ -409,11 +419,13 @@ public final class Tools {
             }
             String[] version = libNameParts[2].split("\\.");
             if (libItem.name.startsWith("net.java.dev.jna:jna:")) {
-                // 强制将 JNA 替换为 5.13.0 以保证 iOS 兼容性。
-                // MC 26.3+ 要求 JNA 5.17.0，但其 darwin-aarch64 libjnidispatch 在 iOS 上
-                // 加载 IOKit/CoreFoundation 后会导致 native crash/卡死（26.2 + JNA 5.13.0 正常）。
-                // MC 不直接使用 JNA API（通过 oshi 间接使用），5.13.0 的 API 完全兼容。
-                // PatchJNAAgent 会替换 Platform.class，与 JNA jar 版本无关。
+                // Force JNA 5.13.0 for iOS compatibility.
+                // MC 26.3+ requires JNA 5.17.0, but its darwin-aarch64 libjnidispatch
+                // loads IOKit/CoreFoundation on iOS and causes a native crash or hang
+                // (MC 26.2 with JNA 5.13.0 works).
+                // MC does not call the JNA API directly (it is used indirectly through
+                // oshi), and version 5.13.0 is API-compatible. PatchJNAAgent replaces
+                // Platform.class, regardless of the JNA jar version.
                 if (Integer.parseInt(version[0]) == 5 && Integer.parseInt(version[1]) == 13 && Integer.parseInt(version[2]) == 0) continue;
                 System.out.println("[Tools] Replacing JNA " + version[0] + "." + version[1] + "." + version[2] + " with 5.13.0 for iOS compatibility");
 
@@ -473,13 +485,14 @@ createLibraryInfo(libItem);
                 outer_loop:
                 for(DependentLibrary library : customVer.libraries){
                     // Clean libraries overridden by the custom version
-                    // ★ [DEMINE] 无冒号时 lastIndexOf 返回 -1 ⇒ substring(0,-1) 抛
-                    //   StringIndexOutOfBoundsException 冒泡到 main ⇒ System.exit(1)。缺冒号则用全名。
+                    // ★ [DEMINE] Without a colon, lastIndexOf returns -1 and
+                    //   substring(0, -1) throws StringIndexOutOfBoundsException,
+                    //   reaching main and calling System.exit(1). Use the full name if no colon exists.
                     int libColonIdx = library.name.lastIndexOf(":");
                     String libName = libColonIdx >= 0 ? library.name.substring(0, libColonIdx) : library.name;
 
                     for(DependentLibrary inheritLibrary : inheritLibraryList) {
-                        // ★ [DEMINE] 同上。
+                        // ★ [DEMINE] Same as above.
                         int inheritColonIdx = inheritLibrary.name.lastIndexOf(":");
                         String inheritLibName = inheritColonIdx >= 0 ? inheritLibrary.name.substring(0, inheritColonIdx) : inheritLibrary.name;
 
@@ -517,8 +530,9 @@ createLibraryInfo(libItem);
                             String perCustomArgStr = (String) perCustomArg;
                             // Check if there is a duplicate argument on combine
                             if (perCustomArgStr.startsWith("--") && totalArgList.contains(perCustomArgStr)) {
-                                // ★ [DEMINE] i 为末元素时 game[i+1] 越界 ArrayIndexOutOfBoundsException
-                                //   冒泡到 main ⇒ System.exit(1) 杀掉 App。越界则跳过该参数。
+                                // ★ [DEMINE] If i is the last element, game[i+1] would throw
+                                //   ArrayIndexOutOfBoundsException and reach main, calling
+                                //   System.exit(1). Skip the argument if it is out of bounds.
                                 if (i + 1 >= customVer.arguments.game.length) {
                                     continue;
                                 }

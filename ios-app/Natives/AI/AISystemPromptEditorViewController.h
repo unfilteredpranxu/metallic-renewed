@@ -2,8 +2,8 @@
 //  AISystemPromptEditorViewController.h
 //  Amethyst
 //
-//  AI 系统提示词编辑页：多行文本编辑 AiSettings.systemPrompt，
-//  支持「恢复默认」与「保存」。
+//  AI system prompt editor: edit AiSettings.systemPrompt as multiline text,
+//  with "Restore Defaults" and "Save" actions.
 //
 
 #import <UIKit/UIKit.h>

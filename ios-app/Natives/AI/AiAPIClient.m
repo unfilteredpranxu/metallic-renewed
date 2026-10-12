@@ -5,7 +5,7 @@
 
 #import "AiAPIClient.h"
 
-/// 节流阈值：流式回调最多每 200ms 触发一次，避免主队列/UI 过载
+/// Throttle threshold: invoke streaming callbacks at most every 200ms to avoid overloading the main queue/UI
 static const NSTimeInterval kChunkThrottleInterval = 0.2;
 
 @interface AiAPIClient () <NSURLSessionDataDelegate>
@@ -15,10 +15,10 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
 @property (nonatomic, copy, nullable) void (^onChunk)(NSString * _Nullable delta, NSDictionary * _Nullable toolCalls);
 @property (nonatomic, copy, nullable) void (^onComplete)(NSDictionary * _Nullable fullResponse, NSError * _Nullable error);
 
-@property (nonatomic, strong) NSMutableString *streamBuffer;    // 未切分完的流缓冲
-@property (nonatomic, strong) NSMutableData *streamData;        // 原始字节缓冲（保证跨块多字节字符完整性）
-@property (nonatomic, strong) NSMutableString *fullResponseText; // 已接收全文
-@property (nonatomic, strong) NSMutableString *pendingDelta;     // 待节流刷新的增量
+@property (nonatomic, strong) NSMutableString *streamBuffer;    // Incomplete stream buffer
+@property (nonatomic, strong) NSMutableData *streamData;        // Raw byte buffer (preserves multibyte characters across chunks)
+@property (nonatomic, strong) NSMutableString *fullResponseText; // Full response received so far
+@property (nonatomic, strong) NSMutableString *pendingDelta;     // Increment pending a throttled flush
 @property (nonatomic, assign) NSTimeInterval lastChunkFlushTime;
 @property (nonatomic, assign) BOOL streamDone;
 @property (nonatomic, assign) NSInteger statusCode;
@@ -41,7 +41,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
     [self.session invalidateAndCancel];
 }
 
-#pragma mark - 请求入口
+#pragma mark - Request entry
 
 - (void)streamChatWithProvider:(AiProvider *)provider
                       messages:(NSArray<AiMessage *> *)messages
@@ -50,7 +50,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
                     onComplete:(void (^)(NSDictionary * _Nullable fullResponse, NSError * _Nullable error))onComplete {
     if (!provider || provider.baseURL.length == 0 || provider.model.length == 0) {
         NSError *err = [NSError errorWithDomain:@"AiAPIClient" code:100
-                                        userInfo:@{NSLocalizedDescriptionKey: @"AI 提供商配置不完整（缺少 baseURL 或 model）"}];
+                                        userInfo:@{NSLocalizedDescriptionKey: @"AI provider configuration is incomplete (missing baseURL or model)"}];
         if (onComplete) {
             dispatch_async(dispatch_get_main_queue(), ^{ onComplete(nil, err); });
         }
@@ -66,7 +66,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
     self.streamDone = NO;
     self.statusCode = 0;
 
-    // 构造 URL：baseURL 末尾不是 / 则补 /，再拼 chat/completions
+    // Build URL: append / if baseURL does not end with it, then append chat/completions
     NSString *base = provider.baseURL;
     if (![base hasSuffix:@"/"]) {
         base = [base stringByAppendingString:@"/"];
@@ -75,7 +75,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
     NSURL *url = [NSURL URLWithString:urlString];
     if (!url) {
         NSError *err = [NSError errorWithDomain:@"AiAPIClient" code:101
-                                        userInfo:@{NSLocalizedDescriptionKey: @"无效的 API 地址"}];
+                                        userInfo:@{NSLocalizedDescriptionKey: @"Invalid API URL"}];
         if (onComplete) {
             dispatch_async(dispatch_get_main_queue(), ^{ onComplete(nil, err); });
         }
@@ -84,7 +84,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
 
     // Body
     NSMutableArray *payloadMessages = [NSMutableArray array];
-    // 待刷出的「assistant 携带多个 tool_calls」消息缓冲（OpenAI 要求同一助手消息携带 tool_calls 数组）
+    // Buffer assistant messages with multiple tool_calls to flush (OpenAI requires tool_calls in a single assistant message)
     __block NSString *pendingAssistantContent = @"";
     __block NSMutableArray *pendingToolCalls = nil;
     dispatch_block_t flushPendingToolCalls = ^{
@@ -98,10 +98,10 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
         pendingAssistantContent = @"";
     };
     for (AiMessage *m in messages) {
-        // 跳过流式占位消息
+        // Skip streaming placeholder messages
         if (m.streaming) continue;
 
-        // assistant 的工具调用记录：把连续的 isToolCall 助手消息合并进同一条 tool_calls 数组
+        // Assistant tool-call record: merge consecutive isToolCall assistant messages into one tool_calls array
         if (m.isToolCall && [m.role isEqualToString:@"assistant"]) {
             if (!pendingToolCalls) {
                 pendingToolCalls = [NSMutableArray array];
@@ -120,7 +120,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
             continue;
         }
 
-        // 其它角色消息：先把缓冲的 assistant tool_calls 刷出
+        // Other role messages: flush any buffered assistant tool_calls first
         flushPendingToolCalls();
 
         NSMutableDictionary *entry = [NSMutableDictionary dictionary];
@@ -158,7 +158,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
         return;
     }
 
-    // 会话（后台专用队列解析，避免阻塞主线程）
+    // Session (parse on a dedicated background queue to avoid blocking the main thread)
     if (!self.session) {
         NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
         config.timeoutIntervalForRequest = 120;
@@ -171,19 +171,19 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
     [self.currentTask resume];
 }
 
-#pragma mark - 取消
+#pragma mark - Cancel
 
 - (void)stop {
     [self.currentTask cancel];
 }
 
-#pragma mark - 连通性测试
+#pragma mark - Connectivity test
 
 - (void)testConnectionWithProvider:(AiProvider *)provider
                         completion:(void (^)(NSString * _Nullable successMessage, NSError * _Nullable error))completion {
     if (!provider || provider.baseURL.length == 0 || provider.model.length == 0) {
         NSError *err = [NSError errorWithDomain:@"AiAPIClient" code:100
-                                        userInfo:@{NSLocalizedDescriptionKey: @"AI 提供商配置不完整（缺少 baseURL 或 model）"}];
+                                        userInfo:@{NSLocalizedDescriptionKey: @"AI provider configuration is incomplete (missing baseURL or model)"}];
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), ^{ completion(nil, err); });
         }
@@ -191,7 +191,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
     }
 
     AiMessage *ping = [AiMessage messageWithRole:@"user" content:@"ping"];
-    // 复用流式通道发起极其简短的对话请求，忽略增量，仅在结束时回传结果
+    // Reuse the streaming channel for a very short chat request; ignore deltas and return the result only when finished
     [self streamChatWithProvider:provider
                         messages:@[ping]
                            tools:nil
@@ -201,22 +201,22 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
             if (error) {
                 completion(nil, error);
             } else {
-                completion(@"连接成功", nil);
+                completion(@"Connection successful", nil);
             }
         }
     }];
 }
 
-#pragma mark - 流式解析
+#pragma mark - Stream parsing
 
-/// 从字节缓冲里取出以 \n 结尾的完整字节串解码并切行处理（保留不完整的多字节尾部）
+/// Extract complete byte sequences ending in \n from the byte buffer, decode and process by line (preserving an incomplete multibyte suffix)
 - (void)processBufferedStreamData {
     if (self.streamData.length == 0) return;
     static unsigned char lf = '\n';
     NSData *lfData = [NSData dataWithBytes:&lf length:1];
     NSRange lastLF = [self.streamData rangeOfData:lfData options:NSDataSearchBackwards
                                             range:NSMakeRange(0, self.streamData.length)];
-    // 尚无完整行：可能是多字节字符被切开尚未拼齐，保留字节等待下一块
+    // No complete line yet: a multibyte character may have been split and is not complete; keep the bytes for the next chunk
     if (lastLF.location == NSNotFound) return;
     NSUInteger completeLen = lastLF.location + 1;
     NSData *completeData = [self.streamData subdataWithRange:NSMakeRange(0, completeLen)];
@@ -227,12 +227,12 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
     [self.streamData replaceBytesInRange:NSMakeRange(0, completeLen) withBytes:NULL length:0];
 }
 
-/// 追加接收到的文本并切行处理
+/// Append received text and process by line
 - (void)processStreamText:(NSString *)text {
     if (text.length == 0 || self.streamDone) return;
     [self.streamBuffer appendString:text];
 
-    // 每次处理缓冲里完整的一行
+    // Process each complete line in the buffer
     NSInteger consumed = 0;
     NSRange range;
     BOOL done = NO;
@@ -247,7 +247,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
     }
     (void)consumed;
 
-    // 缓冲过大但一直没换行符（异常）时清空，避免无限累积
+    // Clear an oversized buffer with no newline (abnormal) to prevent unbounded accumulation
     if (self.streamBuffer.length > 1024 * 1024) {
         [self.streamBuffer setString:@""];
     }
@@ -257,7 +257,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
     NSString *trimmed = [line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (trimmed.length == 0) return;
 
-    // 前缀兼容三种形态："data: "、"data:"（无空格）、以及整行无前缀（裸行直接把整行作为 payload）
+    // Support three prefix forms: "data: ", "data:" (no space), and no prefix (use the entire bare line as the payload)
     NSString *payload = nil;
     if ([trimmed hasPrefix:@"data: "]) {
         payload = [trimmed substringFromIndex:6];
@@ -269,7 +269,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
     NSString *payloadTrimmed = [payload stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
     if ([payloadTrimmed isEqualToString:@"[DONE]"]) {
         self.streamDone = YES;
-        // 标记，交 toComplete 处理剩余刷新
+        // Mark for toComplete to flush the remainder
         return;
     }
 
@@ -293,7 +293,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
         [self.pendingDelta appendString:deltaText];
     }
 
-    // tool_calls（Phase 3 使用，本期仅透传）
+    // tool_calls (used in Phase 3; passed through in this release)
     NSArray *toolCallArr = delta[@"tool_calls"];
     if ([toolCallArr isKindOfClass:[NSArray class]]) {
         NSDictionary *toolCallsInfo = @{@"tool_calls": toolCallArr};
@@ -304,7 +304,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
         }
     }
 
-    // 节流：距上次刷新 < 200ms 则暂存 pendingDelta，等待下次刷新/结束刷出
+    // Throttle: if less than 200ms have elapsed since the last flush, store pendingDelta until the next flush/completion
     NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
     if ((now - self.lastChunkFlushTime) >= kChunkThrottleInterval) {
         [self flushPendingDelta];
@@ -324,11 +324,11 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
     self.lastChunkFlushTime = [[NSDate date] timeIntervalSince1970];
 }
 
-#pragma mark - 错误构造
+#pragma mark - Error construction
 
 - (NSError *)errorFromResponseBody {
     NSString *body = self.fullResponseText.length > 0 ? self.fullResponseText : @"";
-    NSString *message = [NSString stringWithFormat:@"请求失败（HTTP %ld）", (long)self.statusCode];
+    NSString *message = [NSString stringWithFormat:@"Request failed (HTTP %ld)", (long)self.statusCode];
     NSError *jsonError = nil;
     NSDictionary *json = [NSJSONSerialization JSONObjectWithData:[body dataUsingEncoding:NSUTF8StringEncoding]
                                                          options:0 error:&jsonError];
@@ -358,10 +358,10 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
 - (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask didReceiveData:(NSData *)data {
     if (self.streamDone) return;
     if (data.length == 0) return;
-    // 关键修复（AI 说话说不全/好话说一半）：不能把每块 data 直接按 UTF8 解码成字符串，
-    // 否则中文/emoji 等多字节字符恰落在两块 data 切分边界时，前一块解码损坏，
-    // 导致该 SSE 行 JSON 解析失败被整行丢弃，输出表现为被截断/少字/空白。
-    // 改为字节级缓冲：只解码以 \n 结尾的完整字节串，跨块的多字节字符保留到后续拼齐。
+    // Important fix (incomplete/truncated AI responses): do not decode each data chunk as UTF-8 independently,
+    // or multibyte characters such as CJK text/emoji split across two chunks will be corrupted in the first chunk,
+    // causing the SSE line's JSON parse to fail and the entire line to be discarded, which appears as truncated/missing/blank text.
+    // Instead, buffer at the byte level: decode only complete byte sequences ending in \n and retain split multibyte characters until completed by subsequent chunks.
     [self.streamData appendData:data];
     [self processBufferedStreamData];
 }
@@ -377,7 +377,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
         NSError *outError = error;
         if (error.code == NSURLErrorCancelled) {
             outError = [NSError errorWithDomain:@"AiAPIClient" code:NSURLErrorCancelled
-                                       userInfo:@{NSLocalizedDescriptionKey: @"已停止生成"}];
+                                       userInfo:@{NSLocalizedDescriptionKey: @"Generation stopped"}];
         }
         [self flushPendingDelta];
         if (complete) {
@@ -395,7 +395,7 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
         return;
     }
 
-    // 处理末尾没有换行的最后一块字节（避免丢失最后几个字/整块结尾内容）
+    // Process the last byte chunk without a trailing newline (avoid losing the final characters/content)
     if (self.streamData.length > 0) {
         NSString *tail = [[NSString alloc] initWithData:self.streamData encoding:NSUTF8StringEncoding];
         if (tail.length > 0) {
@@ -403,8 +403,8 @@ static const NSTimeInterval kChunkThrottleInterval = 0.2;
         }
         [self.streamData setLength:0];
     }
-    // 兜底：streamBuffer 里若仍有未以 \n 结尾的残行（内容最后一行或 data: [DONE] 无尾换行），
-    // 复制后清空 buffer，作为最后一个完整行解析一次，确保末尾 delta 刷出
+    // Fallback: if streamBuffer still contains a partial line without a trailing \n (the final content line or data: [DONE] without a newline),
+    // copy and clear the buffer, then parse it once as the final complete line to ensure the trailing delta is flushed
     if (self.streamBuffer.length > 0) {
         NSString *tailLine = [self.streamBuffer copy];
         [self.streamBuffer setString:@""];

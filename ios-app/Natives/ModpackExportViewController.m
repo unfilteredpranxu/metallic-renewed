@@ -3,15 +3,15 @@
 //  ModpackExportViewController.m
 //  Amethyst
 //
-//  参照 FCL ExportModpackViewModel / HMCL ModpackExportPanel / ZL2 ModpackExportScreen 重做
+//  Rebuilt based on FCL ExportModpackViewModel / HMCL ModpackExportPanel / ZL2 ModpackExportScreen.
 //
-//  功能：
-//    1. Profile 选择（含 gameDir 预览、loader 信息）
-//    2. 5 种格式选择（Modrinth / CurseForge / MMC / Plain Zip / 链接列表）
-//    3. 名称 / 版本号 / 作者 输入
-//    4. 文件过滤选项（mods / configs / resourcepacks / shaderpacks / saves / options / servers / scripts）
-//    5. 进度卡片（百分比 + 阶段文案 + 取消按钮）
-//    6. 完成后分享按钮
+//  Features:
+//    1. Profile selection (including gameDir preview and loader information).
+//    2. Five format choices (Modrinth / CurseForge / MMC / Plain Zip / link list).
+//    3. Name / version / author input.
+//    4. File-filter options (mods / configs / resourcepacks / shaderpacks / saves / options / servers / scripts).
+//    5. Progress card (percentage + stage text + cancel button).
+//    6. Share button on completion.
 //
 
 #import "ModpackExportViewController.h"
@@ -21,36 +21,36 @@
 
 @interface ModpackExportViewController () <UITextFieldDelegate, UITableViewDataSource, UITableViewDelegate>
 
-// 数据
+// Data.
 @property (nonatomic, strong) NSArray<NSString *> *profileNames;
 @property (nonatomic, copy) NSString *selectedProfileName;
 @property (nonatomic, assign) ModpackExportFormat selectedFormat;
 @property (nonatomic, assign) ModpackExportFileOptions fileOptions;
 
-// UI - 表单
+// UI - Form.
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIStackView *formStackView;
 
-// Profile 选择
+// Profile selection.
 @property (nonatomic, strong) UIButton *profileButton;
 @property (nonatomic, strong) UILabel *profileInfoLabel;
 
-// 格式选择
+// Format selection.
 @property (nonatomic, strong) UISegmentedControl *formatSegment;
 
-// 名称/版本/作者
+// Name/version/author.
 @property (nonatomic, strong) UITextField *nameField;
 @property (nonatomic, strong) UITextField *versionField;
 @property (nonatomic, strong) UITextField *authorField;
 
-// 文件选项
+// File options.
 @property (nonatomic, strong) UITableView *fileOptionsTableView;
 @property (nonatomic, strong) NSArray<NSDictionary *> *fileOptionItems;
 
-// 导出按钮
+// Export button.
 @property (nonatomic, strong) UIButton *exportButton;
 
-// 进度卡片
+// Progress card.
 @property (nonatomic, strong) UIView *progressOverlay;
 @property (nonatomic, strong) UIView *progressCard;
 @property (nonatomic, strong) UILabel *progressTitleLabel;
@@ -94,10 +94,10 @@
     NSDictionary *profiles = PLProfiles.current.profiles;
     self.profileNames = [profiles.allKeys sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
     if (self.profileNames.count == 0) {
-        // 没有 profile，禁用导出
+        // No profile; disable export.
         return;
     }
-    // 预选 profile
+    // Preselect profile.
     if (self.preselectedProfileName && [self.profileNames containsObject:self.preselectedProfileName]) {
         self.selectedProfileName = self.preselectedProfileName;
     } else {
@@ -126,15 +126,15 @@
     self.formStackView.alignment = UIStackViewAlignmentFill;
     [self.scrollView addSubview:self.formStackView];
 
-    // Profile 选择区
+    // Profile selection section.
     [self.formStackView addArrangedSubview:[self createProfileSection]];
-    // 格式选择区
+    // Format selection section.
     [self.formStackView addArrangedSubview:[self createFormatSection]];
-    // 信息输入区
+    // Information input section.
     [self.formStackView addArrangedSubview:[self createInfoFieldsSection]];
-    // 文件选项区
+    // File-options section.
     [self.formStackView addArrangedSubview:[self createFileOptionsSection]];
-    // 导出按钮
+    // Export button.
     [self.formStackView addArrangedSubview:[self createExportButtonSection]];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -151,13 +151,13 @@
     ]];
 }
 
-/// 创建带标题的卡片容器
+/// Creates a card container with a title.
 - (UIView *)createCardContainerWithTitle:(NSString *)title {
     UIView *card = [[UIView alloc] init];
     card.translatesAutoresizingMaskIntoConstraints = NO;
     card.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor];
     card.layer.cornerRadius = 14;
-    card.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+    card.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (consistent with system cards).
     card.layer.masksToBounds = YES;
 
     UILabel *titleLabel = [[UILabel alloc] init];
@@ -171,7 +171,7 @@
     contentStack.translatesAutoresizingMaskIntoConstraints = NO;
     contentStack.axis = UILayoutConstraintAxisVertical;
     contentStack.spacing = 10;
-    // 用 tag 标记 contentStack，便于后续从 card 取回，避免使用 KVC（UIView 无 contentStack 属性会抛 NSUndefinedKeyException）
+    // Mark contentStack with a tag so it can be retrieved from the card later; avoid KVC (UIView has no contentStack property and would throw NSUndefinedKeyException).
     contentStack.tag = 9527;
     [card addSubview:contentStack];
 
@@ -291,7 +291,7 @@
     self.versionField = [self createTextFieldWithPlaceholder:localize(@"i18n_str_502", nil)];
     self.authorField = [self createTextFieldWithPlaceholder:localize(@"i18n_str_503", nil)];
 
-    // 预填
+    // Prefill.
     self.versionField.text = @"1.0";
     self.authorField.text = @"Amethyst User";
     if (self.selectedProfileName) {
@@ -324,7 +324,7 @@
     UIView *card = [self createCardContainerWithTitle:localize(@"i18n_str_504", nil)];
     UIStackView *stack = [self contentStackOfCard:card];
 
-    // 文件选项数据
+    // File-option data.
     self.fileOptionItems = @[
         @{@"key": @(ModpackExportFileMods),           @"title": localize(@"i18n_str_505", nil),            @"default": @YES},
         @{@"key": @(ModpackExportFileConfigs),        @"title": localize(@"i18n_str_506", nil),         @"default": @YES},
@@ -346,7 +346,7 @@
     self.fileOptionsTableView.scrollEnabled = NO;
     [self.fileOptionsTableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"FileOptionCell"];
 
-    // UITableView 高度自适应：根据行数计算
+    // Adapt UITableView height to content by calculating it from the row count.
     NSLayoutConstraint *heightConstraint = [self.fileOptionsTableView.heightAnchor constraintEqualToConstant:self.fileOptionItems.count * 44];
     heightConstraint.priority = UILayoutPriorityRequired;
     heightConstraint.active = YES;
@@ -403,7 +403,7 @@
     self.exportButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
     self.exportButton.backgroundColor = [UIColor systemBlueColor];
     self.exportButton.layer.cornerRadius = 12;
-    self.exportButton.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+    self.exportButton.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (consistent with system cards).
     self.exportButton.layer.masksToBounds = YES;
     self.exportButton.tintColor = [UIColor whiteColor];
     [self.exportButton addTarget:self action:@selector(startExport) forControlEvents:UIControlEventTouchUpInside];
@@ -470,7 +470,7 @@
     if (name.length == 0) name = self.selectedProfileName;
     if (version.length == 0) version = @"1.0";
 
-    // 确定扩展名
+    // Determine the extension.
     NSString *ext = @"zip";
     switch (self.selectedFormat) {
         case ModpackExportFormatModrinth:   ext = @"mrpack"; break;
@@ -480,13 +480,13 @@
         case ModpackExportFormatLinkList:   ext = @"txt";    break;
     }
 
-    // 文件名清理
+    // Sanitize the filename.
     NSString *destPath = [self buildExportPathWithName:name version:version ext:ext];
 
     [self showProgressCardWithTitle:localize(@"i18n_str_517", nil)];
     [self setProgress:0.0 stageMessage:localize(@"i18n_str_518", nil)];
 
-    // 重置取消状态
+    // Reset cancellation state.
     [[ModpackExportService sharedService] resetCancelState];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -545,7 +545,7 @@
         [safeName setString:@"ExportedModpack"];
     }
 
-    // 版本号也清理
+    // Sanitize the version too.
     NSMutableString *safeVersion = [[[version componentsSeparatedByCharactersInSet:invalidChars] componentsJoinedByString:@"_"] mutableCopy];
     if (safeVersion.length == 0) {
         [safeVersion setString:@"1.0"];
@@ -568,7 +568,7 @@
     card.translatesAutoresizingMaskIntoConstraints = NO;
     card.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor];
     card.layer.cornerRadius = 16;
-    card.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+    card.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (consistent with system cards).
     card.layer.masksToBounds = YES;
     [overlay addSubview:card];
 
@@ -694,12 +694,12 @@
 }
 
 - (void)cancelExport {
-    // 真正取消：通过 service 的 cancel 信号
+    // Actually cancel by sending the service's cancellation signal.
     [ModpackExportService sharedService].cancelled = YES;
     [self setProgress:-1 stageMessage:localize(@"i18n_str_521", nil)];
 }
 
-#pragma mark - 完成提示
+#pragma mark - Completion message
 
 - (void)showExportSuccessWithPath:(NSString *)path {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:localize(@"i18n_str_522", nil)

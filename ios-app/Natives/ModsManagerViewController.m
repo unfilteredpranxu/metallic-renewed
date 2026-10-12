@@ -2,9 +2,9 @@
 //  ModsManagerViewController.m
 //  Amethyst
 //
-//  Mod 管理页实现（继承 ResourceListViewController）。
-//  参照 ZL2 ModsManagerScreen 模式：顶栏"检查更新"内置更新流程
-//  （并发检测 → 确认弹窗 → 并发下载到临时目录 → 删旧移新 → 刷新 + 徽章）。
+//  Mod management page implementation (inherits from ResourceListViewController).
+//  Based on the ZL2 ModsManagerScreen pattern: the navigation-bar "Check for updates" button runs the built-in update flow
+//  (concurrent checks → confirmation dialog → concurrent downloads to a temporary directory → replace old files → refresh + badges).
 //
 
 #import "ModsManagerViewController.h"
@@ -21,41 +21,41 @@
 #import "utils.h"
 #import <CommonCrypto/CommonDigest.h>
 
-#pragma mark - 内部模型与枚举
+#pragma mark - Internal models and enums
 
-/// 更新下载任务（检查命中后的一次待更新项）
+/// Update download task (a pending update found by the check).
 @interface ModUpdateTask : NSObject
-/// 更新检查结果（含本地文件路径与候选版本）
+/// Update-check result (includes local file path and candidate versions).
 @property (nonatomic, strong) ModUpdateResult *result;
-/// 对应的本地 ModItem（用于名称显示与文件替换）
+/// Corresponding local ModItem (used to display the name and replace the file).
 @property (nonatomic, strong) ModItem *mod;
-/// 目标版本（candidateVersions 首个，即最新候选）
+/// Target version (first in candidateVersions, i.e. the latest candidate).
 @property (nonatomic, strong) ModVersion *targetVersion;
-/// 下载完成后的临时文件路径（下载成功时非空）
+/// Temporary file path after download (nonempty on success).
 @property (nonatomic, copy) NSString *tempPath;
-/// 下载是否成功
+/// Whether the download succeeded.
 @property (nonatomic, assign) BOOL downloadSucceeded;
 @end
 
 @implementation ModUpdateTask
 @end
 
-/// 状态筛选模式
+/// Status filter mode.
 typedef NS_ENUM(NSInteger, ModsFilterMode) {
     ModsFilterModeAll = 0,
     ModsFilterModeEnabled,
     ModsFilterModeDisabled,
 };
 
-/// 排序模式
+/// Sort mode.
 typedef NS_ENUM(NSInteger, ModsSortMode) {
     ModsSortModeName = 0,
     ModsSortModeModifiedDate,
 };
 
-#pragma mark - 工具函数
+#pragma mark - Utility functions
 
-/// 流式计算文件 SHA1（CommonCrypto 分块，支持大文件），失败返回 nil
+/// Computes a file's SHA1 incrementally (chunked with CommonCrypto; supports large files); returns nil on failure.
 static NSString *ModsManagerSHA1ForFile(NSString *path) {
     if (path.length == 0) return nil;
     NSFileHandle *handle = [NSFileHandle fileHandleForReadingAtPath:path];
@@ -84,24 +84,24 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     return hex;
 }
 
-#pragma mark - 类扩展
+#pragma mark - Class extension
 
 @interface ModsManagerViewController () <UITableViewDataSource, UITableViewDelegate, ModTableViewCellDelegate, UISearchBarDelegate, UIDocumentPickerDelegate>
 
-// ===== 数据 =====
-@property (nonatomic, strong) NSMutableArray<ModItem *> *localMods;       // 全量本地 Mod
-@property (nonatomic, strong) NSMutableArray<ModItem *> *filteredLocalMods; // 搜索 + 筛选 + 排序后
-@property (nonatomic, strong) NSMutableDictionary<NSString *, NSDate *> *modDates; // filePath → 文件修改时间（排序用）
+// ===== Data =====
+@property (nonatomic, strong) NSMutableArray<ModItem *> *localMods;       // All local mods.
+@property (nonatomic, strong) NSMutableArray<ModItem *> *filteredLocalMods; // After search + filtering + sorting.
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSDate *> *modDates; // filePath → modification time (for sorting).
 
-// ===== 筛选 / 排序 =====
+// ===== Filtering / sorting =====
 @property (nonatomic, assign) ModsFilterMode filterMode;
 @property (nonatomic, assign) ModsSortMode sortMode;
-@property (nonatomic, strong) UIScrollView *chipsScrollView;   // chips 水平滚动容器
-@property (nonatomic, strong) UIStackView *chipsStack;         // chips 排列
+@property (nonatomic, strong) UIScrollView *chipsScrollView;   // Horizontal chip-scrolling container.
+@property (nonatomic, strong) UIStackView *chipsStack;         // Chip layout.
 @property (nonatomic, strong) NSArray<UIButton *> *filterChips;
 @property (nonatomic, strong) UIButton *sortChipButton;
 
-// ===== 导航按钮 =====
+// ===== Navigation buttons =====
 @property (nonatomic, strong) UIBarButtonItem *closeButtonItem;
 @property (nonatomic, strong) UIBarButtonItem *refreshButton;
 @property (nonatomic, strong) UIBarButtonItem *checkUpdateButton;
@@ -111,21 +111,21 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
 @property (nonatomic, strong) UIBarButtonItem *navSpinnerItem;
 @property (nonatomic, strong) UIActivityIndicatorView *navSpinner;
 
-// ===== 批量操作按钮（batchActionStack 内容）=====
+// ===== Batch-action buttons (contents of batchActionStack) =====
 @property (nonatomic, strong) UIButton *batchEnableButton;
 @property (nonatomic, strong) UIButton *batchDisableButton;
 @property (nonatomic, strong) UIButton *batchDeleteButton;
 
-// ===== 更新流程状态 =====
-/// 更新流程是否进行中（检查中 / 下载替换中均为 YES，期间按钮禁用防重复触发）
+// ===== Update-flow state =====
+/// Whether an update flow is active (YES while checking or downloading/replacing; buttons are disabled to prevent duplicate actions).
 @property (nonatomic, assign) BOOL isUpdateBusy;
-/// 更新流程的阶段提示文本（显示在导航标题位置）
+/// Update-flow stage text (displayed in the navigation title).
 @property (nonatomic, copy) NSString *updateBusyText;
-/// 检查更新命中（可更新）的结果：filePath → result，用于 Cell 徽章
+/// Results for mods with available updates: filePath → result, used for cell badges.
 @property (nonatomic, strong) NSMutableDictionary<NSString *, ModUpdateResult *> *updateResultsByPath;
 
-// ===== 其他 =====
-@property (nonatomic, assign) BOOL hasPlayedInitialAnimation; // 首次加载连锁动画只播一次
+// ===== Other =====
+@property (nonatomic, assign) BOOL hasPlayedInitialAnimation; // Play the cascading entrance animation only on the first load.
 
 @end
 
@@ -134,8 +134,8 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
 #pragma mark - Init
 
 - (instancetype)init {
-    // 兼容现有调用点 [[ModsManagerViewController alloc] init]：
-    // 转调基类便利初始化（标题 + Mod 语义色 puzzlepiece.fill / systemOrange）
+    // Preserve compatibility with existing call sites [[ModsManagerViewController alloc] init]:
+    // delegate to the base class convenience initializer (title + mod semantic color puzzlepiece.fill / systemOrange).
     return [self initWithTitle:localize(@"resman.mods.title", nil)
               resourceTypeIcon:@"puzzlepiece.fill"
                       iconColor:[UIColor systemOrangeColor]];
@@ -144,14 +144,14 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
 #pragma mark - Lifecycle
 
 - (void)viewDidLoad {
-    [super viewDidLoad]; // 基类构建背景/搜索栏/表格/空态/加载态/批量工具栏
+    [super viewDidLoad]; // The base class builds the background/search bar/table/empty state/loading state/batch toolbar.
 
     self.localMods = [NSMutableArray array];
     self.filteredLocalMods = [NSMutableArray array];
     self.modDates = [NSMutableDictionary dictionary];
     self.updateResultsByPath = [NSMutableDictionary dictionary];
 
-    // 搜索栏
+    // Search bar.
     self.searchBar.delegate = self;
     self.searchBar.placeholder = localize(@"resman.mods.search_placeholder", nil);
 
@@ -162,7 +162,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     [self loadMods];
 }
 
-#pragma mark - 导航按钮
+#pragma mark - Navigation buttons
 
 - (void)setupNavigationButtons {
     self.closeButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone
@@ -201,7 +201,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
                                                                         action:@selector(exitSelectMode)];
     self.doneButtonItem.accessibilityLabel = localize(@"resman.common.done", nil);
 
-    // 更新流程忙态的导航栏转圈指示
+    // Show a navigation-bar spinner while an update flow is busy.
     self.navSpinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
     self.navSpinner.hidesWhenStopped = YES;
     self.navSpinnerItem = [[UIBarButtonItem alloc] initWithCustomView:self.navSpinner];
@@ -209,27 +209,27 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     [self updateNavigationButtons];
 }
 
-/// 按当前状态（普通 / 选择模式 / 更新忙态）刷新导航栏按钮与标题
+/// Refreshes navigation buttons and title based on the current state (normal / selection mode / update busy).
 - (void)updateNavigationButtons {
     if (self.selectModeEnabled) {
         self.navigationItem.leftBarButtonItem = self.closeButtonItem;
         self.navigationItem.rightBarButtonItems = @[self.doneButtonItem];
         [self updateSelectModeTitle];
     } else if (self.isUpdateBusy) {
-        // 更新流程进行中：仅显示转圈指示，禁用其余操作防止重复触发
+        // Update flow in progress: show only the spinner and disable other actions to prevent duplicate triggers.
         self.navigationItem.leftBarButtonItem = self.closeButtonItem;
         self.navigationItem.rightBarButtonItems = @[self.navSpinnerItem];
         [self.navSpinner startAnimating];
         self.navigationItem.title = self.updateBusyText ?: localize(@"resman.mods.processing", nil);
     } else {
         self.navigationItem.leftBarButtonItem = self.closeButtonItem;
-        // 从右到左：导入、刷新、检查更新、选择
+        // From right to left: import, refresh, check for updates, select.
         self.navigationItem.rightBarButtonItems = @[self.importButton, self.refreshButton, self.checkUpdateButton, self.selectButtonItem];
         self.navigationItem.title = self.pageTitle;
     }
 }
 
-/// 选择模式标题：显示已选数量
+/// Selection-mode title: displays the number of selected items.
 - (void)updateSelectModeTitle {
     if (self.selectModeEnabled) {
         self.navigationItem.title = [NSString stringWithFormat:localize(@"resman.common.selected_count", nil), (long)self.selectedIndexPaths.count];
@@ -237,7 +237,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
 }
 
 - (void)closeTapped {
-    // 兼容两种容器：push 进导航栈 → pop；present 弹窗 → dismiss
+    // Support both container types: pop if pushed onto a navigation stack; dismiss if presented modally.
     if (self.navigationController && self.navigationController.viewControllers.firstObject != self) {
         [self.navigationController popViewControllerAnimated:YES];
     } else {
@@ -246,17 +246,17 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
 }
 
 - (void)handleRefresh:(id)sender {
-    // 刷新前退出选择模式，避免选择状态与新数据不一致
+    // Exit selection mode before refreshing to avoid inconsistent selection state with new data.
     if (self.selectModeEnabled) {
         [self setSelectMode:NO];
     }
     [self loadMods];
 }
 
-#pragma mark - 筛选 chips 行（搜索栏下方）
+#pragma mark - Filter-chip row (below the search bar)
 
 - (void)setupChipsRow {
-    // 基类默认把 tableView 顶部锚到 searchBar 底部；插入 chips 行需要先停用该约束
+    // The base class anchors the tableView top to the searchBar bottom by default; disable that constraint before inserting a chip row.
     for (NSLayoutConstraint *constraint in [self.view.constraints copy]) {
         if (constraint.firstItem == self.tableView && constraint.secondItem == self.searchBar
             && constraint.firstAttribute == NSLayoutAttributeTop) {
@@ -265,7 +265,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
         }
     }
 
-    // 水平滚动 chips 容器
+    // Horizontally scrolling chip container.
     self.chipsScrollView = [[UIScrollView alloc] init];
     self.chipsScrollView.translatesAutoresizingMaskIntoConstraints = NO;
     self.chipsScrollView.showsHorizontalScrollIndicator = NO;
@@ -279,7 +279,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     self.chipsStack.spacing = 8.0;
     [self.chipsScrollView addSubview:self.chipsStack];
 
-    // 三个筛选 chip：全部 / 已启用 / 已禁用
+    // Three filter chips: All / Enabled / Disabled.
     NSMutableArray<UIButton *> *chips = [NSMutableArray array];
     NSArray<NSString *> *titles = @[localize(@"resman.mods.filter.all", nil),
                                     localize(@"resman.mods.filter.enabled", nil),
@@ -293,16 +293,16 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     }
     self.filterChips = chips;
 
-    // 行尾排序按钮：名称 / 修改时间 切换
+    // Trailing sort button: toggle between name / modification time.
     self.sortChipButton = [self makeChipButtonWithTitle:localize(@"resman.mods.sort.name", nil)];
     [self.sortChipButton setImage:[UIImage systemImageNamed:@"arrow.up.arrow.down"]
                   forState:UIControlStateNormal];
-    self.sortChipButton.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight; // 图标在左
+    self.sortChipButton.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight; // Icon on the left.
     [self.sortChipButton addTarget:self action:@selector(sortChipTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.chipsStack addArrangedSubview:self.sortChipButton];
 
     [NSLayoutConstraint activateConstraints:@[
-        // chips 行：紧贴搜索栏下方，tableView 改为锚到 chips 行底部
+        // Place the chip row directly below the search bar and anchor the tableView to the bottom of the chip row.
         [self.chipsScrollView.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:2],
         [self.chipsScrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:ResourceListCardSideInset],
         [self.chipsScrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-ResourceListCardSideInset],
@@ -320,7 +320,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     [self refreshChipStyles];
 }
 
-/// 创建胶囊 chip 按钮（选中 = accent 底白字；未选中 = 半透明底 labelColor 文字）
+/// Creates a pill-shaped chip button (selected = accent background with white text; unselected = translucent background with labelColor text).
 - (UIButton *)makeChipButtonWithTitle:(NSString *)title {
     UIButton *chip = [UIButton buttonWithType:UIButtonTypeSystem];
     chip.translatesAutoresizingMaskIntoConstraints = NO;
@@ -336,7 +336,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     return chip;
 }
 
-/// 应用选中 / 未选中样式
+/// Applies selected/unselected styling.
 - (void)applyChipStyle:(UIButton *)chip selected:(BOOL)selected {
     if (selected) {
         chip.backgroundColor = accentColor();
@@ -352,12 +352,12 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     }
 }
 
-/// 刷新全部 chip 样式（按当前筛选 / 排序状态）
+/// Refreshes all chip styles based on the current filter/sort state.
 - (void)refreshChipStyles {
     for (NSUInteger i = 0; i < self.filterChips.count; i++) {
         [self applyChipStyle:self.filterChips[i] selected:((NSInteger)i == self.filterMode)];
     }
-    [self applyChipStyle:self.sortChipButton selected:YES]; // 排序按钮常为选中样式（当前生效的排序）
+    [self applyChipStyle:self.sortChipButton selected:YES]; // Sort button typically stays selected (the current sort is active).
     NSString *sortTitle = (self.sortMode == ModsSortModeName) ? localize(@"resman.mods.sort.name", nil)
                                                               : localize(@"resman.mods.sort.modified", nil);
     [self.sortChipButton setTitle:sortTitle forState:UIControlStateNormal];
@@ -375,7 +375,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     [self applyFilter];
 }
 
-#pragma mark - TableView 补充配置
+#pragma mark - Additional TableView configuration
 
 - (void)setupTableViewExtras {
     self.tableView.dataSource = self;
@@ -386,8 +386,8 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
 
 #pragma mark - Data Loading
 
-/// 基类刷新钩子：下载完成通知 / viewWillAppear 时重载 Mod 列表。
-/// 关键修复（下载成功后资源管理页不刷新）：文件落盘后自动刷新页面。
+/// Base-class refresh hook: reloads the mod list on download-complete notification / viewWillAppear.
+/// Key fix (resource-management page did not refresh after a successful download): automatically refresh the page after the file is written.
 - (void)reloadResourceList {
     [self loadMods];
 }
@@ -405,7 +405,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
             [strongSelf cacheModificationDates];
             [strongSelf applyFilter];
             [strongSelf setLoading:NO];
-            // 首次加载播放连锁进场动画（Air-Design 15.3）
+            // Play the cascading entrance animation on the first load (Air-Design 15.3).
             if (!strongSelf.hasPlayedInitialAnimation && strongSelf.localMods.count > 0) {
                 strongSelf.hasPlayedInitialAnimation = YES;
                 [strongSelf animateCellsInChain];
@@ -414,7 +414,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     }];
 }
 
-/// 缓存各 Mod 文件修改时间（排序用，避免比较器内反复 IO）
+/// Caches each mod file's modification time for sorting (avoids repeated I/O in the comparator).
 - (void)cacheModificationDates {
     [self.modDates removeAllObjects];
     NSFileManager *fm = [NSFileManager defaultManager];
@@ -425,15 +425,15 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     }
 }
 
-/// 搜索 + 状态筛选 + 排序 → filteredLocalMods + 空态刷新
+/// Search + status filtering + sorting → filteredLocalMods + refresh empty state.
 - (void)applyFilter {
     NSString *query = [self.searchBar.text lowercaseString];
     NSMutableArray<ModItem *> *result = [NSMutableArray array];
     for (ModItem *mod in self.localMods) {
-        // 状态筛选
+        // Status filter.
         if (self.filterMode == ModsFilterModeEnabled && mod.disabled) continue;
         if (self.filterMode == ModsFilterModeDisabled && !mod.disabled) continue;
-        // 搜索过滤
+        // Search filter.
         if (query.length > 0) {
             NSString *name = mod.displayName.lowercaseString ?: @"";
             NSString *file = mod.fileName.lowercaseString ?: @"";
@@ -442,7 +442,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
         [result addObject:mod];
     }
 
-    // 排序
+    // Sort.
     if (self.sortMode == ModsSortModeName) {
         [result sortUsingComparator:^NSComparisonResult(ModItem *_Nonnull a, ModItem *_Nonnull b) {
             NSString *nameA = a.displayName ?: a.fileName;
@@ -450,7 +450,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
             return [nameA localizedCaseInsensitiveCompare:nameB];
         }];
     } else {
-        // 修改时间降序（最新改动的在前，无时间的排后）
+        // Modification time descending (most recently changed first; items without a date last).
         [result sortUsingComparator:^NSComparisonResult(ModItem *_Nonnull a, ModItem *_Nonnull b) {
             NSDate *dateA = self.modDates[a.filePath];
             NSDate *dateB = self.modDates[b.filePath];
@@ -464,7 +464,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     [self.filteredLocalMods removeAllObjects];
     [self.filteredLocalMods addObjectsFromArray:result];
 
-    // 空态
+    // Empty state.
     if (result.count == 0) {
         if (self.localMods.count == 0) {
             __weak typeof(self) weakSelf = self;
@@ -486,17 +486,17 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
         [self hideEmptyState];
     }
 
-    // "选择"按钮可用性
+    // "Select" button availability.
     self.selectButtonItem.enabled = (result.count > 0);
 
     [self.tableView reloadData];
 }
 
-/// 空状态"去下载"：跳转统一下载页（无参数化资源类型入口，进入默认页）
+/// Empty-state "Download" action: opens the unified download page (no parameterized resource-type entry point; opens the default page).
 - (void)openDownloadPage {
     DownloadViewController *vc = [[DownloadViewController alloc] init];
-    // 关键修复（目标实例不一致）：传入本管理页绑定的 profileName，
-    // 保证下载写入的实例与当前打开的实例一致
+    // Key fix (target instance mismatch): pass the profileName bound to this management page,
+    // ensuring downloads go to the same instance that is currently open.
     vc.targetProfileName = self.profileName;
     if (self.navigationController) {
         [self.navigationController pushViewController:vc animated:YES];
@@ -534,10 +534,10 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     ModItem *mod = self.filteredLocalMods[indexPath.row];
     [cell configureWithMod:mod displayMode:ModTableViewCellDisplayModeLocal];
 
-    // 更新徽章：检测命中（可更新）的 Mod 显示 arrow.up.circle.fill
+    // Update badge: show arrow.up.circle.fill for mods with available updates.
     [cell setUpdateAvailable:(self.updateResultsByPath[mod.filePath] != nil)];
 
-    // 选择模式下隐藏启用开关（避免与勾选视觉冲突），普通模式恢复
+    // Hide the enable switch in selection mode (to avoid visual conflict with the checkmark); restore it in normal mode.
     cell.toggleSwitch.hidden = self.selectModeEnabled;
 
     return cell;
@@ -553,7 +553,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     if (self.selectModeEnabled) {
-        // 编辑（勾选）模式：行点击切换勾选，更新标题计数
+        // Editing (selection) mode: row taps toggle selection and update the title count.
         [self updateSelectModeTitle];
     } else {
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
@@ -567,7 +567,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
 }
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
-    // 选择模式下禁用滑动删除，避免误操作
+    // Disable swipe-to-delete in selection mode to prevent accidental actions.
     if (self.selectModeEnabled) return nil;
 
     UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
@@ -587,7 +587,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
                 NSLog(@"[ModsManager] Error deleting mod: %@", error);
                 completionHandler(NO);
             } else {
-                // 同步数据源并删除行
+                // Synchronize the data source and delete the row.
                 NSUInteger idxFull = [self.localMods indexOfObject:modToDelete];
                 if (idxFull != NSNotFound) [self.localMods removeObjectAtIndex:idxFull];
                 [self.modDates removeObjectForKey:modToDelete.filePath];
@@ -606,11 +606,11 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     return configuration;
 }
 
-#pragma mark - 批量选择模式（基类工具栏整合）
+#pragma mark - Batch selection mode (integrated with the base-class toolbar)
 
 - (void)enterSelectMode {
     if (self.filteredLocalMods.count == 0) return;
-    [self setSelectMode:YES]; // 基类处理编辑模式 + 工具栏滑入 + selectModeDidChange:
+    [self setSelectMode:YES]; // The base class handles editing mode + toolbar slide-in + selectModeDidChange.
 }
 
 - (void)exitSelectMode {
@@ -619,7 +619,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
 
 - (void)selectModeDidChange:(BOOL)enabled {
     if (enabled) {
-        // 填充批量操作按钮（首次懒创建，之后保持在 stack 中随工具栏显隐）
+        // Populate batch-action buttons (lazily created once, then retained in the stack as the toolbar appears/disappears).
         if (!self.batchEnableButton) {
             self.batchEnableButton = [self makeBatchActionButtonWithTitle:localize(@"resman.common.enable", nil) tintColor:[UIColor systemGreenColor]];
             [self.batchEnableButton addTarget:self action:@selector(batchEnableTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -639,7 +639,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     [self.tableView reloadData];
 }
 
-/// 批量操作胶囊按钮
+/// Batch-action pill button.
 - (UIButton *)makeBatchActionButtonWithTitle:(NSString *)title tintColor:(UIColor *)color {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
@@ -657,7 +657,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     return button;
 }
 
-/// 当前勾选的 ModItem 列表（基于基类 selectedIndexPaths）
+/// Currently selected ModItem list (based on the base class's selectedIndexPaths).
 - (NSArray<ModItem *> *)selectedModItems {
     NSMutableArray<ModItem *> *items = [NSMutableArray array];
     NSArray<NSIndexPath *> *indexPaths = [self.selectedIndexPaths sortedArrayUsingComparator:^NSComparisonResult(NSIndexPath *a, NSIndexPath *b) {
@@ -679,7 +679,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     [self batchSetDisabled:YES];
 }
 
-/// 批量启用（target=NO）/ 禁用（target=YES）：仅对状态不符的项执行切换
+/// Batch enable (target=NO) / disable (target=YES): toggle only items whose state does not match.
 - (void)batchSetDisabled:(BOOL)target {
     NSArray<ModItem *> *mods = [self selectedModItems];
     if (mods.count == 0) {
@@ -689,7 +689,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
 
     NSInteger success = 0, failed = 0;
     for (ModItem *mod in mods) {
-        if (mod.disabled == target) continue; // 状态已符合，跳过
+        if (mod.disabled == target) continue; // State already matches; skip.
         NSError *error = nil;
         if ([[ModService sharedService] toggleEnableForMod:mod error:&error]) {
             success++;
@@ -700,7 +700,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     }
 
     [self setSelectMode:NO];
-    [self loadMods]; // 文件名（.disabled 后缀）已变化，重新扫描
+    [self loadMods]; // Filename (.disabled suffix) changed; rescan.
 
     NSString *verb = target ? localize(@"resman.common.disable", nil) : localize(@"resman.common.enable", nil);
     if (failed > 0) {
@@ -738,7 +738,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
         }
 
         [strongSelf setSelectMode:NO];
-        [strongSelf loadMods]; // 重新扫描同步数据源
+        [strongSelf loadMods]; // Rescan and synchronize the data source.
 
         if (failedMods.count > 0) {
             NSMutableArray<NSString *> *names = [NSMutableArray array];
@@ -787,7 +787,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
         @try {
             NSString *fileName = url.lastPathComponent;
             NSString *destPath = [modsDir stringByAppendingPathComponent:fileName];
-            // 同名文件处理
+            // Handle files with the same name.
             if ([fm fileExistsAtPath:destPath]) {
                 NSString *baseName = [fileName stringByDeletingPathExtension];
                 NSString *ext = [fileName pathExtension];
@@ -827,7 +827,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     if (!success) {
         NSLog(@"[ModsManager] Error toggling mod: %@", error);
     }
-    // 无论成败按服务端状态回滚/刷新开关视觉（失败时 mod.disabled 未变）
+    // Regardless of success, refresh switch appearance from the service state (mod.disabled does not change on failure).
     if ([cell isKindOfClass:[ModTableViewCell class]]) {
         [(ModTableViewCell *)cell updateToggleState:mod.disabled];
     }
@@ -848,22 +848,22 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     }
 }
 
-#pragma mark - 内置更新流程（状态机：空闲 → 检查中 → 确认 → 下载替换中 → 完成 → 空闲）
+#pragma mark - Built-in update flow (state machine: idle → checking → confirmation → downloading/replacing → complete → idle)
 
-/// 进入更新忙态：禁用按钮、导航栏转圈 + 阶段文本
+/// Enters update-busy state: disables buttons and shows a navigation-bar spinner + stage text.
 - (void)enterUpdateBusyWithText:(NSString *)text {
     self.isUpdateBusy = YES;
     self.updateBusyText = [text copy];
     [self updateNavigationButtons];
 }
 
-/// 更新忙态内更新阶段文本（仅改标题，不重建按钮组）
+/// Updates stage text while busy (changes the title only; does not rebuild the button group).
 - (void)setUpdateBusyTextOnly:(NSString *)text {
     self.updateBusyText = [text copy];
     self.navigationItem.title = self.updateBusyText;
 }
 
-/// 退出更新忙态：恢复按钮与标题
+/// Exits update-busy state: restores buttons and title.
 - (void)exitUpdateBusy {
     self.isUpdateBusy = NO;
     self.updateBusyText = nil;
@@ -871,19 +871,19 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     [self updateNavigationButtons];
 }
 
-/// 顶栏"检查更新"入口：
-/// 1) 补齐每个 Mod 的 SHA1（Modrinth 反查依赖）
-/// 2) dispatch_group + 限流 3 并发调 ModUpdateService checkUpdateForMod
-/// 3) 结果三分类：可更新 / 最新（已识别无更新）/ 无法识别（双源未命中）
-/// 4) 可更新 > 0 → 确认弹窗；否则提示"所有 Mod 均为最新版本"
+/// Navigation-bar "Check for updates" entry point:
+/// 1) Fill in each mod's SHA1 (required for Modrinth reverse lookup).
+/// 2) Call ModUpdateService checkUpdateForMod concurrently with dispatch_group and a limit of 3.
+/// 3) Classify results: update available / up to date (recognized, no update) / unrecognized (not found on either source).
+/// 4) If updates are available, show a confirmation dialog; otherwise report "All mods are up to date."
 - (void)checkForUpdates {
-    if (self.isUpdateBusy) return; // 防重复触发
+    if (self.isUpdateBusy) return; // Prevent duplicate triggers.
     if (self.localMods.count == 0) {
         [self showDialogWithTitle:localize(@"resman.common.notice", nil) message:localize(@"resman.mods.no_local_for_update", nil)];
         return;
     }
 
-    // 从当前 profile 的 lastVersionId 解析 gameVersion 和 loader
+    // Resolve gameVersion and loader from the current profile's lastVersionId.
     NSString *lastVersionId = PLProfiles.current.selectedProfile[@"lastVersionId"];
     if (lastVersionId.length == 0) {
         [self showDialogWithTitle:localize(@"resman.common.notice", nil) message:localize(@"resman.mods.no_version_info", nil)];
@@ -901,12 +901,12 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
         }
     }
     if (!gameVersion) {
-        // 纯 <mc> 格式，无 loader
+        // Plain <mc> format, no loader.
         gameVersion = lastVersionId;
         loader = nil;
     }
 
-    // 若处于选择模式先退出（后续数据可能变化）
+    // Exit selection mode first if active (the data may change afterward).
     if (self.selectModeEnabled) {
         [self setSelectMode:NO];
     }
@@ -917,14 +917,14 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     dispatch_queue_t queue = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
     __weak typeof(self) weakSelf = self;
     dispatch_async(queue, ^{
-        // 阶段 1：补齐 SHA1（Modrinth 反查必需；大文件流式计算放后台）
+        // Stage 1: fill in SHA1 (required for Modrinth reverse lookup; calculate large files incrementally in the background).
         for (ModItem *mod in mods) {
             if (mod.fileSHA1.length == 0) {
                 mod.fileSHA1 = ModsManagerSHA1ForFile(mod.filePath);
             }
         }
 
-        // 阶段 2：并发检查（dispatch_group 汇总 + 信号量限流 3）
+        // Stage 2: concurrent checks (dispatch_group aggregation + semaphore limit of 3).
         dispatch_group_t group = dispatch_group_create();
         dispatch_semaphore_t semaphore = dispatch_semaphore_create(3);
         NSObject *lock = [[NSObject alloc] init];
@@ -942,13 +942,13 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
                                                              loader:loader
                                                         projectType:@"mod"
                                                          completion:^(ModUpdateResult *_Nullable result) {
-                    // 服务保证主线程回调
+                    // The service guarantees a main-thread callback.
                     __strong typeof(weakSelf) strongSelf = weakSelf;
                     @synchronized(lock) {
                         if (result) {
                             if ([result hasUpdate]) [updatable addObject:result];
                         } else {
-                            unrecognized++; // 双源未命中 → 无法识别
+                            unrecognized++; // Not found on either source → unrecognized.
                         }
                         completed++;
                     }
@@ -966,7 +966,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
             if (!strongSelf) return;
             [strongSelf exitUpdateBusy];
 
-            // 徽章：命中更新的 Mod 显示更新标记
+            // Badge: show an update marker for mods with available updates.
             [strongSelf.updateResultsByPath removeAllObjects];
             for (ModUpdateResult *result in updatable) {
                 if (result.localFilePath.length > 0) {
@@ -988,17 +988,17 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     });
 }
 
-/// 更新确认弹窗：列出每项（名称 当前版本 → 新版本），全部更新 / 取消
+/// Update confirmation dialog: lists each item (name, current version → new version), with Update All / Cancel actions.
 - (void)presentUpdateConfirmAlertWithResults:(NSArray<ModUpdateResult *> *)results skipped:(NSInteger)skipped {
     if (results.count == 0) return;
 
-    // 构建列表文本（超长时截断保护，最多列 8 项）
+    // Build list text (truncate long lists; show at most 8 items).
     NSMutableArray<NSString *> *lines = [NSMutableArray array];
     NSUInteger maxLines = 8;
     for (NSUInteger i = 0; i < results.count && i < maxLines; i++) {
         ModUpdateResult *result = results[i];
         NSString *name = result.localFilePath.lastPathComponent ?: localize(@"resman.common.unknown_file", nil);
-        // 优先用 ModItem 显示名
+        // Prefer the ModItem display name.
         for (ModItem *mod in self.localMods) {
             if ([mod.filePath isEqualToString:result.localFilePath] && mod.displayName.length > 0) {
                 name = mod.displayName;
@@ -1030,17 +1030,17 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     [self presentViewController:alert animated:YES completion:nil];
 }
 
-/// 执行更新：并发下载到临时目录（PLDownloadClient，带 SHA1 校验 + 镜像候选）
-/// → 全部下载完成后替换文件（删旧 → 移新，保留旧文件的禁用状态）
-/// → 清徽章、重新加载列表、汇总提示
+/// Performs updates: concurrently downloads to a temporary directory (PLDownloadClient, with SHA1 validation + mirror candidates),
+/// then replaces files after all downloads complete (delete old → move new, preserving the old file's disabled state),
+/// clears badges, reloads the list, and shows a summary.
 - (void)performModUpdatesWithResults:(NSArray<ModUpdateResult *> *)results skipped:(NSInteger)skipped {
     if (results.count == 0 || self.isUpdateBusy) return;
 
-    // 构建下载任务列表
+    // Build the download task list.
     NSMutableArray<ModUpdateTask *> *tasks = [NSMutableArray array];
     for (ModUpdateResult *result in results) {
         ModVersion *target = result.candidateVersions.firstObject;
-        if (!target) continue; // 无候选版本，跳过
+        if (!target) continue; // No candidate version; skip.
         ModUpdateTask *task = [[ModUpdateTask alloc] init];
         task.result = result;
         task.targetVersion = target;
@@ -1054,7 +1054,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     }
     if (tasks.count == 0) return;
 
-    // 临时目录
+    // Temporary directory.
     NSString *tempDir = [NSTemporaryDirectory() stringByAppendingPathComponent:
         [NSString stringWithFormat:@"ModUpdate_%@", [[NSUUID UUID] UUIDString]]];
     NSError *mkError = nil;
@@ -1079,7 +1079,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     __weak typeof(self) weakSelf = self;
 
     for (ModUpdateTask *task in tasks) {
-        // 从 primaryFile 提取下载信息（url / filename / sha1）
+        // Extract download information from primaryFile (url / filename / sha1).
         NSDictionary *primaryFile = task.targetVersion.primaryFile;
         if (![primaryFile isKindOfClass:[NSDictionary class]]) {
             task.downloadSucceeded = NO;
@@ -1101,20 +1101,20 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
             dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
 
             PLDownloadRequest *request = [[PLDownloadRequest alloc] init];
-            // 镜像候选列表（官方 CDN + MCIM 镜像，按用户策略排序）
+            // Mirror candidates (official CDN + MCIM mirror, sorted by user policy).
             request.candidateURLs = [PLMirrorCenter candidateURLsForOriginalURL:url
                                                                    resourceType:PLMirrorResourceTypeAssetDownload];
-            // 版本文件自带 SHA1 → 启用校验（失败由下载器按镜像/退避节奏重试）
+            // The version file provides SHA1 → enable validation (the downloader retries failures using mirror/backoff logic).
             request.expectedSHA1 = sha1.length > 0 ? sha1 : nil;
             request.destinationPath = [tempDir stringByAppendingPathComponent:fileName];
             request.taskIdentifier = [NSString stringWithFormat:@"modupdate-%@", [[NSUUID UUID] UUIDString]];
-            request.allowZipFallbackCheck = YES; // 无 SHA1 时 zip EOCD 兜底
+            request.allowZipFallbackCheck = YES; // Use ZIP EOCD as a fallback when SHA1 is unavailable.
 
             [[PLDownloadClient sharedClient] startRequest:request
                                                  progress:nil
                                                     speed:nil
                                                completion:^(BOOL success, NSError *_Nullable error) {
-                // 回调在下载器内部串行队列（非主线程）
+                // Callback runs on the downloader's serial queue (not the main thread).
                 if (success) {
                     task.downloadSucceeded = YES;
                     task.tempPath = request.destinationPath;
@@ -1146,7 +1146,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
             return;
         }
 
-        // 阶段：替换文件（后台执行文件操作，完成后回主线程汇总）
+        // Stage: replace files (perform file operations in the background, then return to the main thread for the summary).
         [strongSelf setUpdateBusyTextOnly:localize(@"resman.mods.update.replacing", nil)];
         dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
             NSFileManager *fm = [NSFileManager defaultManager];
@@ -1159,7 +1159,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
                     failCount++;
                     continue;
                 }
-                // 下载文件名优先（新版本文件名可能变化）
+                // Prefer the downloaded filename (the new version's filename may have changed).
                 NSDictionary *primaryFile = task.targetVersion.primaryFile;
                 NSString *downloadName = [primaryFile isKindOfClass:[NSDictionary class]]
                     ? ([primaryFile[@"filename"] isKindOfClass:[NSString class]] ? primaryFile[@"filename"] : nil)
@@ -1168,7 +1168,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
 
                 NSString *oldPath = task.result.localFilePath;
                 NSString *oldDir = [oldPath stringByDeletingLastPathComponent];
-                // 旧文件处于禁用状态（.disabled 后缀）时，新文件同样禁用，保留用户意图
+                // If the old file was disabled (has a .disabled suffix), disable the new file too to preserve the user's intent.
                 BOOL keepDisabled = [oldPath.lowercaseString hasSuffix:@".disabled"];
                 NSString *newPath = [oldDir stringByAppendingPathComponent:fileName];
                 if (keepDisabled && ![newPath.lowercaseString hasSuffix:@".disabled"]) {
@@ -1176,7 +1176,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
                 }
 
                 @try {
-                    // 删旧 → 移新（ZL2 ModUpdater 替换逻辑）
+                    // Delete old → move new (ZL2 ModUpdater replacement logic).
                     if ([fm fileExistsAtPath:oldPath]) {
                         [fm removeItemAtPath:oldPath error:nil];
                     }
@@ -1186,7 +1186,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
                     NSError *moveError = nil;
                     if ([fm moveItemAtPath:task.tempPath toPath:newPath error:&moveError]) {
                         successCount++;
-                        task.tempPath = nil; // 已移走，避免后续误判
+                        task.tempPath = nil; // Already moved; avoid misclassification later.
                     } else {
                         failCount++;
                         NSLog(@"[ModsManager] Update replace failed (%@): %@", fileName, moveError);
@@ -1197,13 +1197,13 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
                 }
             }
 
-            // 清理临时目录
+            // Clean up the temporary directory.
             [fm removeItemAtPath:tempDir error:nil];
 
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) innerSelf = weakSelf;
                 if (!innerSelf) return;
-                // 清除更新徽章 + 退出忙态 + 重新加载列表
+                // Clear update badges + exit busy state + reload the list.
                 [innerSelf.updateResultsByPath removeAllObjects];
                 [innerSelf exitUpdateBusy];
                 [innerSelf loadMods];
@@ -1215,7 +1215,7 @@ static NSString *ModsManagerSHA1ForFile(NSString *path) {
     });
 }
 
-#pragma mark - 工具方法
+#pragma mark - Utility methods
 
 - (void)showDialogWithTitle:(NSString *)title message:(NSString *)message {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];

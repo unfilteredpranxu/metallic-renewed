@@ -1,119 +1,114 @@
-# 26.4 SPIR-V use-after-free —— 真修(class-set 源侧)+ 交付
+# 26.4 SPIR-V Use-After-Free — Root Fix (Class-Set Source) and Delivery
 
-> 对象:iPhone 17 Pro / iOS 27.2 / 实例 26.4-snapshot-2 / Metal 后端。
-> 症状:首次 UI 管线 `minecraft:pipeline/gui` 编译时
+> Device: iPhone 17 Pro / iOS 27.2 / instance 26.4-snapshot-2 / Metal backend.
+> Symptom: During the first compilation of the UI pipeline `minecraft:pipeline/gui`,
 > `com.mojang.renderpearl.util.ShaderCompileException: SPIRV-Cross error at spvc_context_parse_spirv: -1`。
-> 上一轮(tree510@7a6b5129b `★ [SPVC-PATH]`)只在 native 侧做了「快照环 + 就地恢复」兜底;**本轮在 Java/类集源侧做真修**。
-> 交付:`tree510` 的 `JavaApp/libs/others/metallum_agent.jar`(只换 `classes264/**` 里 9 个条目,其余逐字节不变)。
+> The previous round (`tree510@7a6b5129b`, `★ [SPVC-PATH]`) added only a native-side "snapshot ring + in-place restore" fallback; **this round fixes the root cause in the Java/class-set source**.
+> Delivered: `tree510`'s `JavaApp/libs/others/metallum_agent.jar` (replaced only 9 entries under `classes264/**`; every other byte is unchanged).
 
-## 1. 根因(生命周期时间线,含坐标)
+## 1. Root Cause (Lifecycle Timeline and Source Locations)
 
-调用链(26.4 renderpearl 前端 → Metal 后端):
+Call chain (26.4 renderpearl frontend → Metal backend):
 
 ```
 PipelineBuilder.compilePipeline(RenderPipeline, ShaderSource)            (com.mojang.blaze3d.pipeline)
   1) generateBackendCreateInfo(...)
        · compiler.compileToSpv(...)              → memAlloc'd ByteBuffer (GLSL→SPIR-V, glslang)
        · device.createSpvModule(name, spv, type, "main")  → new SPIRVModule(name, spv, ...)
-         （MetalDevice.createSpvModule 直接委托给 SPIRVModule）
-       · module.reflect()  ← 第 1、2 次 spvc_context_parse_spirv(反射解析,缓冲【仍存活】)
-       · 装进 CreateInfo(List<SpvModule>)
+         (MetalDevice.createSpvModule delegates directly to SPIRVModule)
+       · module.reflect()  ← first and second spvc_context_parse_spirv calls (reflection; buffer is still alive)
+       · added to CreateInfo(List<SpvModule>)
   2) device.compilePipeline(createInfo)          → FrontendGpuDevice → MetalDevice.compilePipeline
-       · MetalDevice 返回一个【延迟】的 Pending(真正的解析在 finishCompile() 里)
-  3) createInfo.shaders().forEach(SpvModule::close)   ← ★★ Free 点
+       · MetalDevice returns a deferred Pending (actual parsing occurs in finishCompile())
+  3) createInfo.shaders().forEach(SpvModule::close)   ← ★★ Free point
        · SPIRVModule.close() = { MemoryUtil.memFree(this.spv); spvc_context_destroy(...); }
   ...
-  4) 稍后 frontend 调 Pending.finishCompile()
+  4) Later, the frontend calls Pending.finishCompile()
        · MetalDevice$2.finishCompile → MetalCrossShaderCompiler.compile(device, info)
-       · spirvToMsl(vertexSpirv.spv(), …)  ← 第 3 次 spvc_context_parse_spirv
-         ⇒ 读【第 3 步已 free】的堆内存 = use-after-free
+       · spirvToMsl(vertexSpirv.spv(), …)  ← third spvc_context_parse_spirv call
+         ⇒ reads heap memory already freed in step 3 = use-after-free
 ```
 
-真机证据:`parse#3` 与 `parse#1` 同长(503 words)、自第 6 字起逐字相同,仅**前 16 字节**变
-(`66297a96 e3a84b13 00000180 …`) = **libmalloc 空闲块链表头** ⇒ 缓冲已被 free、尚未被复用。
-(上一轮的 `_SPVC_PATH_FIX.md` 把释放点归到 `IntermediaryShaderModule`/`MetalDevice.shaderCache` —— 那是
-**26.2/26.3 的代码路径**,26.4 已换成 `CreateInfo`/`SpvModule`,该归因不适用;见 §5。)
+On-device evidence: `parse#3` and `parse#1` have the same length (503 words) and match byte-for-byte from the sixth word onward. Only the **first 16 bytes** differ
+(`66297a96 e3a84b13 00000180 …`), matching the **libmalloc free-list header** ⇒ the buffer had been freed but not yet reused.
+(The previous `_SPVC_PATH_FIX.md` attributed the free point to `IntermediaryShaderModule`/`MetalDevice.shaderCache`; that is the **26.2/26.3 code path**. In 26.4 it was replaced by `CreateInfo`/`SpvModule`, so that attribution does not apply; see §5.)
 
-关键坐标:
-- Free 点:`com/mojang/blaze3d/pipeline/PipelineBuilder.compilePipeline` 第 3 步(在 `device.compilePipeline` 返回后)。
-- 读已释放点:`MetalCrossShaderCompiler.spirvToMsl(vertexSpirv.spv(), …)`(`_mc264src` 第 83/99 行)。
-- 责任边界:**后端只能在 `compilePipeline(info)` 调用期间使用 `CreateInfo.shaders()`**。
+Key locations:
+- Free point: Step 3 of `com/mojang/blaze3d/pipeline/PipelineBuilder.compilePipeline` (after `device.compilePipeline` returns).
+- Read-after-free point: `MetalCrossShaderCompiler.spirvToMsl(vertexSpirv.spv(), …)` (lines 83/99 in `_mc264src`).
+- Ownership boundary: **The backend may use `CreateInfo.shaders()` only during the `compilePipeline(info)` call.**
 
-## 2. 修法(选 (c):拷贝 + 生命周期契约)
+## 2. Fix (Option (c): Copy + Lifecycle Contract)
 
-改动落在 **26.4 类集源 `D:\CTF\_mc264src\java`**(= `metaluni/mu263` 的副本 + `// ★ [MC264]` 8 处端口补丁;
-`classes264` 就是由它编出),`// ★ [SPVC-UAF-FIX]` 标记:
+Changes were made in the **26.4 class-set source `D:\CTF\_mc264src\java`** (a copy of `metaluni/mu263` plus eight `// ★ [MC264]` porting patches; `classes264` is built from it), marked with `// ★ [SPVC-UAF-FIX]`:
 
-1. `MetalDevice.compilePipeline(CreateInfo)`(在 module **仍存活**时):
-   - `SpvSnapshot.take(info)` —— 对每个 `SpvModule` 做 `spv()` 的**逐字拷贝**
-     (`MemoryUtil.memAlloc(n)` + `dup.order()` + `put` + `flip`,保留 `[position,limit)` 与字节序);
-   - 拷贝所有权归 `MetalDevice`,在 `finishCompile()` 结束时**释放一次**(幂等);
-   - `close()` 里 `releaseAllSpvSnapshots()` 兜底排空「Pending 从未 finishCompile」的残留;集合天然有界。
+1. `MetalDevice.compilePipeline(CreateInfo)` (while the module is **still alive**):
+   - `SpvSnapshot.take(info)` makes a **byte-for-byte copy** of each `SpvModule`'s `spv()`
+     (`MemoryUtil.memAlloc(n)` + `dup.order()` + `put` + `flip`, preserving `[position,limit)` and byte order).
+   - `MetalDevice` owns the copy and **releases it once** when `finishCompile()` ends (idempotently).
+   - `close()` calls `releaseAllSpvSnapshots()` as a fallback to drain snapshots left by a Pending that never reaches `finishCompile()`; the collection is naturally bounded.
 2. `MetalCrossShaderCompiler.compile(MetalDevice, CreateInfo, Map<ShaderType,ByteBuffer> ownedSpirv)`:
-   - `ownedSpirv != null` 时**绝不**再读 `SpvModule.spv()`(契约写进签名 + 注释);
-   - 缺 entry 视为「该 stage 真的没有」→ 返回 null(=旧行为),不回落读已释放的 module。
-3. 逐字拷贝,内容不变;生命周期只变长(到 finishCompile 结束),不引入泄漏。
+   - When `ownedSpirv != null`, **never** read `SpvModule.spv()` again (the contract is encoded in the signature and comments).
+   - A missing entry means that stage is genuinely absent → return null (the old behavior); do not fall back to reading a freed module.
+3. The copy is byte-for-byte identical, so content is unchanged; its lifetime is extended only through `finishCompile()`, with no leak.
 
-为什么不选纯 (a)/(b):
-- 纯 (a)「在 `MetalCrossShaderCompiler.compile` 里拷贝」**太晚** —— 那时 `finishCompile` 已经读了释放后的内存,
-  拷到的也是坏字节(前 16B 已是 free-list 元数据)。拷贝必须发生在 `compilePipeline`(module 存活期)。
-- 纯 (b)「把生命周期变长」= 后端长期持有/读前端缓冲,等于假设前端不 close —— 前端**必然** close
-  (它把 `SpvModule` 当方法级资源),契约无法在不改前端的前提下成立。
-- (c) 两者都做:拷贝(真实修复)+ 签名/契约(防止回归)。
+Why not choose only (a) or (b):
+- Only (a), "copy inside `MetalCrossShaderCompiler.compile`," is **too late**: by then `finishCompile` has already read freed memory, so the copy would contain corrupted bytes (the first 16 bytes are already free-list metadata). The copy must be made during `compilePipeline`, while the module is alive.
+- Only (b), "extend the lifetime," means the backend would retain/read the frontend buffer and assume the frontend does not close it. The frontend **always** closes it (it treats `SpvModule` as a method-scoped resource), so the contract cannot hold without changing the frontend.
+- (c) does both: copy to fix the bug and a signature/contract to prevent regression.
 
-## 3. 重编 + 解包复核(本机真跑)
+## 3. Rebuild and Extracted-JAR Verification (Run Locally)
 
-源:`D:\CTF\_mc264src\java`(156 源)→ JDK25 `javac`(`client-26.4.jar` + `_b261_stub` + `_mc211/libs`)
-→ `classes264` = 185 自有 + 55 slf4j = **240** 类(原 239;新增 `MetalDevice$SpvSnapshot`)。
-拼装脚本 `D:\CTF\_uafwork\{build_classes264.py,assemble264fix.py}`;合并脚本 `merge_spvcuaf.py`。
+Source: `D:\CTF\_mc264src\java` (156 sources) → JDK 25 `javac` (`client-26.4.jar` + `_b261_stub` + `_mc211/libs`)
+→ `classes264` = 185 project classes + 55 slf4j classes = **240** (239 before; added `MetalDevice$SpvSnapshot`).
+Assembly scripts: `D:\CTF\_uafwork\{build_classes264.py,assemble264fix.py}`; merge script: `merge_spvcuaf.py`.
 
-| 检查 | 结果 |
+| Check | Result |
 |---|---|
-| 基线复现(改前源 → 184 类) | 与 `_mc264out/build` **184/184 逐字节相同**(证明构建可复现) |
-| 改后编译 | 185 类,0 error |
-| 相对旧 `classes264` 的差异 | **8 changed + 1 added**,其余 231 条逐字节不变 |
-| 常量池残留(7 个 26.4 已删/迁包类型) | **0** |
-| `Harness264`(真 26.4 client 父加载器 load+link) | **89/89 LOADED_OK,FAILED=0** |
-| agent jar 合并 | `entries 1541 → 1542`;**除 `classes264/**` 外 0 条目变动**;`testzip() OK` |
-| 根 `com/mojang/blaze3d/` = 0 / `classes264/com/mojang/` = 0 | 保持 |
-| `MetallumAgent.class` 路由标记(`classes264`/`is264`/`classSetPresent`/`FIX263-ROUTE`)与 `TapUniversal` | 保持不变(agent 类未重编) |
+| Baseline reproduction (pre-fix source → 184 classes) | **184/184 byte-for-byte identical** to `_mc264out/build` (proves the build is reproducible) |
+| Post-fix compilation | 185 classes, 0 errors |
+| Difference from old `classes264` | **8 changed + 1 added**; the other 231 entries are byte-for-byte unchanged |
+| Residual constant-pool references (7 removed/relocated 26.4 types) | **0** |
+| `Harness264` (load+link using the real 26.4 client class loader) | **89/89 LOADED_OK, FAILED=0** |
+| Agent JAR merge | `entries 1541 → 1542`; **0 entries changed outside `classes264/**`**; `testzip() OK` |
+| Root `com/mojang/blaze3d/` = 0 / `classes264/com/mojang/` = 0 | Unchanged |
+| `MetallumAgent.class` routing markers (`classes264`/`is264`/`classSetPresent`/`FIX263-ROUTE`) and `TapUniversal` | Unchanged (agent class was not recompiled) |
 | `Natives/check_spvc_provenance.py` | **EXIT=0** |
-| 新 jar | md5 `215a521c34552dd987f51ebbf0152604` / 5,661,113 B(**原** `bd6f7a647cf12654c188077d4ac7ac2d` / 5,659,509 B) |
+| New JAR | MD5 `215a521c34552dd987f51ebbf0152604` / 5,661,113 B (**old** `bd6f7a647cf12654c188077d4ac7ac2d` / 5,659,509 B) |
 
-解包复核(从**装好后的** jar 重新解出):`classes264` = 240;`javap` 确认
-`MetalDevice.compilePipeline(CreateInfo)` 里 `SpvSnapshot.take` → `new MetalDevice$2(device,snapshot,info)`,
-`copySpv` 走 `memAlloc/order/put/flip`,`MetalDevice$2.finishCompile` 调
-`MetalCrossShaderCompiler.compile(MetalDevice,CreateInfo,Map)` 并在 finally 调 `releaseSpvSnapshot`。
+Extracted-JAR verification (re-extracted from the **final assembled** JAR): `classes264` = 240. `javap` confirms that
+`MetalDevice.compilePipeline(CreateInfo)` calls `SpvSnapshot.take` → `new MetalDevice$2(device,snapshot,info)`,
+`copySpv` uses `memAlloc/order/put/flip`, and `MetalDevice$2.finishCompile` calls
+`MetalCrossShaderCompiler.compile(MetalDevice,CreateInfo,Map)` and calls `releaseSpvSnapshot` in `finally`.
 
-**其它类集不受影响**:`classes263`/`classes262` 的 `MetalDevice` 走 `ShaderSource` + 自己的 `shaderCache`
-(常量池无 `CreateInfo`/`SpvModule`),缓冲所有权在后端自身 ⇒ 无此 UAF,无需重编。
+**Other class sets are unaffected**: `MetalDevice` in `classes263`/`classes262` uses `ShaderSource` and its own `shaderCache` (no `CreateInfo`/`SpvModule` in the constant pool); the backend itself owns the buffers, so this UAF does not occur and no rebuild is needed.
 
-## 4. 真机判据(下一次 26.4 启动)
+## 4. On-Device Criteria (Next 26.4 Launch)
 
-1. **不再出现** `★ [SPVC-PATH] … FREED/CLOBBERED in place … RESTORED from snapshot`
-   (若还出现 = 兜底仍在救,说明 native 加载的不是新 jar)。
-2. 三次 `[spvc][26.4-SPVC] parse_spirv input: … head8=[…]` 的 `head8` **全部**以 `07230203` 开头,
-   且 `rc=0`。
-3. 26.4 能过 `preloadUiShader` / `loadCriticalShaders`,不再抛 `ShaderCompileException`
-   (或至少不再有 `spvc_context_parse_spirv: -1`)。
-4. 回归:26.2/26.3 实例仍打印各自的 `prefix='classes262/'`/`'classes263/'`,画面与改前一致。
+1. **Must no longer show** `★ [SPVC-PATH] … FREED/CLOBBERED in place … RESTORED from snapshot`
+   (If this still appears, the fallback is still intervening and the native code is not loading the new JAR.)
+2. The `head8` values in all three `[spvc][26.4-SPVC] parse_spirv input: … head8=[…]` logs **must** start with `07230203`,
+   and `rc=0`.
+3. 26.4 must pass `preloadUiShader` / `loadCriticalShaders` without throwing `ShaderCompileException`
+   (or at least no longer reports `spvc_context_parse_spirv: -1`).
+4. Regression: 26.2/26.3 instances still print their respective `prefix='classes262/'`/`'classes263/'`, and the image remains unchanged.
 
-## 5. 未做 / 存疑
+## 5. Not Done / Unverified
 
-- **未在真机验证**(随包 `libspvc.dylib` 是 iOS Mach-O,macOS/Windows 不能 dlopen;本机无 host 端 spvc)。
-  本条只能由下一次 26.4 真机日志定案。
-- 只有 `classes264` 重编并替换进 jar;**未碰** 26.2/26.3 类集、路由逻辑、native、launcher、玻璃相关文件。
-- 备份:`D:\CTF\_510src\_bak_\spvcuaf_<ts>\metallum_agent.jar.orig`、`classes264.orig`;
-  源备份 `_mc264src\...\MetalDevice.java._bak_spvcuaf`、`MetalCrossShaderCompiler.java._bak_spvcuaf`
-  (与改后源一起编译可**逐字节**复原改前类集,已证)。
-- `_mc264out\classes264` 已同步为改后版本(离线产物与 jar 一致);**注意**:`tree264` 参考 jar 仍是改前版,
-  `_mc264merge_scripts\build_mc264_tree510.sh` 里「classes264 vs tree264 ref mismatch=0」的断言对这 9 个类会报不一致 ——
-  该断言需按改后基线更新(本轮未动那个脚本)。
-- 未 push / 未合并 / 未开 issue。
+- **Not verified on a device** (`libspvc.dylib` in the bundle is an iOS Mach-O and cannot be dlopen'ed on macOS/Windows; there is no host-side spvc on this machine).
+  Only the next on-device 26.4 log can confirm this.
+- Only `classes264` was rebuilt and replaced in the JAR; **26.2/26.3 class sets, routing logic, native code, launcher, and glass-related files were not touched**.
+- Backups: `D:\CTF\_510src\_bak_\spvcuaf_<ts>\metallum_agent.jar.orig` and `classes264.orig`;
+  source backups `_mc264src\...\MetalDevice.java._bak_spvcuaf` and `MetalCrossShaderCompiler.java._bak_spvcuaf`
+  (compiling them with the modified source can **byte-for-byte** reproduce the pre-fix class set; verified).
+- `_mc264out\classes264` was synchronized to the fixed version (offline artifacts match the JAR). **Note**: the `tree264` reference JAR is still pre-fix,
+  so the `classes264 vs tree264 ref mismatch=0` assertion in `_mc264merge_scripts\build_mc264_tree510.sh` will report a mismatch for these 9 classes.
+  That assertion must be updated to the fixed baseline (the script was not changed in this round).
+- Not pushed, merged, or filed as an issue.
 
 ---
 
-## 附:复现命令
+## Appendix: Reproduction Commands
 
 ```bash
 python D:/CTF/_uafwork/build_classes264.py D:/CTF/_mc264src/java D:/CTF/_mc264out/files264.txt D:/CTF/_uafwork/out_fix
@@ -121,12 +116,12 @@ python D:/CTF/_uafwork/assemble264fix.py    D:/CTF/_uafwork/out_fix D:/CTF/_uafw
 python D:/CTF/_uafwork/merge_spvcuaf.py \
   D:/CTF/_510src/tree510/JavaApp/libs/others/metallum_agent.jar \
   D:/CTF/_uafwork/classes264_fix D:/CTF/_uafwork/metallum_agent.jar.new
-# 回退
+# Rollback
 cp D:/CTF/_510src/_bak_/spvcuaf_<ts>/metallum_agent.jar.orig \
    D:/CTF/_510src/tree510/JavaApp/libs/others/metallum_agent.jar
-# 源补丁(CRLF 源;用 --binary 或 git apply)
+# Source patch (CRLF source; use --binary or git apply)
 patch -p0 --binary < D:/CTF/_510src/tree510/patches/26.4-spvc-uaf-fix.diff
 ```
 
-> 校验:`python D:/CTF/_uafwork/build_classes264.py` 对**改前源**(= `*.java._bak_spvcuaf`)
-> 编出的 184 个 class 与 `_mc264out/build` 逐字节相同 ⇒ 构建可复现、源备份即改前源。
+> Verification: `python D:/CTF/_uafwork/build_classes264.py` produced 184 classes from the **pre-fix source** (= `*.java._bak_spvcuaf`)
+> that are byte-for-byte identical to `_mc264out/build` ⇒ the build is reproducible, and the source backup is the pre-fix source.

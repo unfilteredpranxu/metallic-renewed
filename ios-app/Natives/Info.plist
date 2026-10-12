@@ -8,11 +8,13 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
-	<!-- ★ [I18N] 声明我们真正支持的界面语言：iOS 会据此把系统语言(含变体)匹配到对应
-	     .lproj（并用于「设置 > App > 语言」列表）。与 AmeLauncherSupportedLanguageCodes() 一致；
-	     未列出的 .lproj 是上游遗留空壳，不声明，避免系统误配到"没翻译的语言"。
-	     ★ [AUDIT-DECIDE] E-2/A-8：已移除 km —— km.lproj 实为中文内容，声明它会让
-	     「设置 > App > 语言」把中文界面当高棉语列给用户。km.lproj 文件仍在包内但不再声明。 -->
+	<!-- ★ [I18N] Declare the UI languages we actually support: iOS uses this list to match the system
+	     language (including variants) to the corresponding .lproj (and to populate Settings > App > Language).
+	     Keep this consistent with AmeLauncherSupportedLanguageCodes(); do not declare unlisted .lproj
+	     directories, which are legacy empty shells and could make the system select an "untranslated language".
+	     ★ [AUDIT-DECIDE] E-2/A-8: removed km — km.lproj actually contains Chinese content; declaring it
+	     would show the Chinese UI to users as Khmer in Settings > App > Language. km.lproj remains in the
+	     bundle but is no longer declared. -->
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>zh-Hans</string>
@@ -143,10 +145,10 @@
 		<string>santander</string>
 		<string>shareddocuments</string>
 		<string>zerotier</string>
-		<!-- ★ [POCKETJ-JIT] JIT 获取/使能工具 scheme(PocketJ INTEGRATION.md 要求:
-		     若用 canOpenURL 探测 stikdebug 就必须登记)。本 App 目前对 stikjit://
-		     只用 openURL 的 completionHandler,但登记后 canOpenURL 探测也可用,
-		     便于设置页显示"是否已安装"、以及后续 stikdebug:// 路径。 -->
+		<!-- ★ [POCKETJ-JIT] Scheme for the JIT acquisition/enabling tool (required by PocketJ INTEGRATION.md:
+		     if canOpenURL is used to detect stikdebug, it must be registered). This app currently uses only
+		     openURL's completionHandler for stikjit://, but registration also enables canOpenURL detection,
+		     which lets Settings show whether it is installed and supports a future stikdebug:// path. -->
 		<string>stikdebug</string>
 		<string>stikjit</string>
 		<string>sidestore</string>
@@ -200,9 +202,10 @@
 		<string>audio</string>
 		<string>fetch</string>
 	</array>
-	<!-- ★ [GLASSUI] 2026-10-03 移除此键:UIDesignRequiresCompatibility = true 会让 App 退回
-	     iOS 26 之前的外观,等于主动放弃系统液态玻璃。上游 5.1.0 置 true,fork 版里没有此键;
-	     两侧对比已确认:去掉才出玻璃。 -->
+	<!-- ★ [GLASSUI] Removed this key on 2026-10-03: UIDesignRequiresCompatibility = true makes the app
+	     revert to the pre-iOS 26 appearance, effectively opting out of system Liquid Glass. Upstream 5.1.0
+	     sets it to true, but the fork does not; a side-by-side comparison confirmed that removing it enables
+	     glass. -->
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>1</integer>
@@ -220,14 +223,14 @@
 	</array>
 	<key>UIStatusBarHidden</key>
 	<true/>
-	<!-- Air Task 56：iPadOS 26 起 iPad 默认进入窗口化多任务，SDLK 窗口可被系统
-	     任意缩放/移动。MC 26.3 的 SDL3 路径随后会调用 requestGeometryUpdate
-	     并把几何变更（Code=101）当作「窗口被最小化」处理，进而触发
+	<!-- Air Task 56: Starting with iPadOS 26, iPad defaults to windowed multitasking, and the system
+	     can resize/move the SDLK window freely. The SDL3 path in MC 26.3 then calls requestGeometryUpdate
+	     and treats geometry changes (Code=101) as "window minimized", triggering
 	     SDL_EVENT_WINDOW_MINIMIZED(0x209) → onIconified(true) →
-	     GlSurface.acquireNextTexture 抛 SurfaceException → 重建立面
-	     EGL_BAD_ALLOC，画面全黑。声明本 App 必须全屏即可让系统不再下发这类
-	     几何变更（iPhone 本就不支持窗口化，不受影响；此处主要为 iPad 兜底）。
-	     与 Air 启动器的做法一致。 -->
+	     SurfaceException in GlSurface.acquireNextTexture → surface recreation →
+	     EGL_BAD_ALLOC → black screen. Declaring that the app requires full screen prevents the system
+	     from sending these geometry changes (iPhone does not support windowing and is unaffected; this
+	     mainly protects iPad). Matches the Air launcher approach. -->
 	<key>UIRequiresFullScreen</key>
 	<true/>
 	<key>UISupportedInterfaceOrientations</key>

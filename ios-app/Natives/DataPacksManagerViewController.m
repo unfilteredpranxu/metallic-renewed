@@ -2,10 +2,11 @@
 //  DataPacksManagerViewController.m
 //  Amethyst
 //
-//  数据包管理视图控制器实现（继承 ResourceListViewController 基类）
-//  使用 DataPackService 进行本地扫描、启用/禁用与删除
-//  在线下载入口已移至统一下载界面：空状态提供"去下载"引导按钮
-//  提示：iOS 上无法选择世界，数据包位于 <gameDir>/datapacks/，需手动移动到 saves/<世界名>/datapacks/
+//  Data-pack management view-controller implementation (inherits ResourceListViewController).
+//  Uses DataPackService for local scanning, enable/disable, and deletion.
+//  Online downloads have moved to the unified download screen; the empty state provides a "Go to Downloads" button.
+//  Note: iOS cannot select a world. Data packs are in <gameDir>/datapacks/ and must be moved manually
+//  to saves/<world name>/datapacks/.
 //
 
 #import "DataPacksManagerViewController.h"
@@ -15,10 +16,10 @@
 #import "DownloadViewController.h"
 #import "utils.h"
 
-#pragma mark - 数据包卡片 Cell（继承 Air-Design 卡片基类，本文件内轻量子类）
+#pragma mark - Data-pack card cell (lightweight subclass of Air-Design card base class in this file)
 
 @interface DataPackCardCell : ResourceCardTableViewCell
-/// 启用/禁用开关回调（VC 在 cellForRow 中设置，参数为触发开关的 cell）
+/// Enable/disable switch callback (set by the VC in cellForRow; parameter is the cell that triggered the switch).
 @property (nonatomic, copy, nullable) void (^toggleHandler)(DataPackCardCell *cell);
 @end
 
@@ -27,7 +28,7 @@
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
-        // 开关事件统一挂在 cell 自身（只挂一次），避免复用时重复 addTarget
+        // Attach the switch event to the cell itself (only once) to avoid duplicate addTarget calls on reuse.
         [self.toggleSwitch addTarget:self action:@selector(internalSwitchChanged:) forControlEvents:UIControlEventValueChanged];
     }
     return self;
@@ -39,9 +40,9 @@
 
 - (void)configureWithDataPack:(DataPackItem *)item {
     NSString *title = item.displayName.length > 0 ? item.displayName : item.fileName;
-    // 副标题：pack_format（无则回退文件名）
+    // Subtitle: pack_format (fall back to the filename if unavailable).
     NSString *subtitle = item.packFormat ? [NSString stringWithFormat:localize(@"resman.common.pack_format", nil), item.packFormat] : item.fileName;
-    // 元信息：数据包描述
+    // Metadata: data-pack description.
     NSString *detail = item.dataPackDescription.length > 0 ? item.dataPackDescription : nil;
 
     [self configureWithIcon:@"doc.text.fill"
@@ -50,7 +51,7 @@
                    subtitle:subtitle
                      detail:detail];
 
-    // 启用/禁用开关（.disabled 后缀切换）
+    // Enable/disable switch (toggles the .disabled suffix).
     self.toggleSwitch.hidden = NO;
     [self.toggleSwitch setOn:!item.disabled animated:NO];
     self.contentView.alpha = item.disabled ? 0.5 : 1.0;
@@ -58,7 +59,7 @@
 
 @end
 
-#pragma mark - 视图控制器
+#pragma mark - View controller
 
 @interface DataPacksManagerViewController () <UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate, UIDocumentPickerDelegate>
 
@@ -68,11 +69,11 @@
 @property (nonatomic, strong) NSMutableArray<DataPackItem *> *localItems;
 @property (nonatomic, strong) NSMutableArray<DataPackItem *> *filteredLocalItems;
 
-// 顶部提示横幅（saves/<世界名>/datapacks/ 说明），作为 tableHeaderView 展示
+// Top hint banner (explains saves/<world name>/datapacks/), displayed as tableHeaderView.
 @property (nonatomic, strong) UIView *tipHeaderView;
 @property (nonatomic, assign) CGFloat lastTipHeaderWidth;
 
-// 首屏连锁进场动画只播一次
+// Play the cascading first-screen entrance animation only once.
 @property (nonatomic, assign) BOOL didPlayChainAnimation;
 
 @end
@@ -82,8 +83,8 @@
 #pragma mark - Init
 
 - (instancetype)init {
-    // 接入资源列表基类：标题 + 数据包类型语义色图标（teal / doc.text.fill）
-    // 兼容既有调用方 [[DataPacksManagerViewController alloc] init] 的创建方式
+    // Integrate with the resource-list base class: title + semantic data-pack icon (teal / doc.text.fill).
+    // Preserve compatibility with existing callers that create this using [[DataPacksManagerViewController alloc] init].
     return [super initWithTitle:localize(@"resman.datapacks.title", nil) resourceTypeIcon:@"doc.text.fill" iconColor:[UIColor systemTealColor]];
 }
 
@@ -91,17 +92,18 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // 在线下载入口已移至下载界面：固定本地模式（currentMode 等属性保留仅为兼容 .h 既有声明）
+    // Online downloads moved to the Downloads screen: fixed to local mode (currentMode and related
+    // properties remain only for compatibility with existing declarations in .h).
     self.currentMode = DataPacksManagerModeLocal;
     self.localItems = [NSMutableArray array];
     self.filteredLocalItems = [NSMutableArray array];
     self.onlineSearchResults = [NSMutableArray array];
 
-    // 搜索栏（基类构建）：只搜本地
+    // Search bar (built by the base class): search locally only.
     self.searchBar.delegate = self;
     self.searchBar.placeholder = localize(@"resman.datapacks.search_placeholder", nil);
 
-    // 列表（基类构建）：注册卡片 Cell + 下拉刷新
+    // List (built by the base class): register the card cell + pull-to-refresh.
     [self.tableView registerClass:[DataPackCardCell class] forCellReuseIdentifier:@"DataPackCardCell"];
     self.tableView.dataSource = self;
     self.tableView.delegate = self;
@@ -111,7 +113,7 @@
     [rc addTarget:self action:@selector(handleRefresh:) forControlEvents:UIControlEventValueChanged];
     self.tableView.refreshControl = rc;
 
-    // 导航按钮：左侧关闭，右侧导入 + 刷新
+    // Navigation buttons: close on the left; import + refresh on the right.
     UIBarButtonItem *closeButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(closeTapped)];
     self.refreshButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(handleRefresh:)];
     UIImage *importImage = [UIImage systemImageNamed:@"square.and.arrow.down"] ?: [UIImage systemImageNamed:@"plus"];
@@ -120,7 +122,7 @@
     self.navigationItem.leftBarButtonItem = closeButton;
     self.navigationItem.rightBarButtonItems = @[self.importButton, self.refreshButton];
 
-    // 顶部提示横幅（保留既有提示文案）
+    // Top hint banner (retain the existing hint text).
     [self setupTipHeaderView];
 
     [self refreshLocalList];
@@ -128,7 +130,8 @@
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    // tableView 宽度确定/变化（首次布局、旋转）时重算提示横幅高度
+    // Recalculate the hint-banner height when the tableView width is determined/changes
+    // (initial layout, rotation).
     CGFloat width = CGRectGetWidth(self.tableView.bounds);
     if (width > 0 && fabs(width - self.lastTipHeaderWidth) > 0.5) {
         self.lastTipHeaderWidth = width;
@@ -136,10 +139,10 @@
     }
 }
 
-#pragma mark - 顶部提示横幅
+#pragma mark - Top hint banner
 
 - (void)setupTipHeaderView {
-    // 数据包目录说明横幅：轻量卡片样式（半透明基底 + 0.5pt 描边 + 10pt 圆角）
+    // Data-pack directory information banner: lightweight card style (translucent base + 0.5pt stroke + 10pt corner radius).
     UIView *container = [[UIView alloc] init];
     container.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.06];
     container.layer.cornerRadius = 10.0;
@@ -167,7 +170,7 @@
 
 - (void)fitTipHeaderToWidth:(CGFloat)width {
     if (width <= 0 || !self.tipHeaderView) return;
-    // 临时宽度约束用于自适应计算高度，算完即移除
+    // Temporary width constraint for adaptive height calculation; remove it afterward.
     NSLayoutConstraint *widthConstraint = [self.tipHeaderView.widthAnchor constraintEqualToConstant:width];
     widthConstraint.active = YES;
     CGSize size = [self.tipHeaderView systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
@@ -179,12 +182,12 @@
     }
 }
 
-#pragma mark - 关闭
+#pragma mark - Close
 
 - (void)closeTapped {
-    // 兼容两种容器：
-    // - push 进 UINavigationController（ProfileSettingsViewController 跳转）：pop 回上一级
-    // - present 弹窗（旧调用路径）：dismiss
+    // Support two containers:
+    // - Pushed into a UINavigationController (from ProfileSettingsViewController): pop to the previous page.
+    // - Presented as a modal (legacy call path): dismiss.
     if (self.navigationController && self.navigationController.viewControllers.firstObject != self) {
         [self.navigationController popViewControllerAnimated:YES];
     } else {
@@ -192,7 +195,7 @@
     }
 }
 
-#pragma mark - 导入数据包
+#pragma mark - Import data pack
 
 - (void)importTapped {
     NSError *dirError = nil;
@@ -253,14 +256,15 @@
     }
 }
 
-#pragma mark - 数据加载
+#pragma mark - Data loading
 
 - (void)handleRefresh:(id)sender {
     [self refreshLocalList];
 }
 
-/// 基类刷新钩子：下载完成通知 / viewWillAppear 时重载数据包列表。
-/// 关键修复（下载成功后资源管理页不刷新）：文件落盘后自动刷新页面。
+/// Base-class refresh hook: reload the data-pack list on download-completion notification / viewWillAppear.
+/// Key fix (resource manager did not refresh after successful download): refresh the page automatically
+/// after the file is saved.
 - (void)reloadResourceList {
     [self refreshLocalList];
 }
@@ -275,7 +279,7 @@
             [self filterLocalItems];
             [self setLoading:NO];
             [self.tableView.refreshControl endRefreshing];
-            // 首屏连锁进场动画（Air-Design 15.3）：只播一次
+            // First-screen cascading entrance animation (Air-Design 15.3): play only once.
             if (!self.didPlayChainAnimation && self.filteredLocalItems.count > 0) {
                 self.didPlayChainAnimation = YES;
                 [self animateCellsInChain];
@@ -284,7 +288,7 @@
     }];
 }
 
-#pragma mark - 搜索与空状态
+#pragma mark - Search and empty state
 
 - (void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText {
     [self filterLocalItems];
@@ -323,7 +327,7 @@
         return;
     }
     if (self.localItems.count == 0) {
-        // 目录为空：类型图标 + "去下载"引导（跳转统一下载界面）
+        // Empty directory: type icon + "Go to Downloads" prompt (opens the unified Downloads screen).
         [self showEmptyStateWithIcon:nil
                            iconColor:nil
                              message:localize(@"resman.datapacks.empty", nil)
@@ -332,7 +336,7 @@
                           [self openDownloadPage];
                       }];
     } else {
-        // 搜索无结果：不放引导按钮
+        // No search results: do not show the prompt button.
         [self showEmptyStateWithIcon:@"magnifyingglass"
                            iconColor:[UIColor secondaryLabelColor]
                              message:localize(@"resman.datapacks.search_empty", nil)
@@ -341,17 +345,18 @@
     }
 }
 
-#pragma mark - 跳转统一下载界面
+#pragma mark - Navigate to unified Downloads screen
 
 - (void)openDownloadPage {
-    // 在线下载入口已收敛到统一下载界面（未区分资源类型 Tab，进入默认页）
+    // Online downloads are consolidated on the unified Downloads screen (no resource-type tab
+    // selected; open its default page).
     DownloadViewController *downloadVC = [[DownloadViewController alloc] init];
-    // 关键修复（目标实例不一致）：传入本管理页绑定的 profileName
+    // Key fix (target instance mismatch): pass the profileName bound to this management page.
     downloadVC.targetProfileName = self.profileName;
     if (self.navigationController) {
         [self.navigationController pushViewController:downloadVC animated:YES];
     } else {
-        // 无导航栈（旧 present 路径）时全屏弹出
+        // Present full-screen when there is no navigation stack (legacy present path).
         UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:downloadVC];
         nav.modalPresentationStyle = UIModalPresentationFullScreen;
         [self presentViewController:nav animated:YES completion:nil];
@@ -376,7 +381,7 @@
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
-    // 卡片间距（Air-Design space-sm）：顶部留白 + 卡片之间留白
+    // Card spacing (Air-Design space-sm): top padding + space between cards.
     return ResourceListCardSpacing;
 }
 
@@ -409,9 +414,11 @@
             if (indexInFull != NSNotFound) {
                 [weakSelf.localItems removeObjectAtIndex:indexInFull];
             }
-            // ★ [DEMINE] 原为无条件 removeObjectAtIndex:indexPath.row：弹框期间数据源若被刷新
-            //   (异步刷新/其它删除)会导致 indexPath 过期 ⇒ 越界 NSRangeException 崩 App。
-            //   越界则跳过这两步(下一次 reload 自会纠正)；正常情况索引有效，行为不变。
+            // ★ [DEMINE] Previously, removeObjectAtIndex:indexPath.row ran unconditionally. If the data
+            //   source refreshed while the dialog was open (async refresh/another deletion), indexPath
+            //   became stale ⇒ an out-of-range NSRangeException crashed the app.
+            //   Skip these two steps when out of range (the next reload corrects the state); when the index
+            //   is valid, behavior is unchanged.
             if (indexPath.row < (NSInteger)weakSelf.filteredLocalItems.count) {
                 [weakSelf.filteredLocalItems removeObjectAtIndex:indexPath.row];
                 [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
@@ -429,7 +436,7 @@
     return [UISwipeActionsConfiguration configurationWithActions:@[deleteAction]];
 }
 
-#pragma mark - 本地启用/禁用切换
+#pragma mark - Local enable/disable toggle
 
 - (void)handleToggleOnCell:(DataPackCardCell *)cell {
     NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
@@ -437,16 +444,16 @@
     DataPackItem *item = self.filteredLocalItems[indexPath.row];
     NSError *error = nil;
     if (![[DataPackService sharedService] toggleEnableForDataPack:item error:&error]) {
-        // 失败时恢复开关状态
+        // Restore the switch state on failure.
         [cell.toggleSwitch setOn:!cell.toggleSwitch.on animated:NO];
         [self showSimpleAlertWithTitle:localize(@"resman.common.operation_failed", nil) message:error.localizedDescription];
     } else {
-        // 禁用态半透明提示
+        // Translucent hint for the disabled state.
         cell.contentView.alpha = item.disabled ? 0.5 : 1.0;
     }
 }
 
-#pragma mark - 工具方法
+#pragma mark - Utility methods
 
 - (void)showSimpleAlertWithTitle:(NSString *)title message:(NSString *)message {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];

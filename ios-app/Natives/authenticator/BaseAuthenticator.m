@@ -11,10 +11,10 @@ static BaseAuthenticator *current = nil;
 
 + (id)current {
     if (current == nil) {
-        // ★ [ACCT-DUP-MS] 启动时先做一次存量重复合并（幂等）：把历史遗留的同一账户多条合并为一条，
-        //   并重定向 selected_account 到保留项，避免旧档“5 条相同微软账户”在列表里复活。
+        // ★ [ACCT-DUP-MS] Idempotently merge existing duplicates at startup: combine legacy records for the same account,
+        //   and redirect selected_account to the retained record so old duplicates (such as five copies of one Microsoft account) do not reappear.
         [self deduplicateAccountsDirectory];
-        // selected_account 现在存储的是 accountId（旧版存储 username，loadSavedName 会自动迁移）
+        // selected_account now stores accountId (legacy versions stored username; loadSavedName migrates it automatically).
         NSString *savedAccount = getPrefObject(@"internal.selected_account");
         if (savedAccount.length > 0) {
             [self loadSavedName:savedAccount];
@@ -27,50 +27,51 @@ static BaseAuthenticator *current = nil;
     current = auth;
 }
 
-/// 根据账户数据生成唯一 accountId。
-/// - 微软账户：使用 xuid（Xbox User Hash，全局唯一且稳定，登录后不变）
-/// - 第三方账户：使用 profileId（角色 UUID，由认证服务器分配，唯一稳定）
-/// - 本地账户：无天然唯一 ID，生成随机 UUID
-/// 这样同名账户也能通过 accountId 区分，文件名不再冲突。
+/// Generate a unique accountId from account data.
+/// - Microsoft account: use xuid (Xbox User Hash, globally unique and stable across logins).
+/// - Third-party account: use profileId (the stable profile UUID assigned by the authentication server).
+/// - Local account: generate a random UUID because there is no natural unique ID.
+/// This distinguishes accounts with the same name and avoids filename collisions.
 + (NSString *)generateAccountIdForData:(NSMutableDictionary *)authData {
-    // 微软账户：优先使用 xuid（XSTS 响应中的 uhs，全局唯一且稳定）
+    // Microsoft account: prefer xuid (uhs in the XSTS response, globally unique and stable).
     NSString *xuid = authData[@"xuid"];
     if (xuid && [xuid length] > 0) {
         return xuid;
     }
-    // 第三方账户：使用 profileId（角色 UUID，由认证服务器分配，唯一稳定）
+    // Third-party account: use profileId (the stable profile UUID assigned by the authentication server).
     NSString *profileId = authData[@"profileId"];
     if (profileId && [profileId length] > 0 &&
         ![profileId isEqualToString:@"00000000-0000-0000-0000-000000000000"]) {
         return profileId;
     }
-    // 本地账户：无天然唯一 ID，生成随机 UUID
+    // Local account: generate a random UUID because there is no natural unique ID.
     return [[NSUUID UUID] UUIDString];
 }
 
-#pragma mark - ★ [ACCT-DUP] 存储幂等去重（账户身份键 / 存量清理）
+#pragma mark - ★ [ACCT-DUP] Idempotent storage deduplication (account identity keys / existing-record cleanup)
 
-/// 账户身份键：判定“这是同一个账户”。
-///   · 微软（有 xuid）      → "ms:<xuid>"
-///   · 第三方（有 clientToken）→ "tp:<authserver>|<profileId>"，无 profileId 退回 "…|u:<username>"
-///   · 本地（无 xuid/无 clientToken/无有效 expiresAt）→ "local:<username>"
-/// 关键字段缺失 ⇒ 返回 nil，调用方据此**跳过去重**（宁可漏合、不可错合）。
+/// Account identity key used to determine whether records represent the same account.
+///   · Microsoft (has xuid) → "ms:<xuid>"
+///   · Third-party (has clientToken) → "tp:<authserver>|<profileId>", falling back to "…|u:<username>" without profileId.
+///   · Local (no xuid/clientToken/valid expiresAt) → "local:<username>"
+/// Returns nil when a key field is missing, so callers **skip deduplication** (a missed merge is safer than a false merge).
 + (NSString *)accountIdentityKeyForData:(NSDictionary *)authData {
     if (![authData isKindOfClass:[NSDictionary class]]) {
         return nil;
     }
-    // 微软：xuid 全局唯一且稳定
+    // Microsoft: xuid is globally unique and stable.
     NSString *xuid = authData[@"xuid"];
     if ([xuid isKindOfClass:[NSString class]] && xuid.length > 0) {
         return [NSString stringWithFormat:@"ms:%@", xuid];
     }
-    // 第三方：authserver + profileId（角色 UUID）唯一稳定
+    // Third-party: authserver + profileId (profile UUID) is unique and stable.
     if (authData[@"clientToken"] != nil) {
         NSString *server = authData[@"authserver"];
         if (![server isKindOfClass:[NSString class]]) {
             server = @"";
         } else {
-            // 归一化：去首尾空白、末尾斜杠、转小写 —— 同一服务器书写差异（尾斜杠/大小写）不应产生两个身份键。
+            // Normalize by trimming surrounding whitespace, removing trailing slashes, and lowercasing;
+            // variations in how the same server is written should not produce separate identity keys.
             server = [server stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
             while ([server hasSuffix:@"/"]) {
                 server = [server substringToIndex:server.length - 1];
@@ -88,11 +89,11 @@ static BaseAuthenticator *current = nil;
         }
         return nil;
     }
-    // 带有效 expiresAt(非 0) 却缺 xuid：疑似微软残档，身份不可判定 ⇒ 不去重（保守）。
+    // A nonzero expiresAt without xuid may be an incomplete Microsoft record; its identity is indeterminate, so do not deduplicate it.
     if ([authData[@"expiresAt"] longValue] != 0) {
         return nil;
     }
-    // 本地账户：没有天然唯一 ID，同名即视为同一账户（UI 上无法区分，重复即重复提交产物）
+    // Local account: there is no natural unique ID, so matching names are treated as the same account (the UI cannot distinguish them).
     NSString *user = authData[@"username"];
     if ([user isKindOfClass:[NSString class]] && user.length > 0) {
         return [NSString stringWithFormat:@"local:%@", user];
@@ -100,9 +101,9 @@ static BaseAuthenticator *current = nil;
     return nil;
 }
 
-#pragma mark - ★ [ACCT-DUP-MS] 微软兜底身份键（分层：xuid → profileId(uuid) → gamertag+username）
+#pragma mark - ★ [ACCT-DUP-MS] Microsoft fallback identity keys (layers: xuid → profileId(uuid) → gamertag+username)
 
-/// 归一化：去首尾空白 + 转小写（仅用于比较，不落盘）。
+/// Normalize by trimming surrounding whitespace and lowercasing (for comparison only; not written to disk).
 static NSString *ameNormString(NSString *s) {
     if (![s isKindOfClass:[NSString class]]) {
         return @"";
@@ -110,7 +111,7 @@ static NSString *ameNormString(NSString *s) {
     return [[s stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] lowercaseString];
 }
 
-/// 账户种类：0=本地，1=微软，2=第三方。
+/// Account type: 0=local, 1=Microsoft, 2=third-party.
 static NSInteger ameAccountKind(NSDictionary *data) {
     if (data[@"clientToken"] != nil) {
         return 2;
@@ -118,15 +119,15 @@ static NSInteger ameAccountKind(NSDictionary *data) {
     if (data[@"xboxGamertag"] != nil) {
         return 1;
     }
-    // 有有效期(非 0)但既无 gamertag 也无 clientToken：旧的/残缺的微软账户，按微软处理，
-    // 避免被误当成“本地账户”而与同名本地账户合并。
+    // A nonzero expiry without gamertag or clientToken indicates an old/incomplete Microsoft account; treat it as Microsoft
+    // to avoid misclassifying it as local and merging it with a local account of the same name.
     if ([data[@"expiresAt"] longValue] != 0) {
         return 1;
     }
     return 0;
 }
 
-/// 并查集：查根（路径压缩）。
+/// Disjoint-set union: find the root (with path compression).
 static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
     while (parent[x].integerValue != x) {
         parent[x] = parent[parent[x].integerValue];
@@ -135,12 +136,13 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
     return x;
 }
 
-/// 有序身份信号（强 → 弱）。两个账户**只要共用任意一条**即视为同一账户。
-///   · 微软：ms:<xuid>  →  ms:uuid:<profileId>  →  ms:gt:<gamertag>|<username>
-///   · 第三方：tp:<server>|<profileId>  →  tp:<server>|u:<username>
-///   · 本地：local:<username>
-/// 每层都要求对应字段“存在且非空”才产出信号：缺 xuid 退到 uuid，再缺退到 gamertag；
-/// 全部拿不到才不产出信号（不参与去重）。⇒「有 expiresAt 却缺 xuid 的微软残档」也能被合并。
+/// Ordered identity signals (strongest to weakest). Two accounts are treated as identical if they **share any signal**.
+///   · Microsoft: ms:<xuid> → ms:uuid:<profileId> → ms:gt:<gamertag>|<username>
+///   · Third-party: tp:<server>|<profileId> → tp:<server>|u:<username>
+///   · Local: local:<username>
+/// Each signal is produced only when its fields exist and are nonempty: missing xuid falls back to UUID, then gamertag.
+/// If no signal can be produced, the record is excluded from deduplication. This also lets incomplete Microsoft records
+/// with expiresAt but no xuid be merged when their UUID or gamertag+username matches.
 + (NSArray<NSString *> *)accountIdentitySignalsForData:(NSDictionary *)authData {
     if (![authData isKindOfClass:[NSDictionary class]]) {
         return @[];
@@ -149,7 +151,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
     NSInteger kind = ameAccountKind(authData);
 
     if (kind == 2) {
-        // 第三方：authserver（归一化）+ profileId（角色 UUID），无 profileId 退回 username
+        // Third-party: normalized authserver + profileId (profile UUID), falling back to username without profileId.
         NSString *server = authData[@"authserver"];
         if (![server isKindOfClass:[NSString class]]) {
             server = @"";
@@ -172,18 +174,18 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
     }
 
     if (kind == 1) {
-        // 微软：xuid（最强）
+        // Microsoft: xuid (strongest signal).
         NSString *xuid = [authData[@"xuid"] isKindOfClass:[NSString class]] ? authData[@"xuid"] : @"";
         if (xuid.length > 0) {
             [signals addObject:[NSString stringWithFormat:@"ms:%@", xuid]];
         }
-        // 微软：Minecraft profile UUID（旧档常缺 xuid 但有它）
+        // Microsoft: Minecraft profile UUID (legacy records often have this but lack xuid).
         NSString *pid = [authData[@"profileId"] isKindOfClass:[NSString class]] ? authData[@"profileId"] : @"";
         if (pid.length > 0 && ![pid isEqualToString:@"00000000-0000-0000-0000-000000000000"]) {
             [signals addObject:[NSString stringWithFormat:@"ms:uuid:%@", pid.lowercaseString]];
         }
-        // 微软兜底：gamertag + username **同时**相同才产出（username 作为“确属同一账户”的佐证；
-        // 只有 gamertag 相同而 username 不同 ⇒ 不产出信号 ⇒ 不合并，仅记“疑似但保留”）。
+        // Microsoft fallback: produce a signal only when both gamertag and username match (**username confirms the account identity**).
+        // If only the gamertag matches, produce no signal and do not merge; log it as a suspected duplicate and retain both.
         NSString *gt = ameNormString(authData[@"xboxGamertag"]);
         NSString *user = ameNormString(authData[@"username"]);
         if (gt.length > 0 && user.length > 0) {
@@ -192,7 +194,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
         return signals;
     }
 
-    // 本地：同名即同一账户（与既有 [ACCT-DUP] 行为一致）
+    // Local: matching names identify the same account (consistent with existing [ACCT-DUP] behavior).
     NSString *user = authData[@"username"];
     if ([user isKindOfClass:[NSString class]] && user.length > 0) {
         [signals addObject:[NSString stringWithFormat:@"local:%@", user]];
@@ -200,7 +202,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
     return signals;
 }
 
-/// 两条账户数据是否属于同一账户（共用任意一条身份信号）。
+/// Whether two account records represent the same account (share any identity signal).
 + (BOOL)accountData:(NSDictionary *)a matchesAccountData:(NSDictionary *)b {
     NSArray<NSString *> *sa = [self accountIdentitySignalsForData:a];
     NSArray<NSString *> *sb = [self accountIdentitySignalsForData:b];
@@ -215,7 +217,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
     return NO;
 }
 
-/// 一条账户数据与另一条共享的“代表信号”（用于合并日志；无则 nil）。
+/// The representative signal shared by two account records (for merge logs; nil if none is shared).
 + (NSString *)sharedSignalBetween:(NSDictionary *)a and:(NSDictionary *)b {
     NSArray<NSString *> *sa = [self accountIdentitySignalsForData:a];
     NSArray<NSString *> *sb = [self accountIdentitySignalsForData:b];
@@ -227,7 +229,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
     return nil;
 }
 
-/// 目录内与 authData 同账户、accountId ≠ excludeId 的其它账户 accountId（第一条；无则 nil）。
+/// The accountId of the first other matching account in the directory whose accountId != excludeId (or nil).
 + (NSString *)existingAccountIdForData:(NSDictionary *)authData excluding:(NSString *)excludeId {
     NSString *dir = [self accountsDirectoryPath];
     NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:nil];
@@ -247,12 +249,12 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
     return nil;
 }
 
-/// 账户目录（POJAV_HOME/accounts）路径。
+/// Account directory path (POJAV_HOME/accounts).
 + (NSString *)accountsDirectoryPath {
     return [NSString stringWithFormat:@"%s/accounts", getenv("POJAV_HOME")];
 }
 
-/// 目录内与 identityKey 同身份、accountId ≠ excludeId 的其它账户 accountId（第一条；无则 nil）。
+/// The accountId of the first other account in the directory with the same identityKey and accountId != excludeId (or nil).
 + (NSString *)existingAccountIdForIdentityKey:(NSString *)identityKey excluding:(NSString *)excludeId {
     if (identityKey.length == 0) {
         return nil;
@@ -276,16 +278,16 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
     return nil;
 }
 
-/// ★ [ACCT-DUP-MS] 存量清理：把目录内**同一账户**的重复文件合并为一条，删除其余。
+/// ★ [ACCT-DUP-MS] Existing-record cleanup: merge duplicate files for the **same account** in the directory and delete the rest.
 ///
-/// 判定用**并查集 + 分层身份信号**（见 accountIdentitySignalsForData:）：两条账户只要共用
-/// 任意一条信号（xuid / profileId(uuid) / gamertag+username / local username）即视为同一账户。
-/// ⇒ 「有 expiresAt 却缺 xuid 的微软残档」只要 uuid 或 gamertag+username 对得上就能合并。
+/// Uses **disjoint-set union + layered identity signals** (see accountIdentitySignalsForData:): records are the same account
+/// if they share any signal (xuid / profileId(uuid) / gamertag+username / local username).
+/// An incomplete Microsoft record with expiresAt but no xuid can still be merged when its UUID or gamertag+username matches.
 ///
-/// 合并策略：每组保留 1 条 —— selected_account 指向者 > 字段最全者 > mtime 最新者；
-/// 并把被删条目的**缺失字段回填**到保留条目（不覆盖已有非空值，accountId 除外），写回磁盘。
-/// 拿不准的（同为微软、gamertag 相同但 username 不同）**只记日志、一律保留**。
-/// **不同 gamertag / 不同 xuid / 不同 profileId 的合法多账号分属不同组 ⇒ 一律不动**。
+/// Keep one record per group, preferring the selected_account target, then the record with the most fields, then the newest mtime.
+/// **Backfill missing fields** from deleted records into the retained record (do not overwrite existing nonempty values, except accountId), then save it.
+/// **Log and retain** uncertain matches (Microsoft records with the same gamertag but different usernames).
+/// **Keep valid multi-account records with different gamertags, xuids, or profileIds untouched.**
 + (NSInteger)deduplicateAccountsDirectory {
     NSString *dir = [self accountsDirectoryPath];
     NSFileManager *fm = [NSFileManager defaultManager];
@@ -294,7 +296,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
         return 0;
     }
 
-    // 1) 载入全部有效账户文件（损坏文件不参与，也不删）
+    // 1) Load all valid account files (corrupt files are neither included nor deleted).
     NSMutableArray<NSMutableDictionary *> *nodes = [NSMutableArray array];
     for (NSString *file in files) {
         if (![file hasSuffix:@".json"]) continue;
@@ -314,7 +316,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
         return 0;
     }
 
-    // 2) 并查集：共用任意一条身份信号 ⇒ 同一账户
+    // 2) Disjoint-set union: sharing any identity signal means the records are the same account.
     NSInteger n = (NSInteger)nodes.count;
     NSMutableArray<NSNumber *> *parent = [NSMutableArray array];
     for (NSInteger i = 0; i < n; i++) {
@@ -334,7 +336,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
             if (shared == nil) {
                 continue;
             }
-            // ★ 合并日志：哪个键把哪两条合到一起（便于真机核对）
+            // ★ Merge log: record which key matched which two entries (for on-device verification).
             NSLog(@"[ACCT-DUP-MS] union by key '%@': %@ <-> %@",
                   shared, nodes[i][@"id"], nodes[j][@"id"]);
             if (ameFindRoot(parent, i) != ameFindRoot(parent, j)) {
@@ -343,7 +345,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
         }
     }
 
-    // 3) 分组（根 → 成员下标）
+    // 3) Group records (root → member indices).
     NSMutableDictionary<NSNumber *, NSMutableArray<NSNumber *> *> *groupOf = [NSMutableDictionary dictionary];
     for (NSInteger i = 0; i < n; i++) {
         NSNumber *root = @(ameFindRoot(parent, i));
@@ -352,7 +354,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
         [g addObject:@(i)];
     }
 
-    // 4) 疑似重复但无法确认 ⇒ 只记日志、保留
+    // 4) Suspected but unconfirmed duplicates: log them and retain both.
     for (NSInteger i = 0; i < n; i++) {
         for (NSInteger j = i + 1; j < n; j++) {
             if (ameFindRoot(parent, i) == ameFindRoot(parent, j)) continue;
@@ -367,7 +369,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
         }
     }
 
-    // 5) 每组保留一条，其余字段回填后删除
+    // 5) Retain one record per group; backfill its fields and delete the rest.
     NSString *selected = getPrefObject(@"internal.selected_account");
     NSArray *scoreKeys = @[@"xuid", @"profileId", @"xboxGamertag", @"username",
                            @"expiresAt", @"profilePicURL", @"uuid", @"authserver", @"clientToken"];
@@ -376,7 +378,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
         NSArray<NSNumber *> *g = groupOf[root];
         if (g.count < 2) continue;
 
-        // 保留优先级：(a) selected_account 指向者 > (b) 字段最全者 > (c) mtime 最新者 > (d) 第一条
+        // Retention priority: (a) selected_account target > (b) most complete fields > (c) newest mtime > (d) first entry.
         NSInteger keepIdx = g[0].integerValue;
         BOOL keepIsSelected = (selected.length > 0 && [nodes[keepIdx][@"id"] isEqualToString:selected]);
         for (NSNumber *idxN in g) {
@@ -404,7 +406,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
             }
         }
 
-        // 代表信号（用于合并日志）
+        // Representative signal (for merge logs).
         NSString *keyLog = nil;
         for (NSNumber *idxN in g) {
             if (idxN.integerValue == keepIdx) continue;
@@ -412,7 +414,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
             if (keyLog.length > 0) break;
         }
 
-        // 字段回填 + 删除其余
+        // Backfill fields and delete the other records.
         NSMutableDictionary *keepData = nodes[keepIdx][@"data"];
         NSMutableArray<NSString *> *removedIds = [NSMutableArray array];
         BOOL selectedSurvives = NO;
@@ -422,13 +424,13 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
             if (idx == keepIdx) continue;
             NSDictionary *other = nodes[idx][@"data"];
             for (NSString *k in other) {
-                if ([k isEqualToString:@"accountId"]) continue;   // accountId 必须保留 keep 的
+                if ([k isEqualToString:@"accountId"]) continue;   // Keep the retained record's accountId.
                 id cur = keepData[k];
                 id val = other[k];
                 BOOL curEmpty = (cur == nil || [cur isEqual:@""]);
                 BOOL valEmpty = (val == nil || [val isEqual:@""]);
                 if (curEmpty && !valEmpty) {
-                    keepData[k] = val;   // ★ 补齐保留条缺失的字段（令牌/头像/xuid…）
+                    keepData[k] = val;   // ★ Fill missing fields in the retained record (token/avatar/xuid, etc.).
                 }
             }
             if ([fm removeItemAtPath:nodes[idx][@"path"] error:nil]) {
@@ -436,13 +438,13 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
                 [removedIds addObject:nodes[idx][@"id"]];
             }
         }
-        saveJSONToFile(keepData, nodes[keepIdx][@"path"]);   // 回填后写回
+        saveJSONToFile(keepData, nodes[keepIdx][@"path"]);   // Write the record back after backfilling.
 
         NSLog(@"[ACCT-DUP-MS] merged group key=%@ keep=%@ removed(%lu)=%@",
               keyLog.length > 0 ? keyLog : @"(multi)",
               nodes[keepIdx][@"id"], (unsigned long)removedIds.count, removedIds);
 
-        // selected_account 指向被删项 ⇒ 重定向到保留项（同一账户）
+        // If selected_account pointed to a deleted entry, redirect it to the retained entry (the same account).
         if (selected.length > 0 && !selectedSurvives &&
             ![nodes[keepIdx][@"id"] isEqualToString:selected]) {
             setPrefObject(@"internal.selected_account", nodes[keepIdx][@"id"]);
@@ -455,7 +457,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
 }
 
 + (id)loadSavedName:(NSString *)accountId {
-    // accountId 可能是新格式的 accountId，也可能是旧格式的 username（迁移场景）
+    // accountId may be in the current accountId format or the legacy username format (during migration).
     NSString *path = [NSString stringWithFormat:@"%s/accounts/%@.json", getenv("POJAV_HOME"), accountId];
     NSMutableDictionary *authData = parseJSONFromFile(path);
     if (authData[@"NSErrorObject"] != nil) {
@@ -466,20 +468,20 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
         return nil;
     }
 
-    // 根据账户数据创建对应类型的 authenticator（initWithData 会设置 current 单例）
-    // ★ [AUTH-FIX] 分类顺序修正（修「第三方账户被识别成离线/本地」的根因）：
-    //   旧码先判 `expiresAt == 0` 就归 LocalAuthenticator —— 但第三方账户的 expiresAt 可能缺失
-    //   （多角色登录路径 refreshToBindProfile 历史上不写 expiresAt），于是带 clientToken/authserver
-    //   的第三方账户被 loadSavedName 判成 Local(离线) ⇒ BaseAuthenticator.current 不是
-    //   ThirdPartyAuthenticator ⇒ 启动时不再注入 authlib-injector ⇒ 游戏内按离线处理。
-    //   现改为先按【账户类型标识字段】判定，最后才用 expiresAt==0 兜底判本地；
-    //   标识字段缺失的旧档行为不变（仍回落到 expiresAt 判据，兼容读取）。
+    // Create the appropriate authenticator from account data (initWithData sets the current singleton).
+    // ★ [AUTH-FIX] Fix the classification order (the root cause of third-party accounts being mistaken for offline/local):
+    //   Previously, expiresAt == 0 was checked first and selected LocalAuthenticator. Third-party accounts may lack expiresAt
+    //   (the multi-profile refreshToBindProfile path historically did not write it), so a third-party account with clientToken/authserver
+    //   was classified as Local (offline) by loadSavedName. BaseAuthenticator.current was then not ThirdPartyAuthenticator,
+    //   so authlib-injector was not injected at startup and the game treated the account as offline.
+    //   Now classify by account-type marker fields first, and use expiresAt == 0 only as a fallback for local accounts.
+    //   Legacy records without marker fields retain the expiresAt-based fallback for compatibility.
     BaseAuthenticator *auth = nil;
     if (authData[@"clientToken"] != nil) {
-        // 有 clientToken = 第三方(Yggdrasil / authlib-injector)账户
+        // clientToken indicates a third-party (Yggdrasil / authlib-injector) account.
         auth = [[ThirdPartyAuthenticator alloc] initWithData:authData];
     } else if (authData[@"xboxGamertag"] != nil || authData[@"xuid"] != nil) {
-        // 有 Xbox 标识 = 微软账户（即便 expiresAt 缺失也不该被当成离线本地账户）
+        // Xbox identifiers indicate a Microsoft account (do not treat it as local/offline even if expiresAt is missing).
         auth = [[MicrosoftAuthenticator alloc] initWithData:authData];
     } else if ([authData[@"expiresAt"] longValue] == 0) {
         auth = [[LocalAuthenticator alloc] initWithData:authData];
@@ -487,14 +489,13 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
         auth = [[MicrosoftAuthenticator alloc] initWithData:authData];
     }
 
-    // 迁移旧格式账户：若 authData 没有 accountId 字段，说明是旧版按 username 命名的账户。
-    // 生成 accountId，保存到新文件 <accountId>.json，删除旧文件 <username>.json，
-    // 迁移头像文件，并更新 selected_account。
+    // Migrate a legacy account: if authData has no accountId field, it was named by username in the old format.
+    // Generate an accountId, save to <accountId>.json, remove <username>.json, migrate the avatar, and update selected_account.
     NSString *existingAccountId = authData[@"accountId"];
     if (existingAccountId == nil || [existingAccountId length] == 0) {
         NSString *newAccountId = [BaseAuthenticator generateAccountIdForData:authData];
-        // ★ [ACCT-DUP-MS] 迁移前先按兜底身份键查“同账户”是否已存在：命中则复用其 accountId，
-        //   避免旧格式（username 命名 / 缺 xuid）账户迁移时又生成随机 id，冒出第二条同账户记录。
+        // ★ [ACCT-DUP-MS] Before migration, check for an existing record with the same fallback identity and reuse its accountId if found,
+        //   avoiding a second record for the same account when migrating a legacy account (username-named / missing xuid).
         NSString *migDupId = [BaseAuthenticator existingAccountIdForData:authData excluding:accountId];
         if (migDupId.length > 0) {
             newAccountId = migDupId;
@@ -505,24 +506,24 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
         NSError *saveError = saveJSONToFile(authData, newPath);
 
         if (saveError == nil) {
-            // 删除旧文件（如果 accountId 入参与生成的 newAccountId 不同，说明入参是旧 username）
+            // Remove the old file (if the accountId argument differs from the generated newAccountId, it was a legacy username).
             if (![accountId isEqualToString:newAccountId]) {
                 [NSFileManager.defaultManager removeItemAtPath:path error:nil];
             }
-            // 迁移头像文件：<username>.png → <accountId>.png
-            // 头像目录是 <Documents>/avatars/，与账户目录（POJAV_HOME/accounts/）分离
+            // Migrate the avatar file: <username>.png → <accountId>.png.
+            // The avatar directory (<Documents>/avatars/) is separate from the account directory (POJAV_HOME/accounts/).
             NSString *username = authData[@"username"];
             if (username && username.length > 0 && ![username isEqualToString:newAccountId]) {
                 NSString *docsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
                 NSString *oldAvatarPath = [NSString stringWithFormat:@"%@/avatars/%@.png", docsDir, username];
                 NSString *newAvatarPath = [NSString stringWithFormat:@"%@/avatars/%@.png", docsDir, newAccountId];
-                // 仅当旧头像存在且新头像不存在时迁移，避免覆盖
+                // Migrate only when the old avatar exists and the new one does not, to avoid overwriting.
                 if ([NSFileManager.defaultManager fileExistsAtPath:oldAvatarPath] &&
                     ![NSFileManager.defaultManager fileExistsAtPath:newAvatarPath]) {
                     [NSFileManager.defaultManager moveItemAtPath:oldAvatarPath toPath:newAvatarPath error:nil];
                 }
             }
-            // 更新 selected_account：若当前选中的是旧 username/accountId，改为新的 accountId
+            // Update selected_account: if the selected value is the old username/accountId, replace it with the new accountId.
             if ([getPrefObject(@"internal.selected_account") isEqualToString:accountId]) {
                 setPrefObject(@"internal.selected_account", newAccountId);
             }
@@ -555,30 +556,30 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
 
     [self.authData removeObjectForKey:@"input"];
     [self.authData removeObjectForKey:@"password"];
-    // oldusername 机制已废弃：文件名改用 accountId，username 变更不再需要重命名文件
+    // The oldusername mechanism is obsolete: filenames use accountId, so changing username no longer requires renaming a file.
     [self.authData removeObjectForKey:@"oldusername"];
 
-    // 确保 accountId 存在（首次保存时兜底生成，正常登录流程已在子类设置）
+    // Ensure accountId exists (generate a fallback on first save; normal login paths set it in subclasses).
     NSString *accountId = self.authData[@"accountId"];
     if (accountId == nil || [accountId length] == 0) {
         accountId = [BaseAuthenticator generateAccountIdForData:self.authData];
         self.authData[@"accountId"] = accountId;
     }
 
-    // 文件名使用 accountId（唯一标识），同名账户不再冲突
+    // Use accountId (a unique identifier) for the filename so accounts with the same name do not conflict.
     NSString *accountsDir = [BaseAuthenticator accountsDirectoryPath];
     NSString *newPath = [accountsDir stringByAppendingPathComponent:
         [accountId stringByAppendingPathExtension:@"json"]];
 
-    // ★ [ACCT-DUP-MS] 存储幂等去重（分层身份信号）：先按“兜底身份键”(xuid→profileId(uuid)→gamertag+username)
-    //   找“同一账户”的其它文件。命中 ⇒ 这条账户其实已存在（重复提交 / 二次登录 / 缺 xuid 的残档 /
-    //   accountId 非确定性）：
-    //     · 若本次 accountId 尚未落盘，改为复用既有 accountId —— 收敛到同一文件，避免 append 第二条；
-    //     · 无论哪种情况，都删掉那条重复文件。
-    //   结果：同一账户**永远只留一条**（即使缺 xuid、只有 gamertag+uuid 也能收敛）。
+    // ★ [ACCT-DUP-MS] Idempotent storage deduplication (layered identity signals): find other files for the same account
+    //   using fallback identity keys (xuid→profileId(uuid)→gamertag+username). A match means the account already exists
+    //   (duplicate submission / second login / incomplete record without xuid / nondeterministic accountId):
+    //     · If this accountId has not yet been written, reuse the existing accountId so both writes converge on one file.
+    //     · In either case, remove the duplicate file.
+    //   Result: **only one record per account**, even if xuid is missing and only gamertag+UUID are available.
     NSString *dupId = [BaseAuthenticator existingAccountIdForData:self.authData excluding:accountId];
     if (dupId.length == 0) {
-        // 旧主键路径兜底（与上一轮 [ACCT-DUP] 行为一致）
+        // Fallback for the legacy primary-key path (consistent with the previous [ACCT-DUP] behavior).
         NSString *identityKey = [BaseAuthenticator accountIdentityKeyForData:self.authData];
         if (identityKey.length > 0) {
             dupId = [BaseAuthenticator existingAccountIdForIdentityKey:identityKey excluding:accountId];
@@ -602,7 +603,7 @@ static NSInteger ameFindRoot(NSMutableArray<NSNumber *> *parent, NSInteger x) {
     if (error != nil) {
         showDialog(@"Error while saving file", error.localizedDescription);
     } else {
-        // 保存选中的账户（accountId），确保重启后能恢复登录状态
+        // Save the selected account (accountId) so login state can be restored after restart.
         setPrefObject(@"internal.selected_account", accountId);
     }
     return error == nil;

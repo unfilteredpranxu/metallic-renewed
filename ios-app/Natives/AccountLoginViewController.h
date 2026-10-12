@@ -2,9 +2,9 @@
 //  AccountLoginViewController.h
 //  Amethyst
 //
-//  参照 FCL (Fold Craft Launcher) 安卓版的账户登录界面：
-//  用卡片式列表展示微软 / LittleSkin / 自定义第三方 / 本地 四种登录方式，
-//  替代原来的 ActionSheet + UIAlertController 简陋交互。
+//  Account login screen modeled on the FCL (Fold Craft Launcher) Android version:
+//  uses a card list to show four sign-in options: Microsoft / LittleSkin / custom third party / local,
+//  replacing the original rudimentary ActionSheet + UIAlertController interaction.
 //
 
 #import <UIKit/UIKit.h>
@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface AccountLoginViewController : UIViewController
 
-/// 登录方式枚举
+/// Sign-in method enumeration.
 typedef NS_ENUM(NSInteger, AccountLoginType) {
     AccountLoginTypeMicrosoft = 0,
     AccountLoginTypeLittleSkin,
@@ -21,7 +21,7 @@ typedef NS_ENUM(NSInteger, AccountLoginType) {
     AccountLoginTypeLocal,
 };
 
-/// 用户选中某种登录方式后的回调（由 AccountListViewController 处理具体登录流程）
+/// Callback after the user selects a sign-in method (AccountListViewController handles the actual sign-in flow).
 @property (nonatomic, copy) void (^onSelectLoginType)(AccountLoginType type);
 
 @end

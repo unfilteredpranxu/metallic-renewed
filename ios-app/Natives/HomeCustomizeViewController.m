@@ -13,7 +13,7 @@ static NSDictionary *availableShortcuts(void) {
         kShortcutActionModpack:    @{@"title": localize(@"i18n_str_277", nil),  @"icon": @"shippingbox.fill",           @"color": @"#8B5CF6"},
         kShortcutActionBackground: @{@"title": localize(@"i18n_str_278", nil),    @"icon": @"photo.fill.on.rectangle.fill",@"color": @"#EC4899"},
         kShortcutActionVersions:   @{@"title": localize(@"i18n_str_279", nil),    @"icon": @"square.stack.3d.up.fill",    @"color": @"#6366F1"},
-        kShortcutActionMultiplayer:@{@"title": localize(@"game.menu.multiplayer", @"联机"), @"icon": @"antenna.radiowaves.left.and.right", @"color": @"#0EA5E9"},
+        kShortcutActionMultiplayer:@{@"title": localize(@"game.menu.multiplayer", @"Multiplayer"), @"icon": @"antenna.radiowaves.left.and.right", @"color": @"#0EA5E9"},
     };
 }
 
@@ -27,7 +27,7 @@ static UIColor *hexColor(NSString *hex) {
                            alpha:1.0];
 }
 
-// MARK: - ★ [SIZE4] 尺寸四档 ↔ 分段控件下标映射
+// MARK: - ★ [SIZE4] Four size options ↔ segmented-control index mapping
 
 static HomeTileSize AmeTileSizeForSegmentIndex(NSInteger idx) {
     switch (idx) {
@@ -58,11 +58,11 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
 @property (nonatomic, strong) UILabel *tileDetailLabel;
 @property (nonatomic, strong) UISwitch *visibilitySwitch;
 @property (nonatomic, strong) UILabel *sizeLabel;
-@property (nonatomic, strong) UISegmentedControl *sizeSegmented;   // ★ [SIZE4] 四档尺寸
-@property (nonatomic, weak)   HomeTileConfig *tile;                // ★ [SIZE4] 反向引用,便于改尺寸
+@property (nonatomic, strong) UISegmentedControl *sizeSegmented;   // ★ [SIZE4] Four size options.
+@property (nonatomic, weak)   HomeTileConfig *tile;                // ★ [SIZE4] Back-reference for changing the size.
 
-- (void)configureWithTile:(HomeTileConfig *)tile;                  // ★ [SIZE4] 前置声明
-- (void)sizeSegmentChanged:(UISegmentedControl *)sender;           // ★ [SIZE4] 分段回调
+- (void)configureWithTile:(HomeTileConfig *)tile;                  // ★ [SIZE4] Forward declaration.
+- (void)sizeSegmentChanged:(UISegmentedControl *)sender;           // ★ [SIZE4] Segmented-control callback.
 - (NSString *)displayTitleForTile:(HomeTileConfig *)tile;
 - (NSString *)displayDetailForTile:(HomeTileConfig *)tile;
 @end
@@ -76,54 +76,54 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
         self.contentView.backgroundColor = [UIColor clearColor];
         self.selectionStyle = UITableViewCellSelectionStyleNone;
         
-        // 左侧装饰条
+        // Accent strip on the left.
         self.accentStrip = [[UIView alloc] init];
         self.accentStrip.translatesAutoresizingMaskIntoConstraints = NO;
         self.accentStrip.layer.cornerRadius = 2;
-        self.accentStrip.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+        self.accentStrip.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (match system cards).
         [self.contentView addSubview:self.accentStrip];
         
-        // 图标
+        // Icon.
         self.tileIconView = [[UIImageView alloc] init];
         self.tileIconView.translatesAutoresizingMaskIntoConstraints = NO;
         self.tileIconView.contentMode = UIViewContentModeScaleAspectFit;
         self.tileIconView.tintColor = [UIColor labelColor];
         [self.contentView addSubview:self.tileIconView];
         
-        // 标题
+        // Title.
         self.tileTitleLabel = [[UILabel alloc] init];
         self.tileTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
         self.tileTitleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
         self.tileTitleLabel.textColor = [UIColor labelColor];
         [self.contentView addSubview:self.tileTitleLabel];
         
-        // 详情（类型+大小）
+        // Details (type + size).
         self.tileDetailLabel = [[UILabel alloc] init];
         self.tileDetailLabel.translatesAutoresizingMaskIntoConstraints = NO;
         self.tileDetailLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
         self.tileDetailLabel.textColor = [UIColor tertiaryLabelColor];
         [self.contentView addSubview:self.tileDetailLabel];
         
-        // 尺寸标签
+        // Size label.
         self.sizeLabel = [[UILabel alloc] init];
         self.sizeLabel.translatesAutoresizingMaskIntoConstraints = NO;
         self.sizeLabel.font = [UIFont systemFontOfSize:10 weight:UIFontWeightBold];
         self.sizeLabel.textColor = [UIColor secondaryLabelColor];
         self.sizeLabel.textAlignment = NSTextAlignmentCenter;
         self.sizeLabel.layer.cornerRadius = 4;
-        self.sizeLabel.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+        self.sizeLabel.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (match system cards).
         self.sizeLabel.layer.masksToBounds = YES;
         self.sizeLabel.backgroundColor = [UIColor colorWithWhite:0.2 alpha:0.5];
         [self.contentView addSubview:self.sizeLabel];
         
-        // 可见性开关
+        // Visibility switch.
         self.visibilitySwitch = [[UISwitch alloc] init];
         self.visibilitySwitch.translatesAutoresizingMaskIntoConstraints = NO;
         self.visibilitySwitch.transform = CGAffineTransformMakeScale(0.7, 0.7);
         self.visibilitySwitch.onTintColor = hexColor(@"#8B5CF6");
         [self.contentView addSubview:self.visibilitySwitch];
 
-        // ★ [SIZE4] 四档尺寸分段控件(1×1 / 2×1 / 1×2 / 2×2),每张卡独立选择。
+        // ★ [SIZE4] Four-option size segmented control (1×1 / 2×1 / 1×2 / 2×2); each card is selected independently.
         self.sizeSegmented = [[UISegmentedControl alloc] initWithItems:@[
             AmeTileSizeShortName(HomeTileSizeSmall),
             AmeTileSizeShortName(HomeTileSizeWide),
@@ -165,7 +165,8 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
             [self.visibilitySwitch.centerYAnchor constraintEqualToAnchor:self.tileTitleLabel.centerYAnchor],
             [self.visibilitySwitch.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-28],
 
-            // ★ [SIZE4] 分段控件:占满标题列宽,贴在详情下方(不硬摆 frame,约束随行高自适应)。
+            // ★ [SIZE4] Segmented control: fill the title column width, below the details (use constraints
+            // rather than a fixed frame, adapting to row height).
             [self.sizeSegmented.leadingAnchor constraintEqualToAnchor:self.tileTitleLabel.leadingAnchor],
             [self.sizeSegmented.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-28],
             [self.sizeSegmented.topAnchor constraintEqualToAnchor:self.tileDetailLabel.bottomAnchor constant:8],
@@ -178,14 +179,15 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
 }
 
 - (void)configureWithTile:(HomeTileConfig *)tile {
-    self.tile = tile;   // ★ [SIZE4] 记住归属卡,分段控件直接改它的 tileSize
+    self.tile = tile;   // ★ [SIZE4] Remember the owning card; the segmented control changes its tileSize directly.
     self.tileTitleLabel.text = [self displayTitleForTile:tile];
     self.tileDetailLabel.text = [self displayDetailForTile:tile];
     self.tileIconView.image = [UIImage systemImageNamed:tile.iconName ?: @"square.grid.2x2"];
     self.tileIconView.tintColor = [tile accentColor];
     self.accentStrip.backgroundColor = [tile accentColor];
     self.visibilitySwitch.on = tile.visible;
-    // ★ [SIZE4] 徽标用几何名(1×1/2×1/1×2/2×2),四档都能显示;选中态回填分段控件。
+    // ★ [SIZE4] Use geometric names (1×1/2×1/1×2/2×2) for badges so all four options fit; restore
+    // the selected state to the segmented control.
     self.sizeLabel.text = AmeTileSizeShortName(tile.tileSize);
     self.sizeSegmented.selectedSegmentIndex = AmeSegmentIndexForTileSize(tile.tileSize);
     
@@ -195,7 +197,8 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
     self.tileDetailLabel.alpha = alpha;
 }
 
-/// ★ [SIZE4] 分段控件回调:直接把当前卡切成对应档位(独立于其它卡),并刷新本行文案。
+/// ★ [SIZE4] Segmented-control callback: switch this card directly to the selected size (independent
+/// of other cards), then refresh this row's text.
 - (void)sizeSegmentChanged:(UISegmentedControl *)sender {
     HomeTileSize size = AmeTileSizeForSegmentIndex(sender.selectedSegmentIndex);
     self.tile.tileSize = size;
@@ -227,7 +230,8 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
         case HomeTileTypeShortcut:       type = localize(@"i18n_str_286", nil); break;
         default:                         type = localize(@"i18n_str_121", nil); break;
     }
-    // ★ [SIZE4] 四档本地化名(复用旧 key 2018/281;Tall/Large 用新 key 9101/9102)。
+    // ★ [SIZE4] Localized names for the four options (reuse old keys 2018/281; Tall/Large use new
+    // keys 9101/9102).
     NSString *size = AmeTileSizeDisplayName(tile.tileSize);
     return [NSString stringWithFormat:@"%@ · %@", type, size];
 }
@@ -251,7 +255,7 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
     self.title = localize(@"i18n_str_292", nil);
     self.editingConfigs = [self.tileConfigs mutableCopy];
     
-    // 导航栏按钮
+    // Navigation-bar buttons.
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:localize(@"resman.common.cancel", nil)
                                                                             style:UIBarButtonItemStylePlain
                                                                            target:self
@@ -262,7 +266,7 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
                                                                             target:self
                                                                             action:@selector(saveTapped)];
     
-    // 工具栏按钮
+    // Toolbar buttons.
     UIBarButtonItem *addBtn = [[UIBarButtonItem alloc] initWithTitle:localize(@"i18n_str_293", nil)
                                                               style:UIBarButtonItemStylePlain
                                                              target:self
@@ -277,7 +281,7 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
     self.toolbarItems = @[addBtn, flex, resetBtn];
     self.navigationController.toolbarHidden = NO;
     
-    // 背景
+    // Background.
     if ([[BackgroundManager sharedManager] hasBackground]) {
         self.view.backgroundColor = [UIColor clearColor];
     } else {
@@ -286,13 +290,16 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
     
     [self setupTableView];
 
-    // 适配自定义启动器背景：将当前视图控制器透明化，让全局背景（图片/视频）能够透出显示。
-    // 本控制器为 UIViewController 子类（非 UITableViewController），其 tableView 为手动创建，
-    // makeViewControllerTransparent 会设置 view 背景透明；tableView 背景已在 setupTableView 中清空。
+    // Adapt to the custom launcher background: make this view controller transparent so the global
+    // background (image/video) shows through.
+    // This controller is a UIViewController subclass (not UITableViewController) and creates its
+    // tableView manually; makeViewControllerTransparent clears the view background, and setupTableView
+    // already clears the tableView background.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
-    // 监听背景 UI 效果变化通知：当用户在背景设置中切换毛玻璃/半透明或调整透明度时，
-    // 重新调用 makeViewControllerTransparent 以应用最新的视觉效果，保证背景始终正确透出。
+    // Listen for background UI-effect changes: when the user switches frosted glass/translucent or
+    // adjusts opacity in Background Settings, call makeViewControllerTransparent again to apply the
+    // latest appearance and keep the background showing through correctly.
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
@@ -315,8 +322,8 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
     self.tableView.dataSource = self;
     self.tableView.delegate = self;
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-    self.tableView.rowHeight = 100;   // ★ [SIZE4] 68 → 100:为四档尺寸分段控件腾出底部一行
-    self.tableView.editing = YES;  // 始终处于编辑模式以支持拖拽
+    self.tableView.rowHeight = 100;   // ★ [SIZE4] 68 → 100: make room for the four-option size segmented control.
+    self.tableView.editing = YES;  // Always use editing mode to support dragging.
     self.tableView.allowsSelectionDuringEditing = YES;
     self.tableView.showsVerticalScrollIndicator = NO;
     self.tableView.contentInset = UIEdgeInsetsMake(8, 0, 20, 0);
@@ -367,7 +374,7 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
     for (NSString *key in shortcuts) {
         NSDictionary *info = shortcuts[key];
         
-        // 检查是否已存在
+        // Check whether it already exists.
         BOOL exists = NO;
         for (HomeTileConfig *c in self.editingConfigs) {
             if ([c.shortcutAction isEqualToString:key]) {
@@ -381,7 +388,7 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
             HomeTileConfig *newTile = [[HomeTileConfig alloc] init];
             newTile.tileId = [NSString stringWithFormat:@"shortcut_%@_%@", key, [[NSUUID UUID] UUIDString]];
             newTile.tileType = HomeTileTypeShortcut;
-            newTile.tileSize = HomeTileSizeCompact;   // ★ [SIZE4] == HomeTileSizeSmall(旧别名,默认 1×1)
+            newTile.tileSize = HomeTileSizeCompact;   // ★ [SIZE4] == HomeTileSizeSmall (legacy alias, default 1×1).
             newTile.visible = YES;
             newTile.customTitle = info[@"title"];
             newTile.iconName = info[@"icon"];
@@ -413,7 +420,7 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
     HomeTileConfig *config = self.editingConfigs[indexPath.row];
     [cell configureWithTile:config];
     
-    // 绑定开关事件
+    // Bind the switch event.
     [cell.visibilitySwitch removeTarget:nil action:nil forControlEvents:UIControlEventValueChanged];
     cell.visibilitySwitch.tag = indexPath.row;
     [cell.visibilitySwitch addTarget:self action:@selector(visibilitySwitchChanged:) forControlEvents:UIControlEventValueChanged];
@@ -430,7 +437,7 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
     [self showEditOptionsForTile:config atIndex:indexPath.row];
 }
 
-// 拖拽排序
+// Drag to reorder.
 - (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath {
     return YES;
 }
@@ -441,7 +448,7 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
     [self.editingConfigs insertObject:tile atIndex:destinationIndexPath.row];
 }
 
-// 删除 (仅快捷入口可删除)
+// Delete (only shortcuts can be deleted).
 - (UITableViewCellEditingStyle)tableView:(UITableView *)tableView editingStyleForRowAtIndexPath:(NSIndexPath *)indexPath {
     HomeTileConfig *config = self.editingConfigs[indexPath.row];
     return config.tileType == HomeTileTypeShortcut ? UITableViewCellEditingStyleDelete : UITableViewCellEditingStyleNone;
@@ -465,7 +472,8 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
                                                                    message:nil
                                                             preferredStyle:UIAlertControllerStyleActionSheet];
     
-    // ★ [SIZE4] 尺寸四选一(原为 “Compact ⇄ Full” 一键切换);当前档位加 ✓ 前缀。
+    // ★ [SIZE4] Choose one of four sizes (previously a one-tap "Compact ⇄ Full" switch); prefix
+    // the current option with ✓.
     for (NSNumber *sizeNum in @[@(HomeTileSizeSmall), @(HomeTileSizeWide),
                                 @(HomeTileSizeTall),  @(HomeTileSizeLarge)]) {
         HomeTileSize size = (HomeTileSize)sizeNum.integerValue;
@@ -481,19 +489,19 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
         }]];
     }
     
-    // 修改标题 (仅快捷入口和部分磁贴)
+    // Edit title (only shortcuts and some tiles).
     if (tile.tileType == HomeTileTypeShortcut || tile.tileType == HomeTileTypeVersionRelease || tile.tileType == HomeTileTypeVersionSnapshot) {
         [sheet addAction:[UIAlertAction actionWithTitle:localize(@"i18n_str_302", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
             [self showEditTitleForTile:tile atIndex:index];
         }]];
     }
     
-    // 修改颜色
+    // Edit color.
     [sheet addAction:[UIAlertAction actionWithTitle:localize(@"i18n_str_303", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         [self showColorPickerForTile:tile atIndex:index];
     }]];
     
-    // 切换可见性
+    // Toggle visibility.
     NSString *visTitle = tile.visible ? localize(@"i18n_str_2021", nil) : localize(@"i18n_str_305", nil);
     [sheet addAction:[UIAlertAction actionWithTitle:visTitle style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         tile.visible = !tile.visible;
@@ -501,7 +509,7 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
                               withRowAnimation:UITableViewRowAnimationAutomatic];
     }]];
     
-    // 删除 (仅快捷入口)
+    // Delete (shortcuts only).
     if (tile.tileType == HomeTileTypeShortcut) {
         [sheet addAction:[UIAlertAction actionWithTitle:localize(@"i18n_str_306", nil) style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
             [self.editingConfigs removeObjectAtIndex:index];
@@ -594,8 +602,9 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    // ★ [PORTRAIT-UNLOCK] 放开竖屏:原来是写死 Landscape ⇒ iPhone 上竖屏进不来
-    //   (主页是该 VC,它锁横屏 ⇒ 整个 App 被钉在横屏)。游戏页仍单独锁横屏。
+    // ★ [PORTRAIT-UNLOCK] Allow portrait: this was hard-coded to Landscape, preventing access in
+    //   portrait on iPhone (Home is this VC, so it locked the entire app to landscape). The game page
+    //   still locks itself to landscape separately.
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskAll; }
     return UIInterfaceOrientationMaskAllButUpsideDown;
 }
@@ -606,9 +615,9 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
     });
 }
 
-/// 重新应用背景效果：当 BackgroundUIEffectChanged 通知到达时调用，
-/// 通过 BackgroundManager 重新设置当前视图控制器的透明度/毛玻璃效果，
-/// 并手动清空 tableView 背景色，确保全局背景能够正常透出。
+/// Reapply the background effect when the BackgroundUIEffectChanged notification arrives:
+/// use BackgroundManager to reset this view controller's opacity/frosted-glass effect and manually
+/// clear the tableView background color so the global background can show through correctly.
 - (void)reapplyBackgroundEffect {
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
     self.tableView.backgroundColor = [UIColor clearColor];

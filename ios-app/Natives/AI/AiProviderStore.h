@@ -2,8 +2,8 @@
 //  AiProviderStore.h
 //  Amethyst
 //
-//  AI 提供商存储：单例。providers 读写 Documents/AI/providers.json，
-//  selectedProviderId 存 NSUserDefaults（ai.selected_provider_id）。
+//  AI provider storage: singleton. Reads/writes providers in Documents/AI/providers.json,
+//  and stores selectedProviderId in NSUserDefaults (ai.selected_provider_id).
 //
 
 #import <Foundation/Foundation.h>
@@ -13,22 +13,22 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface AiProviderStore : NSObject
 
-/// 已配置的提供商列表（读时懒加载，首次不存在时用 defaultPresets 播种）
+/// Configured provider list (lazy-loaded on read, seeded with defaultPresets on first use)
 @property (nonatomic, strong, readonly) NSMutableArray<AiProvider *> *providers;
 
-/// 当前选中的提供商（依据 ai.selected_provider_id；未配置或不存在时返回 nil）
+/// Currently selected provider (based on ai.selected_provider_id; returns nil if unconfigured or missing)
 @property (nonatomic, strong, nullable) AiProvider *selectedProvider;
 
-/// 单例
+/// Singleton
 + (instancetype)sharedStore;
 
-/// 三个预设提供商字典（DeepSeek / OpenAI / Ollama），供首次创建界面与播种使用
+/// Three preset provider dictionaries (DeepSeek / OpenAI / Ollama), used by the initial setup UI and seeding
 + (NSArray<NSDictionary *> *)defaultPresets;
 
-/// 显式触发加载（幂等；首次访问 providers 已自动加载）
+/// Explicitly trigger loading (idempotent; the first access to providers already loads automatically)
 - (void)loadIfNeeded;
 
-/// 持久化 providers 到磁盘
+/// Persist providers to disk
 - (void)save;
 
 - (void)addProvider:(AiProvider *)provider;

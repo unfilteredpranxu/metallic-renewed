@@ -12,14 +12,14 @@
         if (![dictionary isKindOfClass:[NSDictionary class]]) {
             return nil;
         }
-        // 保留原始 JSON：依赖解析（ModDependencyResolver）要从 dependencies[] 读
-        // 前置列表，而下面拍平的字段里没有它。
+        // Retain the original JSON: dependency resolution (ModDependencyResolver) reads the prerequisite list from dependencies[],
+        // which is not present among the flattened fields below.
         _rawDictionary = [dictionary copy];
 
-        // CurseForge file 格式适配（识别 gameVersions/downloadUrl/fileLength/fileDate/id/modId 字段）
-        // ★ [MODSRC-FIX] CurseForge 对部分文件返回 downloadUrl:null（JSON null → NSNull，非 nil），
-        //   旧判据 `downloadUrl != nil` 对 NSNull 仍为真，靠不住的键存在性；改为以 gameVersions
-        //   + CurseForge 专有字段（modId/fileDate/releaseType）共同识别，避免漏判或误判。
+        // CurseForge file format adaptation (recognizes gameVersions/downloadUrl/fileLength/fileDate/id/modId fields).
+        // ★ [MODSRC-FIX] CurseForge returns downloadUrl:null for some files (JSON null → NSNull, not nil).
+        //   The old `downloadUrl != nil` check was true for NSNull, making key existence unreliable. Now identify CurseForge files
+        //   using gameVersions together with CurseForge-specific fields (modId/fileDate/releaseType) to avoid missed or incorrect matches.
         if (dictionary[@"gameVersions"] != nil &&
             (dictionary[@"downloadUrl"] != nil || dictionary[@"modId"] != nil ||
              dictionary[@"fileDate"] != nil || dictionary[@"releaseType"] != nil)) {
@@ -31,7 +31,7 @@
         _datePublished = [dictionary[@"date_published"] isKindOfClass:[NSString class]] ? dictionary[@"date_published"] : @"";
         _gameVersions = [dictionary[@"game_versions"] isKindOfClass:[NSArray class]] ? dictionary[@"game_versions"] : @[];
         _loaders = [dictionary[@"loaders"] isKindOfClass:[NSArray class]] ? dictionary[@"loaders"] : @[];
-        // 发布类型（Modrinth: release/beta/alpha）
+        // Release type (Modrinth: release/beta/alpha).
         _versionType = [dictionary[@"version_type"] isKindOfClass:[NSString class]] ? dictionary[@"version_type"] : @"release";
 
         NSArray *files = [dictionary[@"files"] isKindOfClass:[NSArray class]] ? dictionary[@"files"] : @[];
@@ -42,9 +42,9 @@
 
 - (instancetype)parseCurseForgeDictionary:(NSDictionary *)dictionary {
     _apiSource = 2; // CurseForge
-    // 文件名
+    // Filename.
     NSString *fileName = dictionary[@"fileName"];
-    // 发布类型（CurseForge: 1=release, 2=beta, 3=alpha）
+    // Release type (CurseForge: 1=release, 2=beta, 3=alpha).
     NSInteger releaseType = [dictionary[@"releaseType"] integerValue];
     if (releaseType == 2) {
         _versionType = @"beta";
@@ -53,19 +53,19 @@
     } else {
         _versionType = @"release";
     }
-    // 文件大小
+    // File size.
     if (dictionary[@"fileLength"]) {
         _fileSize = dictionary[@"fileLength"];
     }
-    // 发布时间（fileDate 格式：ISO8601，存储为字符串以与 Modrinth 路径保持一致）
+    // Publish time (fileDate format: ISO8601; stored as a string to match the Modrinth path).
     NSString *dateStr = dictionary[@"fileDate"];
     if (dateStr) {
         _datePublished = dateStr;
     }
-    // file ID 和 project ID
+    // File ID and project ID.
     _fileId = [dictionary[@"id"] stringValue];
     _projectId = [dictionary[@"modId"] stringValue];
-    // gameVersions 数组（包含游戏版本和加载器）
+    // gameVersions array (contains game versions and loaders).
     NSArray *gameVersions = dictionary[@"gameVersions"];
     NSString *gameVer = nil;
     NSMutableArray *loaders = [NSMutableArray array];
@@ -92,11 +92,11 @@
             sha1 = h[@"value"];
         }
     }
-    // 构造 primaryFile 以兼容 Modrinth 格式读取（url/filename/hashes）
+    // Build primaryFile for compatibility with the Modrinth format (url/filename/hashes).
     NSMutableDictionary *pf = [NSMutableDictionary dictionary];
-    // ★ [MODSRC-FIX] 只接受非空字符串 url。旧实现 `if (dictionary[@"downloadUrl"])` 对
-    //   JSON null（NSNull 对象）为真，会把 NSNull 写进 pf["url"]，导致下载页
-    //   `[primaryFile[@"url"] isKindOfClass:NSString.class]` 判定失败并弹 i18n_str_265。
+    // ★ [MODSRC-FIX] Accept only a nonempty string URL. The old `if (dictionary[@"downloadUrl"])` check was true for
+    //   JSON null (an NSNull object), which wrote NSNull into pf["url]. The download page then failed
+    //   `[primaryFile[@"url"] isKindOfClass:NSString.class]` and showed i18n_str_265.
     id downloadURLValue = dictionary[@"downloadUrl"];
     if ([downloadURLValue isKindOfClass:[NSString class]] && [(NSString *)downloadURLValue length] > 0) {
         pf[@"url"] = downloadURLValue;

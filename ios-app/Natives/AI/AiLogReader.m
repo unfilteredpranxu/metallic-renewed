@@ -30,36 +30,36 @@
 
 - (NSString *)summary {
     if ([self.internalName isEqualToString:@"read_crash_report"]) {
-        return @"读取最新一份崩溃报告（crash-report 目录中修改时间最新的 .txt 文件）。"
-               "\n参数：instance（string，可选，实例/游戏目录名，缺省当前选中实例）。"
-               "\n说明：优先读取 logs/crash-reports/ 目录，其次回退到 crash-reports/ 目录，返回最新 .txt 的内容，截断为末尾 6000 字符。"
-               "\n边界：目录或文件不存在时返回「未找到崩溃报告」。";
+        return @"Read the most recent crash report (the .txt file with the latest modification time in the crash-report directory)."
+               "\nParameter: instance (string, optional, instance/game directory name; defaults to the currently selected instance)."
+               "\nDetails: read logs/crash-reports/ first, then fall back to crash-reports/; return the latest .txt contents, truncated to the last 6000 characters."
+               "\nBoundary: returns \"Crash report not found\" if the directory or file does not exist.";
     }
     if ([self.internalName isEqualToString:@"read_logs"]) {
-        return @"一次并行读取多份日志（排查问题首选工具）。"
-               "\n参数：logs（array，可选，元素：latest.log=游戏日志 / latestlog.txt=启动器日志 / latestlog.old.txt=上次启动器日志 / crash-report=最新崩溃报告）、"
-               "all（boolean，可选，true 时读取全部上述日志）、instance（string，可选，实例名，缺省当前选中实例）。"
-               "\n重要：启动器日志 latestlog.txt 通常已包含游戏日志（stdout/stderr 重定向），排查时优先读取它。"
-               "\n返回 JSON 数组：{key, path, size, lastModified, content（各自截断末尾 4000 字符）}；不存在的文件标注缺失。";
+        return @"Read multiple logs in parallel (the preferred tool for troubleshooting)."
+               "\nParameters: logs (array, optional; items: latest.log=game log / latestlog.txt=launcher log / latestlog.old.txt=previous launcher log / crash-report=latest crash report), "
+               "all (boolean, optional; true reads all of the above logs), instance (string, optional, instance name; defaults to the currently selected instance)."
+               "\nImportant: launcher log latestlog.txt usually already contains the game log (stdout/stderr redirection); prioritize reading it when troubleshooting."
+               "\nReturns a JSON array: {key, path, size, lastModified, content (each truncated to the last 4000 characters)}; missing files are marked as missing.";
     }
     // read_latest_log
-    return @"读取实例的最近启动日志（logs/latest.log）。"
-           "\n参数：instance（string，可选，实例/游戏目录名，缺省当前选中实例）。"
-           "\n说明：返回日志末尾 4000 字符（过长时起始部分被截断并注明）。文件不存在时返回「未找到日志」。"
-           "\n提示：启动器级日志（POJAV_HOME/latestlog.txt，含游戏日志）请改用 read_logs。"
-           "\n边界：仅读取 .log 文件，绝不读取其它类型文件。";
+    return @"Read the most recent launch log for an instance (logs/latest.log)."
+           "\nParameter: instance (string, optional, instance/game directory name; defaults to the currently selected instance)."
+           "\nDetails: returns the last 4000 characters of the log (if too long, the beginning is truncated and noted). Returns \"Log not found\" if the file does not exist."
+           "\nTip: use read_logs for launcher-level logs (POJAV_HOME/latestlog.txt, which includes the game log)."
+           "\nBoundary: reads .log files only; never reads other file types.";
 }
 
-#pragma mark - 路径
+#pragma mark - Paths
 
-/// 启动器主目录（POJAV_HOME，回退 Documents）
+/// Launcher home directory (POJAV_HOME, falling back to Documents)
 + (NSString *)launcherHome {
     const char *home = getenv("POJAV_HOME");
     if (home && strlen(home) > 0) return @(home);
     return [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
 }
 
-/// 当前实例根目录（POJAV_GAME_DIR 或其回退）
+/// Current instance root directory (POJAV_GAME_DIR or its fallback)
 + (NSString *)currentGameRoot {
     const char *root = getenv("POJAV_GAME_DIR");
     if (root && strlen(root) > 0) return @(root);
@@ -72,11 +72,11 @@
     return [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
 }
 
-/// 解析 instance 参数 → 实例根目录（<POJAV_HOME>/instances/<instance>，缺省当前实例）
+/// Resolve the instance parameter → instance root directory (<POJAV_HOME>/instances/<instance>; defaults to the current instance)
 + (NSString *)gameRootForParams:(NSDictionary *)params {
     NSString *instance = [params[@"instance"] isKindOfClass:[NSString class]] ? params[@"instance"] : @"";
     if (instance.length == 0) return [self currentGameRoot];
-    // 目录名安全化，防止 ../ 逃逸
+    // Sanitize directory name to prevent ../ traversal
     NSArray *parts = [instance componentsSeparatedByCharactersInSet:
                       [NSCharacterSet characterSetWithCharactersInString:@"/\\:"]];
     NSString *safe = [parts componentsJoinedByString:@"_"];
@@ -85,25 +85,25 @@
     if ([[NSFileManager defaultManager] fileExistsAtPath:root isDirectory:&isDir] && isDir) {
         return root;
     }
-    // 回退：视为当前实例（不存在的目录返回原拼接路径，由读取侧报缺失）
+    // Fallback: treat as the current instance (return the original joined path if the directory does not exist; the reader reports it as missing)
     return root;
 }
 
-/// 截断内容：保留末尾 N 字符，若被截断则在开头注明
+/// Truncate content: retain the last N characters and note at the beginning if truncated
 - (NSString *)truncatedContent:(NSString *)content maxChars:(NSUInteger)max header:(NSString *)header {
     if (content.length <= max) return content;
     NSString *tail = [content substringFromIndex:(content.length - max)];
     return [header stringByAppendingString:tail];
 }
 
-/// 读文件（UTF-8 → Latin1 回退）
+/// Read file (UTF-8 → Latin1 fallback)
 + (NSString *)contentAtPath:(NSString *)path {
     NSString *content = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil];
     if (!content) content = [NSString stringWithContentsOfFile:path encoding:NSISOLatin1StringEncoding error:nil];
     return content;
 }
 
-/// 布尔参数解析（兼容 JSON true/false、NSNumber、字符串 "true"/"false"）
+/// Parse a boolean parameter (supports JSON true/false, NSNumber, and the strings "true"/"false")
 + (BOOL)boolFromValue:(id)value {
     if (!value || [value isKindOfClass:[NSNull class]]) return NO;
     if ([value isKindOfClass:[NSString class]]) {
@@ -121,7 +121,7 @@
 
     if ([self.internalName isEqualToString:@"read_crash_report"]) {
         NSString *content = [self latestCrashReportInGameRoot:gameRoot];
-        completion(content ?: @"未找到崩溃报告", nil);
+        completion(content ?: @"Crash report not found", nil);
         return;
     }
     if ([self.internalName isEqualToString:@"read_logs"]) {
@@ -133,23 +133,23 @@
         NSFileManager *fm = [NSFileManager defaultManager];
         BOOL isDir = NO;
         if (![fm fileExistsAtPath:logPath isDirectory:&isDir] || isDir) {
-            completion(@"未找到日志", nil);
+            completion(@"Log not found", nil);
             return;
         }
         NSString *content = [AiLogReader contentAtPath:logPath];
         if (!content) {
-            completion(@"读取日志失败", nil);
+            completion(@"Failed to read log", nil);
             return;
         }
         NSString *result = [self truncatedContent:content
                                           maxChars:4000
-                                            header:@"（日志过长已截断，显示末尾 4000 字符）\n"];
+                                            header:@"(Log too long; truncated to the last 4000 characters)\n"];
         completion(result, nil);
         return;
     }
 
     NSError *err = [NSError errorWithDomain:@"AiTool" code:404
-                                   userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"未知工具 %@", self.internalName]}];
+                                   userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Unknown tool %@", self.internalName]}];
     completion(nil, err);
 }
 
@@ -158,7 +158,7 @@
 - (void)performReadLogs:(NSDictionary *)params
                gameRoot:(NSString *)gameRoot
              completion:(void (^)(NSString *, NSError *))completion {
-    // 收集要读的日志 key 列表
+    // Collect the list of log keys to read
     NSMutableArray *keys = [NSMutableArray array];
     BOOL all = [AiLogReader boolFromValue:params[@"all"]];
     id logsParam = params[@"logs"];
@@ -174,15 +174,15 @@
         [keys addObject:logsParam];
     }
     if (keys.count == 0) {
-        keys = [@[ @"latestlog.txt", @"latest.log" ] mutableCopy]; // 缺省读启动器日志 + 游戏日志
+        keys = [@[ @"latestlog.txt", @"latest.log" ] mutableCopy]; // Read launcher log + game log by default
     }
-    // 去重（保持顺序）
+    // Deduplicate (preserve order)
     NSMutableArray *uniqueKeys = [NSMutableArray array];
     for (NSString *k in keys) {
         if (![uniqueKeys containsObject:k]) [uniqueKeys addObject:k];
     }
 
-    // key → 物理路径解析（latestlog* 在 POJAV_HOME；其余在实例目录）
+    // Resolve key → physical path (latestlog* in POJAV_HOME; others in the instance directory)
     NSString *home = [AiLogReader launcherHome];
     __block NSMutableArray *entries = [NSMutableArray array];
     dispatch_group_t group = dispatch_group_create();
@@ -201,7 +201,7 @@
             } else if ([key containsString:@"crash"]) {
                 path = [self latestCrashReportPathInGameRoot:gameRoot];
             } else {
-                path = key; // 直接传路径：仅允许实例目录内相对路径
+                path = key; // Direct path: only relative paths within the instance directory are allowed
                 if (![path hasPrefix:@"/"]) path = [gameRoot stringByAppendingPathComponent:path];
             }
 
@@ -227,8 +227,8 @@
             NSString *content = [AiLogReader contentAtPath:path];
             NSString *truncated = content
                 ? [self truncatedContent:content maxChars:4000
-                                  header:@"（过长已截断，显示末尾 4000 字符）\n"]
-                : @"（读取失败）";
+                                  header:@"(Too long; truncated to the last 4000 characters)\n"]
+                : @"(Read failed)";
             NSDate *mtime = attrs[NSFileModificationDate];
             @synchronized (entries) {
                 [entries addObject:@{
@@ -244,7 +244,7 @@
     }
 
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        // 按原始 key 顺序排序输出
+        // Sort output in the original key order
         NSMutableArray *sorted = [NSMutableArray array];
         for (NSString *key in uniqueKeys) {
             for (NSDictionary *e in entries) {
@@ -259,14 +259,14 @@
                                                     options:NSJSONWritingPrettyPrinted
                                                       error:&jsonError];
         if (!data || jsonError) {
-            completion([NSString stringWithFormat:@"读取了 %lu 份日志（序列化失败）", (unsigned long)sorted.count], nil);
+            completion([NSString stringWithFormat:@"Read %lu logs (serialization failed)", (unsigned long)sorted.count], nil);
             return;
         }
         completion([[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding], nil);
     });
 }
 
-/// 查找最新崩溃报告路径（优先 logs/crash-reports/，回退 crash-reports/）
+/// Find the latest crash report path (prefer logs/crash-reports/, fall back to crash-reports/)
 - (NSString *)latestCrashReportPathInGameRoot:(NSString *)gameRoot {
     NSArray *candidates = @[
         [gameRoot stringByAppendingPathComponent:@"logs/crash-reports"],
@@ -296,7 +296,7 @@
     return bestPath;
 }
 
-/// 查找最新崩溃报告内容（优先 logs/crash-reports/，回退 crash-reports/）
+/// Find the latest crash report content (prefer logs/crash-reports/, fall back to crash-reports/)
 - (NSString *)latestCrashReportInGameRoot:(NSString *)gameRoot {
     NSString *bestPath = [self latestCrashReportPathInGameRoot:gameRoot];
     if (!bestPath) return nil;
@@ -304,7 +304,7 @@
     NSString *content = [AiLogReader contentAtPath:bestPath];
     if (!content) return nil;
 
-    return [self truncatedContent:content maxChars:6000 header:@"（崩溃报告过长已截断，显示末尾 6000 字符）\n"];
+    return [self truncatedContent:content maxChars:6000 header:@"(Crash report too long; truncated to the last 6000 characters)\n"];
 }
 
 @end

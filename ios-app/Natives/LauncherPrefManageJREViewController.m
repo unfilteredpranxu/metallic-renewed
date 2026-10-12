@@ -31,8 +31,8 @@ typedef struct {
     char unused3[6+2+32+32+8+8+155+12];
 } TarHeader;
 
-// redesign-download-ui Phase 4 Task 4.3：移除 WFWorkflowProgressView（私有框架），
-// 运行时导入进度改由 DownloadTaskManager 统一任务驱动（rawTask = totalProgress，支持取消）
+// redesign-download-ui Phase 4 Task 4.3: remove WFWorkflowProgressView (private framework);
+// runtime import progress is now managed through DownloadTaskManager (rawTask = totalProgress, with cancellation support).
 static NSString *currentImportTaskId;
 
 @interface LauncherPrefManageJREViewController ()<UIContextMenuInteractionDelegate, UIDocumentPickerDelegate>
@@ -47,24 +47,24 @@ static NSString *currentImportTaskId;
 @implementation LauncherPrefManageJREViewController
 
 + (LauncherPrefManageJREViewController *)currentInstance {
-    // 修复 #41: currentVC() 不一定是 UISplitViewController（在设置子页面里它会返回
-    // 当前可见 VC 本身），直接强转并访问 viewControllers 会触发
-    // "unrecognized selector viewControllers" 崩溃。这里做严格类型校验。
+    // Fix #41: currentVC() is not always a UISplitViewController (on a settings subpage it returns
+    // the currently visible VC itself). Directly casting it and accessing viewControllers causes
+    // an "unrecognized selector viewControllers" crash, so perform a strict type check here.
     UIViewController *current = currentVC();
     if (!current) return nil;
 
-    // 常见路径：当前 VC 是 LauncherPrefManageJREViewController 自身（在导航栈顶）
+    // Common path: the current VC is LauncherPrefManageJREViewController itself (at the top of the navigation stack).
     if ([current isKindOfClass:LauncherPrefManageJREViewController.class]) {
         return (LauncherPrefManageJREViewController *)current;
     }
 
-    // 走 splitVC 路径：先尝试从 current 往上找 splitVC
+    // SplitVC path: first try to find the splitVC by walking up from current.
     UISplitViewController *splitVC = nil;
     if ([current isKindOfClass:UISplitViewController.class]) {
         splitVC = (UISplitViewController *)current;
     } else if ([current.navigationController isKindOfClass:LauncherNavigationController.class]) {
-        // current 的 navigationController 是 LauncherNavigationController
-        // LauncherNavigationController 的 presenting/splitViewController 才是 splitVC
+        // current's navigationController is LauncherNavigationController.
+        // The splitVC is the presenting/splitViewController of LauncherNavigationController.
         splitVC = current.navigationController.splitViewController;
     } else {
         splitVC = current.splitViewController;
@@ -98,14 +98,14 @@ static NSString *currentImportTaskId;
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
 
-    // 适配自定义启动器背景：透明化 tableView + 导航栏毛玻璃
+    // Adapt to the custom launcher background: make the tableView transparent and apply glass to the navigation bar.
     if (self.navigationController) {
         [[BackgroundManager sharedManager] applyEffectToNavigationBar:self.navigationController.navigationBar];
     }
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
-    // 修复：使用 Automatic 让系统自动为半透明导航栏添加顶部 contentInset，
-    // 避免第一栏（"1.16及更早版本"）被导航栏覆盖。配合 edgesForExtendedLayout=All
-    // 保留导航栏毛玻璃穿透效果，内容起始位置自动下移到导航栏下方。
+    // Fix: use Automatic so the system adds the top contentInset for the translucent navigation bar,
+    // preventing the first row ("1.16 and Earlier") from being covered. Together with edgesForExtendedLayout=All,
+    // this preserves the navigation bar's glass-through effect while positioning content below it.
     self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAutomatic;
     self.extendedLayoutIncludesOpaqueBars = YES;
     self.edgesForExtendedLayout = UIRectEdgeAll;
@@ -123,15 +123,15 @@ static NSString *currentImportTaskId;
     [self listJREInPath:internalPath markInternal:YES];
     [self listJREInPath:externalPath markInternal:NO];
 
-    // 监听背景效果变化通知：切换毛玻璃↔半透明或调整透明度时，
-    // 重新透明化当前 VC 并 reload cell，让每个 cell 重新应用 applyEffectToCell:
+    // Listen for background effect changes: when switching between glass and translucency or adjusting opacity,
+    // make the current VC transparent again and reload cells so each one reapplies applyEffectToCell:
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
                                                object:nil];
 }
 
-/// 背景效果变化时重新应用透明化处理，确保 cell 在切换毛玻璃↔半透明后视觉一致
+/// Reapply transparency when background effects change so cells look consistent after switching between glass and translucency.
 - (void)reapplyBackgroundEffect {
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
     if (self.navigationController) {
@@ -145,8 +145,8 @@ static NSString *currentImportTaskId;
 }
 
 + (void)actionCancelImportRuntime {
-    // redesign-download-ui Phase 4 Task 4.3：取消统一任务管理器中的运行时导入任务，
-    // rawTask 即 totalProgress（NSProgress），取消后 extractTarXZ 循环按 cancelled 路径清理
+    // redesign-download-ui Phase 4 Task 4.3: cancel the runtime import task in the unified task manager;
+    // rawTask is totalProgress (NSProgress), and after cancellation the extractTarXZ loop cleans up via the cancelled path.
     if (currentImportTaskId) {
         [[DownloadTaskManager sharedManager] cancelTaskWithId:currentImportTaskId];
     }
@@ -170,11 +170,11 @@ static NSString *currentImportTaskId;
     NSProgress *totalProgress = [NSProgress progressWithTotalUnitCount:xzSize];
     NSProgress *fileProgress = [NSProgress progressWithTotalUnitCount:0];
 
-    // redesign-download-ui Phase 4 Task 4.3：运行时导入注册为统一下载任务，
-    // 单阶段 + autoPresentDetail 自动弹出统一进度页；rawTask = totalProgress 支持取消
+    // redesign-download-ui Phase 4 Task 4.3: register runtime import as a unified download task,
+    // with one phase and autoPresentDetail to show the unified progress page automatically; rawTask = totalProgress enables cancellation.
     NSString *pathOrUrl = url.path;
-    // ★ [DEMINE] 原为 substringToIndex:url.path.length-7：路径短于 7 字符时无符号下溢
-    //   ⇒ 越界 NSRangeException 崩 App。短则退化为用整条路径取末段。
+    // ★ [DEMINE] Previously used substringToIndex:url.path.length-7; paths shorter than 7 characters caused unsigned underflow
+    //   and an out-of-bounds NSRangeException crash. For short paths, fall back to taking the last component of the full path.
     NSString *runtimeName = (pathOrUrl.length >= 7 ? [pathOrUrl substringToIndex:pathOrUrl.length - 7] : pathOrUrl).lastPathComponent;
     NSString *source = getPrefObject(@"general.download_source") ?: @"official";
     DownloadTaskItem *taskItem = [[DownloadTaskManager sharedManager]
@@ -203,8 +203,8 @@ static NSString *currentImportTaskId;
         NSString *error = [LauncherPrefManageJREViewController extractTarXZ:url.path
         to:outPath progress:totalProgress fileProgress:fileProgress
         fileCallback:^(NSString* name) {
-            // fileCallback 在 extractTarXZ 内部（后台线程）调用，
-            // manager 上报线程安全；进度文案带当前文件名
+            // fileCallback is called from inside extractTarXZ (on a background thread);
+            // manager reporting is thread-safe, and the progress text includes the current filename.
             double fraction = totalProgress.fractionCompleted;
             NSString *displayText = [NSString stringWithFormat:localize(@"i18n_str_366", nil), name];
             [manager updateTaskWithId:taskId
@@ -224,7 +224,7 @@ static NSString *currentImportTaskId;
         dispatch_async(dispatch_get_main_queue(), ^{
             LauncherPrefManageJREViewController *vc = LauncherPrefManageJREViewController.currentInstance;
 
-            // 任务收尾：成功/失败/取消上报到统一任务管理器
+            // Task completion: report success/failure/cancellation to the unified task manager.
             if (taskId) {
                 if (error) {
                     [manager updateTaskWithId:taskId stageAtIndex:0 status:PLTaskStageStatusFailed];
@@ -269,7 +269,7 @@ static NSString *currentImportTaskId;
     }
 }
 
-/// section header：透明背景，与界面背景一致（可看到背景图）。
+/// Section header: transparent background matching the page background (the background image remains visible).
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
     NSString *title = [self tableView:tableView titleForHeaderInSection:section];
     UITableViewHeaderFooterView *header = [tableView dequeueReusableHeaderFooterViewWithIdentifier:@"JRESectionHeader"];
@@ -280,13 +280,13 @@ static NSString *currentImportTaskId;
     return header;
 }
 
-/// section header 透明化：不套毛玻璃，与界面背景融为一体。
-/// 有自定义背景时用白色文字 + 阴影保证可读性；无背景时用系统默认色。
+/// Keep the section header transparent and without glass so it blends with the page background.
+/// Use white text with a shadow for readability over a custom background; otherwise use the system default color.
 - (void)tableView:(UITableView *)tableView willDisplayHeaderView:(UIView *)view forSection:(NSInteger)section {
     if (![view isKindOfClass:[UITableViewHeaderFooterView class]]) return;
     UITableViewHeaderFooterView *header = (UITableViewHeaderFooterView *)view;
 
-    // 透明背景：不再使用毛玻璃，可看到背景图
+    // Transparent background: no glass, so the background image remains visible.
     header.backgroundView = nil;
     if ([[BackgroundManager sharedManager] hasBackground]) {
         header.textLabel.textColor = [UIColor whiteColor];
@@ -329,7 +329,7 @@ static NSString *currentImportTaskId;
     cell.textLabel.text = localize(self.javaRuntimes[@DEFAULT_JRE][indexPath.row], nil);
     cell.detailTextLabel.text = [NSString stringWithFormat:@"Java %@",
         ((NSDictionary *)self.selectedRuntimes[@"0"])[self.selectedRTTags[indexPath.row]]];
-    // 适配自定义启动器背景：cell 应用毛玻璃/半透明效果，避免默认 systemBackgroundColor 遮挡背景
+    // Adapt to the custom launcher background: apply glass/translucency to cells so the default systemBackgroundColor does not obscure the background.
     [[BackgroundManager sharedManager] applyEffectToCell:cell];
     return cell;
 }
@@ -352,8 +352,8 @@ static NSString *currentImportTaskId;
     if (isInstalling) {
         self.installingIndexPath = indexPath;
 
-        // redesign-download-ui Phase 4 Task 4.3：进度展示移至统一进度页，
-        // cell 内仅显示菊花指示器
+        // redesign-download-ui Phase 4 Task 4.3: progress is shown on the unified progress page;
+        // show only the activity indicator in the cell.
         UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
         [spinner startAnimating];
         cell.accessoryView = spinner;
@@ -383,9 +383,9 @@ static NSString *currentImportTaskId;
         });
     });
 
-    // 适配自定义启动器背景：cell 应用毛玻璃/半透明效果，避免默认 systemBackgroundColor 遮挡背景
-    // 注意：applyEffectToCell: 只重置 backgroundView/backgroundColor/contentView.backgroundColor，
-    // 不影响 accessoryView（progressView）和 accessoryType（checkmark）
+    // Adapt to the custom launcher background: apply glass/translucency to cells so the default systemBackgroundColor does not obscure the background.
+    // Note: applyEffectToCell: resets only backgroundView/backgroundColor/contentView.backgroundColor;
+    // it does not affect accessoryView (progressView) or accessoryType (checkmark).
     [[BackgroundManager sharedManager] applyEffectToCell:cell];
     return cell;
 }
@@ -429,7 +429,7 @@ static NSString *currentImportTaskId;
 - (void)tableView:(UITableView *)tableView openPickerAtIndexPath:(NSIndexPath *)indexPath minVersion:(NSInteger)minVer {
     UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
 
-    // 收集可选的 Java 版本
+    // Collect the available Java versions.
     NSMutableArray<NSString *> *versionTitles = [NSMutableArray new];
     NSMutableArray<NSNumber *> *versionNumbers = [NSMutableArray new];
     for (int i = 1; i < self.sortedJavaVersions.count; i++) {
@@ -442,20 +442,20 @@ static NSString *currentImportTaskId;
         [versionNumbers addObject:self.sortedJavaVersions[i]];
     }
 
-    // iPhone 上改用 UIAlertController actionSheet，避免紧凑菜单被压缩不可调整
+    // On iPhone, use a UIAlertController action sheet to avoid a cramped, non-resizable compact menu.
     if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPhone) {
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:cell.textLabel.text
                                                                        message:nil
                                                                 preferredStyle:UIAlertControllerStyleActionSheet];
         if (versionTitles.count == 0) {
-            [alert addAction:[UIAlertAction actionWithTitle:localize(@"launcher.pref.jre.none", nil)  // ★ [AUDIT-DECIDE] A-11：English 字面量当 key → 新增键 launcher.pref.jre.none
+            [alert addAction:[UIAlertAction actionWithTitle:localize(@"launcher.pref.jre.none", nil)              // ★ [AUDIT-DECIDE] A-11: Use an English literal as the key → add launcher.pref.jre.none.
                                                        style:UIAlertActionStyleDefault
                                                      handler:nil]];
         } else {
             for (int i = 0; i < versionTitles.count; i++) {
                 NSString *version = versionTitles[i];
                 NSNumber *verNum = versionNumbers[i];
-                // 当前选中项前加 ✓ 标记
+                // Add a ✓ marker before the currently selected item.
                 NSString *title = version;
                 if ([cell.detailTextLabel.text isEqualToString:version]) {
                     title = [NSString stringWithFormat:@"✓ %@", version];
@@ -478,7 +478,7 @@ static NSString *currentImportTaskId;
         return;
     }
 
-    // iPad：保留 UIContextMenuInteraction 紧凑菜单
+    // iPad: keep the compact UIContextMenuInteraction menu.
     NSMutableArray *menuItems = [NSMutableArray new];
     for (int i = 0; i < versionTitles.count; i++) {
         NSString *version = versionTitles[i];
@@ -498,7 +498,7 @@ static NSString *currentImportTaskId;
 
     if (menuItems.count == 0) {
         [menuItems addObject:[UIAction
-            actionWithTitle:localize(@"launcher.pref.jre.none", nil)  // ★ [AUDIT-DECIDE] A-11：English 字面量当 key → 新增键 launcher.pref.jre.none
+            actionWithTitle:localize(@"launcher.pref.jre.none", nil)              // ★ [AUDIT-DECIDE] A-11: Use an English literal as the key → add launcher.pref.jre.none.
             image:nil
             identifier:nil
             handler:^(UIAction *action){}]];
@@ -577,8 +577,8 @@ styleForMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
         return [NSString stringWithFormat:@"Error: %@", error.localizedDescription];
     }
 
-    // ★ [DEMINE] 原为 componentsSeparatedByString:@"JAVA_VERSION=\""][1] 直接下标：
-    //   release 文件缺 JAVA_VERSION=" 行时数组只有 1 个元素 ⇒ 越界 NSRangeException 崩 App。
+    // ★ [DEMINE] Previously indexed componentsSeparatedByString:@"JAVA_VERSION=\""][1] directly:
+    //   if the release file lacked a JAVA_VERSION=" line, the array had one element, causing an out-of-bounds NSRangeException crash.
     NSArray *jvParts = [content componentsSeparatedByString:@"JAVA_VERSION=\""];
     if (jvParts.count < 2) {
         NSLog(@"[DEMINE] javaVersionForPath: no JAVA_VERSION in release file: %@", path);
@@ -666,8 +666,9 @@ styleForMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
     for (NSString *line in [content componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet]) {
         if (line.length > 0) {
             NSArray *keyValue = [[line substringToIndex:line.length-1] componentsSeparatedByString:@"=\""];
-            // ★ [DEMINE] 原为 keyValue[1] 直接下标：release 文件里任一行不含 =" 时
-            //   (空行/注释/等号变体)数组只有 1 个元素 ⇒ 越界 NSRangeException 崩 App。缺值跳过该行。
+            // ★ [DEMINE] Previously indexed keyValue[1] directly: any line in the release file without =" (blank lines,
+            //   comments, or other equals-sign variants) produced an array with one element and an out-of-bounds NSRangeException crash.
+            // Skip lines with missing values.
             if (keyValue.count < 2) {
                 NSLog(@"[DEMINE] skip malformed release line: %@", line);
                 continue;
@@ -799,7 +800,7 @@ styleForMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
                         currFileName = @(currFileHeader.name);
                         currFileOff = 0;
                         currFileSize = strtol(currFileHeader.size, NULL, 8);
-                        // NSProgress 非线程安全，在主线程修改其计数
+                        // NSProgress is not thread-safe; update its count on the main thread.
                         dispatch_async(dispatch_get_main_queue(), ^{
                             fileProgress.completedUnitCount = 0;
                             fileProgress.totalUnitCount = currFileSize;
@@ -837,7 +838,7 @@ styleForMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
             strm.next_out = outbuf;
             strm.avail_out = sizeof(outbuf);
 
-            // NSProgress 非线程安全，在主线程修改其计数
+            // NSProgress is not thread-safe; update its count on the main thread.
             NSUInteger totalIn = (NSUInteger)strm.total_in;
             dispatch_async(dispatch_get_main_queue(), ^{
                 progress.completedUnitCount = totalIn;

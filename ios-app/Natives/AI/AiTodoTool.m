@@ -10,7 +10,7 @@ static const NSInteger kAiTodoMaxItems = 200;
 
 @interface AiTodoTool ()
 @property (nonatomic, copy) NSString *internalName;
-/// 串行队列：todos.json 读写与 id 分配的线程安全保护
+/// Serial queue: thread-safety protection for todos.json reads/writes and ID allocation
 @property (nonatomic, strong) dispatch_queue_t queue;
 @end
 
@@ -38,27 +38,27 @@ static const NSInteger kAiTodoMaxItems = 200;
 
 - (NSString *)summary {
     if ([self.internalName isEqualToString:@"todo_create"]) {
-        return @"创建一条待办事项（多步任务的执行清单）。"
-               "\n参数：title（string，必填）、description（string，可选）。"
-               "\n返回新条目 id。";
+        return @"Create a to-do item (an execution checklist for multi-step tasks)."
+               "\nParameters: title (string, required), description (string, optional)."
+               "\nReturns the new item's id.";
     }
     if ([self.internalName isEqualToString:@"todo_list"]) {
-        return @"列出全部待办事项（含已完成）。"
-               "\n无参数。"
-               "\n返回 JSON 数组：{id, title, description, done, createdAt}。";
+        return @"List all to-do items (including completed items)."
+               "\nNo parameters."
+               "\nReturns a JSON array: {id, title, description, done, createdAt}.";
     }
     if ([self.internalName isEqualToString:@"todo_update"]) {
-        return @"更新待办事项：勾选完成/取消完成，或修改标题与描述。"
-               "\n参数：id（number，必填）、done（boolean，可选，true=完成 false=未完成）、title（string，可选）、description（string，可选）。"
-               "\n返回更新后的条目。";
+        return @"Update a to-do item: mark/unmark as complete, or change its title and description."
+               "\nParameters: id (number, required), done (boolean, optional, true=complete false=incomplete), title (string, optional), description (string, optional)."
+               "\nReturns the updated item.";
     }
     // todo_delete
-    return @"删除一条待办事项。"
-           "\n参数：id（number，必填）。"
-           "\n返回「已删除」。";
+    return @"Delete a to-do item."
+           "\nParameter: id (number, required)."
+           "\nReturns \"Deleted.\"";
 }
 
-#pragma mark - 存储
+#pragma mark - Storage
 
 + (NSString *)todosFilePath {
     NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
@@ -83,7 +83,7 @@ static const NSInteger kAiTodoMaxItems = 200;
     return [data writeToFile:path options:NSDataWritingAtomic error:nil];
 }
 
-/// 生成新 id：现有最大 id + 1（从 1 开始）
+/// Generate a new id: current maximum id + 1 (starting from 1)
 + (NSInteger)nextIdInTodos:(NSArray *)todos {
     NSInteger maxId = 0;
     for (NSDictionary *item in todos) {
@@ -94,8 +94,8 @@ static const NSInteger kAiTodoMaxItems = 200;
 }
 
 + (NSString *)itemDescription:(NSDictionary *)item {
-    if (![item isKindOfClass:[NSDictionary class]]) return @"（无效条目）";
-    NSString *done = [item[@"done"] boolValue] ? @"[已完成]" : @"[未完成]";
+    if (![item isKindOfClass:[NSDictionary class]]) return @"(Invalid item)";
+    NSString *done = [item[@"done"] boolValue] ? @"[Completed]" : @"[Incomplete]";
     NSString *desc = [item[@"description"] isKindOfClass:[NSString class]] ? item[@"description"] : @"";
     if (desc.length > 0) {
         return [NSString stringWithFormat:@"#%@ %@ %@ — %@", [item[@"id"] description], done, item[@"title"] ?: @"", desc];
@@ -103,7 +103,7 @@ static const NSInteger kAiTodoMaxItems = 200;
     return [NSString stringWithFormat:@"#%@ %@ %@", [item[@"id"] description], done, item[@"title"] ?: @""];
 }
 
-#pragma mark - 执行分发
+#pragma mark - Execution dispatch
 
 - (void)execute:(NSDictionary<NSString *, id> *)params
      completion:(void (^)(NSString * _Nullable result, NSError * _Nullable error))completion {
@@ -123,7 +123,7 @@ static const NSInteger kAiTodoMaxItems = 200;
             result = [self performDelete:params error:&error];
         } else {
             error = [NSError errorWithDomain:@"AiTool" code:404
-                                    userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"未知工具 %@", self.internalName]}];
+                                    userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Unknown tool %@", self.internalName]}];
         }
 
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -136,7 +136,7 @@ static const NSInteger kAiTodoMaxItems = 200;
     NSString *title = [params[@"title"] isKindOfClass:[NSString class]] ? params[@"title"] : @"";
     if (title.length == 0) {
         if (error) *error = [NSError errorWithDomain:@"AiTool" code:400
-                                            userInfo:@{NSLocalizedDescriptionKey: @"参数 title 必填"}];
+                                            userInfo:@{NSLocalizedDescriptionKey: @"The title parameter is required"}];
         return nil;
     }
     NSString *desc = [params[@"description"] isKindOfClass:[NSString class]] ? params[@"description"] : @"";
@@ -144,7 +144,7 @@ static const NSInteger kAiTodoMaxItems = 200;
     NSMutableArray *todos = [AiTodoTool loadTodos];
     if (todos.count >= kAiTodoMaxItems) {
         if (error) *error = [NSError errorWithDomain:@"AiTool" code:409
-                                            userInfo:@{NSLocalizedDescriptionKey: @"待办清单已满（200 条），请先清理"}];
+                                            userInfo:@{NSLocalizedDescriptionKey: @"The to-do list is full (200 items); please clear some items first"}];
         return nil;
     }
     NSInteger newId = [AiTodoTool nextIdInTodos:todos];
@@ -158,15 +158,15 @@ static const NSInteger kAiTodoMaxItems = 200;
     [todos addObject:item];
     if (![AiTodoTool saveTodos:todos]) {
         if (error) *error = [NSError errorWithDomain:@"AiTool" code:500
-                                            userInfo:@{NSLocalizedDescriptionKey: @"todos.json 写入失败"}];
+                                            userInfo:@{NSLocalizedDescriptionKey: @"Failed to write todos.json"}];
         return nil;
     }
-    return [NSString stringWithFormat:@"已创建待办 #%ld：%@", (long)newId, title];
+    return [NSString stringWithFormat:@"Created to-do #%ld: %@", (long)newId, title];
 }
 
 - (NSString *)performList {
     NSMutableArray *todos = [AiTodoTool loadTodos];
-    if (todos.count == 0) return @"待办清单为空。";
+    if (todos.count == 0) return @"The to-do list is empty.";
 
     NSMutableString *out = [NSMutableString string];
     NSInteger doneCount = 0;
@@ -174,7 +174,7 @@ static const NSInteger kAiTodoMaxItems = 200;
         if ([item[@"done"] boolValue]) doneCount++;
         [out appendFormat:@"%@\n", [AiTodoTool itemDescription:item]];
     }
-    [out appendFormat:@"共 %lu 条，其中已完成 %ld 条。",
+    [out appendFormat:@"%lu items total, %ld completed.",
         (unsigned long)todos.count, (long)doneCount];
     return out;
 }
@@ -192,7 +192,7 @@ static const NSInteger kAiTodoMaxItems = 200;
     }
     if (!target) {
         if (error) *error = [NSError errorWithDomain:@"AiTool" code:404
-                                            userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"待办 #%ld 不存在", (long)itemId]}];
+                                            userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"To-do #%ld does not exist", (long)itemId]}];
         return nil;
     }
 
@@ -217,10 +217,10 @@ static const NSInteger kAiTodoMaxItems = 200;
     if (idx != NSNotFound) todos[idx] = updated;
     if (![AiTodoTool saveTodos:todos]) {
         if (error) *error = [NSError errorWithDomain:@"AiTool" code:500
-                                            userInfo:@{NSLocalizedDescriptionKey: @"todos.json 写入失败"}];
+                                            userInfo:@{NSLocalizedDescriptionKey: @"Failed to write todos.json"}];
         return nil;
     }
-    return [NSString stringWithFormat:@"已更新：%@", [AiTodoTool itemDescription:updated]];
+    return [NSString stringWithFormat:@"Updated: %@", [AiTodoTool itemDescription:updated]];
 }
 
 - (NSString *)performDelete:(NSDictionary *)params error:(NSError **)error {
@@ -235,16 +235,16 @@ static const NSInteger kAiTodoMaxItems = 200;
     }
     if (!target) {
         if (error) *error = [NSError errorWithDomain:@"AiTool" code:404
-                                            userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"待办 #%ld 不存在", (long)itemId]}];
+                                            userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"To-do #%ld does not exist", (long)itemId]}];
         return nil;
     }
     [todos removeObject:target];
     if (![AiTodoTool saveTodos:todos]) {
         if (error) *error = [NSError errorWithDomain:@"AiTool" code:500
-                                            userInfo:@{NSLocalizedDescriptionKey: @"todos.json 写入失败"}];
+                                            userInfo:@{NSLocalizedDescriptionKey: @"Failed to write todos.json"}];
         return nil;
     }
-    return [NSString stringWithFormat:@"已删除待办 #%ld", (long)itemId];
+    return [NSString stringWithFormat:@"Deleted to-do #%ld", (long)itemId];
 }
 
 @end

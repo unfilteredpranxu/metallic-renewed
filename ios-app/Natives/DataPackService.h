@@ -2,11 +2,13 @@
 //  DataPackService.h
 //  Amethyst
 //
-//  数据包本地管理与下载服务，结构参照 ShaderService/ModService
-//  API 签名统一使用 NSString *profileName（与 ModService 一致）
-//  新增 pack.mcmeta 解析（pack_format / description）
-//  新增 worldName 参数支持下载到指定世界的 datapacks 目录（saves/<worldName>/datapacks/）
-//  下载改走 PLDownloadClient 统一下载器（镜像候选 + SHA1 校验 + 增量下载 + 断点续传）
+//  Local data-pack management and download service, structured like ShaderService/ModService.
+//  API signatures consistently use NSString *profileName (matching ModService).
+//  Adds pack.mcmeta parsing (pack_format / description).
+//  Adds a worldName parameter to support downloading to a specific world's datapacks directory
+//  (saves/<worldName>/datapacks/).
+//  Downloads use the shared PLDownloadClient (mirror candidates + SHA1 validation + incremental
+//  download + resume support).
 //
 
 #import <Foundation/Foundation.h>
@@ -14,13 +16,13 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-// 数据包列表回调
+// Data-pack list callback.
 typedef void(^DataPackListHandler)(NSArray<DataPackItem *> *items);
-// 数据包元数据回调
+// Data-pack metadata callback.
 typedef void(^DataPackMetadataHandler)(DataPackItem *item, NSError * _Nullable error);
-// 下载完成回调（success 表示是否成功）
+// Download completion callback (success indicates whether it succeeded).
 typedef void(^DataPackDownloadCompletionHandler)(BOOL success, NSError * _Nullable error);
-// 下载进度回调（在主线程执行，UI 更新安全）
+// Download progress callback (runs on the main thread; safe for UI updates).
 typedef void(^DataPackDownloadProgressHandler)(NSProgress * _Nullable downloadProgress);
 
 @interface DataPackService : NSObject
@@ -29,37 +31,40 @@ typedef void(^DataPackDownloadProgressHandler)(NSProgress * _Nullable downloadPr
 
 + (instancetype)sharedService;
 
-// --- 本地数据包管理 ---
-// 扫描指定 profile 的 datapacks 目录，返回 .zip 和 .zip.disabled 文件列表
+// --- Local data-pack management ---
+// Scan the specified profile's datapacks directory and return .zip and .zip.disabled files.
 - (void)scanDataPacksForProfile:(NSString *)profileName completion:(DataPackListHandler)completion;
-// 获取数据包元数据（解析 zip 内的 pack.mcmeta，获取 pack_format 和 description）
+// Get data-pack metadata (parse pack.mcmeta inside the zip to get pack_format and description).
 - (void)fetchMetadataForDataPack:(DataPackItem *)item completion:(DataPackMetadataHandler)completion;
-// 启用/禁用数据包（加/去 .disabled 后缀）
+// Enable/disable a data pack (add/remove the .disabled suffix).
 - (BOOL)toggleEnableForDataPack:(DataPackItem *)item error:(NSError **)error;
-// 删除数据包文件
+// Delete a data-pack file.
 - (BOOL)deleteDataPack:(DataPackItem *)item error:(NSError **)error;
 
-// --- 在线数据包下载 ---
-// 下载数据包到指定 profile 的 datapacks 目录（<gameDir>/datapacks/），支持实时进度回调
-// 注意：Minecraft 要求数据包放在 <gameDir>/saves/<世界名>/datapacks/，但 iOS 上无法选择世界，
-// 因此默认下载到 <gameDir>/datapacks/，需用户手动移动到对应世界目录。
+// --- Online data-pack downloads ---
+// Download a data pack to the specified profile's datapacks directory (<gameDir>/datapacks/),
+// with real-time progress callbacks.
+// Note: Minecraft requires data packs in <gameDir>/saves/<world name>/datapacks/, but iOS cannot
+// select a world, so downloads default to <gameDir>/datapacks/ and the user must move them manually.
 - (void)downloadDataPack:(DataPackItem *)item
                toProfile:(NSString *)profileName
                 progress:(DataPackDownloadProgressHandler _Nullable)progress
               completion:(DataPackDownloadCompletionHandler _Nullable)completion;
 
-// 下载数据包到指定世界的 datapacks 目录（<gameDir>/saves/<worldName>/datapacks/）
-// worldName 为 nil 时回退到 <gameDir>/datapacks/
+// Download a data pack to the specified world's datapacks directory
+// (<gameDir>/saves/<worldName>/datapacks/).
+// If worldName is nil, fall back to <gameDir>/datapacks/.
 - (void)downloadDataPack:(DataPackItem *)item
                toProfile:(NSString *)profileName
                worldName:(nullable NSString *)worldName
                 progress:(DataPackDownloadProgressHandler _Nullable)progress
               completion:(DataPackDownloadCompletionHandler _Nullable)completion;
 
-/// 下载数据包并启用 SHA1 校验（spec optimize-download-system Task 5.1）。
-/// expectedSHA1 来自版本模型 primaryFile[@"hashes"][@"sha1"]（Modrinth files[].hashes.sha1 /
-/// CurseForge hashes algo=1），传入即启用校验，校验失败由统一下载器按镜像/退避节奏重试；
-/// 为 nil 时不做 SHA1 校验，靠 zip EOCD 兜底校验保证完整性。
+/// Download the data pack with SHA1 validation enabled (spec optimize-download-system Task 5.1).
+/// expectedSHA1 comes from the version model primaryFile[@"hashes"][@"sha1"] (Modrinth
+/// files[].hashes.sha1 / CurseForge hashes algo=1). If provided, validation is enabled and the
+/// shared downloader retries on validation failure according to the mirror/backoff schedule.
+/// If nil, skip SHA1 validation and rely on the zip EOCD fallback check for integrity.
 - (void)downloadDataPack:(DataPackItem *)item
                toProfile:(NSString *)profileName
                worldName:(nullable NSString *)worldName
@@ -67,10 +72,10 @@ typedef void(^DataPackDownloadProgressHandler)(NSProgress * _Nullable downloadPr
                 progress:(DataPackDownloadProgressHandler _Nullable)progress
               completion:(DataPackDownloadCompletionHandler _Nullable)completion;
 
-// --- 工具方法 ---
+// --- Utility methods ---
 - (NSString *)iconCachePathForURL:(NSString *)urlString;
 
-/// 获取当前 profile 的 datapacks 目录，不存在时自动创建
+/// Get the current profile's datapacks directory, creating it if it does not exist.
 - (nullable NSString *)ensureDataPacksFolderForProfile:(NSString *)profileName error:(NSError **)error;
 
 @end

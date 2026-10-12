@@ -30,23 +30,23 @@
 }
 
 - (NSString *)summary {
-    return @"查询下载中心全部下载任务的实时状态（配合 install_* 工具的 wait=false 后台下载使用）。"
-           "\n无参数。"
-           "\n返回 JSON：{count, tasks:[{taskId, name, type, state, progress, downloadedBytes, totalBytes, speed, downloadSource}], summary:{各状态数量}}。"
-           "\nstate 取值：等待中/下载中/已暂停/已完成/已取消/失败；progress 为 0~1（-1 表示未知）；speed 单位 bytes/s。"
-           "\n边界：仅查询不操作，暂停/取消等请引导用户在下载中心手动操作。";
+    return @"Query the live status of all download tasks in the download center (for background downloads started by install_* tools with wait=false)."
+           "\nNo parameters."
+           "\nReturns JSON: {count, tasks:[{taskId, name, type, state, progress, downloadedBytes, totalBytes, speed, downloadSource}], summary:{count by state}}."
+           "\nstate values: pending/downloading/paused/completed/cancelled/failed; progress is 0~1 (-1 means unknown); speed is in bytes/s."
+           "\nBoundary: query only; guide the user to pause/cancel manually in the download center.";
 }
 
 + (NSString *)stateName:(DownloadTaskState)state {
     switch (state) {
-        case DownloadTaskStatePending:     return @"等待中";
-        case DownloadTaskStateDownloading: return @"下载中";
-        case DownloadTaskStatePaused:      return @"已暂停";
-        case DownloadTaskStateCompleted:   return @"已完成";
-        case DownloadTaskStateCancelled:   return @"已取消";
-        case DownloadTaskStateFailed:      return @"失败";
+        case DownloadTaskStatePending:     return @"Pending";
+        case DownloadTaskStateDownloading: return @"Downloading";
+        case DownloadTaskStatePaused:      return @"Paused";
+        case DownloadTaskStateCompleted:   return @"Completed";
+        case DownloadTaskStateCancelled:   return @"Cancelled";
+        case DownloadTaskStateFailed:      return @"Failed";
     }
-    return @"未知";
+    return @"Unknown";
 }
 
 - (void)execute:(NSDictionary<NSString *, id> *)params
@@ -56,7 +56,7 @@
     NSArray<DownloadTaskItem *> *tasks = [[DownloadTaskManager sharedManager] allTasks];
 
     if (tasks.count == 0) {
-        completion(@"当前没有下载任务。", nil);
+        completion(@"There are no current download tasks.", nil);
         return;
     }
 
@@ -87,12 +87,12 @@
     NSError *jsonError = nil;
     NSData *data = [NSJSONSerialization dataWithJSONObject:result options:NSJSONWritingPrettyPrinted error:&jsonError];
     if (!data || jsonError) {
-        completion([NSString stringWithFormat:@"共 %lu 个下载任务（序列化失败：%@）",
-                    (unsigned long)items.count, jsonError.localizedDescription ?: @"未知错误"], nil);
+        completion([NSString stringWithFormat:@"%lu download tasks in total (serialization failed: %@)",
+                    (unsigned long)items.count, jsonError.localizedDescription ?: @"Unknown error"], nil);
         return;
     }
     NSString *json = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-    completion(json ?: @"序列化下载任务失败", nil);
+    completion(json ?: @"Failed to serialize download tasks", nil);
 }
 
 @end

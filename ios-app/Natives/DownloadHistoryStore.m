@@ -1,12 +1,12 @@
 #import "DownloadHistoryStore.h"
 
-/// 历史条目上限（LRU 裁尾）
+/// Maximum history entries (LRU tail trimming).
 static const NSUInteger kDownloadHistoryMaxEntries = 200;
 
 @interface DownloadHistoryStore ()
-@property (nonatomic, strong) dispatch_queue_t ioQueue;                    // 专用串行 IO 队列
-@property (nonatomic, strong) NSLock *lock;                                // 保护内存数组与 loaded 标记
-@property (nonatomic, strong) NSMutableArray<NSDictionary *> *entries;     // 新→旧
+@property (nonatomic, strong) dispatch_queue_t ioQueue;                    // Dedicated serial I/O queue.
+@property (nonatomic, strong) NSLock *lock;                                // Protects the in-memory array and loaded flag.
+@property (nonatomic, strong) NSMutableArray<NSDictionary *> *entries;     // Newest → oldest.
 @property (nonatomic, assign) BOOL loaded;
 @end
 
@@ -32,7 +32,7 @@ static const NSUInteger kDownloadHistoryMaxEntries = 200;
     return self;
 }
 
-#pragma mark - 路径
+#pragma mark - Paths
 
 - (NSString *)historyFilePath {
     NSString *directory = [NSHomeDirectory()
@@ -40,7 +40,7 @@ static const NSUInteger kDownloadHistoryMaxEntries = 200;
     return [directory stringByAppendingPathComponent:@"download_history.json"];
 }
 
-#pragma mark - 懒加载
+#pragma mark - Lazy loading
 
 - (void)ensureLoaded {
     [self.lock lock];
@@ -49,7 +49,8 @@ static const NSUInteger kDownloadHistoryMaxEntries = 200;
     [self.lock unlock];
     if (!needLoad) return;
 
-    // 首次访问：在串行队列上同步读取（读取完成后队列继续处理后续写入，保证顺序一致）
+    // First access: synchronously read on the serial queue (subsequent writes continue on the queue after
+    // the read, preserving order).
     dispatch_sync(self.ioQueue, ^{
         NSString *path = [self historyFilePath];
         NSData *data = [NSData dataWithContentsOfFile:path];
@@ -57,7 +58,7 @@ static const NSUInteger kDownloadHistoryMaxEntries = 200;
 
         id object = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
         if (![object isKindOfClass:[NSArray class]]) {
-            // 文件损坏：删除重建
+            // Corrupt file: delete and recreate.
             [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
             return;
         }
@@ -75,7 +76,7 @@ static const NSUInteger kDownloadHistoryMaxEntries = 200;
     });
 }
 
-#pragma mark - 公开接口
+#pragma mark - Public API
 
 - (void)recordEntryWithDictionary:(NSDictionary *)entry {
     if (!entry || entry.count == 0 || ![entry isKindOfClass:[NSDictionary class]]) return;
@@ -88,7 +89,7 @@ static const NSUInteger kDownloadHistoryMaxEntries = 200;
     [self ensureLoaded];
 
     [self.lock lock];
-    // 新条目插头部，超出上限裁尾（LRU）
+    // Insert new entries at the top; trim the tail (LRU) when over the limit.
     [self.entries insertObject:[mutableEntry copy] atIndex:0];
     if (self.entries.count > kDownloadHistoryMaxEntries) {
         [self.entries removeObjectsInRange:NSMakeRange(kDownloadHistoryMaxEntries,
@@ -121,7 +122,7 @@ static const NSUInteger kDownloadHistoryMaxEntries = 200;
     });
 }
 
-#pragma mark - 写盘
+#pragma mark - Write to disk
 
 - (void)writeEntriesToDisk:(NSArray<NSDictionary *> *)entries {
     NSString *path = [self historyFilePath];

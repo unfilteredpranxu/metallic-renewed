@@ -1334,7 +1334,7 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 
     // ===== 2. 游戏版本选择按钮 =====
     self.sidebarVersionButton = [self createSidebarSelectButtonWithTitle:localize(@"i18n_str_2031", nil)
-                                                                    value:@"全部版本"
+                                                                    value:@"All Versions"
                                                                   selector:@selector(sidebarVersionButtonClicked:)];
     [self.filterSidebarContainer addSubview:self.sidebarVersionButton];
     self.sidebarVersionTitleLabel = [self findSubviewInButton:self.sidebarVersionButton withTag:100];
@@ -1348,7 +1348,7 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 
     // ===== 3. 模组加载器选择按钮 =====
     self.sidebarLoaderButton = [self createSidebarSelectButtonWithTitle:localize(@"i18n_str_160", nil)
-                                                                   value:@"全部"
+                                                                   value:@"All"
                                                                  selector:@selector(sidebarLoaderButtonClicked:)];
     [self.filterSidebarContainer addSubview:self.sidebarLoaderButton];
     self.sidebarLoaderTitleLabel = [self findSubviewInButton:self.sidebarLoaderButton withTag:100];
@@ -3889,7 +3889,7 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
             NSLog(@"[JIT-FLOW] [DownloadVC] openURL apple-magnifier:// (TrollStore) -> %d", urlOK);
             if (!urlOK) {
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    showDialog(localize(@"Error", nil), @"apple-magnifier:// 无响应（TrollStore / StikDebug 未处理该 URL Scheme？）。请在 TrollStore 设置里启用 URL Scheme，或改用其它 JIT 开启方式。\napple-magnifier:// was not handled (TrollStore URL Scheme disabled?). Enable it in TrollStore settings, or use another JIT enabler.");
+                    showDialog(localize(@"Error", nil), @"apple-magnifier:// was not handled (TrollStore / StikDebug may not have registered this URL scheme). Enable the URL scheme in TrollStore settings, or use another JIT enabler.");
                 });
             }
         }];
@@ -3931,7 +3931,7 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
             NSLog(@"[JIT] [DownloadVC] openURL stikjit:// -> %d", urlOK);
             if (!urlOK) {
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    showDialog(localize(@"Error", nil), @"stikjit:// 无响应（未安装 StikDebug？）。请安装 StikDebug 后重试，或换用其它 JIT 开启方式。\nstikjit:// was not handled (StikDebug not installed?). Install StikDebug and retry.");
+                    showDialog(localize(@"Error", nil), @"stikjit:// was not handled (is StikDebug installed?). Install StikDebug and try again, or use another JIT enabler.");
                 });
             }
         }];

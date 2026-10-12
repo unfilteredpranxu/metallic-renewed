@@ -1,33 +1,33 @@
 #import "utils.h"
 // ModVersionTableViewCell.m
-// 参照 FCL/ZL2 的版本列表行设计，增强视觉层次：
-// - 圆角卡片容器（14pt 圆角 + 浅阴影 + 半透明背景），与 ModernAssetCell 视觉统一
-// - 左侧：版本名(15pt semibold) + 版本号(12pt secondary)
-// - 加载器徽章行：fabric/forge/quilt/neoforge 彩色 pill 标签（参照 ZL2 LittleTextLabel）
-// - 右侧：发布日期 + 文件大小 + 游戏版本（垂直右对齐）
-// - chevron 指示可点击进入下载
+// Based on the FCL/ZL2 version-list row design, with enhanced visual hierarchy:
+// - Rounded card container (14pt corners + light shadow + translucent background), visually consistent with ModernAssetCell.
+// - Left: version name (15pt semibold) + version number (12pt secondary).
+// - Loader badge row: colored fabric/forge/quilt/neoforge pill labels (based on ZL2 LittleTextLabel).
+// - Right: release date + file size + game version (right-aligned vertically).
+// - Chevron indicates that tapping opens the download page.
 //
-// 紧凑版：减小卡片 padding/字号/徽章高度，接近 VersionCardCell 的紧凑度
-// （cardContainer 上下间距 6→4，内部 padding 12→10，字号全面下调 1pt，徽章高度 18→16）
+// Compact variant: reduce card padding, font sizes, and badge height to approach VersionCardCell's compactness
+// (cardContainer vertical spacing 6→4, inner padding 12→10, all font sizes down 1pt, badge height 18→16).
 
 #import "ModVersionTableViewCell.h"
 #import "BackgroundManager.h"
 #import "ModLoaderIconHelper.h"
 
 @interface ModVersionTableViewCell ()
-// 卡片容器：圆角 + 阴影 + 半透明背景（统一视觉规范）
+// Card container: rounded corners + shadow + translucent background (shared visual standard).
 @property (nonatomic, strong) UIView *cardContainer;
-// 左侧信息区（版本名行 + 版本号 + 加载器徽章行）
+// Left information area (version-name row + version number + loader-badge row).
 @property (nonatomic, strong) UIStackView *leftStackView;
-// 版本名行（水平：nameLabel + releaseTypeBadge，参照 FCL 版本行的发布类型标签）
+// Version-name row (horizontal: nameLabel + releaseTypeBadge; based on FCL's release-type label).
 @property (nonatomic, strong) UIStackView *nameRowStack;
-// 加载器徽章容器（水平排列的彩色 pill 标签）
+// Loader-badge container (horizontally arranged colored pill labels).
 @property (nonatomic, strong) UIStackView *loaderBadgeStack;
-// 右侧信息区（日期 + 大小 + 游戏版本）
+// Right information area (date + size + game version).
 @property (nonatomic, strong) UIStackView *rightStackView;
-// 子视图
+// Subviews.
 @property (nonatomic, strong) UILabel *nameLabel;
-@property (nonatomic, strong) UILabel *releaseTypeBadge; // 发布类型徽章（Release/Beta/Alpha）
+@property (nonatomic, strong) UILabel *releaseTypeBadge; // Release-type badge (Release/Beta/Alpha).
 @property (nonatomic, strong) UILabel *versionNumberLabel;
 @property (nonatomic, strong) UILabel *datePublishedLabel;
 @property (nonatomic, strong) UILabel *fileSizeLabel;
@@ -50,7 +50,7 @@
     self.backgroundColor = [UIColor clearColor];
     self.contentView.backgroundColor = [UIColor clearColor];
 
-    // ===== 卡片容器：圆角 + 半透明背景 + 浅阴影（阶段3 UI 调整：圆角 14→12，阴影更轻）=====
+    // ===== Card container: rounded corners + translucent background + light shadow (Phase 3 UI adjustment: corners 14→12, lighter shadow) =====
     self.cardContainer = [[UIView alloc] init];
     self.cardContainer.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardContainer.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08];
@@ -64,7 +64,7 @@
     self.cardContainer.layer.shadowRadius = 4;
     [self.contentView addSubview:self.cardContainer];
 
-    // ===== 左侧：版本名行（含发布类型徽章）+ 版本号 =====
+    // ===== Left: version-name row (with release-type badge) + version number =====
     self.nameLabel = [[UILabel alloc] init];
     self.nameLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
     self.nameLabel.textColor = [UIColor labelColor];
@@ -75,7 +75,7 @@
     [self.nameLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.nameLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
 
-    // 发布类型徽章（Release/Beta/Alpha，参照 FCL/ZL2 版本行的发布类型标签）
+    // Release-type badge (Release/Beta/Alpha; based on FCL/ZL2 version-row labels).
     self.releaseTypeBadge = [[UILabel alloc] init];
     self.releaseTypeBadge.font = [UIFont systemFontOfSize:8 weight:UIFontWeightBold];
     self.releaseTypeBadge.textColor = [UIColor whiteColor];
@@ -85,11 +85,11 @@
     self.releaseTypeBadge.layer.masksToBounds = YES;
     self.releaseTypeBadge.translatesAutoresizingMaskIntoConstraints = NO;
     [self.releaseTypeBadge.heightAnchor constraintEqualToConstant:14].active = YES;
-    self.releaseTypeBadge.hidden = YES; // 默认隐藏，configureWithVersion 时按需显示
+    self.releaseTypeBadge.hidden = YES; // Hidden by default; shown as needed by configureWithVersion.
     [self.releaseTypeBadge setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self.releaseTypeBadge setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
 
-    // 版本名行（水平：nameLabel + releaseTypeBadge）
+    // Version-name row (horizontal: nameLabel + releaseTypeBadge).
     self.nameRowStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.nameLabel, self.releaseTypeBadge]];
     self.nameRowStack.axis = UILayoutConstraintAxisHorizontal;
     self.nameRowStack.spacing = 6;
@@ -105,7 +105,7 @@
     self.versionNumberLabel.minimumScaleFactor = 0.7;
     self.versionNumberLabel.lineBreakMode = NSLineBreakByTruncatingTail;
 
-    // 加载器徽章 stack（水平排列，configureWithVersion 时动态填充）
+    // Loader-badge stack (horizontal; populated dynamically by configureWithVersion).
     self.loaderBadgeStack = [[UIStackView alloc] init];
     self.loaderBadgeStack.axis = UILayoutConstraintAxisHorizontal;
     self.loaderBadgeStack.spacing = 5;
@@ -113,7 +113,7 @@
     self.loaderBadgeStack.distribution = UIStackViewDistributionFill;
     self.loaderBadgeStack.translatesAutoresizingMaskIntoConstraints = NO;
 
-    // 左侧主 stack（垂直：版本名行 → 版本号 → 加载器徽章行）
+    // Main left stack (vertical: version-name row → version number → loader-badge row).
     self.leftStackView = [[UIStackView alloc] initWithArrangedSubviews:@[self.nameRowStack, self.versionNumberLabel, self.loaderBadgeStack]];
     self.leftStackView.axis = UILayoutConstraintAxisVertical;
     self.leftStackView.spacing = 3;
@@ -121,7 +121,7 @@
     self.leftStackView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.cardContainer addSubview:self.leftStackView];
 
-    // ===== 右侧：日期 + 文件大小 + 游戏版本 =====
+    // ===== Right: date + file size + game version =====
     self.datePublishedLabel = [[UILabel alloc] init];
     self.datePublishedLabel.font = [UIFont systemFontOfSize:11];
     self.datePublishedLabel.textColor = [UIColor tertiaryLabelColor];
@@ -148,40 +148,40 @@
     self.rightStackView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.cardContainer addSubview:self.rightStackView];
 
-    // ===== 布局约束（阶段3 UI 调整：减小卡片左右边距 16→10，内部 padding 14→10）=====
+    // ===== Layout constraints (Phase 3 UI adjustment: reduce card horizontal margins 16→10, inner padding 14→10) =====
     [NSLayoutConstraint activateConstraints:@[
-        // 卡片容器充满 contentView，上下留 4pt 间距
+        // Card container fills contentView with 4pt spacing above and below.
         [self.cardContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:4],
         [self.cardContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:10],
         [self.cardContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-10],
         [self.cardContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-4],
 
-        // 左侧 stack：左 10，上下 8（阶段3 UI 调整：从 10 减到 8）
+        // Left stack: 10pt from the left and 8pt top/bottom (Phase 3 UI adjustment: reduced from 10).
         [self.leftStackView.leadingAnchor constraintEqualToAnchor:self.cardContainer.leadingAnchor constant:10],
         [self.leftStackView.topAnchor constraintEqualToAnchor:self.cardContainer.topAnchor constant:8],
         [self.leftStackView.bottomAnchor constraintEqualToAnchor:self.cardContainer.bottomAnchor constant:-8],
         [self.leftStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.rightStackView.leadingAnchor constant:-8],
 
-        // 右侧 stack：右 -28（留出 chevron 空间），垂直居中
+        // Right stack: 28pt from the right (to leave room for the chevron), vertically centered.
         [self.rightStackView.trailingAnchor constraintEqualToAnchor:self.cardContainer.trailingAnchor constant:-28],
         [self.rightStackView.centerYAnchor constraintEqualToAnchor:self.cardContainer.centerYAnchor]
     ]];
 
-    // 应用毛玻璃背景效果
+    // Apply the blur background effect.
     [[BackgroundManager sharedManager] applyEffectToView:self.cardContainer];
 }
 
 - (void)prepareForReuse {
     [super prepareForReuse];
-    // 清除加载器徽章，防止复用时残留
+    // Clear loader badges to prevent leftovers when the cell is reused.
     [self.loaderBadgeStack.arrangedSubviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
 }
 
-#pragma mark - 加载器徽章
+#pragma mark - Loader badges
 
-/// 创建单个加载器徽章 label（pill 样式，按加载器类型配色）
-/// 参照 ZL2 LittleTextLabel：fabric=蓝 / forge=棕 / quilt=红 / neoforge=橙 / optifine=黄
-/// 紧凑版：高度 16pt（原 18pt），字号 9pt（原 10pt），圆角 7（原 8）
+/// Creates a single loader-badge label (pill style, colored by loader type).
+/// Based on ZL2 LittleTextLabel: fabric=blue / forge=brown / quilt=red / neoforge=orange / optifine=yellow.
+/// Compact variant: height 16pt (previously 18pt), font 9pt (previously 10pt), corner radius 7 (previously 8).
 - (UILabel *)createLoaderBadge:(NSString *)loaderName {
     UILabel *badge = [[UILabel alloc] init];
     badge.text = loaderName;
@@ -195,23 +195,23 @@
     badge.translatesAutoresizingMaskIntoConstraints = NO;
     [badge setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [badge setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    // 高度固定 16pt（紧凑版，原 18pt）
+    // Fixed height of 16pt (compact variant; previously 18pt).
     [NSLayoutConstraint activateConstraints:@[
         [badge.heightAnchor constraintEqualToConstant:16]
     ]];
-    // 宽度 = 文字宽度 + 左右 padding 10pt（原 12pt）
+    // Width = text width + 10pt horizontal padding (previously 12pt).
     [badge sizeToFit];
     CGFloat textWidth = badge.frame.size.width;
     [badge.widthAnchor constraintEqualToConstant:textWidth + 10].active = YES;
     return badge;
 }
 
-/// 加载器名称 → 品牌色映射（统一委托 ModLoaderIconHelper，消除多文件配色不一致）
+/// Maps loader names to brand colors (delegates to ModLoaderIconHelper to eliminate inconsistent colors across files).
 - (UIColor *)colorForLoader:(NSString *)loader {
     return [ModLoaderIconHelper brandColorForLoader:loader];
 }
 
-/// 根据版本数据填充加载器徽章（最多显示 4 个，避免徽章过多溢出）
+/// Populates loader badges from version data (shows at most 4 to prevent overflow).
 - (void)configureLoaderBadges:(NSArray<NSString *> *)loaders {
     [self.loaderBadgeStack.arrangedSubviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
     if (![loaders isKindOfClass:[NSArray class]] || loaders.count == 0) return;
@@ -224,7 +224,7 @@
         [self.loaderBadgeStack addArrangedSubview:badge];
     }
 
-    // 如果超过 4 个，添加 "+N" 徽章（紧凑版：高度 16，宽度 24，字号 9）
+    // If there are more than 4, add a "+N" badge (compact variant: height 16, width 24, font 9).
     if (loaders.count > 4) {
         UILabel *moreBadge = [[UILabel alloc] init];
         moreBadge.text = [NSString stringWithFormat:@"+%ld", (long)(loaders.count - 4)];
@@ -233,7 +233,7 @@
         moreBadge.textAlignment = NSTextAlignmentCenter;
         moreBadge.backgroundColor = [UIColor tertiaryLabelColor];
         moreBadge.layer.cornerRadius = 7;
-        moreBadge.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+        moreBadge.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (consistent with system cards).
         moreBadge.layer.masksToBounds = YES;
         moreBadge.translatesAutoresizingMaskIntoConstraints = NO;
         [moreBadge setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
@@ -246,26 +246,26 @@
     }
 }
 
-#pragma mark - 配置
+#pragma mark - Configuration
 
 - (void)configureWithVersion:(ModVersion *)version {
     self.nameLabel.text = version.name;
     self.versionNumberLabel.text = version.versionNumber;
 
-    // 发布类型徽章（Release/Beta/Alpha，参照 FCL/ZL2 版本行的发布类型标签）
+    // Release-type badge (Release/Beta/Alpha; based on FCL/ZL2 version-row labels).
     NSString *vType = version.versionType.lowercaseString;
     if ([vType isEqualToString:@"release"] || vType.length == 0) {
-        // Release：绿色徽章
+        // Release: green badge.
         self.releaseTypeBadge.text = @" Release ";
         self.releaseTypeBadge.backgroundColor = [UIColor colorWithRed:0.30 green:0.75 blue:0.40 alpha:1.0];
         self.releaseTypeBadge.hidden = NO;
     } else if ([vType isEqualToString:@"beta"]) {
-        // Beta：橙色徽章
+        // Beta: orange badge.
         self.releaseTypeBadge.text = @" Beta ";
         self.releaseTypeBadge.backgroundColor = [UIColor colorWithRed:0.90 green:0.60 blue:0.10 alpha:1.0];
         self.releaseTypeBadge.hidden = NO;
     } else if ([vType isEqualToString:@"alpha"]) {
-        // Alpha：红色徽章
+        // Alpha: red badge.
         self.releaseTypeBadge.text = @" Alpha ";
         self.releaseTypeBadge.backgroundColor = [UIColor colorWithRed:0.85 green:0.30 blue:0.30 alpha:1.0];
         self.releaseTypeBadge.hidden = NO;
@@ -273,7 +273,7 @@
         self.releaseTypeBadge.hidden = YES;
     }
 
-    // 发布日期：ISO 8601 → 短日期格式
+    // Release date: ISO 8601 → short date format.
     NSISO8601DateFormatter *dateFormatter = [[NSISO8601DateFormatter alloc] init];
     NSDate *date = [dateFormatter dateFromString:version.datePublished];
     if (date) {
@@ -285,7 +285,7 @@
         self.datePublishedLabel.text = localize(@"i18n_str_460", nil);
     }
 
-    // 文件大小
+    // File size.
     if (version.primaryFile) {
         self.fileSizeLabel.text = [NSByteCountFormatter stringFromByteCount:[version.primaryFile[@"size"] longValue] countStyle:NSByteCountFormatterCountStyleFile];
     } else if (version.fileSize) {
@@ -294,10 +294,10 @@
         self.fileSizeLabel.text = localize(@"i18n_str_461", nil);
     }
 
-    // 游戏版本兼容
+    // Game-version compatibility.
     self.gameVersionsLabel.text = [version.gameVersions componentsJoinedByString:@", "];
 
-    // 加载器徽章（新增：参照 ZL2 的加载器 pill 标签）
+    // Loader badges (new: based on ZL2's loader pill labels).
     [self configureLoaderBadges:version.loaders];
 }
 

@@ -17,17 +17,17 @@
 }
 
 - (NSString *)summary {
-    return @"当需要用户做出决策（如选择版本、加载器、目标实例、挑选资源等）时使用。"
-           "\n参数（二选一）："
-           "\n  - questions（string 或 array）：JSON 数组或 NSArray，每项 @{question, options:[...], allowCustom:bool}。"
-           "\n  - 单问：question（string）+ options（array）+ allowCustom（bool，可选）。"
-           "\n流程：按顺序在主线程弹出选择向导，逐题收集用户选择；支持「自定义…」输入与「取消」。"
-           "\n全部完成后返回 JSON {\"answers\":[{\"question\":..,\"answer\":..}]}；"
-           "\n用户在任意一步取消则返回 {\"cancelled\":true}。"
-           "\n用法：先调用本工具拿到答案，再据此执行后续操作；不要臆测用户的选择。";
+    return @"Use when the user needs to make a decision (e.g. choose a version, loader, target instance, or asset)."
+           "\nParameters (choose one):"
+           "\n  - questions (string or array): JSON array or NSArray; each item is @{question, options:[...], allowCustom:bool}."
+           "\n  - Single question: question (string) + options (array) + allowCustom (bool, optional)."
+           "\nFlow: present a selection wizard on the main thread in order and collect the user's answer to each question; supports \"Custom…\" input and \"Cancel\"."
+           "\nAfter all questions are answered, return JSON {\"answers\":[{\"question\":..,\"answer\":..}]};"
+           "\nIf the user cancels at any step, return {\"cancelled\":true}."
+           "\nUsage: call this tool first to get the answers, then perform the subsequent operation accordingly; do not guess the user's choices.";
 }
 
-#pragma mark - 视图控制器定位
+#pragma mark - View controller lookup
 
 - (UIViewController * _Nullable)topmostPresentableViewController {
     UIWindow *keyWindow = nil;
@@ -48,7 +48,7 @@
     return top;
 }
 
-#pragma mark - 参数解析
+#pragma mark - Parameter parsing
 
 - (NSArray<NSDictionary *> *)parseSteps:(NSDictionary *)params {
     id questionsValue = params[@"questions"];
@@ -84,7 +84,7 @@
             }];
         }
     } else {
-        // 单问形式
+        // Single-question form
         id question = params[@"question"];
         if ([question isKindOfClass:[NSString class]] && [(NSString *)question length] > 0) {
             NSMutableArray *options = [NSMutableArray array];
@@ -104,7 +104,7 @@
     return steps;
 }
 
-#pragma mark - 执行
+#pragma mark - Execute
 
 - (void)execute:(NSDictionary<NSString *, id> *)params
      completion:(void (^)(NSString * _Nullable result, NSError * _Nullable error))completion {
@@ -112,11 +112,11 @@
     NSArray *steps = [self parseSteps:params];
     if (steps.count == 0) {
         NSError *err = [NSError errorWithDomain:@"AiTool" code:400
-                                       userInfo:@{NSLocalizedDescriptionKey: @"未提供有效问题（questions/question 参数缺失）"}];
+                                       userInfo:@{NSLocalizedDescriptionKey: @"No valid question provided (questions/question parameter missing)"}];
         completion(nil, err);
         return;
     }
-    // UI 一律主线程
+    // Always perform UI work on the main thread
     dispatch_async(dispatch_get_main_queue(), ^{
         [self presentStepAtIndex:0 steps:steps answers:[NSMutableArray array] completion:completion];
     });
@@ -126,7 +126,7 @@
                      steps:(NSArray *)steps
                    answers:(NSMutableArray *)answers
                 completion:(void (^)(NSString * _Nullable result, NSError * _Nullable error))completion {
-    // 全部问完 → 产出结果
+    // All questions answered → produce the result
     if (index >= steps.count) {
         NSDictionary *result = @{@"answers": answers};
         NSData *data = [NSJSONSerialization dataWithJSONObject:result options:0 error:nil];
@@ -141,7 +141,7 @@
 
     UIViewController *presentingVC = [self topmostPresentableViewController];
     if (!presentingVC) {
-        // 无可用 VC：取消处理
+        // No available view controller: handle as cancelled
         NSDictionary *cancelled = @{@"cancelled": @YES};
         NSData *data = [NSJSONSerialization dataWithJSONObject:cancelled options:0 error:nil];
         completion(data ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : @"{\"cancelled\":true}", nil);
@@ -153,7 +153,7 @@
                          message:nil
                   preferredStyle:UIAlertControllerStyleAlert];
 
-    // 选项按钮
+    // Option buttons
     for (NSString *option in options) {
         [alert addAction:[UIAlertAction actionWithTitle:option
                                                   style:UIAlertActionStyleDefault
@@ -163,28 +163,28 @@
         }]];
     }
 
-    // 自定义输入
+    // Custom input
     if (allowCustom) {
-        [alert addAction:[UIAlertAction actionWithTitle:@"自定义…"
+        [alert addAction:[UIAlertAction actionWithTitle:@"Custom…"
                                                   style:UIAlertActionStyleDefault
                                                 handler:^(UIAlertAction *action) {
             UIViewController *presenting2 = [self topmostPresentableViewController];
             UIAlertController *textAlert = [UIAlertController
                 alertControllerWithTitle:[NSString stringWithFormat:@"%lu. %@", (unsigned long)(index + 1), question]
-                                 message:@"请输入自定义回答"
+                                 message:@"Enter a custom answer"
                           preferredStyle:UIAlertControllerStyleAlert];
             [textAlert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
-                textField.placeholder = @"在此输入…";
+                textField.placeholder = @"Enter here…";
                 textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
             }];
-            [textAlert addAction:[UIAlertAction actionWithTitle:@"确定"
+            [textAlert addAction:[UIAlertAction actionWithTitle:@"OK"
                                                           style:UIAlertActionStyleDefault
                                                         handler:^(UIAlertAction *submit) {
                 NSString *text = [textAlert.textFields.firstObject.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
                 [answers addObject:@{@"question": question, @"answer": (text.length ? text : @"")}];
                 [self presentStepAtIndex:(index + 1) steps:steps answers:answers completion:completion];
             }]];
-            [textAlert addAction:[UIAlertAction actionWithTitle:@"取消"
+            [textAlert addAction:[UIAlertAction actionWithTitle:@"Cancel"
                                                           style:UIAlertActionStyleCancel
                                                         handler:^(UIAlertAction *cancel) {
                 [self finishWithCancel:completion];
@@ -194,8 +194,8 @@
         }]];
     }
 
-    // 取消
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消"
+    // Cancel
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel"
                                               style:UIAlertActionStyleCancel
                                             handler:^(UIAlertAction *action) {
         [self finishWithCancel:completion];

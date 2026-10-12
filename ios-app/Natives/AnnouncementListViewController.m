@@ -10,13 +10,13 @@
 #import "AnnouncementDetailViewController.h"
 #import "BackgroundManager.h"
 
-/// 卡片间距
+/// Card spacing.
 static const CGFloat kAnnCardSpacing = 12.0;
-/// 卡片内边距
+/// Card padding.
 static const CGFloat kAnnCardPadding = 14.0;
-/// 卡片圆角
+/// Card corner radius.
 static const CGFloat kAnnCardCornerRadius = 14.0;
-/// 高优先级卡片左侧条宽度
+/// Width of the bar on the left of high-priority cards.
 static const CGFloat kAnnHighPriorityBarWidth = 4.0;
 
 #pragma mark - AnnouncementCardCell
@@ -50,7 +50,7 @@ static const CGFloat kAnnHighPriorityBarWidth = 4.0;
         self.contentView.layer.cornerCurve = kCACornerCurveContinuous;
         self.contentView.clipsToBounds = YES;
 
-        // 高优先级左侧条（默认隐藏）
+        // Bar on the left of high-priority cards (hidden by default).
         _priorityBarView = [[UIView alloc] init];
         _priorityBarView.translatesAutoresizingMaskIntoConstraints = NO;
         _priorityBarView.backgroundColor = [UIColor systemBlueColor];
@@ -105,7 +105,7 @@ static const CGFloat kAnnHighPriorityBarWidth = 4.0;
     self.titleLabel.text = item.title ?: @"";
     self.dateLabel.text = item.formattedDateString ?: @"";
     self.summaryLabel.text = item.summary ?: @"";
-    // priority=high 时显示左侧蓝色条
+    // Show the blue bar on the left for priority=high.
     if ([item.priority caseInsensitiveCompare:@"high"] == NSOrderedSame) {
         self.priorityBarView.hidden = NO;
     } else {
@@ -134,7 +134,7 @@ static const CGFloat kAnnHighPriorityBarWidth = 4.0;
     self.title = localize(@"i18n_str_20", nil);
     self.view.backgroundColor = [UIColor systemBackgroundColor];
 
-    // 适配自定义启动器背景
+    // Adapt to the custom launcher background.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
     self.items = @[];
@@ -164,13 +164,13 @@ static const CGFloat kAnnHighPriorityBarWidth = 4.0;
 }
 
 - (void)setupNavBar {
-    // 左上角关闭按钮
+    // Close button in the top-left corner.
     UIBarButtonItem *closeItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemClose
                                                                                 target:self
                                                                                 action:@selector(closeAction)];
     self.navigationItem.leftBarButtonItem = closeItem;
 
-    // 右上角刷新按钮
+    // Refresh button in the top-right corner.
     UIBarButtonItem *refreshItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh
                                                                                   target:self
                                                                                   action:@selector(forceRefreshAction)];
@@ -178,7 +178,7 @@ static const CGFloat kAnnHighPriorityBarWidth = 4.0;
 }
 
 - (void)setupUI {
-    // 双列自适应布局（estimated height）
+    // Two-column adaptive layout (estimated height).
     UICollectionViewLayout *layout = [self createCompositionalLayout];
     self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -233,7 +233,7 @@ static const CGFloat kAnnHighPriorityBarWidth = 4.0;
     ]];
 }
 
-/// 双列自适应高度布局
+/// Two-column adaptive-height layout.
 - (UICollectionViewLayout *)createCompositionalLayout {
     UICollectionViewCompositionalLayoutConfiguration *config = [[UICollectionViewCompositionalLayoutConfiguration alloc] init];
     config.interSectionSpacing = kAnnCardSpacing;
@@ -330,7 +330,7 @@ static const CGFloat kAnnHighPriorityBarWidth = 4.0;
     AnnouncementCardCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"AnnouncementCardCell" forIndexPath:indexPath];
     AnnouncementItem *item = self.items[indexPath.item];
     [cell configureWithItem:item];
-    // 适配自定义启动器背景
+    // Adapt to the custom launcher background.
     [[BackgroundManager sharedManager] applyEffectToCollectionViewCell:cell];
     return cell;
 }

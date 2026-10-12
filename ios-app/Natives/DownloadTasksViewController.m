@@ -321,7 +321,7 @@ static const CGFloat kSectionInset = 16.0;
                 NSString *speedText = [self compactSpeedText:task.speed];
                 if (speedText.length > 0) {
                     self.speedLabel.text = [NSString
-                        // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
+                        // ★ [I18N-ORDER] Use the shared localize() entry point instead of bypassing language resolution.
                         stringWithFormat:localize(@"download.progress.file_count_short",
                                                            @"%1$ld/%2$ld · %3$@"),
                         (long)task.completedFileCount, (long)task.totalFileCount, speedText];
@@ -743,8 +743,8 @@ static const CGFloat kSectionInset = 16.0;
     self.historyButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.historyButton setImage:[UIImage systemImageNamed:@"clock.arrow.circlepath"] forState:UIControlStateNormal];
     self.historyButton.tintColor = [UIColor labelColor];
-    // ★ [I18N-ORDER] 统一入口 localize()(不再绕过语言解析)
-    self.historyButton.accessibilityLabel = localize(@"download.history.entry", @"历史");
+    // ★ [I18N-ORDER] Use the shared localize() entry point instead of bypassing language resolution.
+    self.historyButton.accessibilityLabel = localize(@"download.history.entry", @"History");
     [self.historyButton addTarget:self action:@selector(historyTapped:) forControlEvents:UIControlEventTouchUpInside];
     [self.headerView addSubview:self.historyButton];
 

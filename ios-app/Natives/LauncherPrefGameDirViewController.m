@@ -37,12 +37,12 @@
         }
     }
 
-    // 适配自定义启动器背景：将当前视图控制器透明化，让全局背景（图片/视频）能够透出显示。
-    // 放在 tableView 重新创建之后调用，确保 makeViewControllerTransparent 处理的是最终的 tableView。
+    // Adapt to the custom launcher background: make the current view controller transparent so the global background (image/video) shows through.
+    // Call after recreating the tableView to ensure makeViewControllerTransparent handles the final tableView.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
-    // 监听背景 UI 效果变化通知：当用户在背景设置中切换毛玻璃/半透明或调整透明度时，
-    // 重新调用 makeViewControllerTransparent 以应用最新的视觉效果，保证背景始终正确透出。
+    // Listen for background UI effect changes: when the user switches between glass/translucency or adjusts opacity in Background Settings,
+    // call makeViewControllerTransparent again to apply the latest appearance and keep the background showing through correctly.
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
@@ -57,37 +57,37 @@
     NSString *lasmPath = @(getenv("POJAV_GAME_DIR"));
     NSError *removeError = nil;
     [NSFileManager.defaultManager removeItemAtPath:lasmPath error:&removeError];
-    // removeItem 失败不一定是致命的（首次切换时 lasmPath 可能不存在），忽略并继续
+    // Failure to removeItem is not necessarily fatal (lasmPath may not exist during the first switch); ignore and continue.
 
     NSError *linkError = nil;
     BOOL linkOK = [NSFileManager.defaultManager createSymbolicLinkAtPath:lasmPath
                                                        withDestinationPath:multidirPath
                                                                      error:&linkError];
     if (!linkOK) {
-        // 符号链接创建失败：POJAV_GAME_DIR 仍是断链，后续所有路径都会失败。
-        // 提示用户并尽早返回，避免把状态搞得更乱。
+        // If symlink creation fails, POJAV_GAME_DIR remains a broken link and all subsequent paths will fail.
+        // Notify the user and return early to avoid further corrupting the state.
         NSLog(@"[GameDir] createSymbolicLink failed: %@", linkError.localizedDescription);
         showDialog(localize(@"Error", nil),
                    [NSString stringWithFormat:localize(@"i18n_str_363", nil), linkError.localizedDescription]);
         return;
     }
     [NSFileManager.defaultManager changeCurrentDirectoryPath:lasmPath];
-    // 切换 pref.instancePath 到新目录的 launcher_preferences.plist
-    // （内部会基于 POJAV_GAME_DIR 重新计算，已修复之前需重启启动器的 bug）
+    // Switch pref.instancePath to the launcher_preferences.plist in the new directory
+    // (it recalculates based on POJAV_GAME_DIR internally, fixing the previous need to restart the launcher).
     toggleIsolatedPref(NO);
 
-    // 刷新 PLProfiles 缓存，确保后续读取的是新游戏目录的 launcher_profiles.json
+    // Refresh the PLProfiles cache so subsequent reads use launcher_profiles.json from the new game directory.
     [PLProfiles updateCurrent];
 
-    // 尝试直接调用 reloadProfileList，如果 navigationController 响应该选择器
+    // Try calling reloadProfileList directly if the navigationController responds to this selector.
     if ([self.navigationController respondsToSelector:@selector(reloadProfileList)]) {
         [self.navigationController performSelector:@selector(reloadProfileList)];
     } else {
-        // 否则发送通知
+        // Otherwise, post a notification.
         [[NSNotificationCenter defaultCenter] postNotificationName:@"ReloadProfileList" object:nil];
     }
 
-    // 发送通知刷新版本配置和编辑 profile 界面
+    // Post a notification to refresh version settings and the profile editor.
     [[NSNotificationCenter defaultCenter] postNotificationName:@"SelectedProfileChanged" object:nil];
 }
 
@@ -205,7 +205,7 @@ viewForFooterInSection:(NSInteger)section
         menuItems = @[open];
     } else {
         UIAction *rename = [UIAction
-            actionWithTitle:localize(@"launcher.pref.gamedir.rename", nil)  // ★ [AUDIT-DECIDE] A-11：English 字面量当 key → 新增键
+            actionWithTitle:localize(@"launcher.pref.gamedir.rename", nil)  // ★ [AUDIT-DECIDE] A-11: Use an English literal as the key → add a new key.
             image:[UIImage systemImageNamed:@"pencil"]
             identifier:nil
             handler:^(UIAction *action) {
@@ -341,9 +341,9 @@ viewForFooterInSection:(NSInteger)section
     return YES;
 }
 
-/// 重新应用背景效果：当 BackgroundUIEffectChanged 通知到达时调用，
-/// 通过 BackgroundManager 重新设置当前视图控制器的透明度/毛玻璃效果，
-/// 确保 tableView 背景透明、全局背景能够正常透出。
+/// Reapply background effects when a BackgroundUIEffectChanged notification arrives,
+/// using BackgroundManager to reset the current view controller's opacity/glass effect
+/// so the tableView background is transparent and the global background shows through.
 - (void)reapplyBackgroundEffect {
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 }

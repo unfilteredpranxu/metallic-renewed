@@ -2,49 +2,51 @@
 //  GameMenuOverlayView.h
 //  Amethyst
 //
-//  参照 FCL MenuView 与 ZL2 GameScreen 的悬浮按钮设计：
-//  - 可拖拽的圆形设置按钮（位置持久化），替代原来的右滑条带
-//  - 可拖拽的 FPS/内存显示标签（位置持久化），可通过菜单开关
-//  - 点击设置按钮触发回调（打开菜单）
-//  - hitTest 穿透：只有按钮/标签区域拦截触摸，其他区域穿透到游戏画面
+//  Floating-button design modeled on FCL MenuView and ZL2 GameScreen:
+//  - Draggable circular settings button (position persisted), replacing the old right-side swipe strip
+//  - Draggable FPS/memory label (position persisted), shown/hidden through a menu switch
+//  - Tapping the settings button invokes a callback (opens the menu)
+//  - hitTest pass-through: only the button/label areas intercept touches; the rest pass through to the game
 //
 
 #import <UIKit/UIKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// 游戏内悬浮覆盖层：设置按钮 + FPS/内存显示
-/// 参照 FCL MenuView.java 与 ZL2 GameScreen.kt 的悬浮按钮设计
+/// In-game floating overlay: settings button + FPS/memory display.
+/// Floating-button design modeled on FCL MenuView.java and ZL2 GameScreen.kt.
 @interface GameMenuOverlayView : UIView
 
-/// 设置按钮点击回调（打开菜单）
+/// Settings-button tap callback (opens the menu).
 @property (nonatomic, copy, nullable) void (^onMenuButtonTapped)(void);
 
-/// 显示/隐藏整个覆盖层（FCL 的 hideMenuView 概念）
+/// Show/hide the entire overlay (FCL's hideMenuView concept).
 @property (nonatomic, assign) BOOL overlayHidden;
 
-/// 是否显示 FPS/内存统计标签（可通过菜单开关，参照 FCL）
+/// Whether to show the FPS/memory statistics label (switchable from the menu; modeled on FCL).
 @property (nonatomic, assign) BOOL statsLabelVisible;
 
-/// ★ [ISSUE-152] 是否显示设置悬浮球（「小齿轮」按钮）。
-/// 由设置页「自定义控制键 → 显示游戏内悬浮球」控（偏好键 control.menu_button_visible）。
-/// 默认 YES = 不改变现状；关掉后 menuButton 隐藏且 hitTest 不再拦截该区域触摸（触摸照常穿透到游戏）。
+/// ★ [ISSUE-152] Whether to show the floating settings button (the "gear" button).
+/// Controlled by Settings > Custom Controls > "Show in-game floating button"
+/// (preference key control.menu_button_visible).
+/// Default YES = preserve existing behavior. When off, menuButton is hidden and hitTest no longer
+/// intercepts touches in that area (touches continue through to the game).
 @property (nonatomic, assign) BOOL menuButtonVisible;
 
-/// 初始化并添加到指定父视图
+/// Initialize and add to the specified parent view.
 - (instancetype)initWithParentView:(UIView *)parentView;
 
-/// 更新 FPS 和内存显示（由游戏循环驱动，调用频率建议 500ms~1s）
-/// 必须在主线程调用
+/// Update the FPS and memory display (driven by the game loop; recommended call interval 500ms~1s).
+/// Must be called on the main thread.
 - (void)updateFPS:(NSInteger)fps memoryUsageMB:(double)memoryMB;
 
-/// 从偏好加载持久化的位置
+/// Load the persisted position from preferences.
 - (void)restorePositions;
 
-/// 保存当前位置到偏好
+/// Save the current position to preferences.
 - (void)savePositions;
 
-/// 切换 FPS/内存显示的开关状态
+/// Toggle FPS/memory display.
 - (void)toggleStatsLabel;
 
 @end

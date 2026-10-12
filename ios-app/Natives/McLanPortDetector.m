@@ -2,7 +2,7 @@
 //  McLanPortDetector.m
 //  Amethyst
 //
-//  ★ [PORT-AUTO] MC 局域网端口自动探测实现（只读日志，不 bind 端口）
+//  ★ [PORT-AUTO] Minecraft LAN port auto-detection implementation (reads logs only; does not bind a port)
 //
 
 #import "McLanPortDetector.h"
@@ -10,9 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-/// 单次日志读取上限（只读末尾，避免大日志拖慢主循环）
+/// Maximum bytes read per log (reads only the end to avoid slowing the main loop with large logs).
 static const NSUInteger kPortAutoReadCap = 8 * 1024 * 1024;
-static const uint16_t    kPortAutoMinPort = 1024;    // 非特权范围
+static const uint16_t    kPortAutoMinPort = 1024;    // Non-privileged range.
 static const uint16_t    kPortAutoMaxPort = 65535;
 static const NSTimeInterval kPortAutoPollInterval = 1.0;
 
@@ -47,7 +47,7 @@ static const NSTimeInterval kPortAutoPollInterval = 1.0;
     return _pollTimer != nil;
 }
 
-#pragma mark - 路径解析
+#pragma mark - Path resolution
 
 + (NSString *)launcherHome {
     const char *home = getenv("POJAV_HOME");
@@ -64,9 +64,9 @@ static const NSTimeInterval kPortAutoPollInterval = 1.0;
     return [NSString stringWithFormat:@"%@/instances/%@", home, name];
 }
 
-#pragma mark - 读取日志
+#pragma mark - Read logs
 
-/// 只读文件末尾 cap 字节（大日志不全量读）。
+/// Reads only the last cap bytes of a file (does not read large logs in full).
 static NSData *AmePortAutoReadTail(NSString *path, NSUInteger cap) {
     NSFileHandle *fh = [NSFileHandle fileHandleForReadingAtPath:path];
     if (fh == nil) return nil;
@@ -85,9 +85,9 @@ static NSString *AmePortAutoDataToText(NSData *data) {
     return text ?: @"";
 }
 
-#pragma mark - 解析
+#pragma mark - Parsing
 
-/// 具体的「开局域网」日志形态（大小写不敏感）。取最后一次出现的匹配。
+/// Specific "Open to LAN" log formats (case-insensitive). Uses the last matching occurrence.
 + (NSArray<NSRegularExpression *> *)specificPatterns {
     static NSArray<NSRegularExpression *> *patterns;
     static dispatch_once_t onceToken;
@@ -107,7 +107,7 @@ static NSString *AmePortAutoDataToText(NSData *data) {
     return patterns;
 }
 
-/// 含「局域网」关键词的整行（兜底：形态未知时用）。
+/// A full line containing a LAN keyword (fallback for unknown formats).
 + (NSRegularExpression *)genericLinePattern {
     static NSRegularExpression *re;
     static dispatch_once_t onceToken;
@@ -117,7 +117,7 @@ static NSString *AmePortAutoDataToText(NSData *data) {
     return re;
 }
 
-/// 取一行里【最后一个】形如端口的数字（1024..65535）；无则 0。
+/// Returns the last port-like number on a line (1024..65535), or 0 if none.
 + (uint16_t)lastPortInLine:(NSString *)line {
     static NSRegularExpression *numRe;
     static dispatch_once_t onceToken;
@@ -141,7 +141,7 @@ static NSString *AmePortAutoDataToText(NSData *data) {
     __block NSUInteger bestLoc = NSNotFound;
     NSRange full = NSMakeRange(0, text.length);
 
-    /* 1) 具体形态 */
+    /* 1) Specific formats */
     for (NSRegularExpression *re in [self specificPatterns]) {
         [re enumerateMatchesInString:text options:0 range:full
                           usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
@@ -157,7 +157,7 @@ static NSString *AmePortAutoDataToText(NSData *data) {
         }];
     }
 
-    /* 2) 兜底：含关键词的整行里取端口（仍以「最后一次出现」为准） */
+    /* 2) Fallback: find the port on a full line containing a keyword (still use the last occurrence). */
     NSRegularExpression *generic = [self genericLinePattern];
     if (generic) {
         [generic enumerateMatchesInString:text options:0 range:full
@@ -191,7 +191,7 @@ static NSString *AmePortAutoDataToText(NSData *data) {
         uint16_t port = [self parsePortFromLogText:text];
         NSLog(@"[PORT-AUTO] scan path=%@ size=%lu mtime=%.0f -> port=%u",
               path, (unsigned long)data.length, mtime, port);
-        /* 取「有匹配且 mtime 最新」的那份 = 最近一次开局域网 */
+        /* Use the file with a match and the newest mtime = the most recent LAN session. */
         if (port > 0 && mtime >= bestMtime) {
             bestMtime = mtime;
             bestPort = port;
@@ -200,7 +200,7 @@ static NSString *AmePortAutoDataToText(NSData *data) {
     return bestPort;
 }
 
-/// 追加某个 logs 目录下的 *.log / *.txt（按 mtime 降序）。
+/// Appends *.log / *.txt files from a logs directory, sorted by mtime descending.
 + (void)appendLogCandidatesInDirectory:(NSString *)logsDir to:(NSMutableArray<NSString *> *)paths {
     NSFileManager *fm = [NSFileManager defaultManager];
     BOOL isDir = NO;
@@ -240,7 +240,7 @@ static NSString *AmePortAutoDataToText(NSData *data) {
     return [self detectPortInLogFiles:paths];
 }
 
-#pragma mark - 轮询
+#pragma mark - Polling
 
 - (void)startPollingGameDirectory:(NSString *)gameDir
                      launcherHome:(NSString *)home

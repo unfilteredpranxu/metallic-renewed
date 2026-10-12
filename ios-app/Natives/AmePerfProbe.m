@@ -1,23 +1,24 @@
 //
 //  AmePerfProbe.m
-//  ★ [PERF] 低开销滚动帧率探针实现（默认关闭；口径与用法见 AmePerfProbe.h 头部）
+//  ★ [PERF] Low-overhead scrolling frame-rate probe implementation (disabled by default; see the
+//  top of AmePerfProbe.h for criteria and usage).
 //
 
 #import "AmePerfProbe.h"
 #import "LauncherPreferences.h"
 #import <QuartzCore/QuartzCore.h>
 
-// ★ [PERF] 判据常量（单一事实源）
-static const double kAmePerfFrameBudgetMs = 1000.0 / 60.0;   // 16.67ms = 60fps 单帧预算
-static const double kAmePerfSevereMs      = 1000.0 / 30.0;   // 33.33ms = 已掉到 30fps 以下
-// 数组维度必须是真正的编译期常量：用 enum 而不是 `static const int`
-// （后者在 C 里不是常量表达式，clang 会以 -Wgnu-folding-constant 折叠成扩展 VLA）。
+// ★ [PERF] Criteria constants (single source of truth).
+static const double kAmePerfFrameBudgetMs = 1000.0 / 60.0;   // 16.67ms = 60fps per-frame budget
+static const double kAmePerfSevereMs      = 1000.0 / 30.0;   // 33.33ms = below 30fps
+// Array dimensions must be true compile-time constants: use enum rather than `static const int`
+// (the latter is not a constant expression in C; clang folds it into an extension VLA with -Wgnu-folding-constant).
 enum {
-    kAmePerfMaxFrames = 4096,                                // 单会话最多保存的帧样本数
-    kAmePerfMaxWorst  = 8,                                   // 最多记录几个「最重帧」
+    kAmePerfMaxFrames = 4096,                                // Maximum frame samples to keep per session
+    kAmePerfMaxWorst  = 8,                                   // Maximum number of "slowest frames" to record
 };
-static const double kAmePerfIdleTimeout   = 0.25;            // 无滚动活动多久后结束本会话(秒)
-static const double kAmePerfGapResetMs    = 500.0;           // 单帧 >500ms 视作断档，不计入
+static const double kAmePerfIdleTimeout   = 0.25;            // End the session after this much inactivity (seconds)
+static const double kAmePerfGapResetMs    = 500.0;           // Treat a frame >500ms as a gap and exclude it
 
 static int amePerfCmpDouble(const void *a, const void *b) {
     double x = *(const double *)a;
@@ -36,7 +37,7 @@ static int amePerfCmpDouble(const void *a, const void *b) {
     CFTimeInterval _lastTimestamp;
     BOOL _haveLastTimestamp;
     CFTimeInterval _lastActivity;
-    int _frameCount;      // 本会话测量到的帧数（可超过 kAmePerfMaxFrames；分布只统计前 kAmePerfMaxFrames 个）
+    int _frameCount;      // Frames measured in this session (may exceed kAmePerfMaxFrames; distribution uses only the first kAmePerfMaxFrames)
     int _jankCount;
     int _severeCount;
     int _worstCount;
@@ -65,7 +66,7 @@ static int amePerfCmpDouble(const void *a, const void *b) {
     }
     cached = on ? 1 : 0;
     if (on) {
-        NSLog(@"[PERF] AmePerfProbe 已启用 (判据: >16.7ms=jank, >33.4ms=severe, 占比<1%%&&severe==0=流畅)");
+        NSLog(@"[PERF] AmePerfProbe enabled (criteria: >16.7ms=jank, >33.4ms=severe, percentage<1%%&&severe==0=smooth)");
     }
     return on;
 }
@@ -167,14 +168,14 @@ static int amePerfCmpDouble(const void *a, const void *b) {
           n, avg, p95, maxMs,
           kAmePerfFrameBudgetMs, _jankCount, jankPct,
           kAmePerfSevereMs, _severeCount,
-          smooth ? @"判定:流畅" : @"判定:有卡顿");
+          smooth ? @"result:smooth" : @"result:stuttering");
 
     if (_severeCount > 0) {
         NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithCapacity:(NSUInteger)_worstCount];
         for (int i = 0; i < _worstCount; i++) {
             [parts addObject:[NSString stringWithFormat:@"%.1fms", _worstMs[i]]];
         }
-        NSLog(@"[PERF][scroll] tag=%@ 最重帧(共 %d 次 severe,记录 %d 个): %@",
+        NSLog(@"[PERF][scroll] tag=%@ slowest frames (%d severe events, %d recorded): %@",
               self.sessionTag ?: @"?", _severeCount, _worstCount,
               [parts componentsJoinedByString:@", "]);
     }

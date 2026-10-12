@@ -2,14 +2,14 @@
 //  AISystemPromptEditorViewController.m
 //  Amethyst
 //
-//  AI 系统提示词编辑页实现。
+//  AI system prompt editor page implementation.
 //
 
 #import "AISystemPromptEditorViewController.h"
 #import "AiSettings.h"
 #import "BackgroundManager.h"
 #import "LauncherPreferences.h"
-#import "utils.h"   // ★ [HOST-BUG-A] 统一取词 localize()
+#import "utils.h"   // ★ [HOST-BUG-A] Use localize() consistently
 
 @interface AISystemPromptEditorViewController () <UITextViewDelegate>
 @property (nonatomic, strong) UITextView *textView;
@@ -18,52 +18,52 @@
 
 @implementation AISystemPromptEditorViewController
 
-// ★ [LAND-BUG] 本页由设置页以模态 UINavigationController(root) 弹出，左上原本是「恢复默认」、
-//   右上是「保存」，没有关闭入口 ⇒ 不想保存时退不出去。模态时在最左补一个「关闭」。
+// ★ [LAND-BUG] This page is presented as the root of a modal UINavigationController from Settings. The top left was "Restore Defaults",
+//   and the top right was "Save", with no close option ⇒ users could not exit without saving. Add "Close" on the far left when modal.
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     UINavigationController *nav = self.navigationController;
     if (nav.presentingViewController == nil || nav.viewControllers.firstObject != self) return;
-    if (self.navigationItem.leftBarButtonItems.count >= 2) return;   // 已注入
+    if (self.navigationItem.leftBarButtonItems.count >= 2) return;   // Already injected
     UIBarButtonItem *landBugCloseItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemClose
                                                                                       target:self
                                                                                       action:@selector(landBugCloseTapped)];
-    landBugCloseItem.accessibilityLabel = @"关闭";
+    landBugCloseItem.accessibilityLabel = @"Close";
     NSMutableArray<UIBarButtonItem *> *items = [NSMutableArray arrayWithObject:landBugCloseItem];
     if (self.navigationItem.leftBarButtonItem) {
-        [items addObject:self.navigationItem.leftBarButtonItem];   // 保留「恢复默认」
+        [items addObject:self.navigationItem.leftBarButtonItem];   // Keep "Restore Defaults"
     }
     self.navigationItem.leftBarButtonItems = items;
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = localize(@"ai.system_prompt.title", @"系统提示词");   // ★ [HOST-BUG-A]
+    self.title = localize(@"ai.system_prompt.title", @"System Prompt");   // ★ [HOST-BUG-A]
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
     self.view.backgroundColor = [[UIColor labelColor] colorWithAlphaComponent:0.04];
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
-    // 恢复默认
-    UIBarButtonItem *resetItem = [[UIBarButtonItem alloc] initWithTitle:@"恢复默认"
+    // Restore defaults
+    UIBarButtonItem *resetItem = [[UIBarButtonItem alloc] initWithTitle:@"Restore Defaults"
                                                                   style:UIBarButtonItemStylePlain
                                                                  target:self
                                                                  action:@selector(resetAction)];
     self.navigationItem.leftBarButtonItem = resetItem;
-    // 保存
-    UIBarButtonItem *saveItem = [[UIBarButtonItem alloc] initWithTitle:@"保存"
+    // Save
+    UIBarButtonItem *saveItem = [[UIBarButtonItem alloc] initWithTitle:@"Save"
                                                                  style:UIBarButtonItemStyleDone
                                                                 target:self
                                                                 action:@selector(saveAction)];
     self.navigationItem.rightBarButtonItem = saveItem;
 
     [self setupUI];
-    // 进入时载入当前系统提示词
+    // Load the current system prompt when opening
     self.textView.text = [[AiSettings sharedSettings] systemPrompt];
     [self.textView becomeFirstResponder];
 }
 
 - (void)setupUI {
-    // 卡片容器
+    // Card container
     self.cardView = [[UIView alloc] init];
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08];
@@ -78,16 +78,16 @@
     [[BackgroundManager sharedManager] applyEffectToView:self.cardView];
     [self.view addSubview:self.cardView];
 
-    // 提示文案
+    // Help text
     UILabel *hintLabel = [[UILabel alloc] init];
     hintLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    hintLabel.text = @"这会注入到每次对话的最前面，用于约定 Air 助手的行为方式。";
+    hintLabel.text = @"This is prepended to every conversation to define how the Air assistant should behave.";
     hintLabel.font = [UIFont systemFontOfSize:12];
     hintLabel.textColor = [UIColor secondaryLabelColor];
     hintLabel.numberOfLines = 0;
     [self.view addSubview:hintLabel];
 
-    // 多行文本编辑区
+    // Multiline text editor
     self.textView = [[UITextView alloc] init];
     self.textView.translatesAutoresizingMaskIntoConstraints = NO;
     self.textView.delegate = self;
@@ -115,7 +115,7 @@
     ]];
 }
 
-#pragma mark - 动作
+#pragma mark - Actions
 
 - (void)resetAction {
     [self.textView setText:[AiSettings defaultSystemPrompt]];
@@ -124,8 +124,8 @@
 - (void)saveAction {
     NSString *text = [self.textView.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     [[AiSettings sharedSettings] setSystemPrompt:text];
-    // ★ [LAND-BUG] 本页只由设置页以模态 UINavigationController(root) 弹出(LauncherPreferencesViewController:1208)，
-    //   此时 pop 是空操作 ⇒ 保存后页面不退、也无其他出口。改走 dismiss（与 ResourcePacksManagerViewController.closeTapped 同款兼容写法）。
+    // ★ [LAND-BUG] This page is only presented as the root of a modal UINavigationController from Settings (LauncherPreferencesViewController:1208),
+    //   so pop is a no-op ⇒ after saving the page remains open with no way out. Use dismiss instead (same compatibility pattern as ResourcePacksManagerViewController.closeTapped).
     if (self.navigationController && self.navigationController.viewControllers.firstObject != self) {
         [self.navigationController popViewControllerAnimated:YES];
     } else {

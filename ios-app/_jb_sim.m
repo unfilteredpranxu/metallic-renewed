@@ -73,8 +73,9 @@ static NSString *gAmeJBFamilyTag = nil;     // Dopamine / palera1n / unc0ver / c
 static NSString *gAmeJBSummary = nil;
 static dispatch_once_t gAmeJBDetectOnce = 0;
 
-// dyld 已加载镜像名（小写全路径）是否包含任一 needle。镜像注入是沙盒下最可靠的越狱证据：
-// 越狱的 tweak 注入库一定出现在本进程镜像表里（RootHide 隐藏名单里的 App 除外）。
+// Check whether any dyld-loaded image name (lowercase full path) contains a needle. Image injection is the
+// most reliable jailbreak signal in a sandbox: an injected jailbreak tweak library must appear in this
+// process's image list (except for apps on RootHide's hidden list).
 static BOOL ameJBAnyLoadedImageContains(NSArray<NSString *> *needles) {
     for (uint32_t i = 0; i < _dyld_image_count(); i++) {
         const char *ip = _dyld_get_image_name(i);
@@ -91,8 +92,9 @@ static BOOL ameJBFileExists(NSString *path) {
     return path.length > 0 && access(path.fileSystemRepresentation, F_OK) == 0;
 }
 
-// RootHide 随机 jbroot 目录扫描（.jbroot-<hex>）。仅无沙盒进程可列，列不到不算失败
-// （dyld 证据已足以判定）。同时扫 /var（IOSSecuritySuite 记录过的落点）。
+// Scan for RootHide's randomized jbroot directories (.jbroot-<hex>). Only unsandboxed processes can enumerate
+// them, so failure to list them is not a failure (dyld evidence is sufficient to decide). Also scan /var,
+// where IOSSecuritySuite has recorded locations.
 static BOOL ameJBFindRandomJBROOT(void) {
     const char *parents[] = { "/var/containers/Bundle/Application", "/var" };
     for (size_t p = 0; p < sizeof(parents) / sizeof(parents[0]); p++) {
@@ -108,13 +110,13 @@ static BOOL ameJBFindRandomJBROOT(void) {
 }
 
 static void ameJBDetectEnvironmentOnce(void) {
-    // ① RootHide：随机 jbroot 注入库 / 环境库（roothide 系）。名字被随机化的
-    //    systemhook.dylib 不作判据，改认 .jbroot- 路径段与 roothideinit/libroothide/libvroot。
+    // ① RootHide: randomized jbroot injection/environment libraries (roothide family). Do not rely on
+    //    systemhook.dylib, whose name may be randomized; instead look for the .jbroot- path segment and roothideinit/libroothide/libvroot.
     if (ameJBAnyLoadedImageContains(@[@".jbroot-", @"roothideinit.dylib", @"libroothide", @"libvroot"])) {
         gAmeJBRootTag = @"roothide";
     }
 
-    // ② 注入框架（四类）：ElleKit（Dopamine/palera1n/roothide 现代默认）/
+    // ② Injection frameworks (four families): ElleKit (modern default for Dopamine/palera1n/roothide)/
     //    libhooker（Taurine/Odyssey）/ Substitute / CydiaSubstrate（unc0ver/checkra1n）。
     if (ameJBAnyLoadedImageContains(@[@"libellekit.dylib", @"/ellekit/"])) {
         gAmeJBFrameworkTag = @"ElleKit";
@@ -128,11 +130,11 @@ static void ameJBDetectEnvironmentOnce(void) {
                                              @"substratebootstrap", @"substrate-inserter"])) {
         gAmeJBFrameworkTag = @"CydiaSubstrate";
     } else if (ameJBAnyLoadedImageContains(@[@"systemhook.dylib", @"libblackjack.dylib"])) {
-        // Dopamine 自有注入（某些机型/配置下 ElleKit 不可见时兜底；非 Substrate 系）。
+        // Dopamine's own injection (fallback when ElleKit is not visible on some devices/configurations; not a Substrate family).
         gAmeJBFrameworkTag = @"Dopamine(systemhook)";
     }
 
-    // ③ 磁盘证据（沙盒下可能 EPERM/ENOENT，命中即用，未命中不否决）。
+    // ③ On-disk evidence (may return EPERM/ENOENT in a sandbox; a hit is sufficient, but a miss does not disprove a jailbreak).
     BOOL diskRootless =
         ameJBFileExists(@"/var/jb") || ameJBFileExists(@"/var/jb/usr/bin") ||
         ameJBFileExists(@"/var/jb/usr/lib/libellekit.dylib") ||
@@ -154,19 +156,19 @@ static void ameJBDetectEnvironmentOnce(void) {
         platformBit = (csFlags & CS_PLATFORM_BINARY) != 0;
     }
 
-    // ④ 越狱根形态归类。
+    // ④ Classify the jailbreak root type.
     if (gAmeJBRootTag == nil) {
         if (diskRootHide) {
             gAmeJBRootTag = @"roothide";
         } else if (diskRootless || (gAmeJBFrameworkTag != nil && !diskRootful)) {
-            // 有注入框架但无固定 /var/jb 也归 rootless（现代越狱注入即越狱）。
+            // An injection framework without a fixed /var/jb path is still rootless (modern jailbreak injection indicates a jailbreak).
             gAmeJBRootTag = @"rootless";
         } else if (diskRootful || platformBit) {
             gAmeJBRootTag = @"rootful";
         }
     }
 
-    // ⑤ 越狱家族（尽力而为，仅用于日志/诊断）。
+    // ⑤ Jailbreak family (best effort; for logging/diagnostics only).
     if (ameJBFileExists(@"/Applications/Dopamine.app") ||
         ameJBFileExists(@"/var/mobile/Library/Preferences/com.opa334.Dopamine.plist") ||
         ameJBAnyLoadedImageContains(@[@"libblackjack.dylib", @"systemhook.dylib"])) {
@@ -207,7 +209,7 @@ static void ameJBDetectEnvironmentOnce(void) {
         if (gAmeJBFamilyTag)     [s appendFormat:@" (%@)", gAmeJBFamilyTag];
         gAmeJBSummary = s.copy;
     }
-    // 可辨识日志：越狱环境分类（env=1 None / 2 Rootful / 3 Rootless / 4 RootHide）。
+    // Machine-readable log: jailbreak environment classification (env=1 None / 2 Rootful / 3 Rootless / 4 RootHide).
     NSLog(@"[JB-ADAPT] jailbreak env detect: env=%ld root=%@ framework=%@ family=%@ -> %@",
           (long)gAmeJBEnvironment, gAmeJBRootTag ?: @"none",
           gAmeJBFrameworkTag ?: @"none", gAmeJBFamilyTag ?: @"none", gAmeJBSummary);

@@ -277,7 +277,7 @@
             NSString *name = AmeLauncherDisplayNameAnnotatedForLanguageCode(AmeLauncherEffectiveLanguageCode());
             if (override.length == 0) {
                 return [NSString stringWithFormat:@"%@（%@）", name,
-                        localize(@"preference.lang.follow_system", @"跟随系统")];
+                        localize(@"preference.lang.follow_system", @"Follow System")];
             }
             return name;
         }
@@ -285,9 +285,9 @@
         if ([section isEqualToString:@"ai"]) {
             if ([key isEqualToString:@"safety_mode"]) {
                 switch ([[AiSettings sharedSettings] safetyMode]) {
-                    case AiSafetyModeSafe:  return @"只读自动执行（Safe）";
-                    case AiSafetyModeAsk:   return @"写操作逐次确认（Ask）";
-                    case AiSafetyModeYOLO:  return @"自动批准（YOLO）";
+                    case AiSafetyModeSafe:  return @"Read-Only Auto-Execute (Safe)";
+                    case AiSafetyModeAsk:   return @"Confirm Each Write (Ask)";
+                    case AiSafetyModeYOLO:  return @"Auto-Approve (YOLO)";
                 }
             }
             if ([key isEqualToString:@"markdown_enabled"]) {
@@ -319,9 +319,9 @@
                     mode = (AiSafetyMode)[value integerValue];
                 } else if ([value isKindOfClass:[NSString class]]) {
                     NSString *s = value;
-                    if ([s containsString:@"逐次确认"]) {
+                    if ([s containsString:@"Confirm Each Write"]) {
                         mode = AiSafetyModeAsk;
-                    } else if ([s containsString:@"自动批准"]) {
+                    } else if ([s containsString:@"Auto-Approve"]) {
                         mode = AiSafetyModeYOLO;
                     }
                 }
@@ -1409,7 +1409,7 @@
             // AI 助手 settings（Air AI Agent Phase 2）
             @{@"icon": @"sparkles"},
             @{@"key": @"provider_config",
-              @"title": @"提供商配置",
+              @"title": @"Provider Configuration",
               @"icon": @"globe.asia.australia.fill",
               @"type": self.typeButton,
               @"action": ^void(){
@@ -1420,7 +1420,7 @@
               }
             },
             @{@"key": @"session_list",
-              @"title": @"会话列表",
+              @"title": @"Session List",
               @"icon": @"rectangle.stack.badge.person.crop",
               @"type": self.typeButton,
               @"action": ^void(){
@@ -1431,27 +1431,27 @@
               }
             },
             @{@"key": @"safety_mode",
-              @"title": @"默认安全模式",
+              @"title": @"Default Safety Mode",
               @"icon": @"hand.raised.fill",
               @"type": self.typePickField,
               @"pickKeys": @[
-                  @"只读自动执行（Safe）",
-                  @"写操作逐次确认（Ask）",
-                  @"自动批准（YOLO）"
+                  @"Read-Only Auto-Execute (Safe)",
+                  @"Confirm Each Write (Ask)",
+                  @"Auto-Approve (YOLO)"
               ],
               @"pickList": @[
-                  @"只读自动执行（Safe）",
-                  @"写操作逐次确认（Ask）",
-                  @"自动批准（YOLO）"
+                  @"Read-Only Auto-Execute (Safe)",
+                  @"Confirm Each Write (Ask)",
+                  @"Auto-Approve (YOLO)"
               ]
             },
             @{@"key": @"markdown_enabled",
-              @"title": @"Markdown 渲染",
+              @"title": @"Markdown Rendering",
               @"icon": @"textformat",
               @"type": self.typeSwitch
             },
             @{@"key": @"system_prompt",
-              @"title": @"系统提示词",
+              @"title": @"System Prompt",
               @"icon": @"text.book.closed.fill",
               @"type": self.typeButton,
               @"action": ^void(){
@@ -1512,7 +1512,8 @@
                                                  name:@"OpenCurseForgeAPIKeySettings"
                                                object:nil];
 
-    // ★ [LANG-SWITCH] 语言切换后刷新本页文案（标题/详情都经 localize 现取 ⇒ 即时生效）。
+    // ★ [LANG-SWITCH] Refresh this page's text after a language change (titles/details are
+    // resolved through localize() at display time and take effect immediately).
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(handleLauncherLanguageChanged:)
                                                  name:@"AmeLauncherLanguageChanged"
@@ -1769,7 +1770,7 @@
         alertControllerWithTitle:title
                          message:message
                   preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:localize(@"OK", @"好的")
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"OK", @"OK")
                                               style:UIAlertActionStyleDefault
                                             handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
@@ -1793,12 +1794,12 @@
         alertControllerWithTitle:title
                          message:message
                   preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:localize(@"check_update.download", @"前往下载")
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"check_update.download", @"Go to Download")
                                               style:UIAlertActionStyleDefault
                                             handler:^(UIAlertAction *action) {
         [UpdateChecker openReleasePage];
     }]];
-    [alert addAction:[UIAlertAction actionWithTitle:localize(@"Cancel", @"取消")
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"Cancel", @"Cancel")
                                               style:UIAlertActionStyleCancel
                                             handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
@@ -1808,15 +1809,15 @@
 
 - (void)showMemoryLimitHelp {
     UIAlertController *alert = [UIAlertController
-        alertControllerWithTitle:localize(@"mem_help.title", @"关于内存限制")
+        alertControllerWithTitle:localize(@"mem_help.title", @"About Memory Limits")
                          message:localize(@"mem_help.message",
-                             @"iOS 18 / iOS 26 单实例内存上限约为 1440MB，玩大型整合包时可能因内存不足崩溃。\n\n"
-                              "解决方法：\n"
-                              "使用 GetMoreRam (LiveContainer 插件) 解除内存限制。\n"
-                              "GetMoreRam 仓库：github.com/hugeBlack/GetMoreRam\n\n"
-                              "安装后重启启动器即可生效。\n\n"
-                              "如果不使用 LiveContainer，可尝试降低内存分配（设置 > Java > 内存分配），"
-                              "但部分整合包在内存限制下可能无法正常运行。")
+                             @"On iOS 18 / iOS 26, the per-instance memory limit is about 1440 MB. Large modpacks may crash due to insufficient memory.\n\n"
+                              "Solution:\n"
+                              "Use GetMoreRam (a LiveContainer plugin) to remove the memory limit.\n"
+                              "GetMoreRam repository: github.com/hugeBlack/GetMoreRam\n\n"
+                              "Restart the launcher after installation for the change to take effect.\n\n"
+                              "If you do not use LiveContainer, try reducing the memory allocation (Settings > Java > Memory Allocation), "
+                              "but some modpacks may not run properly under the memory limit.")
                   preferredStyle:UIAlertControllerStyleAlert];
 
     [alert addAction:[UIAlertAction actionWithTitle:@"GetMoreRam"
@@ -2091,7 +2092,8 @@
         return versionString;
     }
 
-    // ★ [I18N-ORDER] 走统一入口 localize():有译文用译文,无译文保留原默认(" ")。
+    // ★ [I18N-ORDER] Use the shared localize() entry point: use a translation when available,
+    // otherwise retain the original default (" ").
     NSString *footerKey = [NSString stringWithFormat:@"preference.section.footer.%@", self.prefSections[section]];
     NSString *footer = localize(footerKey, nil);
     if ([footer isEqualToString:footerKey]) footer = @" ";

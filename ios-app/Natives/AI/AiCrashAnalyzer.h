@@ -2,8 +2,8 @@
 //  AiCrashAnalyzer.h
 //  Amethyst
 //
-//  Air AI Agent 崩溃分析工具（只读）：match_known_errors。
-//  对传入的日志/崩溃报告做内置规则关键词匹配，返回结构化分析结果。
+//  Air AI Agent crash analysis tool (read-only): match_known_errors.
+//  Matches built-in rule keywords against the provided log/crash report and returns structured analysis results.
 //
 
 #import <Foundation/Foundation.h>

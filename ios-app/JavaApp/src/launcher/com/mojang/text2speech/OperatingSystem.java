@@ -1,17 +1,19 @@
 package com.mojang.text2speech;
 
 /**
- * Task 73：复刻真实 text2speech 1.19.12 的 OperatingSystem 枚举。
+ * Task 73: Reproduces the OperatingSystem enum from the real text2speech 1.19.12 library.
  *
- * ModernFix（suppress_narrator_stacktrace，Fabulously Optimized v14.x 自带）
- * 的 GameNarratorMixin 引用 OperatingSystem.get()/ordinal()，其内部 switch-map
- * 合成类调用 values()；桩包缺失该枚举会在运行期抛
+ * ModernFix (suppress_narrator_stacktrace, bundled with Fabulously Optimized
+ * v14.x) has a GameNarratorMixin that references OperatingSystem.get()/ordinal().
+ * Its generated switch-map class calls values(); without this enum, the stub
+ * package throws at runtime:
  * NoClassDefFoundError: com/mojang/text2speech/OperatingSystem。
  *
- * 真实检测逻辑（自 1.19.12 jar 反编译确认）：os.name 转小写后
- * contains("linux") → LINUX、contains("win") → WINDOWS、contains("mac") → MAC_OS，
- * 其余 UNSUPPORTED。iOS 上 os.name = "Mac OS X" → MAC_OS（走 dummy 叙述器路径，
- * 平台叙述器不会被构造）。detectWith 字段仅为 API 形状对齐，无外部调用方。
+ * Real detection logic (confirmed by decompiling the 1.19.12 jar): lowercase
+ * os.name, then contains("linux") → LINUX, contains("win") → WINDOWS, and
+ * contains("mac") → MAC_OS; all others are UNSUPPORTED. On iOS, os.name is
+ * "Mac OS X", so the dummy narrator path is used and no platform narrator is
+ * constructed. The detectWith field is retained for API shape only; it has no callers.
  */
 public enum OperatingSystem {
     LINUX("linux"),

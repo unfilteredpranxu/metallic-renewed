@@ -2,28 +2,28 @@
 //  virgl_server.m
 //  Amethyst-iOS-MyRemastered
 //
-//  Task 111：VirGLRenderer(≤26.2)（ZalithLauncher2 移植）—— 服务端引导桥。
+//  Task 111: VirGLRenderer (≤26.2) server bootstrap bridge (ported from ZalithLauncher2).
 //
-//  架构（对齐 ZL2 virgl_bridge.c 的进程内模型，宿主 GL 换成我们的 ANGLE/Metal）：
+//  Architecture (matching the in-process model in ZL2 virgl_bridge.c, with our ANGLE/Metal as the host GL):
 //
-//    MC(LWJGL) --gl*--> libOSMesaVirgl.dylib(Mesa 25.0.7 virgl 驱动, GALLIUM_DRIVER=virgl)
-//        --vtest 协议(unix socket, VTEST_SOCKET_NAME)--> libvtestserver.dylib
-//        (virglrenderer 1.3.0 + libepoxy) --epoxy(EGL/GLES)--> ANGLE 框架 --> Metal
+//    MC(LWJGL) --gl*--> libOSMesaVirgl.dylib (Mesa 25.0.7 virgl driver, GALLIUM_DRIVER=virgl)
+//        --vtest protocol (unix socket, VTEST_SOCKET_NAME)--> libvtestserver.dylib
+//        (virglrenderer 1.3.0 + libepoxy) --epoxy(EGL/GLES)--> ANGLE framework --> Metal
 //
-//    呈现：复用 osm_bridge 的 zink 链路（OSMesaMakeCurrent + swap 时
-//    glReadPixels 权威回读 + CGImage 上屏）。guest 的 glReadPixels 经
-//    vtest transfer 从服务端取回像素，天然正确。
+//    Presentation: reuse the zink path in osm_bridge (OSMesaMakeCurrent + authoritative glReadPixels readback
+//    during swap + display through CGImage). The guest's glReadPixels retrieves pixels from the server through
+//    vtest transfer, so the result is correct by design.
 //
-//  本文件只做三件事：
-//    1. 确定 socket 路径并设置 VTEST_SOCKET_NAME / GALLIUM_DRIVER=virgl
-//    2. 用随 app 打包的 ANGLE 框架创建一个离屏(1x1 pbuffer) ES3 宿主上下文
-//    3. 起一个线程：MakeCurrent 后调 libvtestserver.dylib 的 vtest_main(
-//       "--no-loop-or-fork" "--use-gles" "--socket-path" <path>)
-//       （vrend 内部经 epoxy 在同一 EGL display 上按需创建自己的 GLES 上下文）
+//  This file does only three things:
+//    1. Determine the socket path and set VTEST_SOCKET_NAME / GALLIUM_DRIVER=virgl.
+//    2. Create an offscreen (1x1 pbuffer) ES3 host context using the ANGLE framework bundled with the app.
+//    3. Start a thread that calls libvtestserver.dylib's vtest_main after MakeCurrent with
+//       "--no-loop-or-fork" "--use-gles" "--socket-path" <path>.
+//       (vrend uses epoxy to create its own GLES context on the same EGL display as needed.)
 //
-//  注意：vtest_server 内部错误路径会 exit(1)（上游行为，ZL2 同款），
-//  socket 采用 unlink+bind，二次启动安全；--no-loop-or-fork 单客户端
-//  单发服务，guest 断开即返回。
+//  Note: internal vtest_server error paths call exit(1) (upstream behavior, also present in ZL2).
+//  The socket uses unlink+bind, making a second startup safe; --no-loop-or-fork serves one client
+//  and returns when the guest disconnects.
 //
 
 #import <Foundation/Foundation.h>
@@ -37,8 +37,8 @@
 #include "virgl_server.h"
 
 // ---------------------------------------------------------------------------
-// raw ANGLE EGL 函数指针（从随 app 打包的 libEGL.framework 解析；
-// 与 gl_bridge.m 的 raw ANGLE 同款做法，保持本文件自包含）
+// Raw ANGLE EGL function pointers (resolved from the libEGL.framework bundled with the app;
+// uses the same raw ANGLE approach as gl_bridge.m and keeps this file self-contained).
 // ---------------------------------------------------------------------------
 typedef unsigned int EGLBoolean;
 typedef void *EGLDisplay;
@@ -48,7 +48,7 @@ typedef void *EGLContext;
 typedef intptr_t EGLNativeDisplayType;
 typedef intptr_t EGLint;
 
-static EGLDisplay (*ame_vs_eglGetDisplay)(EGLNativeDisplayType);   // ★ [SHADER-GLSLANG] build-unblock: EGL 的 eglGetDisplay 返回 EGLDisplay(void*), 原 typedef 误写 EGLBoolean 导致 native 编译 -Wint-conversion 报错(挡全仓出包)
+static EGLDisplay (*ame_vs_eglGetDisplay)(EGLNativeDisplayType);   // ★ [SHADER-GLSLANG] Build unblock: EGL eglGetDisplay returns EGLDisplay (void*); the old typedef incorrectly used EGLBoolean, causing a native -Wint-conversion error that blocked the full build.
 static EGLBoolean (*ame_vs_eglInitialize)(EGLDisplay, EGLint *, EGLint *);
 static EGLBoolean (*ame_vs_eglBindAPI)(unsigned int);
 static EGLBoolean (*ame_vs_eglChooseConfig)(EGLDisplay, const EGLint *, EGLConfig *, EGLint, EGLint *);
@@ -62,10 +62,10 @@ static EGLContext ame_vs_context;
 static char ame_vs_socket_path[512];
 static int ame_vs_started = 0;
 
-// vtest server 入口（libvtestserver.dylib 导出；上游 vtest_server.c:135）
+// vtest server entry point (exported by libvtestserver.dylib; upstream vtest_server.c:135).
 static int (*ame_vs_vtest_main)(int argc, char **argv);
 
-// EGL 常量（避免引入 EGL 头依赖）
+// EGL constants (avoid an EGL header dependency).
 #define AME_VS_EGL_DEFAULT_DISPLAY   ((EGLNativeDisplayType)0)
 #define AME_VS_EGL_OPENGL_ES_API     0x30A0
 #define AME_VS_EGL_SURFACE_TYPE      0x3033
@@ -83,8 +83,8 @@ static int (*ame_vs_vtest_main)(int argc, char **argv);
 
 static void *ame_vs_server_thread(void *arg __unused)
 {
-    // ZL2 同款顺序：先 MakeCurrent（vrend 经 epoxy 感知当前上下文/display），
-    // 再进 vtest 主循环。
+    // Same order as ZL2: MakeCurrent first (vrend detects the current context/display through epoxy),
+    // then enter the vtest main loop.
     if (ame_vs_eglMakeCurrent(ame_vs_display, ame_vs_pbuffer, ame_vs_pbuffer, ame_vs_context) != 1) {
         NSLog(@"[VirGL] Task111 host eglMakeCurrent failed -- server thread aborting");
         return NULL;
@@ -102,7 +102,7 @@ static void *ame_vs_server_thread(void *arg __unused)
     }
 
     NSLog(@"[VirGL] Task111 starting vtest server (no-loop-or-fork, use-gles, socket=%s)", ame_vs_socket_path);
-    // getopt_long 要求 argv[argc] == NULL；参数与 ZL2 完全一致（外加显式 socket 路径）
+    // getopt_long requires argv[argc] == NULL; arguments match ZL2 exactly, with an explicit socket path added.
     char arg0[] = "vtest";
     char arg1[] = "--no-loop-or-fork";
     char arg2[] = "--use-gles";
@@ -116,10 +116,10 @@ static void *ame_vs_server_thread(void *arg __unused)
 int ame_virgl_start_server(void)
 {
     if (ame_vs_started) {
-        return 0; // 幂等
+        return 0; // Idempotent.
     }
 
-    // ---- 1. socket 路径 + guest 环境变量（必须在 osm_bridge dlopen guest 之前）----
+    // ---- 1. Socket path + guest environment variables (must be set before osm_bridge dlopens the guest). ----
     const char *pojavHome = getenv("POJAV_HOME");
     if (!pojavHome || !*pojavHome) {
         pojavHome = getenv("HOME");
@@ -129,7 +129,7 @@ int ame_virgl_start_server(void)
     setenv("VTEST_SOCKET_NAME", ame_vs_socket_path, 1);
     setenv("GALLIUM_DRIVER", "virgl", 1);
 
-    // ---- 2. raw ANGLE EGL：离屏宿主上下文 ----
+    // ---- 2. Raw ANGLE EGL: offscreen host context. ----
     void *egl = dlopen("@rpath/libEGL.framework/libEGL", RTLD_NOW | RTLD_LOCAL);
     if (!egl) {
         NSLog(@"[VirGL] Task111 dlopen ANGLE libEGL failed: %s", dlerror() ?: "unknown");
@@ -198,12 +198,12 @@ int ame_virgl_start_server(void)
         return -1;
     }
 
-    // ---- 3. 服务线程 ----
+    // ---- 3. Service thread. ----
     pthread_t thread;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    // vrend 着色器编译可能在服务端深度递归，给足栈（对齐 main_hook 32MB 经验值）
+    // vrend shader compilation can recurse deeply on the server; provide a large stack (based on the 32 MB main_hook value).
     pthread_attr_setstacksize(&attr, 16 * 1024 * 1024);
     int rc = pthread_create(&thread, &attr, ame_vs_server_thread, NULL);
     pthread_attr_destroy(&attr);
@@ -212,8 +212,8 @@ int ame_virgl_start_server(void)
         return -1;
     }
 
-    // ZL2 同款：给服务端 100ms 完成 bind+listen 进入 accept（backlog 也会兜住
-    // 更早到来的连接，这里只是额外保险）
+    // Same as ZL2: allow the server 100 ms to finish bind+listen and enter accept (the backlog also handles
+    // earlier connections; this is an additional safeguard).
     usleep(100 * 1000);
 
     ame_vs_started = 1;

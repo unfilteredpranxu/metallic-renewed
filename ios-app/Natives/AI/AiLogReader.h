@@ -2,9 +2,9 @@
 //  AiLogReader.h
 //  Amethyst
 //
-//  Air AI Agent 日志读取工具（只读）：
-//    - read_latest_log：读取当前选中实例的 logs/latest.log（截断末尾 4000 字符）。
-//    - read_crash_report：读取最新的崩溃报告 .txt（截断 6000 字符）。
+//  Air AI Agent log reader tools (read-only):
+//    - read_latest_log: reads logs/latest.log for the currently selected instance (truncated to the last 4000 characters).
+//    - read_crash_report: reads the latest crash report .txt (truncated to 6000 characters).
 //
 
 #import <Foundation/Foundation.h>
@@ -18,7 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) NSString *summary;
 @property (nonatomic, readonly) AiToolPermission permission;
 
-/// 指定工具名（read_latest_log / read_crash_report）
+/// Set the tool name (read_latest_log / read_crash_report)
 - (instancetype)initWithName:(NSString *)name;
 
 @end

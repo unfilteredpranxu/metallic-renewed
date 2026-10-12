@@ -6,16 +6,16 @@
 #import "AIInputBarView.h"
 #import "LauncherPreferences.h"
 
-/// 输入胶囊高度
+/// Input capsule height
 static const CGFloat kInputFieldHeight = 38.0;
-/// 模型标签高度
+/// Model label height
 static const CGFloat kModelLabelHeight = 14.0;
-/// 栏上/下内边距
+/// Top/bottom bar padding
 static const CGFloat kBarTopPadding = 2.0;
 static const CGFloat kBarBottomPadding = 2.0;
-/// 按钮尺寸
+/// Button size
 static const CGFloat kSendButtonSize = 40.0;
-/// 水平外边距
+/// Horizontal outer margin
 static const CGFloat kBarHMargin = 16.0;
 
 @interface AIInputBarView ()
@@ -48,7 +48,7 @@ static const CGFloat kBarHMargin = 16.0;
     self.backgroundColor = [UIColor clearColor];
     _bottomInset = 0;
 
-    // 模型名称标签
+    // Model name label
     self.modelLabel = [[UILabel alloc] init];
     self.modelLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.modelLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
@@ -60,11 +60,11 @@ static const CGFloat kBarHMargin = 16.0;
     [self.modelLabel addGestureRecognizer:tap];
     [self addSubview:self.modelLabel];
 
-    // 输入胶囊
+    // Input capsule
     self.inputField = [[UITextField alloc] init];
     self.inputField.translatesAutoresizingMaskIntoConstraints = NO;
     self.inputField.borderStyle = UITextBorderStyleNone;
-    self.inputField.placeholder = @"给 Air 发送消息…";
+    self.inputField.placeholder = @"Send a message to Air…";
     self.inputField.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.10];
     self.inputField.textColor = [UIColor labelColor];
     self.inputField.font = [UIFont systemFontOfSize:16];
@@ -75,13 +75,13 @@ static const CGFloat kBarHMargin = 16.0;
     self.inputField.clearsOnBeginEditing = NO;
     self.inputField.leftViewMode = UITextFieldViewModeAlways;
     self.inputField.leftView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 12, kInputFieldHeight)];
-    // 连续圆角胶囊
+    // Continuous rounded capsule
     self.inputField.layer.cornerRadius = kInputFieldHeight / 2.0;
     self.inputField.layer.cornerCurve = kCACornerCurveContinuous;
     self.inputField.layer.masksToBounds = YES;
     [self addSubview:self.inputField];
 
-    // 发送/停止按钮
+    // Send/stop button
     self.sendButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.sendButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.sendButton.tintColor = accentColor();
@@ -89,7 +89,7 @@ static const CGFloat kBarHMargin = 16.0;
     [self.sendButton addTarget:self action:@selector(sendButtonTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.sendButton];
 
-    // 约束（自顶向下堆叠，栏高由 heightConstraint 决定）
+    // Constraints (stacked from top to bottom; height is determined by heightConstraint)
     [NSLayoutConstraint activateConstraints:@[
         [self.modelLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:kBarTopPadding],
         [self.modelLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12],
@@ -107,7 +107,7 @@ static const CGFloat kBarHMargin = 16.0;
         [self.sendButton.heightAnchor constraintEqualToConstant:kSendButtonSize],
     ]];
 
-    // 栏高度 = 顶部 + 标签 + 间距 + 输入框 + 底间距 + bottomInset
+    // Bar height = top + label + spacing + input field + bottom padding + bottomInset
     CGFloat baseHeight = kBarTopPadding + kModelLabelHeight + 2 + kInputFieldHeight + kBarBottomPadding;
     self.heightConstraint = [self.heightAnchor constraintEqualToConstant:baseHeight];
     [self.heightConstraint setActive:YES];
@@ -148,7 +148,7 @@ static const CGFloat kBarHMargin = 16.0;
 #pragma mark - Actions
 
 - (void)textFieldDidChange {
-    // 空输入时禁用发送
+    // Disable sending when the input is empty
     NSString *trimmed = [self.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     self.sendButton.enabled = trimmed.length > 0;
 }

@@ -132,8 +132,9 @@ NSMutableDictionary* createButton(NSString* name, int* keycodes, NSString* dynam
 
     static char lastDirection = -2;
     char direction = -1;
-    // Flux 同款修复：沿轴正推时必有一分量为 0，要求两分量都非零会把四正方向
-    // 误判为回中。这里测的是"偏离中心"，任一分量非零即成立。
+    // Same fix as Flux: when pushing straight along an axis, one component is zero.
+    // Requiring both components to be nonzero misclassifies all four cardinal directions as centered.
+    // This checks for any deviation from center, so a nonzero value in either component is sufficient.
     if (xValue != 0 || yValue != 0) {
         CGFloat degree = atan2f(yValue, xValue) * (180.0 / M_PI);
         if (degree < 0) {
@@ -201,8 +202,8 @@ NSMutableDictionary* createButton(NSString* name, int* keycodes, NSString* dynam
 }
 
 - (void)update {
-    // ★ [DEMINE] NSAssert 在发布包中仍生效(未定义 NS_BLOCK_ASSERTIONS)：摇杆脱离
-    //   父视图后的一次 update 会崩整个 App。降级为记日志并跳过(正常路径不变)。
+    // ★ [DEMINE] NSAssert is still active in Release builds (NS_BLOCK_ASSERTIONS is undefined):
+    //   one update after the joystick leaves its parent view would crash the entire app. Log and skip instead (normal path unchanged).
     if (self.superview == nil) {
         NSLog(@"[DEMINE] ControlJoystick -update called with nil superview; skipping");
         return;

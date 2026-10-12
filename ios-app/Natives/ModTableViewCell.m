@@ -2,10 +2,10 @@
 //  ModTableViewCell.m
 //  Amethyst
 //
-//  Mod 卡片 Cell 实现（继承 ResourceCardTableViewCell）。
-//  卡片三层背景 / 圆角 / 阴影 / 选中态视觉由基类提供，
-//  本类仅补充 Mod 专属内容：图标（jar 内嵌 > 加载器品牌 > 语义色回退）、
-//  文字三行（名称 / 文件名 / 版本·游戏版本）、启用开关与在线模式按钮。
+//  Mod card cell implementation (inherits ResourceCardTableViewCell).
+//  The base class provides the three-layer card background, corner radius, shadow, and selected-state appearance.
+//  This class adds only mod-specific content: icons (embedded JAR > loader brand > semantic-color fallback),
+//  three lines of text (name / filename / version · game version), the enable switch, and online-mode buttons.
 //
 
 #import "ModTableViewCell.h"
@@ -17,10 +17,10 @@
 #import <QuartzCore/QuartzCore.h>
 
 @interface ModTableViewCell ()
-// 当前配置的 Mod 与显示模式（外观变化时用于重新加载图标）
+// Current mod configuration and display mode (used to reload icons when appearance changes).
 @property (nonatomic, strong, nullable) ModItem *currentMod;
 @property (nonatomic, assign) ModTableViewCellDisplayMode currentMode;
-// 在线模式专属 accessory（懒加载，本地列表不创建）
+// Online-mode-only accessory (lazily loaded; not created for the local list).
 @property (nonatomic, strong, nullable) UIButton *downloadButton;
 @property (nonatomic, strong, nullable) UIButton *openLinkButton;
 @end
@@ -32,7 +32,7 @@
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
-        // 触发基类懒加载创建启用开关插槽并绑定事件（本地模式显示）
+        // Trigger the base class's lazy creation of the enable-switch slot and bind its event (shown in local mode).
         [self.toggleSwitch addTarget:self action:@selector(toggleTapped) forControlEvents:UIControlEventValueChanged];
     }
     return self;
@@ -46,7 +46,7 @@
 
     [self configureIconForMod:mod];
 
-    // 主标题：显示名（回退文件名）
+    // Main title: display name (falls back to filename).
     self.nameLabel.text = mod.displayName.length > 0 ? mod.displayName
                        : (mod.fileName.length > 0 ? mod.fileName : mod.basename);
 
@@ -57,9 +57,9 @@
     }
 }
 
-/// 配置左侧图标：
-/// jar 内嵌图标 > 加载器品牌图标（PNG/SF Symbol，ModLoaderIconHelper 统一）> puzzlepiece 回退
-/// 图标容器背景使用加载器品牌色（无加载器信息时用 Mod 语义色橙色）
+/// Configures the leading icon:
+/// embedded JAR icon > loader brand icon (PNG/SF Symbol, standardized by ModLoaderIconHelper) > puzzlepiece fallback.
+/// The icon-container background uses the loader brand color, or the mod semantic orange when no loader is known.
 - (void)configureIconForMod:(ModItem *)mod {
     NSString *loaderName = nil;
     if (mod.isFabric) {
@@ -74,40 +74,40 @@
     self.iconContainer.backgroundColor = brandColor ?: [UIColor systemOrangeColor];
 
     if (mod.icon) {
-        // 本地已解析的 jar 内嵌图标（pack.png 等）：直接显示，不做着色
+        // Locally parsed embedded JAR icon (e.g. pack.png): display directly without tinting.
         self.iconImageView.image = mod.icon;
         self.iconImageView.tintColor = nil;
         return;
     }
 
     if (loaderName) {
-        // 加载器品牌图标：PNG 优先（保持原色），SF Symbol 回退（品牌色着色）
+        // Loader brand icon: prefer PNG (preserve original colors), fall back to a tinted SF Symbol (brand color).
         [ModLoaderIconHelper configureImageView:self.iconImageView
                                       forLoader:loaderName
                               traitCollection:self.traitCollection];
     } else {
         self.iconImageView.image = nil;
     }
-    // 无图标可用时的语义色回退（容器内 SF Symbol，非裸图标）
+    // Semantic-color fallback when no icon is available (SF Symbol inside a container, not a bare icon).
     if (!self.iconImageView.image) {
         self.iconImageView.image = [UIImage systemImageNamed:@"puzzlepiece.extension.fill"];
         self.iconImageView.tintColor = [UIColor whiteColor];
     }
 }
 
-/// 本地模式：副标题 = 文件名，元信息 = 版本 · 游戏版本，右侧 = 启用开关
+/// Local mode: subtitle = filename, metadata = version · game version, trailing accessory = enable switch.
 - (void)configureLocalContent:(ModItem *)mod {
     self.subtitleLabel.text = mod.fileName.length > 0 ? mod.fileName : mod.basename;
     self.subtitleLabel.hidden = (self.subtitleLabel.text.length == 0);
 
-    // 版本信息行：v版本 · MC 游戏版本（两者都缺省时隐藏）
+    // Version information row: version · Minecraft version (hidden when both are missing).
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
     if (mod.version.length > 0) [parts addObject:[NSString stringWithFormat:@"v%@", mod.version]];
     if (mod.gameVersion.length > 0) [parts addObject:[NSString stringWithFormat:@"MC %@", mod.gameVersion]];
     self.detailLabel.text = [parts componentsJoinedByString:@" · "];
     self.detailLabel.hidden = (parts.count == 0);
 
-    // accessory：本地模式只显示启用开关（基类插槽，stack 自动收起隐藏项）
+    // Accessory: local mode shows only the enable switch (base-class slot; stack automatically collapses hidden items).
     self.toggleSwitch.hidden = NO;
     if (self.downloadButton) self.downloadButton.hidden = YES;
     if (self.openLinkButton) self.openLinkButton.hidden = YES;
@@ -116,7 +116,7 @@
     [self updateToggleState:mod.disabled];
 }
 
-/// 在线模式：副标题 = 作者，元信息 = 下载量，右侧 = 链接 + 下载按钮
+/// Online mode: subtitle = author, metadata = downloads, trailing accessories = link + download button.
 - (void)configureOnlineContent:(ModItem *)mod {
     self.subtitleLabel.text = [NSString stringWithFormat:@"by %@", mod.author ?: @"Unknown"];
 
@@ -126,7 +126,7 @@
     self.detailLabel.text = [NSString stringWithFormat:localize(@"resman.mods.download_count", nil), downloadsStr];
     self.detailLabel.hidden = NO;
 
-    // accessory：隐藏开关，显示链接 + 下载
+    // Accessory: hide the switch and show link + download.
     self.toggleSwitch.hidden = YES;
     self.downloadButton.hidden = NO;
     self.openLinkButton.hidden = NO;
@@ -135,7 +135,7 @@
     self.contentView.alpha = 1.0;
 }
 
-#pragma mark - Lazy accessory（在线模式专属）
+#pragma mark - Lazy accessory (online mode only)
 
 - (UIButton *)downloadButton {
     if (!_downloadButton) {
@@ -182,7 +182,7 @@
 
 - (void)updateToggleState:(BOOL)disabled {
     [self.toggleSwitch setOn:!disabled animated:YES];
-    // 已禁用 Mod 整体降透明度（含文字与图标，与旧版视觉一致）
+    // Reduce opacity for the entire disabled mod (including text and icon), matching the previous appearance.
     self.contentView.alpha = disabled ? 0.6 : 1.0;
 }
 
@@ -190,7 +190,7 @@
     self.updateBadge.hidden = !available;
 }
 
-#pragma mark - Trait Collection（深浅色切换重载加载器 PNG 图标）
+#pragma mark - Trait Collection (reload loader PNG icons when switching light/dark appearance)
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];
@@ -204,7 +204,7 @@
 #pragma mark - Reuse
 
 - (void)prepareForReuse {
-    [super prepareForReuse]; // 基类已复位文字 / 图标 / accessory 插槽
+    [super prepareForReuse]; // The base class has already reset text, icon, and accessory slots.
     self.contentView.alpha = 1.0;
     if (self.downloadButton) self.downloadButton.hidden = YES;
     if (self.openLinkButton) self.openLinkButton.hidden = YES;

@@ -21,33 +21,33 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // 适配自定义启动器背景：将当前视图控制器透明化，使全局背景壁纸能够透出
+    // Adapt to the custom launcher background: make this view controller transparent so the global wallpaper shows through.
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
     self.title = localize(@"i18n_str_319", nil);
     self.view.backgroundColor = [UIColor blackColor];
     
-    // 添加导航栏按钮
+    // Add navigation-bar buttons.
     UIBarButtonItem *cancelButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancelTapped)];
     self.navigationItem.leftBarButtonItem = cancelButton;
     
     UIBarButtonItem *doneButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(doneTapped)];
     self.navigationItem.rightBarButtonItem = doneButton;
     
-    // 计算缩放比例和裁剪区域
+    // Calculate the scale and crop region.
     [self calculateCropRect];
     
-    // 创建图片视图
+    // Create the image view.
     self.imageView = [[UIImageView alloc] init];
     self.imageView.image = self.sourceImage;
     self.imageView.contentMode = UIViewContentModeScaleAspectFit;
     self.imageView.frame = self.cropRect;
     [self.view addSubview:self.imageView];
     
-    // 创建裁剪覆盖层
+    // Create the crop overlay.
     [self createCropOverlay];
     
-    // 添加手势识别
+    // Add gesture recognizers.
     UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
     [self.imageView addGestureRecognizer:panGesture];
     self.imageView.userInteractionEnabled = YES;
@@ -55,14 +55,15 @@
     UIPinchGestureRecognizer *pinchGesture = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinch:)];
     [self.imageView addGestureRecognizer:pinchGesture];
 
-    // 监听背景 UI 效果变化通知，当用户切换背景效果（半透明/毛玻璃）时重新应用透明化
+    // Listen for background UI-effect changes and reapply transparency when the user switches
+    // background effects (translucent/frosted glass).
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
                                                object:nil];
 }
 
-/// 背景效果改变时重新应用透明化（由 BackgroundUIEffectChanged 通知触发）
+/// Reapply transparency when the background effect changes (triggered by the BackgroundUIEffectChanged notification).
 - (void)reapplyBackgroundEffect {
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 }
@@ -75,26 +76,26 @@
     CGSize imageSize = self.sourceImage.size;
     CGSize viewSize = self.view.bounds.size;
     
-    // 计算正方形裁剪区域
+    // Calculate the square crop region.
     CGFloat squareSize = MIN(viewSize.width, viewSize.height) * 0.8;
     CGFloat x = (viewSize.width - squareSize) / 2;
     CGFloat y = (viewSize.height - squareSize) / 2;
     self.cropRect = CGRectMake(x, y, squareSize, squareSize);
     
-    // 计算初始缩放比例
+    // Calculate the initial scale.
     CGFloat scaleX = squareSize / imageSize.width;
     CGFloat scaleY = squareSize / imageSize.height;
     self.scale = MAX(scaleX, scaleY);
 }
 
 - (void)createCropOverlay {
-    // 创建半透明覆盖层
+    // Create the translucent overlay.
     UIView *overlayView = [[UIView alloc] initWithFrame:self.view.bounds];
     overlayView.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.5];
     overlayView.userInteractionEnabled = NO;
     [self.view insertSubview:overlayView atIndex:0];
     
-    // 创建裁剪框
+    // Create the crop frame.
     self.cropOverlayView = [[UIView alloc] initWithFrame:self.cropRect];
     self.cropOverlayView.layer.borderColor = [UIColor whiteColor].CGColor;
     self.cropOverlayView.layer.borderWidth = 2.0;
@@ -102,7 +103,7 @@
     self.cropOverlayView.userInteractionEnabled = NO;
     [self.view addSubview:self.cropOverlayView];
     
-    // 创建裁剪框内的透明区域
+    // Create the transparent area inside the crop frame.
     CAShapeLayer *maskLayer = [CAShapeLayer layer];
     UIBezierPath *path = [UIBezierPath bezierPathWithRect:self.view.bounds];
     UIBezierPath *cropPath = [UIBezierPath bezierPathWithRect:self.cropRect];
@@ -144,7 +145,7 @@
 }
 
 - (UIImage *)cropImage {
-    // 将裁剪框的坐标转换为图片坐标
+    // Convert crop-frame coordinates to image coordinates.
     CGRect cropBounds = self.cropOverlayView.frame;
     CGRect imageFrame = self.imageView.frame;
     
@@ -158,18 +159,18 @@
         cropBounds.size.height * scaleY
     );
     
-    // 确保裁剪区域不超出图片边界
+    // Ensure the crop region stays within the image bounds.
     cropRectInImage = CGRectIntersection(cropRectInImage, CGRectMake(0, 0, self.sourceImage.size.width, self.sourceImage.size.height));
     
-    // 创建一个正方形的黑色背景图片
+    // Create a square image with a black background.
     UIGraphicsBeginImageContextWithOptions(cropRectInImage.size, YES, self.sourceImage.scale);
     CGContextRef context = UIGraphicsGetCurrentContext();
     
-    // 填充黑色背景
+    // Fill the background with black.
     CGContextSetFillColorWithColor(context, [UIColor blackColor].CGColor);
     CGContextFillRect(context, CGRectMake(0, 0, cropRectInImage.size.width, cropRectInImage.size.height));
     
-    // 在黑色背景上绘制裁剪的图片
+    // Draw the cropped image over the black background.
     CGRect drawRect = CGRectMake(0, 0, cropRectInImage.size.width, cropRectInImage.size.height);
     [self.sourceImage drawInRect:drawRect blendMode:kCGBlendModeNormal alpha:1.0];
     

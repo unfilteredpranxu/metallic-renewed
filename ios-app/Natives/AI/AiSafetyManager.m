@@ -2,18 +2,18 @@
 //  AiSafetyManager.m
 //  Amethyst
 //
-//  约定：
-//  - 传统中括号语法 + Objective-C ARC。
-//  - UI 一律主线程 dispatch_async(dispatch_get_main_queue(), ...)。
-//  - 若无法获得可 present 的 VC，默认按「不允许」处理（安全优先）。
+//  Conventions:
+//  - Traditional square-bracket syntax + Objective-C ARC.
+//  - Always dispatch UI work to the main thread with dispatch_async(dispatch_get_main_queue(), ...).
+//  - If no VC is available for presentation, default to "not allowed" (safety first).
 //
 
 #import "AiSafetyManager.h"
 #import <UIKit/UIKit.h>
 
-// 说明：AiSafetyMode 在 AiSettings.h 与 AiTool.h 中均有定义（契约约定两处一致），
-// 为免同一编译单元重复 typedef，此处不 import AiSettings.h，
-// 而是直接读取其底层 NSUserDefaults 键（ai.safety_mode），结果与 AiSettings.safetyMode 完全一致。
+// Note: AiSafetyMode is defined in both AiSettings.h and AiTool.h (the contract requires them to match).
+// To avoid duplicate typedefs in the same compilation unit, do not import AiSettings.h here;
+// read its underlying NSUserDefaults key (ai.safety_mode) directly, which produces the same result as AiSettings.safetyMode.
 static NSString * const kAiSafetyModeKey = @"ai.safety_mode";
 
 @implementation AiSafetyManager
@@ -28,31 +28,31 @@ static NSString * const kAiSafetyModeKey = @"ai.safety_mode";
 }
 
 - (AiSafetyMode)currentMode {
-    // 与 AiSettings.safetyMode 同一存储、同一夹取逻辑
+    // Same storage and clamping logic as AiSettings.safetyMode
     NSInteger value = [[NSUserDefaults standardUserDefaults] integerForKey:kAiSafetyModeKey];
     return (value < AiSafetyModeSafe || value > AiSafetyModeYOLO) ? AiSafetyModeSafe : (AiSafetyMode)value;
 }
 
-#pragma mark - 权限确认判定
+#pragma mark - Permission confirmation
 
 - (BOOL)needsUserConfirmationForPermission:(AiToolPermission)permission {
     switch (permission) {
         case AiToolPermissionReadOnly:
-            return NO; // 只读，始终放行
+            return NO; // Read-only, always allowed
         case AiToolPermissionDangerousWrite:
-            return YES; // 危险写入，所有模式都要求确认
+            return YES; // Dangerous write, confirmation required in all modes
         case AiToolPermissionControlledWrite:
         case AiToolPermissionExternalNetwork: {
-            // 仅 YOLO（完全）模式免确认
+            // Only YOLO (Full) mode bypasses confirmation
             return [self currentMode] == AiSafetyModeYOLO ? NO : YES;
         }
     }
-    return YES; // 未知权限保守处理
+    return YES; // Handle unknown permissions conservatively
 }
 
-#pragma mark - 视图控制器定位
+#pragma mark - View controller lookup
 
-/// 获取当前可用来 present 的最顶层视图控制器（处理已 presenting 的场景）
+/// Get the topmost view controller currently available for presentation (handles cases where a controller is already presenting)
 - (UIViewController * _Nullable)topmostPresentableViewController {
     UIWindow *keyWindow = nil;
     if (@available(iOS 13.0, *)) {
@@ -77,7 +77,7 @@ static NSString * const kAiSafetyModeKey = @"ai.safety_mode";
     return top;
 }
 
-#pragma mark - 确认框
+#pragma mark - Confirmation dialog
 
 - (void)requestConfirmationWithTitle:(NSString *)title
                              message:(NSString *)message
@@ -85,18 +85,18 @@ static NSString * const kAiSafetyModeKey = @"ai.safety_mode";
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *presentingVC = [self topmostPresentableViewController];
         if (!presentingVC) {
-            // 拿不到可 present 的 VC：安全优先，默认不允许
+            // No VC available for presentation: safety first, default to not allowed
             if (completion) completion(NO);
             return;
         }
 
         UIAlertController *alert = [UIAlertController
-            alertControllerWithTitle:title ?: @"AI 操作确认"
+            alertControllerWithTitle:title ?: @"Confirm AI Action"
                              message:message
                       preferredStyle:UIAlertControllerStyleAlert];
 
-        // 「允许」（危险操作显示为「仍要执行」），点击 → 批准
-        NSString *actionTitle = (self.currentMode == AiSafetyModeSafe) ? @"仍要执行" : @"允许";
+        // "Allow" ("Proceed Anyway" for dangerous operations); tap → approve
+        NSString *actionTitle = (self.currentMode == AiSafetyModeSafe) ? @"Proceed Anyway" : @"Allow";
         UIAlertAction *allowAction = [UIAlertAction actionWithTitle:actionTitle
                                                               style:UIAlertActionStyleDefault
                                                             handler:^(UIAlertAction *action) {
@@ -104,8 +104,8 @@ static NSString * const kAiSafetyModeKey = @"ai.safety_mode";
         }];
         [alert addAction:allowAction];
 
-        // 「取消」→ 不批准
-        UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"取消"
+        // "Cancel" → do not approve
+        UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel"
                                                                style:UIAlertActionStyleCancel
                                                              handler:^(UIAlertAction *action) {
             if (completion) completion(NO);
@@ -116,22 +116,22 @@ static NSString * const kAiSafetyModeKey = @"ai.safety_mode";
     });
 }
 
-#pragma mark - 安全模式提示
+#pragma mark - Safety mode notice
 
 - (void)showSafetyModeChangedHint {
     dispatch_async(dispatch_get_main_queue(), ^{
         AiSafetyMode mode = [self currentMode];
-        NSString *title = @"安全模式已更改";
+        NSString *title = @"Safety Mode Changed";
         NSString *message = [[self class] safetyModeChineseName:mode];
         UIViewController *presentingVC = [self topmostPresentableViewController];
         if (!presentingVC) {
-            NSLog(@"[AiSafetyManager] 无法展示安全模式提示（无可用 VC）");
+            NSLog(@"[AiSafetyManager] Could not show safety mode notice (no available VC)");
             return;
         }
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
                                                                         message:message
                                                                  preferredStyle:UIAlertControllerStyleAlert];
-        [alert addAction:[UIAlertAction actionWithTitle:@"知道了"
+        [alert addAction:[UIAlertAction actionWithTitle:@"Got It"
                                                   style:UIAlertActionStyleDefault
                                                 handler:nil]];
         [presentingVC presentViewController:alert animated:YES completion:nil];
@@ -140,24 +140,24 @@ static NSString * const kAiSafetyModeKey = @"ai.safety_mode";
 
 - (NSString *)permissionChineseName:(AiToolPermission)permission {
     switch (permission) {
-        case AiToolPermissionReadOnly:          return @"只读操作";
-        case AiToolPermissionControlledWrite:   return @"受控写入";
-        case AiToolPermissionDangerousWrite:    return @"危险写入";
-        case AiToolPermissionExternalNetwork:   return @"网络访问";
+        case AiToolPermissionReadOnly:          return @"Read-only operation";
+        case AiToolPermissionControlledWrite:   return @"Controlled write";
+        case AiToolPermissionDangerousWrite:    return @"Dangerous write";
+        case AiToolPermissionExternalNetwork:   return @"Network access";
     }
-    return @"未知操作";
+    return @"Unknown operation";
 }
 
 + (NSString *)safetyModeChineseName:(AiSafetyMode)mode {
     switch (mode) {
         case AiSafetyModeSafe:
-            return @"安全（Safe）\n\n仅允许执行只读操作，会修改或删除文件等操作将被拒绝。\n适合日常使用，最大限度地保护你的数据。";
+            return @"Safe\n\nOnly read-only operations are allowed. Operations that modify or delete files will be denied.\nSuitable for everyday use and maximizes protection of your data.";
         case AiSafetyModeAsk:
-            return @"询问（Ask）\n\n写操作与网络请求在执行前会弹出确认框，由你逐个决定是否放行。\n兼顾安全与便利的推荐模式。";
+            return @"Ask\n\nWrite operations and network requests prompt for confirmation before execution, so you can approve or deny each one.\nRecommended mode balancing safety and convenience.";
         case AiSafetyModeYOLO:
-            return @"完全（YOLO）\n\n写操作与网络请求不再询问，直接执行。\n适合完全信任 AI 的场景，谨慎使用！";
+            return @"Full (YOLO)\n\nWrite operations and network requests execute without confirmation.\nFor scenarios where you fully trust the AI; use with caution!";
     }
-    return @"未知模式";
+    return @"Unknown mode";
 }
 
 @end

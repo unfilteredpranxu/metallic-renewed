@@ -47,6 +47,13 @@ jobs:
             rsync -a --ignore-existing --exclude '.git' "/tmp/upstream/$p/" "ios-app/$p/"
           done < /tmp/subpaths.txt
           rsync -a --ignore-existing --exclude '.git' /tmp/upstream/Natives/external/ ios-app/Natives/external/ || true
+          echo "---- FabricInstallViewController ----"
+          find /tmp/upstream -name "FabricInstallViewController*" | head -20
+          if [ -d /tmp/upstream/Natives/installer ]; then
+            mkdir -p ios-app/Natives/installer
+            rsync -a --ignore-existing /tmp/upstream/Natives/installer/ ios-app/Natives/installer/
+          fi
+          ls -la ios-app/Natives/installer || echo "installer folder MISSING"
           echo "---- NRFileManager in upstream ----"
           find /tmp/upstream -iname "*NRFileManager*" | head -20
           echo "---- NRFileManager in project ----"

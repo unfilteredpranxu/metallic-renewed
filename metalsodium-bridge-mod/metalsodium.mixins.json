@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.metalsodium.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [],
+  "client": [
+    "DrawBackendMixin",
+    "DrawContextMixin",
+    "StagingBufferMixin",
+    "DrawContextBackendMixin",
+    "MultiDrawBatchBackendMixin",
+    "DrawContextNewMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "plugin": "dev.metalsodium.mixin.MetalSodiumPlugin"
+}

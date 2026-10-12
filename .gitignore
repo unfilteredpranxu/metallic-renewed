@@ -1,0 +1,35 @@
+/packages
+/artifacts
+/JavaApp/.gradle
+/JavaApp/build
+/JavaApp/local_out
+/Natives/AngelAuraAmethyst
+/Natives/build
+.DS_Store
+xcshareddata/
+xcuserdata/
+project.xcworkspace/
+/depends
+/Natives/config.h
+entitlements.codesign.xml
+$null
+/temp
+/docs
+.trae-html-share-packages/
+.trae/specs/
+# macOS / System files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# Build outputs & caches (Xcode / App builds)
+build/
+DerivedData/
+.build
+bin/
+obj/
+*.log
+
+# VS Code workspace local settings
+.vscode/()ios-app/Natives/external/MobileGL/tools/trace_replay/fixtures/

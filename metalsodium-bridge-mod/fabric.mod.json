@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "metalsodium",
+  "version": "0.1.2",
+  "name": "Metal Sodium Bridge",
+  "description": "Makes Sodium 0.9.x use Metallum's MetalDrawContext (VK_INDIRECT path) instead of OpenGL on the Metal backend.",
+  "environment": "client",
+  "mixins": [
+    "metalsodium.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "sodium": ">=0.9.2"
+  }
+}

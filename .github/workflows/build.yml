@@ -115,6 +115,18 @@ jobs:
             SDKPATH=$(xcrun --sdk iphoneos --show-sdk-path) \
             2>&1 | tee build.log
 
+      - name: Show build errors
+        if: failure()
+        run: |
+          echo "---- Real errors (warnings filtered out) ----"
+          grep -nE "error:|fatal error|undefined symbol|ld: |No rule to make target|\*\*\* \[" ios-app/build.log | grep -v "warning:" | head -60 || true
+          echo "---- Context around the first error ----"
+          first=$(grep -nE "error:|fatal error|No rule to make target" ios-app/build.log | head -1 | cut -d: -f1)
+          if [ -n "$first" ]; then
+            start=$((first>15 ? first-15 : 1))
+            sed -n "${start},$((first+15))p" ios-app/build.log
+          fi
+
       - name: Find outputs
         if: always()
         run: |

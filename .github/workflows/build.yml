@@ -46,6 +46,11 @@ jobs:
             mkdir -p "ios-app/$p"
             rsync -a --ignore-existing --exclude '.git' "/tmp/upstream/$p/" "ios-app/$p/"
           done < /tmp/subpaths.txt
+          rsync -a --ignore-existing --exclude '.git' /tmp/upstream/Natives/external/ ios-app/Natives/external/ || true
+          echo "---- NRFileManager in upstream ----"
+          find /tmp/upstream -iname "*NRFileManager*" | head -20
+          echo "---- NRFileManager in project ----"
+          ls -la ios-app/Natives/external/NRFileManager || echo "STILL MISSING"
           ls -la ios-app/Natives/external || true
 
       - name: Fetch ZeroTier framework

@@ -1261,7 +1261,7 @@ clean:
 
 # --- dep_nggl4es：NG-GL4ES（"Krypton Wrapper"，BZLZHH/NG-GL4ES，MIT）-----------
 # ZalithLauncher 2 用的 gl4es 分支：能处理更高级的着色器、几乎全 MC 版本可跑。
-# vendored 源码在 ThirdParty/NG-GL4ES（见其 CMakeLists 的 PROVENANCE 头）。
+# 源码在固定版本的 ThirdParty/NG-GL4ES 子模块；iOS 适配补丁见 patches/。
 # 作为独立 cmake 树构建，链接 dep_mg 出来的 glslang 静态库（pin f5f664d 15.0.0 +
 # lvalue-nullguard + pool-zero/size-guards 双崩溃补丁，继承崩溃家族修复；NG 自带的
 # 15.4 头已从树中移除，防头/库漂移）与预编译的 SPIRV-Cross C API impl dylib。
@@ -1270,6 +1270,9 @@ clean:
 # ★ 无条件挂在 payload 上（用户可见的一等渲染器，不受 RENDERER_GAP_EXTRAS 控制）。
 dep_nggl4es: dep_mg
 	echo '[Amethyst v$(VERSION)] dep_nggl4es - start'
+	if ! git -C $(SOURCEDIR)/ThirdParty/NG-GL4ES apply --unidiff-zero --reverse --check $(SOURCEDIR)/patches/ng-gl4es-ios-integration.patch >/dev/null 2>&1; then \
+		git -C $(SOURCEDIR)/ThirdParty/NG-GL4ES apply --unidiff-zero $(SOURCEDIR)/patches/ng-gl4es-ios-integration.patch || exit 1; \
+	fi
 	mg_bindir=$(WORKINGDIR)/mobileglues/3rdparty/glslang; \
 	mg_spirv_a=$$mg_bindir/SPIRV/libSPIRV.a; \
 	[ -f "$$mg_spirv_a" ] || mg_spirv_a=$$(find $(WORKINGDIR)/mobileglues -type f -name libSPIRV.a -print -quit 2>/dev/null); \
@@ -1299,13 +1302,14 @@ dep_nggl4es: dep_mg
 		-DCMAKE_OSX_ARCHITECTURES=arm64 \
 		-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
 		-DCMAKE_C_FLAGS="-arch arm64" \
+		-DCMAKE_SHARED_LINKER_FLAGS="-F$(SOURCEDIR)/Natives/resources/Frameworks" \
 		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
 		-DNGGL4ES_GLSLANG_INCLUDE="$(SOURCEDIR)/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty;$(SOURCEDIR)/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang" \
 		-DNGGL4ES_GLSLANG_LIBS="$$ngg_libs" \
 		-DNGGL4ES_SPVC_IMPL="$(SOURCEDIR)/Natives/resources/Frameworks/libspirv-cross-c-shared.0.impl.dylib" \
 		-DNGGL4ES_FRAMEWORK_DIR="$(SOURCEDIR)/Natives/resources/Frameworks" \
 		$(SOURCEDIR)/ThirdParty/NG-GL4ES/ || exit 1
-	cmake --build $(WORKINGDIR)/nggl4es --config RelWithDebInfo -j$(JOBS) --target nggl4es || exit 1
+	cmake --build $(WORKINGDIR)/nggl4es --config RelWithDebInfo -j$(JOBS) --target ng_gl4es || exit 1
 	cp $(WORKINGDIR)/nggl4es/libnggl4es.dylib $(WORKINGDIR)/ || exit 1
 	echo '[Amethyst v$(VERSION)] dep_nggl4es - end'
 

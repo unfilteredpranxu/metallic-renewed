@@ -1,0 +1,46 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c0a2433..7ce36de 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -14 +14,5 @@ project(ng_gl4es)
+-        add_link_options(-Wl,--gc-sections)
++        if(APPLE)
++            add_link_options(-Wl,-dead_strip)
++        else()
++            add_link_options(-Wl,--gc-sections)
++        endif()
+@@ -39,2 +43,22 @@ set(SPIRV_CROSS_ENABLE_UTIL    OFF  CACHE BOOL "Disable util" FORCE)
+-add_subdirectory(3rdparty/glslang)
+-add_subdirectory(3rdparty/SPIRV-Cross)
++if(NGGL4ES_GLSLANG_LIBS)
++    if(NOT NGGL4ES_GLSLANG_INCLUDE)
++        message(FATAL_ERROR "NGGL4ES_GLSLANG_INCLUDE is required with NGGL4ES_GLSLANG_LIBS")
++    endif()
++    add_library(glslang::glslang INTERFACE IMPORTED GLOBAL)
++    target_include_directories(glslang::glslang INTERFACE ${NGGL4ES_GLSLANG_INCLUDE})
++    target_link_libraries(glslang::glslang INTERFACE ${NGGL4ES_GLSLANG_LIBS})
++else()
++    add_subdirectory(3rdparty/glslang)
++endif()
++
++if(NGGL4ES_SPVC_IMPL)
++    if(NOT EXISTS "${NGGL4ES_SPVC_IMPL}")
++        message(FATAL_ERROR "NGGL4ES_SPVC_IMPL does not exist: ${NGGL4ES_SPVC_IMPL}")
++    endif()
++    add_library(spirv-cross-c SHARED IMPORTED GLOBAL)
++    set_target_properties(spirv-cross-c PROPERTIES
++        IMPORTED_LOCATION "${NGGL4ES_SPVC_IMPL}"
++    )
++else()
++    add_subdirectory(3rdparty/SPIRV-Cross)
++endif()
+@@ -185 +209 @@ set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
+-    LINK_FLAGS "-Wl,--strip-all"
++    OUTPUT_NAME nggl4es
+@@ -186,0 +211,6 @@ set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
++
++if(APPLE)
++    set_property(TARGET ${CMAKE_PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-x")
++else()
++    set_property(TARGET ${CMAKE_PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--strip-all")
++endif()

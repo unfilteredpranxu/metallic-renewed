@@ -1,0 +1,3 @@
+[submodule "ng-gl4es"]
+	path = ios-app/ThirdParty/NG-GL4ES
+	url = https://github.com/BZLZHH/NG-GL4ES.git

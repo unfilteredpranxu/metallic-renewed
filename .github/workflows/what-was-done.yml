@@ -1,0 +1,82 @@
+name: What was already done (report only)
+
+# Changes nothing and builds nothing. Run it manually, then read the log.
+on: workflow_dispatch
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          submodules: recursive
+
+      - name: Clone upstream (same one the build uses)
+        run: |
+          export GIT_LFS_SKIP_SMUDGE=1
+          git clone --depth 1 --recurse-submodules --shallow-submodules \
+            https://github.com/herbrine8403/Amethyst-iOS-MyRemastered.git /tmp/upstream \
+            || { rm -rf /tmp/upstream; git clone --depth 1 --recurse-submodules --shallow-submodules \
+            https://github.com/AngelAuraMC/Amethyst-iOS.git /tmp/upstream; }
+          git -C /tmp/upstream remote -v | head -1
+
+      - name: Files the build copies from upstream (missing in your repo)
+        run: |
+          cd /tmp/upstream/Natives
+          find . -name .git -prune -o \( -type f -o -type l \) -print | sed 's#^\./##' | sort | while read -r f; do
+            [ -e "$GITHUB_WORKSPACE/ios-app/Natives/$f" ] || echo "ios-app/Natives/$f"
+          done | tee /tmp/missing_natives.txt
+          echo "---- total: $(wc -l < /tmp/missing_natives.txt) files ----"
+
+      - name: Upstream submodule folders and what is missing in yours
+        run: |
+          cd /tmp/upstream
+          git submodule foreach --quiet --recursive 'echo $displaypath' | while read -r p; do
+            [ -z "$p" ] && continue
+            echo "== $p"
+            (cd "/tmp/upstream/$p" && find . -name .git -prune -o -type f -print | sed 's#^\./##') | while read -r f; do
+              [ -e "$GITHUB_WORKSPACE/ios-app/$p/$f" ] || echo "ios-app/$p/$f"
+            done | head -50
+          done
+
+      - name: Files that exist in both but are different
+        run: |
+          cd "$GITHUB_WORKSPACE/ios-app/Natives"
+          find . -maxdepth 2 \( -name '*.m' -o -name '*.h' -o -name '*.mm' -o -name 'CMakeLists.txt' \) -not -path './external/*' | sed 's#^\./##' | sort | while read -r f; do
+            u="/tmp/upstream/Natives/$f"
+            [ -f "$u" ] && ! cmp -s "$f" "$u" && echo "DIFFERS from upstream: ios-app/Natives/$f"
+          done | tee /tmp/differs.txt
+          echo "---- total: $(wc -l < /tmp/differs.txt) files ----"
+
+      - name: Files misplaced outside Natives (like HomeTopNavView.m)
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          git ls-files ios-app | grep -E '^ios-app/[^/]+\.(m|mm|c|cpp|swift)$' || echo "none"
+
+      - name: Your repo history (what was changed or deleted, and when)
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          echo "---- Last 30 commits ----"
+          git log --date=short --pretty='%h %ad %an  %s' -30
+          echo
+          echo "---- Every file ever DELETED (newest first) ----"
+          git log --diff-filter=D --name-only --date=short --pretty='>>> %h %ad %s' | head -150
+          echo
+          echo "---- Every file ever RENAMED/MOVED ----"
+          git log --diff-filter=R --name-status --date=short --pretty='>>> %h %ad %s' | head -100
+          echo
+          echo "---- History of the HomeTopNavView files ----"
+          git log --all --date=short --pretty='%h %ad %s' --name-status -- '*HomeTopNavView*' | head -40
+
+      - name: Save report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: what-was-done
+          path: |
+            /tmp/missing_natives.txt
+            /tmp/differs.txt
+          if-no-files-found: ignore

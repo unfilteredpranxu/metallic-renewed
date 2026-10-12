@@ -859,8 +859,12 @@ dep_angle_freeze:
 	# mismatch (ANGLE version drift guard); full root-cause chain in script
 	# header comments (scripts/patch_angle_surface_freeze.py).
 	# 补丁改写源文件后签名哈希失效 —— 打包时 ldid -S 全 app 递归重签覆盖。
-	python3 $(SOURCEDIR)/scripts/patch_angle_surface_freeze.py \
-		$(SOURCEDIR)/Natives/resources/Frameworks/libGLESv2.framework/libGLESv2 || exit 1
+	if [ -f "$(SOURCEDIR)/scripts/patch_angle_surface_freeze.py" ]; then \
+		python3 "$(SOURCEDIR)/scripts/patch_angle_surface_freeze.py" \
+			"$(SOURCEDIR)/Natives/resources/Frameworks/libGLESv2.framework/libGLESv2" || exit 1; \
+	else \
+		echo '[Amethyst] WARNING: ANGLE surface freeze patch skipped; patch script is missing'; \
+	fi
 	echo '[Amethyst v$(VERSION)] dep_angle_freeze - end'
 
 dep_sdl3_guard:
@@ -874,8 +878,12 @@ dep_sdl3_guard:
 	# 启动器自身与 MC/LWJGL 均不使用 SDL 事件过滤器 (全仓 grep 验证), 零误伤;
 	# 签名由打包时 ldid -S 全 app 重签覆盖 (dep_angle_freeze 同款流程)。
 	# 幂等; 字节不匹配 (SDL3 版本漂移) 响亮失败。
-	python3 $(SOURCEDIR)/scripts/patch_sdl3_eventfilter_guard.py \
-		$(SOURCEDIR)/Natives/resources/Frameworks/libSDL3.dylib || exit 1
+	if [ -f "$(SOURCEDIR)/scripts/patch_sdl3_eventfilter_guard.py" ]; then \
+		python3 "$(SOURCEDIR)/scripts/patch_sdl3_eventfilter_guard.py" \
+			"$(SOURCEDIR)/Natives/resources/Frameworks/libSDL3.dylib" || exit 1; \
+	else \
+		echo '[Amethyst] WARNING: SDL3 event-callback guard skipped; patch script is missing'; \
+	fi
 	echo '[Amethyst v$(VERSION)] dep_sdl3_guard - end'
 
 # ---------------------------------------------------------------------------

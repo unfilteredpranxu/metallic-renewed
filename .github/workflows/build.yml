@@ -105,51 +105,60 @@ jobs:
           ls -la "$DEST" "$DEST/ios-example-app" || true
           test -d "$DEST/ios-example-app/zt.framework"
 
-      - name: Resolve missing classes from upstream
+      - name: Resolve missing classes from your repo
         run: |
           cd "$GITHUB_WORKSPACE"
-          # Add any class name that the compiler reports as "unknown type name"
-          CLASSES="HomeActionPanelView"
+          # Every class listed here gets its .m/.mm added to CMakeLists.txt (runner copy only,
+          # your repo is never modified) if it exists in your project but is not listed there yet.
+          # Add any class name the linker reports as: "_OBJC_CLASS_$_Name", referenced from ...
+          CLASSES="HomeActionPanelView HomeTopNavView"
+          # Classes whose header must also be imported into LauncherNewsViewController.m
+          # (only needed for the one that was reported as "unknown type name")
+          IMPORT_CLASSES="HomeActionPanelView"
+
           for c in $CLASSES; do
             echo "==================== $c ===================="
             echo "-- files in your project:"
             find ios-app \( -name "$c.h" -o -name "$c.m" -o -name "$c.mm" \) -not -path "*/.git/*" | head
             echo "-- files that mention it in your project:"
             grep -rl "$c" ios-app --include=*.h --include=*.m --include=*.mm --include=CMakeLists.txt 2>/dev/null | head
-            # Nothing is copied from upstream here: only YOUR files are compiled.
-            # Make sure your .m file is compiled: add it to CMakeLists.txt next to LauncherNewsViewController.m
             m=$(find ios-app/Natives \( -name "$c.m" -o -name "$c.mm" \) -not -path "*/.git/*" | head -1)
             if [ -n "$m" ]; then
               relm="${m#ios-app/Natives/}"
               if ! grep -q "$relm" ios-app/Natives/CMakeLists.txt; then
                 awk -v rel="$relm" '{print} /LauncherNewsViewController\.m/ && !done {match($0,/^[ \t]*/); print substr($0,1,RLENGTH) rel; done=1}' \
                   ios-app/Natives/CMakeLists.txt > /tmp/CMakeLists.new && mv /tmp/CMakeLists.new ios-app/Natives/CMakeLists.txt
-                echo "ADDED $relm to CMakeLists.txt"
+                echo "ADDED $relm to CMakeLists.txt (runner only)"
               else
                 echo "$relm is already listed in CMakeLists.txt"
               fi
 
-              # Check that LauncherNewsViewController.m can actually see the class
-              h=$(find ios-app -name "$c.h" -not -path "*/.git/*" | head -1)
-              n=$(find ios-app/Natives -name "LauncherNewsViewController.m" | head -1)
-              echo "---- header found at: $h"
-              echo "---- declarations in $c.h:"
-              grep -nE "@interface|@class|@protocol|#import" "$h" | head -20 || true
-              echo "---- imports in LauncherNewsViewController.m:"
-              grep -nE "^#import|^@import|^#include" "$n" | head -40 || true
-              if [ -n "$h" ] && [ -n "$n" ] && ! grep -q "$c.h" "$n"; then
-                relh=$(python3 -c "import os,sys;print(os.path.relpath(sys.argv[1],sys.argv[2]))" "$h" "$(dirname "$n")")
-                awk -v h="$relh" '{print} /^#import/ && !d {print "#import \"" h "\""; d=1}' "$n" > /tmp/lnvc.new && mv /tmp/lnvc.new "$n"
-                echo "NOTE (runner only, your repo is unchanged): $n did not import $c.h, added: #import \"$relh\""
-              fi
+              case " $IMPORT_CLASSES " in
+                *" $c "*)
+                  h=$(find ios-app -name "$c.h" -not -path "*/.git/*" | head -1)
+                  n=$(find ios-app/Natives -name "LauncherNewsViewController.m" | head -1)
+                  echo "---- header found at: $h"
+                  if [ -n "$h" ] && [ -n "$n" ] && ! grep -q "$c.h" "$n"; then
+                    relh=$(python3 -c "import os,sys;print(os.path.relpath(sys.argv[1],sys.argv[2]))" "$h" "$(dirname "$n")")
+                    awk -v h="$relh" '{print} /^#import/ && !d {print "#import \"" h "\""; d=1}' "$n" > /tmp/lnvc.new && mv /tmp/lnvc.new "$n"
+                    echo "NOTE (runner only, your repo is unchanged): added #import \"$relh\" to $n"
+                  fi
+                  ;;
+              esac
             else
               echo "ERROR: $c.m is NOT in your repo, so the build cannot compile it."
               echo "Did you commit and push it? Is it hidden by .gitignore?"
               git check-ignore -v "ios-app/Natives/$c.m" "ios-app/Natives/$c.h" || echo "(not ignored by .gitignore)"
               echo "Files git knows about with a similar name:"
-              git ls-files | grep -i "ActionPanel" || echo "none"
+              git ls-files | grep -i "$c" || echo "none"
             fi
           done
+
+          echo "---- Other .m/.mm files in Natives that are NOT listed in CMakeLists.txt (info only) ----"
+          cd ios-app/Natives
+          find . -path ./external -prune -o \( -name '*.m' -o -name '*.mm' \) -print | sed 's#^\./##' | while read -r f; do
+            grep -qF "$f" CMakeLists.txt || echo "NOT LISTED: $f"
+          done || true
 
       - name: Build
         shell: bash
@@ -164,36 +173,13 @@ jobs:
       - name: Show build errors
         if: failure()
         run: |
-          # Real compiler errors look like:  /path/file.m:123:45: error: message
-          PATTERN='^[^ ]+:[0-9]+:[0-9]+: (fatal )?error:|^ld: |^clang: error|^make.*\*\*\*|No rule to make target|Undefined symbols|CMake Error'
-          echo "---- Real errors (warnings and code snippets filtered out) ----"
-          grep -nE "$PATTERN" ios-app/build.log | head -40 || true
-          echo "---- Context around the first real error ----"
-          first=$(grep -nE '^[^ ]+:[0-9]+:[0-9]+: (fatal )?error:|^ld: |^clang: error|No rule to make target|Undefined symbols|CMake Error' ios-app/build.log | head -1 | cut -d: -f1)
-          if [ -n "$first" ]; then
-            start=$((first>10 ? first-10 : 1))
-            sed -n "${start},$((first+25))p" ios-app/build.log
-          else
-            echo "No compiler error line found; showing the last 80 lines of the log"
-            tail -80 ios-app/build.log
-          fi
-
-          echo "---- Unique error messages (first 15) ----"
-          grep -E '^[^ ]+:[0-9]+:[0-9]+: (fatal )?error:' ios-app/build.log \
-            | sed -E 's#^/Users/runner/work/[^/]+/[^/]+/ios-app/##' | sort -u | head -15 || true
-
-          echo "---- Source lines around the first 4 distinct errors ----"
-          grep -E '^[^ ]+:[0-9]+:[0-9]+: (fatal )?error:' ios-app/build.log \
-            | awk -F: '!seen[$1":"$2]++ {print $1":"$2}' | head -4 | while IFS=: read -r file line; do
-              echo ">>>>> $file : line $line  (file has $(wc -l < "$file") lines)"
-              start=$((line>8 ? line-8 : 1))
-              sed -n "${start},$((line+4))p" "$file" | cat -n
-            done || true
-
-          echo "---- Is the file from your repo or copied from upstream? ----"
-          git -C "$GITHUB_WORKSPACE" log --oneline -3 -- ios-app/Natives/LauncherNewsViewController.m || true
-          echo "---- ARC-related errors ----"
-          grep -nE "ARC" ios-app/build.log | grep -E "error" | head -10 || true
+          cd ios-app
+          echo "---- Real errors (ld warnings excluded) ----"
+          grep -nE "error:|Undefined symbols|symbol\(s\) not found|No rule to make target|CMake Error|\*\*\* \[" build.log | head -40 || true
+          echo "---- Undefined symbols (with referencing files) ----"
+          grep -A4 "Undefined symbols" build.log | head -60 || true
+          echo "---- Every missing symbol ----"
+          grep -E '^ *"_OBJC_CLASS_\$_|^ *"_[A-Za-z0-9_]+", referenced from' build.log | sort -u | head -40 || true
 
       - name: Find outputs
         if: always()

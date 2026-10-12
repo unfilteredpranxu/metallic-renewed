@@ -1,4 +1,77 @@
-"*.deb" -o -name "*.tipa" \) -not -path "*/node_modules/*" | head -50
+name: Build iOS
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "8"
+
+      - name: Install tools
+        run: brew install ldid wget
+
+      - name: Show tool versions
+        run: |
+          xcodebuild -version
+          make --version
+          java -version
+          javac -version
+          echo $JAVA_HOME
+
+      - name: Fetch missing submodules from upstream
+        run: |
+          set -e
+          git clone --depth 1 --recurse-submodules --shallow-submodules \
+            https://github.com/herbrine8403/Amethyst-iOS-MyRemastered.git /tmp/upstream \
+            || git clone --depth 1 --recurse-submodules --shallow-submodules \
+            https://github.com/AngelAuraMC/Amethyst-iOS.git /tmp/upstream
+          cd /tmp/upstream
+          cat .gitmodules || true
+          git submodule foreach --quiet --recursive 'echo $displaypath' > /tmp/subpaths.txt
+          cat /tmp/subpaths.txt
+          cd "$GITHUB_WORKSPACE"
+          while read -r p; do
+            [ -z "$p" ] && continue
+            mkdir -p "ios-app/$p"
+            rsync -a --ignore-existing --exclude '.git' "/tmp/upstream/$p/" "ios-app/$p/"
+          done < /tmp/subpaths.txt
+          ls -la ios-app/Natives/external || true
+
+      - name: Fetch ZeroTier framework
+        run: |
+          DEST=ios-app/Natives/external/ZeroTierFramework
+          if [ ! -d "$DEST/ios-example-app/zt.framework" ]; then
+            rm -rf "$DEST"
+            mkdir -p "$(dirname "$DEST")"
+            git clone --depth 1 https://github.com/zerotier/zerotier-sockets-apple-framework.git "$DEST"
+          fi
+          ls -la "$DEST" "$DEST/ios-example-app" || true
+          test -d "$DEST/ios-example-app/zt.framework"
+
+      - name: Build
+        shell: bash
+        working-directory: ios-app
+        run: |
+          make all \
+            BOOTJDK=$JAVA_HOME/bin \
+            SDKPATH=$(xcrun --sdk iphoneos --show-sdk-path) \
+            2>&1 | tee build.log
+
+      - name: Find outputs
+        if: always()
+        run: |
+          echo "---- ipa / app / deb files ----"
+          find . \( -name "*.ipa" -o -name "*.app" -o -name "*.deb" -o -name "*.tipa" \) -not -path "*/node_modules/*" | head -50
           echo "---- ios-app top level ----"
           ls -la ios-app || true
           echo "---- ios-app/artifacts ----"

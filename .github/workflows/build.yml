@@ -105,6 +105,34 @@ jobs:
           ls -la "$DEST" "$DEST/ios-example-app" || true
           test -d "$DEST/ios-example-app/zt.framework"
 
+      - name: Copy misplaced source files into Natives (runner only)
+        run: |
+          cd "$GITHUB_WORKSPACE/ios-app"
+          # Your repo has HomeTopNavView.m in ios-app/ instead of ios-app/Natives/.
+          # Copy (not move) it on the runner so it gets compiled. Your repo is untouched.
+          for f in HomeTopNavView.m; do
+            if [ -f "$f" ] && [ ! -f "Natives/$f" ]; then
+              cp "$f" "Natives/$f"
+              echo "Copied ios-app/$f -> ios-app/Natives/$f (runner only)"
+            fi
+          done
+
+          echo "---- Every HomeTopNavView file in your checkout ----"
+          find "$GITHUB_WORKSPACE" -iname "HomeTopNavView*" -not -path "*/.git/*" || true
+          echo "---- Every HomeTopNavView file in upstream ----"
+          find /tmp/upstream -iname "HomeTopNavView*" -not -path "*/.git/*" || true
+
+          # Last resort: use the upstream version (runner only). It may not match your .h exactly.
+          if [ ! -f Natives/HomeTopNavView.m ]; then
+            u=$(find /tmp/upstream -name "HomeTopNavView.m" -not -path "*/.git/*" | head -1)
+            if [ -n "$u" ]; then
+              cp "$u" Natives/HomeTopNavView.m
+              echo "WARNING: used upstream copy $u (runner only)"
+            else
+              echo "HomeTopNavView.m exists neither in your repo nor upstream"
+            fi
+          fi
+
       - name: Resolve missing classes from your repo
         run: |
           cd "$GITHUB_WORKSPACE"
@@ -211,3 +239,4 @@ jobs:
           name: build-log
           path: ios-app/build.log
           if-no-files-found: warn
+          

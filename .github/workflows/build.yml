@@ -1,1 +1,68 @@
-{"name":"Build iOS","on":"workflow_dispatch","jobs":{"build":{"runs-on":"macos-latest","steps":[{"uses":"actions/checkout@v4","with":{"lfs":true}},{"uses":"actions/setup-java@v4","with":{"distribution":"zulu","java-version":"8"}},{"name":"Install tools","run":"brew install ldid wget"},{"name":"Show tool versions","run":"xcodebuild -version; make --version; java -version; javac -version; echo $JAVA_HOME"},{"name":"Build","working-directory":"ios-app","run":"make BOOTJDK=$JAVA_HOME/bin SDKPATH=$(xcrun --sdk iphoneos --show-sdk-path)"},{"name":"Upload result","if":"always()","uses":"actions/upload-artifact@v4","with":{"name":"metallic-build","path":"ios-app/**/*.ipa\nios-app/build/Release-iphoneos/","if-no-files-found":"warn"}}]}}}
+name: Build iOS
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "8"
+
+      - name: Install tools
+        run: brew install ldid wget
+
+      - name: Show tool versions
+        run: |
+          xcodebuild -version
+          make --version
+          java -version
+          javac -version
+          echo $JAVA_HOME
+
+      - name: Build
+        shell: bash
+        working-directory: ios-app
+        run: |
+          make all \
+            BOOTJDK=$JAVA_HOME/bin \
+            SDKPATH=$(xcrun --sdk iphoneos --show-sdk-path) \
+            2>&1 | tee build.log
+
+      - name: Find outputs
+        if: always()
+        run: |
+          echo "---- ipa / app / deb files ----"
+          find . \( -name "*.ipa" -o -name "*.app" -o -name "*.deb" -o -name "*.tipa" \) -not -path "*/node_modules/*" | head -50
+          echo "---- ios-app top level ----"
+          ls -la ios-app || true
+          echo "---- ios-app/artifacts ----"
+          ls -laR ios-app/artifacts 2>/dev/null | head -50 || true
+
+      - name: Upload build output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metallic-build
+          path: |
+            ios-app/artifacts/
+            ios-app/**/*.ipa
+            ios-app/**/*.tipa
+            ios-app/**/*.deb
+            ios-app/build/Release-iphoneos/
+          if-no-files-found: warn
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: ios-app/build.log
+          if-no-files-found: warn

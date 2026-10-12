@@ -44,6 +44,12 @@ index c0a2433..7ce36de 100644
 +else()
 +    set_property(TARGET ${CMAKE_PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--strip-all")
 +endif()
+@@ -56,1 +80,1 @@
+-if(ANDROID)
++if(ANDROID OR APPLE)
+@@ -140,1 +164,1 @@
+-if(NOT ANDROID)
++if(NOT ANDROID AND NOT APPLE)
 diff --git a/include/GL/glext.h b/include/GL/glext.h
 index 8476413..df157e0 100644
 --- a/include/GL/glext.h

@@ -56,9 +56,20 @@ jobs:
         run: |
           set -e
           cd "$GITHUB_WORKSPACE"
-          # Copies anything missing from the Natives folder (input/, installer/, external/, ...)
-          # --ignore-existing means your own files are never overwritten
-          rsync -a --ignore-existing --exclude '.git' /tmp/upstream/Natives/ ios-app/Natives/
+          # Copies every file that is missing from Natives (input/, installer/, external/, ...)
+          # File by file, so a folder/file mismatch can never break the step.
+          # Existing files are never overwritten.
+          cd /tmp/upstream/Natives
+          copied=0
+          while IFS= read -r -d '' f; do
+            dest="$GITHUB_WORKSPACE/ios-app/Natives/$f"
+            if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then
+              mkdir -p "$(dirname "$dest")" 2>/dev/null || continue
+              cp -P "$f" "$dest" 2>/dev/null && copied=$((copied+1)) || true
+            fi
+          done < <(find . -name .git -prune -o \( -type f -o -type l \) -print0)
+          echo "Copied $copied missing files from upstream"
+          cd "$GITHUB_WORKSPACE"
 
           echo "---- Natives/input ----"
           ls -la ios-app/Natives/input || echo "input folder MISSING"

@@ -31,10 +31,11 @@ jobs:
       - name: Fetch missing submodules from upstream
         run: |
           set -e
+          export GIT_LFS_SKIP_SMUDGE=1
           git clone --depth 1 --recurse-submodules --shallow-submodules \
             https://github.com/herbrine8403/Amethyst-iOS-MyRemastered.git /tmp/upstream \
-            || git clone --depth 1 --recurse-submodules --shallow-submodules \
-            https://github.com/AngelAuraMC/Amethyst-iOS.git /tmp/upstream
+            || { rm -rf /tmp/upstream; git clone --depth 1 --recurse-submodules --shallow-submodules \
+            https://github.com/AngelAuraMC/Amethyst-iOS.git /tmp/upstream; }
           cd /tmp/upstream
           cat .gitmodules || true
           git submodule foreach --quiet --recursive 'echo $displaypath' > /tmp/subpaths.txt

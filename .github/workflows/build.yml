@@ -28,7 +28,7 @@ jobs:
           javac -version
           echo $JAVA_HOME
 
-      - name: Fetch missing submodules from upstream
+      - name: Clone upstream
         run: |
           set -e
           export GIT_LFS_SKIP_SMUDGE=1
@@ -39,26 +39,49 @@ jobs:
           cd /tmp/upstream
           cat .gitmodules || true
           git submodule foreach --quiet --recursive 'echo $displaypath' > /tmp/subpaths.txt
+          echo "---- upstream submodule paths ----"
           cat /tmp/subpaths.txt
+
+      - name: Fill in missing submodules from upstream
+        run: |
+          set -e
           cd "$GITHUB_WORKSPACE"
           while read -r p; do
             [ -z "$p" ] && continue
             mkdir -p "ios-app/$p"
             rsync -a --ignore-existing --exclude '.git' "/tmp/upstream/$p/" "ios-app/$p/"
           done < /tmp/subpaths.txt
-          rsync -a --ignore-existing --exclude '.git' /tmp/upstream/Natives/external/ ios-app/Natives/external/ || true
-          echo "---- FabricInstallViewController ----"
-          find /tmp/upstream -name "FabricInstallViewController*" | head -20
-          if [ -d /tmp/upstream/Natives/installer ]; then
-            mkdir -p ios-app/Natives/installer
-            rsync -a --ignore-existing /tmp/upstream/Natives/installer/ ios-app/Natives/installer/
-          fi
+
+      - name: Fill in missing Natives files from upstream
+        run: |
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          # Copies anything missing from the Natives folder (input/, installer/, external/, ...)
+          # --ignore-existing means your own files are never overwritten
+          rsync -a --ignore-existing --exclude '.git' /tmp/upstream/Natives/ ios-app/Natives/
+
+          echo "---- Natives/input ----"
+          ls -la ios-app/Natives/input || echo "input folder MISSING"
+          echo "---- Natives/installer ----"
           ls -la ios-app/Natives/installer || echo "installer folder MISSING"
-          echo "---- NRFileManager in upstream ----"
-          find /tmp/upstream -iname "*NRFileManager*" | head -20
-          echo "---- NRFileManager in project ----"
-          ls -la ios-app/Natives/external/NRFileManager || echo "STILL MISSING"
+          echo "---- Natives/external ----"
           ls -la ios-app/Natives/external || true
+          echo "---- NRFileManager ----"
+          ls -la ios-app/Natives/external/NRFileManager || echo "NRFileManager MISSING"
+          echo "---- FabricInstallViewController ----"
+          find ios-app -name "FabricInstallViewController*" | head -20
+
+          # Fail early with a clear message instead of a CMake error later
+          test -f ios-app/Natives/input/ControllerInput.m \
+            || { echo "ERROR: Natives/input/ControllerInput.m is missing in both your repo and upstream"; exit 1; }
+
+      - name: Check CMake source files exist
+        run: |
+          cd "$GITHUB_WORKSPACE/ios-app/Natives"
+          echo "---- Source files referenced in CMakeLists.txt that do not exist ----"
+          grep -oE '[A-Za-z0-9_./-]+\.(m|mm|c|cpp|swift)' CMakeLists.txt | sort -u | while read -r f; do
+            [ -f "$f" ] || echo "MISSING: $f"
+          done || true
 
       - name: Fetch ZeroTier framework
         run: |
@@ -75,6 +98,7 @@ jobs:
         shell: bash
         working-directory: ios-app
         run: |
+          set -o pipefail
           make all \
             BOOTJDK=$JAVA_HOME/bin \
             SDKPATH=$(xcrun --sdk iphoneos --show-sdk-path) \

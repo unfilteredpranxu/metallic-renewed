@@ -139,7 +139,7 @@ jobs:
           # Every class listed here gets its .m/.mm added to CMakeLists.txt (runner copy only,
           # your repo is never modified) if it exists in your project but is not listed there yet.
           # Add any class name the linker reports as: "_OBJC_CLASS_$_Name", referenced from ...
-          CLASSES="HomeActionPanelView HomeTopNavView"
+          CLASSES="HomeActionPanelView HomeTopNavView BottomActionBarView"
           # Classes whose header must also be imported into LauncherNewsViewController.m
           # (only needed for the one that was reported as "unknown type name")
           IMPORT_CLASSES="HomeActionPanelView"

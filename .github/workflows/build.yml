@@ -188,6 +188,19 @@ jobs:
             grep -qF "$f" CMakeLists.txt || echo "NOT LISTED: $f"
           done || true
 
+      - name: Runner-only source fixes
+        run: |
+          cd "$GITHUB_WORKSPACE/ios-app/Natives"
+          # AI/AiAssetTools.m: second ternary operand is a C string (missing @), which is a compile error.
+          # Patched on the runner only; your repo is not modified.
+          f=$(find . -ipath "./AI/AiAssetTools.m" | head -1)
+          if [ -n "$f" ] && grep -qF 'isQuilt ? @"" : ", and Fabric API' "$f"; then
+            sed -i 's/isQuilt ? @"" : ", and Fabric API/isQuilt ? @"" : @", and Fabric API/' "$f"
+            echo "Patched $f (runner only)"
+          else
+            echo "AiAssetTools.m patch not needed or pattern not found"
+          fi
+
       - name: Build
         shell: bash
         working-directory: ios-app

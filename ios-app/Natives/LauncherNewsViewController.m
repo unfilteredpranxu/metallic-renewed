@@ -23,6 +23,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import "UIKit+GlassSurface.h"   // ★ [HOME6] 液态玻璃四要素(运行时取 UIGlassEffect,不用 iOS26 编译期符号)
 #import "LauncherRightPanelViewController.h"   // ★ [NORIGHT] 右栏状态广播 / 动作转发入口
+#import "BottomActionBarView.h"   
 
 // MARK: - Shortcut Action Constants
 
@@ -1428,6 +1429,26 @@ self.actionPanel = [[HomeActionPanelView alloc] init];
 self.actionPanel.translatesAutoresizingMaskIntoConstraints = NO;
 [self.view addSubview:self.actionPanel];
 [self.view bringSubviewToFront:self.actionPanel];
+BottomActionBarView *bottomBar = [[BottomActionBarView alloc] init];
+bottomBar.translatesAutoresizingMaskIntoConstraints = NO;
+[self.view addSubview:bottomBar];
+[NSLayoutConstraint activateConstraints:@[
+    [bottomBar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
+    [bottomBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
+    [bottomBar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-16]
+]];
+[bottomBar.launchButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
+    [LauncherRightPanelViewController norightPostAction:@"launch"];
+}] forControlEvents:UIControlEventTouchUpInside];
+[bottomBar.executeJarButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
+    [LauncherRightPanelViewController norightPostAction:@"executeJar"];
+}] forControlEvents:UIControlEventTouchUpInside];
+[bottomBar.chooseVersionButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
+    [LauncherRightPanelViewController norightPostAction:@"versionPicker"];
+}] forControlEvents:UIControlEventTouchUpInside];
+self.actionPanel.launchButton.hidden = YES;
+self.actionPanel.executeJarButton.hidden = YES;
+self.actionPanel.chooseVersionButton.hidden = YES;
 
 #if 0
 [NSLayoutConstraint activateConstraints:@[
@@ -1460,7 +1481,10 @@ self.actionPanel.translatesAutoresizingMaskIntoConstraints = NO;
             #endif
             [NSLayoutConstraint activateConstraints:@[
                     [self.actionPanel.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16],
+                    #if 0
                         [self.actionPanel.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-16],
+                        #endif
+                        [self.actionPanel.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:56],
                             [self.actionPanel.widthAnchor constraintEqualToConstant:220],
                             ]];
             [self.actionPanel.launchButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {

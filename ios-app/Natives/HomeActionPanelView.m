@@ -19,6 +19,29 @@ static UIColor *PanelPink(void) {
                                         [b setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
                                             return b;
                                             }
+                                            static void ApplyGlass(UIView *host) {
+    UIVisualEffect *fx = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark];
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 260000
+    if (@available(iOS 26.0, *)) {
+        UIGlassEffect *g = [[UIGlassEffect alloc] init];
+        g.interactive = YES;
+        fx = g;
+    }
+#endif
+    UIVisualEffectView *v = [[UIVisualEffectView alloc] initWithEffect:fx];
+    v.translatesAutoresizingMaskIntoConstraints = NO;
+    v.userInteractionEnabled = NO;
+    v.layer.cornerRadius = 24;
+    v.clipsToBounds = YES;
+    host.backgroundColor = UIColor.clearColor;
+    [host insertSubview:v atIndex:0];
+    [NSLayoutConstraint activateConstraints:@[
+        [v.leadingAnchor constraintEqualToAnchor:host.leadingAnchor],
+        [v.trailingAnchor constraintEqualToAnchor:host.trailingAnchor],
+        [v.topAnchor constraintEqualToAnchor:host.topAnchor],
+        [v.bottomAnchor constraintEqualToAnchor:host.bottomAnchor]
+    ]];
+}
 
                                             @interface HomeActionPanelView ()
                                             @property (nonatomic, assign, readwrite) BOOL expanded;
@@ -43,6 +66,7 @@ static UIColor *PanelPink(void) {
                                                 self = [super initWithFrame:frame];
                                                     if (self) {
                                                             [self buildUI];
+                                                            ApplyGlass(self);
                                                                     [self setExpanded:NO animated:NO];
                                                                         }
                                                                             return self;
@@ -129,6 +153,7 @@ static UIColor *PanelPink(void) {
                                                                                                                                                                                                                                                                                                                                                                                                                                self.gameValue = [[UILabel alloc] init];
                                                                                                                                                                                                                                                                                                                                                                                                                                    self.deviceValue = [[UILabel alloc] init];
                                                                                                                                                                                                                                                                                                                                                                                                                                        self.launcherValue.text = @"1.0.0";
+                                                                                                                                                                                                                                                                                                                                                                                                                                       self.launcherValue.text = @"Metallic 1.2.0 alpha";
                                                                                                                                                                                                                                                                                                                                                                                                                                            self.gameValue.text = @"-";
                                                                                                                                                                                                                                                                                                                                                                                                                                                self.deviceValue.text = [UIDevice currentDevice].model;
 

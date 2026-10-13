@@ -506,6 +506,7 @@
                   [self openColorPickerForKey:@"general.text_color" title:localize(@"i18n_str_384", nil)];
               }
             },
+            #if 0
             @{@"key": @"custom_card_color",
               @"title": localize(@"i18n_str_385", nil),
               @"hasDetail": @YES,
@@ -516,8 +517,12 @@
                   [self openColorPickerForKey:@"general.card_color" title:localize(@"i18n_str_385", nil)];
               }
             },
+            #endif
             @{@"key": @"reset_appearance_colors",
+            #if 0
               @"title": localize(@"i18n_str_386", nil),
+              #endif
+              @"title": @"Reset Theme/Font Colors",
               @"icon": @"arrow.counterclockwise",
               @"type": self.typeButton,
               @"enableCondition": whenNotInGame,

@@ -9,7 +9,7 @@
         <key>CFBundleDevelopmentRegion</key>
         <string>en</string>
         <key>CFBundleDisplayName</key>
-        <string>metallic</string>
+        <string>Metallic</string>
         <key>CFBundleExecutable</key>
         <string>AngelAuraAmethyst</string>
         <key>CFBundleIcons</key>
@@ -87,22 +87,22 @@
                 </dict>
         </dict>
         <key>CFBundleIdentifier</key>
-        <string>com.air-devs.air</string>
+        <string>com.tokyxkai.metallic</string>
         <key>CFBundleInfoDictionaryVersion</key>
         <string>6.0</string>
         <key>CFBundleName</key>
-        <string>metallic</string>
+        <string>Mtallic</string>
         <key>CFBundlePackageType</key>
         <string>APPL</string>
         <key>CFBundleShortVersionString</key>
-        <string>1.1</string>
+        <string>1.2.0</string>
         <key>CFBundleSignature</key>
         <string>????</string>
         <key>CFBundleURLTypes</key>
         <array>
                 <dict>
                         <key>CFBundleURLName</key>
-                        <string>com.air-devs.air.urlscheme</string>
+                        <string>com.tokyxkai.metallic.urlscheme</string>
                         <key>CFBundleURLSchemes</key>
                         <array>
                                 <string>amethyst</string>
@@ -110,7 +110,7 @@
                 </dict>
         </array>
         <key>CFBundleVersion</key>
-        <string>1.1</string>
+        <string>1.2.0</string>
         <key>GCSupportedGameControllers</key>
         <array>
                 <dict>

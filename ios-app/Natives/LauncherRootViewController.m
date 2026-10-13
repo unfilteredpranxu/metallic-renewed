@@ -505,6 +505,8 @@ static const CGFloat kPortraitCardCorner      = 16.0;   // 竖屏底部卡圆角
     self.amePortraitTopBarTop      = [self.sidebarContainer.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor   constant:-(kPortraitOuterMargin)];   // ★ [CAPSULE] 底留一条缝(下面安全区再补)
     self.amePortraitTopBarTrailing = [self.sidebarContainer.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kPortraitOuterMargin];   // ★ [CAPSULE]
     NSLayoutConstraint *ptTopBarHeight = [self.sidebarContainer.heightAnchor constraintEqualToConstant:0.0];   // ★ [NORIGHT] 原 92.0(自绘底栏占位;底栏已迁到根 UITabBarController ⇒ 这条 92pt 空带不该再占)
+    self.amePortraitTopBarTop = [self.sidebarContainer.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8];
+ptTopBarHeight = [self.sidebarContainer.heightAnchor constraintEqualToConstant:92.0];
 
     // ★ [NORIGHT] ★★★ 竖屏"底部右栏卡"整块下线(用户:「这张图片的右边那一大块(右栏卡)把它干掉,
     //   留更多空间给主页,里面的东西搬家」)★★★
@@ -519,6 +521,7 @@ static const CGFloat kPortraitCardCorner      = 16.0;   // 竖屏底部卡圆角
     // ★ [NORIGHT] 原 = rightPanelContainer.top - gap(内容区被那张卡压掉约 300pt);
     //   现在四边贴屏 = 主页/内容区吃满全部空间,底部标签栏由内容 VC 自己的安全区自动让位。
     NSLayoutConstraint *ptContentBottom   = [self.contentContainer.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor constant:0];
+    ptContentTop = [self.contentContainer.topAnchor constraintEqualToAnchor:self.sidebarContainer.bottomAnchor constant:0];
 
     self.amePortraitConstraints = [@[
         self.amePortraitTopBarLeading, self.amePortraitTopBarTop, self.amePortraitTopBarTrailing, ptTopBarHeight,

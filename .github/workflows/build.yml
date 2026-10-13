@@ -195,7 +195,7 @@ jobs:
           # Patched on the runner only; your repo is not modified.
           f=$(find . -ipath "./AI/AiAssetTools.m" | head -1)
           if [ -n "$f" ] && grep -qF 'isQuilt ? @"" : ", and Fabric API' "$f"; then
-            sed -i 's/isQuilt ? @"" : ", and Fabric API/isQuilt ? @"" : @", and Fabric API/' "$f"
+            sed -i.bak 's/isQuilt ? @"" : ", and Fabric API/isQuilt ? @"" : @", and Fabric API/' "$f" && rm -f "$f.bak"
             echo "Patched $f (runner only)"
           else
             echo "AiAssetTools.m patch not needed or pattern not found"

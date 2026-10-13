@@ -209,6 +209,24 @@ jobs:
           echo "---- Every missing symbol ----"
           grep -E '^ *"_OBJC_CLASS_\$_|^ *"_[A-Za-z0-9_]+", referenced from' build.log | sort -u | head -40 || true
 
+      - name: Annotate real errors
+        if: failure()
+        run: |
+          cd ios-app
+          # Real compiler/linker errors only (skips the NSError "error:" method-signature noise)
+          grep -nE "(fatal )?error: |ld: |Undefined symbols|undefined symbol|No rule to make target|CMake Error|\*\*\* \[" build.log \
+            | grep -vE "NSError|-Wdeprecated|warning:" | head -8 \
+            | while IFS= read -r l; do echo "::error title=build error::$(printf '%s' "$l" | cut -c1-500)"; done
+          # Lines right before the first make failure
+          n=$(grep -nE "\*\*\* \[" build.log | head -1 | cut -d: -f1)
+          if [ -n "$n" ]; then
+            ctx=$(sed -n "$((n>25?n-25:1)),${n}p" build.log | grep -v "warning" | cut -c1-300 | head -25 | awk '{printf "%s%%0A", $0}')
+            echo "::error title=before first make failure::${ctx}"
+          fi
+          # Missing Objective-C classes / symbols
+          grep -E '"_OBJC_CLASS_\$_|, referenced from' build.log | sort -u | head -8 \
+            | while IFS= read -r l; do echo "::error title=missing symbol::$(printf '%s' "$l" | cut -c1-300)"; done
+
       - name: Find outputs
         if: always()
         run: |

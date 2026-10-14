@@ -23,7 +23,8 @@
 #import <QuartzCore/QuartzCore.h>
 #import "UIKit+GlassSurface.h"   // ★ [HOME6] 液态玻璃四要素(运行时取 UIGlassEffect,不用 iOS26 编译期符号)
 #import "LauncherRightPanelViewController.h"   // ★ [NORIGHT] 右栏状态广播 / 动作转发入口
-#import "BottomActionBarView.h"   
+#import "BottomActionBarView.h"
+#import "HomeActionPanelView.h"
 
 // MARK: - Shortcut Action Constants
 
@@ -1377,6 +1378,7 @@ static NSString *festivalGreeting(void) {
 - (void)homeEditUpdateResizeAtPoint:(CGPoint)point;
 - (void)homeEditRebuildAllConfigsFromVisibleOrder;
 - (void)homeEditPersistLayout;
+- (void)updateHomeActionPanelVersion;
 
 @end
 
@@ -1429,13 +1431,23 @@ self.actionPanel = [[HomeActionPanelView alloc] init];
 self.actionPanel.translatesAutoresizingMaskIntoConstraints = NO;
 [self.view addSubview:self.actionPanel];
 [self.view bringSubviewToFront:self.actionPanel];
+__weak typeof(self) weakSelf = self;
+self.actionPanel.onProfileTap = ^{
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"ShowAccountManager" object:weakSelf];
+};
+[self.actionPanel setProfileName:self.currentUsername avatar:self.currentAvatar];
+[self updateHomeActionPanelVersion];
 BottomActionBarView *bottomBar = [[BottomActionBarView alloc] init];
 bottomBar.translatesAutoresizingMaskIntoConstraints = NO;
 [self.view addSubview:bottomBar];
+NSLayoutConstraint *preferredBarWidth =
+    [bottomBar.widthAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.widthAnchor multiplier:0.92];
+preferredBarWidth.priority = UILayoutPriorityDefaultHigh;
 [NSLayoutConstraint activateConstraints:@[
-    [bottomBar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
-    [bottomBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-    [bottomBar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-16]
+    [bottomBar.centerXAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.centerXAnchor],
+    preferredBarWidth,
+    [bottomBar.widthAnchor constraintLessThanOrEqualToConstant:380],
+    [bottomBar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12]
 ]];
 [bottomBar.launchButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
     [LauncherRightPanelViewController norightPostAction:@"launch"];
@@ -1509,6 +1521,10 @@ self.actionPanel.chooseVersionButton.hidden = YES;
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(updateHomeActionPanelVersion)
+                                                 name:@"SelectedProfileChanged"
                                                object:nil];
 
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -2817,8 +2833,15 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 
 // MARK: - Data Loading
 
+- (void)updateHomeActionPanelVersion {
+    [self.actionPanel setLauncherVersion:@"Metallic / 1.2 alpha"
+                             gameVersion:(PLProfiles.current.selectedProfileName ?: @"-")
+                                  device:UIDevice.currentDevice.model];
+}
+
 - (void)updateSkinDisplay {
     BaseAuthenticator *auth = BaseAuthenticator.current;
+    self.currentAvatar = nil;
     
     if (auth && auth.authData) {
         NSString *username = auth.authData[@"username"];
@@ -2841,6 +2864,7 @@ self.actionPanel.chooseVersionButton.hidden = YES;
                     UIImage *img = [UIImage imageWithData:data];
                     dispatch_async(dispatch_get_main_queue(), ^{
                         self.currentAvatar = img;
+                        [self.actionPanel setProfileName:self.currentUsername avatar:img];
                         [self reloadProfileSection];
                     });
                 }
@@ -2860,6 +2884,7 @@ self.actionPanel.chooseVersionButton.hidden = YES;
         [self loadDefaultSkin];
     }
     
+    [self.actionPanel setProfileName:self.currentUsername avatar:self.currentAvatar];
     [self reloadProfileSection];
 }
 

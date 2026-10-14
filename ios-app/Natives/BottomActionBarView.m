@@ -23,9 +23,9 @@ static UIButton *MakeBarButton(NSString *title, NSString *icon, CGFloat size) {
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    _launchButton = MakeBarButton(@"Launch Game", @"play.fill", 22);
-    _executeJarButton = MakeBarButton(@"Execute Jar", @"square.and.arrow.up", 16);
-    _chooseVersionButton = MakeBarButton(@"Choose Version", @"square.stack.3d.up.fill", 16);
+    _launchButton = MakeBarButton(@"Launch Game", @"play.fill", 17);
+    _executeJarButton = MakeBarButton(@"Execute Jar", @"square.and.arrow.up", 13);
+    _chooseVersionButton = MakeBarButton(@"Choose Version", @"square.stack.3d.up.fill", 13);
 
     _launchGradient = [CAGradientLayer layer];
     _launchGradient.colors = @[(id)[UIColor colorWithRed:0.10 green:0.25 blue:0.55 alpha:1].CGColor,
@@ -43,7 +43,7 @@ static UIButton *MakeBarButton(NSString *title, NSString *icon, CGFloat size) {
 
     UIStackView *col = [[UIStackView alloc] initWithArrangedSubviews:@[_launchButton, row]];
     col.axis = UILayoutConstraintAxisVertical;
-    col.spacing = 12;
+    col.spacing = 8;
     col.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:col];
 
@@ -52,8 +52,8 @@ static UIButton *MakeBarButton(NSString *title, NSString *icon, CGFloat size) {
         [col.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         [col.topAnchor constraintEqualToAnchor:self.topAnchor],
         [col.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-        [_launchButton.heightAnchor constraintEqualToConstant:64],
-        [_executeJarButton.heightAnchor constraintEqualToConstant:52]
+        [_launchButton.heightAnchor constraintEqualToConstant:46],
+        [_executeJarButton.heightAnchor constraintEqualToConstant:38]
     ]];
     return self;
 }

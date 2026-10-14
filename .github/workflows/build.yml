@@ -105,33 +105,12 @@ jobs:
           ls -la "$DEST" "$DEST/ios-example-app" || true
           test -d "$DEST/ios-example-app/zt.framework"
 
-      - name: Copy misplaced source files into Natives (runner only)
+      - name: Verify home UI source files
         run: |
-          cd "$GITHUB_WORKSPACE/ios-app"
-          # Your repo has HomeTopNavView.m in ios-app/ instead of ios-app/Natives/.
-          # Copy (not move) it on the runner so it gets compiled. Your repo is untouched.
-          for f in HomeTopNavView.m; do
-            if [ -f "$f" ] && [ ! -f "Natives/$f" ]; then
-              cp "$f" "Natives/$f"
-              echo "Copied ios-app/$f -> ios-app/Natives/$f (runner only)"
-            fi
+          cd "$GITHUB_WORKSPACE/ios-app/Natives"
+          for source in HomeActionPanelView.m HomeTopNavView.m BottomActionBarView.m; do
+            test -f "$source" || { echo "Missing home UI source: $source"; exit 1; }
           done
-
-          echo "---- Every HomeTopNavView file in your checkout ----"
-          find "$GITHUB_WORKSPACE" -iname "HomeTopNavView*" -not -path "*/.git/*" || true
-          echo "---- Every HomeTopNavView file in upstream ----"
-          find /tmp/upstream -iname "HomeTopNavView*" -not -path "*/.git/*" || true
-
-          # Last resort: use the upstream version (runner only). It may not match your .h exactly.
-          if [ ! -f Natives/HomeTopNavView.m ]; then
-            u=$(find /tmp/upstream -name "HomeTopNavView.m" -not -path "*/.git/*" | head -1)
-            if [ -n "$u" ]; then
-              cp "$u" Natives/HomeTopNavView.m
-              echo "WARNING: used upstream copy $u (runner only)"
-            else
-              echo "HomeTopNavView.m exists neither in your repo nor upstream"
-            fi
-          fi
 
       - name: Resolve missing classes from your repo
         run: |
@@ -240,34 +219,17 @@ jobs:
           grep -E '"_OBJC_CLASS_\$_|, referenced from' build.log | sort -u | head -8 \
             | while IFS= read -r l; do echo "::error title=missing symbol::$(printf '%s' "$l" | cut -c1-300)"; done
 
-      - name: Find outputs
-        if: always()
+      - name: Confirm IPA output
+        if: success()
         run: |
-          echo "---- ipa / app / deb files ----"
-          find . \( -name "*.ipa" -o -name "*.app" -o -name "*.deb" -o -name "*.tipa" \) -not -path "*/node_modules/*" | head -50
-          echo "---- ios-app top level ----"
-          ls -la ios-app || true
-          echo "---- ios-app/artifacts ----"
-          ls -laR ios-app/artifacts 2>/dev/null | head -50 || true
+          find ios-app/artifacts -maxdepth 1 -type f -name "*.ipa" -print
+          test -n "$(find ios-app/artifacts -maxdepth 1 -type f -name '*.ipa' -print -quit)"
 
-      - name: Upload build output
-        if: always()
+      - name: Upload compiled IPA
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: metallic-build
-          path: |
-            ios-app/artifacts/
-            ios-app/**/*.ipa
-            ios-app/**/*.tipa
-            ios-app/**/*.deb
-            ios-app/build/Release-iphoneos/
-          if-no-files-found: warn
-
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: ios-app/build.log
-          if-no-files-found: warn
+          name: metallic-ipa
+          path: ios-app/artifacts/*.ipa
+          if-no-files-found: error
           

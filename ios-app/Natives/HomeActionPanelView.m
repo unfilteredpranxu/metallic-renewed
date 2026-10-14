@@ -1,246 +1,240 @@
 #import "HomeActionPanelView.h"
 
-static const CGFloat kCollapsedHeight = 172;
-static const CGFloat kExpandedHeight  = 310;
+static const CGFloat kCollapsedHeight = 70.0;
+static const CGFloat kExpandedHeight = 210.0;
 
-static UIColor *PanelPink(void) {
-    return [UIColor colorWithRed:1.0 green:0.43 blue:0.78 alpha:1.0];
-    }
+static UIColor *PanelAccentColor(void) {
+    return [UIColor colorWithRed:0.38 green:0.69 blue:1.0 alpha:1.0];
+}
 
-    static UIButton *MakePinkButton(NSString *title, CGFloat fontSize) {
-        UIButton *b = [UIButton buttonWithType:UIButtonTypeCustom];
-            b.translatesAutoresizingMaskIntoConstraints = NO;
-                b.backgroundColor = PanelPink();
-                    b.layer.cornerRadius = 10;
-                        b.titleLabel.font = [UIFont systemFontOfSize:fontSize weight:UIFontWeightMedium];
-                            b.titleLabel.adjustsFontSizeToFitWidth = YES;
-                                b.titleLabel.minimumScaleFactor = 0.6;
-                                    [b setTitle:title forState:UIControlStateNormal];
-                                        [b setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-                                            return b;
-                                            }
-                                            static void ApplyGlass(UIView *host) {
-    UIVisualEffect *fx = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark];
+static UIButton *MakeHiddenActionButton(NSString *title, NSString *symbol) {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    [button setTitle:title forState:UIControlStateNormal];
+    [button setImage:[UIImage systemImageNamed:symbol] forState:UIControlStateNormal];
+    button.hidden = YES;
+    return button;
+}
+
+static void ApplyGlass(UIView *host) {
+    UIVisualEffect *effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark];
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 260000
     if (@available(iOS 26.0, *)) {
-        UIGlassEffect *g = [[UIGlassEffect alloc] init];
-        g.interactive = YES;
-        fx = g;
+        UIGlassEffect *glass = [[UIGlassEffect alloc] init];
+        glass.interactive = YES;
+        effect = glass;
     }
 #endif
-    UIVisualEffectView *v = [[UIVisualEffectView alloc] initWithEffect:fx];
-    v.translatesAutoresizingMaskIntoConstraints = NO;
-    v.userInteractionEnabled = NO;
-    v.layer.cornerRadius = 24;
-    v.clipsToBounds = YES;
+    UIVisualEffectView *glassView = [[UIVisualEffectView alloc] initWithEffect:effect];
+    glassView.translatesAutoresizingMaskIntoConstraints = NO;
+    glassView.userInteractionEnabled = NO;
+    glassView.layer.cornerRadius = 22.0;
+    glassView.clipsToBounds = YES;
     host.backgroundColor = UIColor.clearColor;
-    [host insertSubview:v atIndex:0];
+    [host insertSubview:glassView atIndex:0];
     [NSLayoutConstraint activateConstraints:@[
-        [v.leadingAnchor constraintEqualToAnchor:host.leadingAnchor],
-        [v.trailingAnchor constraintEqualToAnchor:host.trailingAnchor],
-        [v.topAnchor constraintEqualToAnchor:host.topAnchor],
-        [v.bottomAnchor constraintEqualToAnchor:host.bottomAnchor]
+        [glassView.leadingAnchor constraintEqualToAnchor:host.leadingAnchor],
+        [glassView.trailingAnchor constraintEqualToAnchor:host.trailingAnchor],
+        [glassView.topAnchor constraintEqualToAnchor:host.topAnchor],
+        [glassView.bottomAnchor constraintEqualToAnchor:host.bottomAnchor]
     ]];
 }
 
-                                            @interface HomeActionPanelView ()
-                                            @property (nonatomic, assign, readwrite) BOOL expanded;
-                                            @property (nonatomic, strong, readwrite) UIImageView *avatarView;
-                                            @property (nonatomic, strong, readwrite) UIButton *toggleButton;
-                                            @property (nonatomic, strong, readwrite) UIButton *launchButton;
-                                            @property (nonatomic, strong, readwrite) UIButton *executeJarButton;
-                                            @property (nonatomic, strong, readwrite) UIButton *chooseVersionButton;
+@interface HomeActionPanelView ()
+@property (nonatomic, assign, readwrite) BOOL expanded;
+@property (nonatomic, strong, readwrite) UIImageView *avatarView;
+@property (nonatomic, strong, readwrite) UIButton *toggleButton;
+@property (nonatomic, strong, readwrite) UIButton *launchButton;
+@property (nonatomic, strong, readwrite) UIButton *executeJarButton;
+@property (nonatomic, strong, readwrite) UIButton *chooseVersionButton;
+@property (nonatomic, strong) UILabel *accountNameLabel;
+@property (nonatomic, strong) UIStackView *cardStack;
+@property (nonatomic, strong) UILabel *launcherValue;
+@property (nonatomic, strong) UILabel *gameValue;
+@property (nonatomic, strong) UILabel *deviceValue;
+@property (nonatomic, strong) NSLayoutConstraint *heightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *cardStackTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *cardStackBottomConstraint;
+@end
 
-                                            @property (nonatomic, strong) NSLayoutConstraint *heightConstraint;
-                                            @property (nonatomic, strong) NSLayoutConstraint *avatarCenterX;
-                                            @property (nonatomic, strong) NSLayoutConstraint *avatarLeading;
-                                            @property (nonatomic, strong) UIStackView *cardStack;
-                                            @property (nonatomic, strong) UILabel *launcherValue;
-                                            @property (nonatomic, strong) UILabel *gameValue;
-                                            @property (nonatomic, strong) UILabel *deviceValue;
-                                            @end
+@implementation HomeActionPanelView
 
-                                            @implementation HomeActionPanelView
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self buildUI];
+        ApplyGlass(self);
+        [self setExpanded:YES animated:NO];
+    }
+    return self;
+}
 
-                                            - (instancetype)initWithFrame:(CGRect)frame {
-                                                self = [super initWithFrame:frame];
-                                                    if (self) {
-                                                            [self buildUI];
-                                                            ApplyGlass(self);
-                                                                    [self setExpanded:NO animated:NO];
-                                                                        }
-                                                                            return self;
-                                                                            }
+- (UIView *)cardWithIcon:(NSString *)icon title:(NSString *)title valueLabel:(UILabel *)value {
+    UIView *card = [[UIView alloc] init];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.backgroundColor = [UIColor colorWithWhite:0.04 alpha:0.45];
+    card.layer.cornerRadius = 12.0;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.15].CGColor;
+    [card.heightAnchor constraintEqualToConstant:40.0].active = YES;
 
-                                                                            #pragma mark - Build
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:icon]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    iconView.tintColor = PanelAccentColor();
 
-                                                                            - (UIView *)cardWithIcon:(NSString *)icon
-                                                                                               title:(NSString *)title
-                                                                                                             valueLabel:(UILabel *)value
-                                                                                                                                color:(UIColor *)color
-                                                                                                                                               tintColor:(UIColor *)tint {
-                                                                                                                                                   UIView *card = [[UIView alloc] init];
-                                                                                                                                                       card.backgroundColor = color;
-                                                                                                                                                           card.layer.cornerRadius = 10;
-                                                                                                                                                               [card.heightAnchor constraintEqualToConstant:40].active = YES;
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.text = title;
+    titleLabel.font = [UIFont systemFontOfSize:10.5 weight:UIFontWeightMedium];
+    titleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.72];
 
-                                                                                                                                                                   UILabel *t = [[UILabel alloc] init];
-                                                                                                                                                                       t.text = title;
-                                                                                                                                                                           t.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
-                                                                                                                                                                               t.textColor = UIColor.whiteColor;
+    value.font = [UIFont systemFontOfSize:11.5 weight:UIFontWeightSemibold];
+    value.textColor = UIColor.whiteColor;
+    value.numberOfLines = 1;
+    value.adjustsFontSizeToFitWidth = YES;
+    value.minimumScaleFactor = 0.75;
 
-                                                                                                                                                                                   value.font = [UIFont systemFontOfSize:10];
-                                                                                                                                                                                       value.textColor = [UIColor colorWithWhite:1 alpha:0.75];
+    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[titleLabel, value]];
+    textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    textStack.axis = UILayoutConstraintAxisVertical;
+    textStack.spacing = 1.0;
 
-                                                                                                                                                                                           UIStackView *text = [[UIStackView alloc] initWithArrangedSubviews:@[t, value]];
-                                                                                                                                                                                               text.axis = UILayoutConstraintAxisVertical;
-                                                                                                                                                                                                   text.spacing = 2;
+    [card addSubview:iconView];
+    [card addSubview:textStack];
+    [NSLayoutConstraint activateConstraints:@[
+        [iconView.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:11.0],
+        [iconView.centerYAnchor constraintEqualToAnchor:card.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:18.0],
+        [iconView.heightAnchor constraintEqualToConstant:18.0],
+        [textStack.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:9.0],
+        [textStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-10.0],
+        [textStack.centerYAnchor constraintEqualToAnchor:card.centerYAnchor]
+    ]];
+    return card;
+}
 
-                                                                                                                                                                                                       UIStackView *row = [[UIStackView alloc] init];
-                                                                                                                                                                                                           row.translatesAutoresizingMaskIntoConstraints = NO;
-                                                                                                                                                                                                               row.axis = UILayoutConstraintAxisHorizontal;
-                                                                                                                                                                                                                   row.alignment = UIStackViewAlignmentCenter;
-                                                                                                                                                                                                                       row.spacing = 8;
-                                                                                                                                                                                                                           row.layoutMarginsRelativeArrangement = YES;
-                                                                                                                                                                                                                               row.layoutMargins = UIEdgeInsetsMake(0, 12, 0, 8);
+- (void)buildUI {
+    self.layer.cornerRadius = 22.0;
+    self.clipsToBounds = YES;
 
-                                                                                                                                                                                                                                   if (icon) {
-                                                                                                                                                                                                                                           UIImageView *iv = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:icon]];
-                                                                                                                                                                                                                                                   iv.tintColor = tint;
-                                                                                                                                                                                                                                                           iv.contentMode = UIViewContentModeScaleAspectFit;
-                                                                                                                                                                                                                                                                   [iv.widthAnchor constraintEqualToConstant:22].active = YES;
-                                                                                                                                                                                                                                                                           [row addArrangedSubview:iv];
-                                                                                                                                                                                                                                                                               }
-                                                                                                                                                                                                                                                                                   [row addArrangedSubview:text];
+    self.avatarView = [[UIImageView alloc] init];
+    self.avatarView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.avatarView.backgroundColor = [UIColor colorWithWhite:0.25 alpha:1.0];
+    self.avatarView.layer.cornerRadius = 23.0;
+    self.avatarView.layer.borderWidth = 1.0;
+    self.avatarView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.35].CGColor;
+    self.avatarView.clipsToBounds = YES;
+    self.avatarView.contentMode = UIViewContentModeScaleAspectFill;
+    self.avatarView.userInteractionEnabled = YES;
+    self.avatarView.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
+    self.avatarView.tintColor = [UIColor colorWithWhite:0.82 alpha:1.0];
+    [self.avatarView addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(profileTapped)]];
+    [self addSubview:self.avatarView];
 
-                                                                                                                                                                                                                                                                                       [card addSubview:row];
-                                                                                                                                                                                                                                                                                           [NSLayoutConstraint activateConstraints:@[
-                                                                                                                                                                                                                                                                                                   [row.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
-                                                                                                                                                                                                                                                                                                           [row.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
-                                                                                                                                                                                                                                                                                                                   [row.topAnchor constraintEqualToAnchor:card.topAnchor],
-                                                                                                                                                                                                                                                                                                                           [row.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
-                                                                                                                                                                                                                                                                                                                               ]];
-                                                                                                                                                                                                                                                                                                                                   return card;
-                                                                                                                                                                                                                                                                                                                                   }
+    self.accountNameLabel = [[UILabel alloc] init];
+    self.accountNameLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.accountNameLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    self.accountNameLabel.textColor = UIColor.whiteColor;
+    self.accountNameLabel.text = @"Not Logged In";
+    self.accountNameLabel.numberOfLines = 1;
+    self.accountNameLabel.adjustsFontSizeToFitWidth = YES;
+    self.accountNameLabel.minimumScaleFactor = 0.75;
+    self.accountNameLabel.userInteractionEnabled = YES;
+    [self.accountNameLabel addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(profileTapped)]];
+    [self addSubview:self.accountNameLabel];
 
-                                                                                                                                                                                                                                                                                                                                   - (void)buildUI {
-                                                                                                                                                                                                                                                                                                                                       self.backgroundColor = [UIColor colorWithWhite:0.15 alpha:1.0];
-                                                                                                                                                                                                                                                                                                                                           self.layer.cornerRadius = 14;
-                                                                                                                                                                                                                                                                                                                                               self.clipsToBounds = YES;
+    self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.toggleButton.tintColor = [UIColor colorWithWhite:0.88 alpha:1.0];
+    [self.toggleButton addTarget:self action:@selector(toggleTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:self.toggleButton];
 
-                                                                                                                                                                                                                                                                                                                                                   self.avatarView = [[UIImageView alloc] init];
-                                                                                                                                                                                                                                                                                                                                                       self.avatarView.translatesAutoresizingMaskIntoConstraints = NO;
-                                                                                                                                                                                                                                                                                                                                                           self.avatarView.backgroundColor = [UIColor colorWithWhite:0.33 alpha:1.0];
-                                                                                                                                                                                                                                                                                                                                                               self.avatarView.layer.cornerRadius = 28;
-                                                                                                                                                                                                                                                                                                                                                                   self.avatarView.clipsToBounds = YES;
-                                                                                                                                                                                                                                                                                                                                                                       self.avatarView.contentMode = UIViewContentModeScaleAspectFill;
-                                                                                                                                                                                                                                                                                                                                                                           [self addSubview:self.avatarView];
+    self.launchButton = MakeHiddenActionButton(@"Launch Game", @"play.fill");
+    self.executeJarButton = MakeHiddenActionButton(@"Execute JAR", @"square.and.arrow.up");
+    self.chooseVersionButton = MakeHiddenActionButton(@"Choose Version", @"square.stack.3d.up.fill");
 
-                                                                                                                                                                                                                                                                                                                                                                               self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
-                                                                                                                                                                                                                                                                                                                                                                                   self.toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
-                                                                                                                                                                                                                                                                                                                                                                                       self.toggleButton.tintColor = [UIColor colorWithWhite:0.75 alpha:1.0];
-                                                                                                                                                                                                                                                                                                                                                                                           [self.toggleButton addTarget:self action:@selector(toggleTapped) forControlEvents:UIControlEventTouchUpInside];
-                                                                                                                                                                                                                                                                                                                                                                                               [self addSubview:self.toggleButton];
+    self.launcherValue = [[UILabel alloc] init];
+    self.gameValue = [[UILabel alloc] init];
+    self.deviceValue = [[UILabel alloc] init];
+    self.launcherValue.text = @"Metallic / 1.2 alpha";
+    self.gameValue.text = @"-";
+    self.deviceValue.text = UIDevice.currentDevice.model;
 
-                                                                                                                                                                                                                                                                                                                                                                                                   self.launchButton = MakePinkButton(@"Launch Game", 15);
-                                                                                                                                                                                                                                                                                                                                                                                                       self.executeJarButton = MakePinkButton(@"Execute JAR", 10);
-                                                                                                                                                                                                                                                                                                                                                                                                           self.chooseVersionButton = MakePinkButton(@"Choose Version", 10);
-                                                                                                                                                                                                                                                                                                                                                                                                               [self addSubview:self.launchButton];
-                                                                                                                                                                                                                                                                                                                                                                                                                   [self addSubview:self.executeJarButton];
-                                                                                                                                                                                                                                                                                                                                                                                                                       [self addSubview:self.chooseVersionButton];
+    UIView *launcherCard = [self cardWithIcon:@"sparkles" title:@"Launcher Version" valueLabel:self.launcherValue];
+    UIView *gameCard = [self cardWithIcon:@"gamecontroller.fill" title:@"Game Version" valueLabel:self.gameValue];
+    UIView *deviceCard = [self cardWithIcon:@"iphone" title:@"Device" valueLabel:self.deviceValue];
+    self.cardStack = [[UIStackView alloc] initWithArrangedSubviews:@[launcherCard, gameCard, deviceCard]];
+    self.cardStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.cardStack.axis = UILayoutConstraintAxisVertical;
+    self.cardStack.spacing = 6.0;
+    [self addSubview:self.cardStack];
 
-                                                                                                                                                                                                                                                                                                                                                                                                                           self.launcherValue = [[UILabel alloc] init];
-                                                                                                                                                                                                                                                                                                                                                                                                                               self.gameValue = [[UILabel alloc] init];
-                                                                                                                                                                                                                                                                                                                                                                                                                                   self.deviceValue = [[UILabel alloc] init];
-                                                                                                                                                                                                                                                                                                                                                                                                                                       self.launcherValue.text = @"1.0.0";
-                                                                                                                                                                                                                                                                                                                                                                                                                                       self.launcherValue.text = @"Metallic 1.2.0 alpha";
-                                                                                                                                                                                                                                                                                                                                                                                                                                           self.gameValue.text = @"-";
-                                                                                                                                                                                                                                                                                                                                                                                                                                               self.deviceValue.text = [UIDevice currentDevice].model;
+    self.heightConstraint = [self.heightAnchor constraintEqualToConstant:kCollapsedHeight];
+    self.cardStackTopConstraint =
+        [self.cardStack.topAnchor constraintEqualToAnchor:self.avatarView.bottomAnchor constant:10.0];
+    self.cardStackBottomConstraint =
+        [self.cardStack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-12.0];
+    [NSLayoutConstraint activateConstraints:@[
+        self.heightConstraint,
+        [self.avatarView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12.0],
+        [self.avatarView.topAnchor constraintEqualToAnchor:self.topAnchor constant:10.0],
+        [self.avatarView.widthAnchor constraintEqualToConstant:46.0],
+        [self.avatarView.heightAnchor constraintEqualToConstant:46.0],
+        [self.accountNameLabel.leadingAnchor constraintEqualToAnchor:self.avatarView.trailingAnchor constant:10.0],
+        [self.accountNameLabel.trailingAnchor constraintEqualToAnchor:self.toggleButton.leadingAnchor constant:-6.0],
+        [self.accountNameLabel.centerYAnchor constraintEqualToAnchor:self.avatarView.centerYAnchor],
+        [self.toggleButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-8.0],
+        [self.toggleButton.centerYAnchor constraintEqualToAnchor:self.avatarView.centerYAnchor],
+        [self.toggleButton.widthAnchor constraintEqualToConstant:32.0],
+        [self.toggleButton.heightAnchor constraintEqualToConstant:32.0],
+        [self.cardStack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:10.0],
+        [self.cardStack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-10.0],
+        self.cardStackTopConstraint,
+        self.cardStackBottomConstraint
+    ]];
+}
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                   UIColor *green = [UIColor colorWithRed:0.16 green:0.22 blue:0.17 alpha:1.0];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                       UIColor *mauve = [UIColor colorWithRed:0.55 green:0.28 blue:0.47 alpha:1.0];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                           UIColor *lightGreen = [UIColor colorWithRed:0.35 green:0.80 blue:0.45 alpha:1.0];
+- (void)profileTapped {
+    if (self.onProfileTap) self.onProfileTap();
+}
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                               UIView *c1 = [self cardWithIcon:nil title:@"Launcher Version" valueLabel:self.launcherValue color:green tintColor:lightGreen];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                   UIView *c2 = [self cardWithIcon:@"gamecontroller" title:@"Game Version" valueLabel:self.gameValue color:green tintColor:lightGreen];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                       UIView *c3 = [self cardWithIcon:@"iphone" title:@"Device" valueLabel:self.deviceValue color:mauve tintColor:PanelPink()];
+- (void)toggleTapped {
+    [self setExpanded:!self.expanded animated:YES];
+}
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                           self.cardStack = [[UIStackView alloc] initWithArrangedSubviews:@[c1, c2, c3]];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                               self.cardStack.translatesAutoresizingMaskIntoConstraints = NO;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   self.cardStack.axis = UILayoutConstraintAxisVertical;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       self.cardStack.spacing = 6;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self addSubview:self.cardStack];
+- (void)setExpanded:(BOOL)expanded animated:(BOOL)animated {
+    _expanded = expanded;
+    self.heightConstraint.constant = expanded ? kExpandedHeight : kCollapsedHeight;
+    self.cardStackTopConstraint.active = expanded;
+    self.cardStackBottomConstraint.active = expanded;
+    [self.toggleButton setImage:[UIImage systemImageNamed:(expanded ? @"chevron.up" : @"chevron.down")]
+                       forState:UIControlStateNormal];
+    self.cardStack.userInteractionEnabled = expanded;
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               self.heightConstraint = [self.heightAnchor constraintEqualToConstant:kCollapsedHeight];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   self.avatarCenterX = [self.avatarView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       self.avatarLeading = [self.avatarView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14];
+    void (^changes)(void) = ^{
+        self.cardStack.alpha = expanded ? 1.0 : 0.0;
+        [self.superview layoutIfNeeded];
+    };
+    if (animated && self.superview) {
+        [UIView animateWithDuration:0.22
+                              delay:0
+                            options:UIViewAnimationOptionCurveEaseInOut
+                         animations:changes
+                         completion:nil];
+    } else {
+        changes();
+    }
+}
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [NSLayoutConstraint activateConstraints:@[
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   self.heightConstraint,
+- (void)setProfileName:(NSString *)name avatar:(UIImage *)avatar {
+    self.accountNameLabel.text = (name.length > 0) ? name : @"Not Logged In";
+    self.avatarView.image = avatar ?: [UIImage systemImageNamed:@"person.crop.circle.fill"];
+}
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.avatarView.topAnchor constraintEqualToAnchor:self.topAnchor constant:14],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.avatarView.widthAnchor constraintEqualToConstant:56],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.avatarView.heightAnchor constraintEqualToConstant:56],
+- (void)setLauncherVersion:(NSString *)launcher gameVersion:(NSString *)game device:(NSString *)device {
+    if (launcher.length > 0) self.launcherValue.text = launcher;
+    if (game.length > 0) self.gameValue.text = game;
+    if (device.length > 0) self.deviceValue.text = device;
+}
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.toggleButton.topAnchor constraintEqualToAnchor:self.topAnchor constant:8],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.toggleButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-8],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.toggleButton.widthAnchor constraintEqualToConstant:32],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.toggleButton.heightAnchor constraintEqualToConstant:32],
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.executeJarButton.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.executeJarButton.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-12],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.executeJarButton.heightAnchor constraintEqualToConstant:30],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.chooseVersionButton.leadingAnchor constraintEqualToAnchor:self.executeJarButton.trailingAnchor constant:8],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.chooseVersionButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.chooseVersionButton.bottomAnchor constraintEqualToAnchor:self.executeJarButton.bottomAnchor],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.chooseVersionButton.heightAnchor constraintEqualToAnchor:self.executeJarButton.heightAnchor],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.chooseVersionButton.widthAnchor constraintEqualToAnchor:self.executeJarButton.widthAnchor],
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.launchButton.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.launchButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.launchButton.bottomAnchor constraintEqualToAnchor:self.executeJarButton.topAnchor constant:-8],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.launchButton.heightAnchor constraintEqualToConstant:36],
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.cardStack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.cardStack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.cardStack.bottomAnchor constraintEqualToAnchor:self.launchButton.topAnchor constant:-10],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ]];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       }
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       #pragma mark - State
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       - (void)toggleTapped {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self setExpanded:!self.expanded animated:YES];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           }
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               _expanded = expanded;
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   self.heightConstraint.constant = expanded ? kExpandedHeight : kCollapsedHeight;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       self.avatarCenterX.active = !expanded;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           self.avatarLeading.active = expanded;
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               NSString *symbol = expanded ? @"chevron.up" : @"chevron.down";
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   [self.toggleButton setImage:[UIImage systemImageNamed:symbol] forState:UIControlStateNormal];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       self.cardStack.userInteractionEnabled = expanded;
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           void (^changes)(void) = ^{
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   self.cardStack.alpha = expanded ? 1.0 : 0.0;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [self.superview layoutIfNeeded];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               };
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   if (animated && self.superview) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [UIView animateWithDuration:0.25 delay:0 options:UIViewAnimationOptionCurveEaseInOut
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    animations:changes completion:nil];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        } else {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                changes();
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    - (void)setLauncherVersion:(NSString *)launcher gameVersion:(NSString *)game device:(NSString *)device {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        if (launcher) self.launcherValue.text = launcher;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            if (game) self.gameValue.text = game;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                if (device) self.deviceValue.text = device;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @end
+@end

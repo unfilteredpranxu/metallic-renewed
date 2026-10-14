@@ -1,5 +1,4 @@
 #import <UIKit/UIKit.h>
-#import "HomeActionPanelView.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -11,13 +10,14 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, readonly) UIButton *launchButton;
 @property (nonatomic, strong, readonly) UIButton *executeJarButton;
 @property (nonatomic, strong, readonly) UIButton *chooseVersionButton;
+@property (nonatomic, copy, nullable) void (^onProfileTap)(void);
 
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated;
-
+- (void)setProfileName:(nullable NSString *)name avatar:(nullable UIImage *)avatar;
 - (void)setLauncherVersion:(nullable NSString *)launcher
                gameVersion:(nullable NSString *)game
-                                   device:(nullable NSString *)device;
+                    device:(nullable NSString *)device;
 
-                                   @end
+@end
 
-                                   NS_ASSUME_NONNULL_END
+NS_ASSUME_NONNULL_END

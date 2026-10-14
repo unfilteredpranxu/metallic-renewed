@@ -794,7 +794,8 @@ static const void *kE1InstanceNameKey = &kE1InstanceNameKey;
                 [self.view bringSubviewToFront:topNav];
                     [NSLayoutConstraint activateConstraints:@[
                             [topNav.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:16],
-                                    [topNav.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:6],
+                                    [topNav.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+                                    [topNav.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16],
                                         ]];
                                             topNav.onSelect = ^(NSInteger index) {
                                                     if (index <= 4) {

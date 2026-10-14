@@ -2834,7 +2834,7 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 // MARK: - Data Loading
 
 - (void)updateHomeActionPanelVersion {
-    [self.actionPanel setLauncherVersion:@"Metallic / 1.2 alpha"
+    [self.actionPanel setLauncherVersion:@"Metallic/ 1.2 alpha"
                              gameVersion:(PLProfiles.current.selectedProfileName ?: @"-")
                                   device:UIDevice.currentDevice.model];
 }

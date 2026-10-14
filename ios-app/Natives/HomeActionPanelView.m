@@ -156,7 +156,7 @@ static void ApplyGlass(UIView *host) {
     self.launcherValue = [[UILabel alloc] init];
     self.gameValue = [[UILabel alloc] init];
     self.deviceValue = [[UILabel alloc] init];
-    self.launcherValue.text = @"Metallic / 1.2 alpha";
+    self.launcherValue.text = @"Metallic/ 1.2 alpha";
     self.gameValue.text = @"-";
     self.deviceValue.text = UIDevice.currentDevice.model;
 

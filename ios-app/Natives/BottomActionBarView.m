@@ -1,7 +1,6 @@
 #import "BottomActionBarView.h"
 
 @interface BottomActionBarView ()
-@property (nonatomic, strong) CAGradientLayer *launchGradient;
 @end
 
 @implementation BottomActionBarView
@@ -23,14 +22,8 @@ static UIButton *MakeBarButton(NSString *title, NSString *icon, CGFloat size) {
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    _launchButton = MakeBarButton(@"Launch Game", @"play.fill", 17);
-    _executeJarButton = MakeBarButton(@"Execute Jar", @"square.and.arrow.up", 13);
-    _chooseVersionButton = MakeBarButton(@"Choose Version", @"square.stack.3d.up.fill", 13);
-
-    _launchGradient = [CAGradientLayer layer];
-    _launchGradient.colors = @[(id)[UIColor colorWithRed:0.10 green:0.25 blue:0.55 alpha:1].CGColor,
-                               (id)[UIColor colorWithRed:0.02 green:0.08 blue:0.25 alpha:1].CGColor];
-    [_launchButton.layer insertSublayer:_launchGradient atIndex:0];
+    _executeJarButton = MakeBarButton(@"Execute Jar", @"square.and.arrow.up", 12);
+    _chooseVersionButton = MakeBarButton(@"Choose Version", @"square.stack.3d.up.fill", 12);
 
     UIColor *dark = [UIColor colorWithRed:0.08 green:0.11 blue:0.13 alpha:0.85];
     _executeJarButton.backgroundColor = dark;
@@ -41,26 +34,22 @@ static UIButton *MakeBarButton(NSString *title, NSString *icon, CGFloat size) {
     row.distribution = UIStackViewDistributionFillEqually;
     row.spacing = 12;
 
-    UIStackView *col = [[UIStackView alloc] initWithArrangedSubviews:@[_launchButton, row]];
-    col.axis = UILayoutConstraintAxisVertical;
-    col.spacing = 8;
-    col.translatesAutoresizingMaskIntoConstraints = NO;
-    [self addSubview:col];
+    row.spacing = 8;
+    row.translatesAutoresizingMaskIntoConstraints = NO;
+    [self addSubview:row];
 
     [NSLayoutConstraint activateConstraints:@[
-        [col.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [col.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [col.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [col.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-        [_launchButton.heightAnchor constraintEqualToConstant:46],
-        [_executeJarButton.heightAnchor constraintEqualToConstant:38]
+        [row.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [row.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [row.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [row.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+        [_executeJarButton.heightAnchor constraintEqualToConstant:34]
     ]];
     return self;
 }
 - (void)layoutSubviews {
     [super layoutSubviews];
-    _launchGradient.frame = _launchButton.bounds;
-    for (UIButton *b in @[_launchButton, _executeJarButton, _chooseVersionButton]) {
+    for (UIButton *b in @[_executeJarButton, _chooseVersionButton]) {
         b.layer.cornerRadius = b.bounds.size.height / 2;
     }
 }

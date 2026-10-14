@@ -1446,12 +1446,9 @@ preferredBarWidth.priority = UILayoutPriorityDefaultHigh;
 [NSLayoutConstraint activateConstraints:@[
     [bottomBar.centerXAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.centerXAnchor],
     preferredBarWidth,
-    [bottomBar.widthAnchor constraintLessThanOrEqualToConstant:380],
+    [bottomBar.widthAnchor constraintLessThanOrEqualToConstant:350],
     [bottomBar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12]
 ]];
-[bottomBar.launchButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-    [LauncherRightPanelViewController norightPostAction:@"launch"];
-}] forControlEvents:UIControlEventTouchUpInside];
 [bottomBar.executeJarButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
     [LauncherRightPanelViewController norightPostAction:@"executeJar"];
 }] forControlEvents:UIControlEventTouchUpInside];

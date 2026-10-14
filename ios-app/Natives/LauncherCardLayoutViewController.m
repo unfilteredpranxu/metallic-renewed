@@ -787,7 +787,7 @@ static const void *kE1InstanceNameKey = &kE1InstanceNameKey;
                                  pRightTop, pRightTrail, pRightHeight, pRightWidth];
 }
 
-- (void)setupChildViewControllers {                                                                                                                                                                                                   };
+- (void)setupChildViewControllers {
     // 左侧边栏 - 功能菜单
     LauncherMenuViewController *sidebarVC = [[LauncherMenuViewController alloc] init];
     self.menuViewController = sidebarVC;   // ★ [PORTRAIT] 记下引用

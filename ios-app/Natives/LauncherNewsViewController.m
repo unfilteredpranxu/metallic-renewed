@@ -55,11 +55,14 @@ static const NSInteger kBentoMaxCols      = 4;      // ★ [UI-ADAPT] 最多 4 �
 // MARK: - ★ [HOME6] 卡片便当盒(⑥)常量
 //   唯一设计依据:D:\hermes workplace\amethyst-air\_uiwork\home\home6.html
 //   该稿 em 基准 = 真机 15pt ⇒ 下列 pt = 稿中 em × 15(逐条对应见 HOME6_REPORT.md ③)。
-static const CGFloat   kHome6HeaderHeight    = 34.0;   // .c6 .chd padding .5em/.45em + 行高 ≈ 34(原 44)
+static const CGFloat   kHome6HeaderHeight    = 44.0;   // bigger chip row (was 34)
+// Space the root nav bar (HomeTopNavView) takes at the top: bar 60 + 8 top margin + 8 gap.
+// Keep in sync with kNavBarHeight in HomeTopNavView.m.
+static const CGFloat   kHomeNavReserve       = 76.0;
 static const CGFloat   kHome6HeaderPadH      = 13.0;   // .chd padding 左右 .85em(原 20)
 static const CGFloat   kHome6HeaderTitleSize = 15.5;   // .c6 .chd .h1 font-size:1.02em(原 Title1≈28)
-static const CGFloat   kHome6PillFontSize    = 10.0;   // .c6 .cus font-size:.64em
-static const CGFloat   kHome6PillHeight      = 24.0;   // .c6 .cus padding .4em/.78em + 字形高
+static const CGFloat   kHome6PillFontSize    = 13.0;   // bigger chips (was 10)
+static const CGFloat   kHome6PillHeight      = 34.0;   // bigger chips (was 24)
 static const CGFloat   kHome6CardRadius      = 13.0;   // .c6 .bt border-radius:.9em(落 12~16 区间)
 static const CGFloat   kHome6AccentWidth     = 3.5;    // .c6 .bt .acc width:.22em(左侧竖色条)
 static const CGFloat   kHome6AccentInsetV    = 8.0;    // 色条上下留白,不贴卡片边
@@ -1440,14 +1443,17 @@ self.actionPanel.onProfileTap = ^{
 BottomActionBarView *bottomBar = [[BottomActionBarView alloc] init];
 bottomBar.translatesAutoresizingMaskIntoConstraints = NO;
 [self.view addSubview:bottomBar];
+// Same width rule as the start capsule (min(view width - 32, kNoRightCapsuleMaxW), centered),
+// so the two rows line up. This row sits UNDER the start capsule: the capsule is raised by
+// (bar height + gap) in setup below, and this row takes the bottom slot.
 NSLayoutConstraint *preferredBarWidth =
-    [bottomBar.widthAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.widthAnchor multiplier:0.92];
+    [bottomBar.widthAnchor constraintEqualToAnchor:self.view.widthAnchor constant:-32];
 preferredBarWidth.priority = UILayoutPriorityDefaultHigh;
 [NSLayoutConstraint activateConstraints:@[
-    [bottomBar.centerXAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.centerXAnchor],
+    [bottomBar.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
     preferredBarWidth,
-    [bottomBar.widthAnchor constraintLessThanOrEqualToConstant:350],
-    [bottomBar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12]
+    [bottomBar.widthAnchor constraintLessThanOrEqualToConstant:kNoRightCapsuleMaxW],
+    [bottomBar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8]
 ]];
 [bottomBar.executeJarButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
     [LauncherRightPanelViewController norightPostAction:@"executeJar"];
@@ -1661,6 +1667,7 @@ self.actionPanel.chooseVersionButton.hidden = YES;
     self.headerTitleLabel.text = localize(@"i18n_str_349", nil);   // ★ [HOME6] 文案 key 不动
     self.headerTitleLabel.font = [UIFont systemFontOfSize:kHome6HeaderTitleSize weight:UIFontWeightBold];
     self.headerTitleLabel.textColor = [UIColor labelColor];
+    self.headerTitleLabel.hidden = YES;   // the nav bar above already says "Home"
     [self.headerView addSubview:self.headerTitleLabel];
 
     self.customizeButton = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -1698,9 +1705,9 @@ self.actionPanel.chooseVersionButton.hidden = YES;
     //   本 pill 自己不判定 JIT、不参与任何启动行为,只做状态镜像。
     self.norightJITPill = [[UILabel alloc] init];
     self.norightJITPill.translatesAutoresizingMaskIntoConstraints = NO;
-    self.norightJITPill.font = [UIFont systemFontOfSize:10.0 weight:UIFontWeightSemibold];
+    self.norightJITPill.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
     self.norightJITPill.textAlignment = NSTextAlignmentCenter;
-    self.norightJITPill.layer.cornerRadius = 8.0;
+    self.norightJITPill.layer.cornerRadius = kHome6PillHeight / 2.0;
     self.norightJITPill.layer.cornerCurve = kCACornerCurveContinuous;
     self.norightJITPill.layer.masksToBounds = YES;
     self.norightJITPill.text = [NSString stringWithFormat:@" %@ ", localize(@"i18n_str_413", nil)];
@@ -1740,7 +1747,8 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 
     // 公共约束(与朝向无关;不含任何会被两套约束重复钉住的属性)
     [NSLayoutConstraint activateConstraints:@[
-        [self.headerView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        // Start below the root nav bar (HomeTopNavView) instead of underneath it.
+        [self.headerView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:kHomeNavReserve],
         [self.headerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.headerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.headerView.heightAnchor constraintEqualToConstant:kHome6HeaderHeight],
@@ -1905,7 +1913,8 @@ self.actionPanel.chooseVersionButton.hidden = YES;
     norightCapsuleLeadGuard.priority = 800;
     norightCapsuleTrailGuard.priority = 800;
     [NSLayoutConstraint activateConstraints:@[
-        [self.norightLaunchCapsule.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8],
+        // Raised by (action-row height 36 + 8 gap) so the Execute Jar / Choose Version row sits UNDER it.
+        [self.norightLaunchCapsule.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-(8.0 + 36.0 + 8.0)],
         [self.norightLaunchCapsule.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         [self.norightLaunchCapsule.heightAnchor constraintEqualToConstant:kNoRightCapsuleHeight],
         self.norightCapsuleWidth,
@@ -3304,7 +3313,8 @@ self.actionPanel.chooseVersionButton.hidden = YES;
     if (cv) {
         // 顶部由 headerView 承担;左右交给 section contentInsets(bentoSectionWithGroup:);底部在此兜底。
         // ★ [NORIGHT] 底部再补「启动胶囊高 + 呼吸」⇒ 最后一张卡不会被底部启动胶囊压住。
-        CGFloat norightBottomRoom = kNoRightCapsuleHeight + 10.0;
+        // Two stacked rows now: start capsule + Execute Jar / Choose Version row (36 + 8 gap) + breathing room.
+        CGFloat norightBottomRoom = kNoRightCapsuleHeight + 8.0 + 36.0 + 10.0;
         cv.contentInset = UIEdgeInsetsMake(0, 0, sa.bottom + kBentoEdgeV + norightBottomRoom, 0);
         cv.verticalScrollIndicatorInsets = UIEdgeInsetsMake(0, 0, sa.bottom, 0);
     }

@@ -160,11 +160,14 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         [self.topNav.trailingAnchor constraintLessThanOrEqualToAnchor:safe.trailingAnchor constant:-16],
     ]];
 
-    for (UIViewController *vc in self.viewControllers) {
-        vc.additionalSafeAreaInsets = UIEdgeInsetsMake(60, 0, 0, 0);
-}
+    // Pages below the bar start under it: bar height 60 + 8 top margin + 8 gap = 76.
+    // Home (index 0) reserves its own space in LauncherNewsViewController (kHomeNavReserve),
+    // so it is skipped here to avoid a double offset.
+    for (NSUInteger i = 1; i < self.viewControllers.count; i++) {
+        self.viewControllers[i].additionalSafeAreaInsets = UIEdgeInsetsMake(76, 0, 0, 0);
+    }
 
-__weak typeof(self) weakSelf = self;
+    __weak typeof(self) weakSelf = self;
     self.topNav.onSelect = ^(NSInteger index) {
         if (index < (NSInteger)weakSelf.viewControllers.count) weakSelf.selectedIndex = index;
     };

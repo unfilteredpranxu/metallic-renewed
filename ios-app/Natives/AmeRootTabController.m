@@ -23,10 +23,12 @@
 #import "AI/AISessionListViewController.h"
 // ★ [MP-RESTORE] Multiplayer entry point.
 #import "TerracottaViewController.h"
+#import "HomeTopNavView.h"
 
 NSString * const AmeTabTappedNotification = @"AmeTabTapped";   // ★ [ROOTTAB]
 
 @interface AmeRootTabController () <UITabBarControllerDelegate>   // ★ Declare the protocol to eliminate the delegate-assignment warning.
+@property (nonatomic, strong) HomeTopNavView *topNav;
 @end
 
 // ★ [TAB-INST-REVERT] Removed the segmented InstancesTabViewController container: the "Instances"
@@ -145,6 +147,37 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     // Keep the tab controller's own view transparent (otherwise it shows as a black area); the
     // window and individual pages handle the wallpaper.
     self.view.backgroundColor = [UIColor clearColor];
+    
+    self.tabBar.hidden = YES; // hide the bottom system bar
+
+    self.topNav = [[HomeTopNavView alloc] init];
+    self.topNav.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.topNav];
+    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.topNav.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8],
+        [self.topNav.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:16],
+        [self.topNav.trailingAnchor constraintLessThanOrEqualToAnchor:safe.trailingAnchor constant:-16],
+    ]];
+
+    for (UIViewController *vc in self.viewControllers) {
+        vc.additionalSafeAreaInsets = UIEdgeInsetsMake(60, 0, 0, 0);
+}
+
+__weak typeof(self) weakSelf = self;
+    self.topNav.onSelect = ^(NSInteger index) {
+        if (index < (NSInteger)weakSelf.viewControllers.count) weakSelf.selectedIndex = index;
+    };
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [self.view bringSubviewToFront:self.topNav];
+}
+
+- (void)setSelectedIndex:(NSUInteger)selectedIndex {
+    [super setSelectedIndex:selectedIndex];
+    self.topNav.selectedIndex = selectedIndex;
 }
 
 #pragma mark - ★ [GAME-LANDSCAPE] Lock landscape during launch/gameplay (root-controller layer)

@@ -31,6 +31,11 @@ workflows:
         script: |
           brew install ldid wget
           command -v cmake >/dev/null 2>&1 || brew install cmake
+          echo "Installing Zulu JDK 8 for JavaApp build..."
+          brew install --cask zulu@8
+          ZULU_HOME="$(/usr/libexec/java_home -v 1.8 2>/dev/null || echo '/Library/Java/JavaVirtualMachines/zulu-8.jdk/Contents/Home')"
+          echo "JAVA_HOME=$ZULU_HOME" >> $CM_ENV
+          echo "PATH=$ZULU_HOME/bin:\$PATH" >> $CM_ENV
 
       - name: Show tool versions
         script: |

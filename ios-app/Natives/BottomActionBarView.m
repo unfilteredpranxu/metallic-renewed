@@ -1,8 +1,30 @@
 #import "BottomActionBarView.h"
-#import "LauncherPreferences.h"   // accentColor() — the same accent the start button uses
+#import "UIKit+GlassSurface.h"    // AmeInstallGlassBackdrop / AmeGlassEffect
 
 // Same height as the start capsule (kNoRightCapsuleHeight in LauncherNewsViewController.m).
 static const CGFloat kBarButtonHeight = 36.0;
+
+void AmeApplyPinkGlassButtonStyle(UIButton *b) {
+    if (!b) return;
+    UIColor *pink = [UIColor colorWithRed:1.0 green:0.43 blue:0.78 alpha:1.0];
+    b.tintColor = pink;
+    b.backgroundColor = UIColor.clearColor;
+    b.layer.cornerCurve = kCACornerCurveContinuous;
+    b.layer.borderWidth = 1.0;
+    b.layer.borderColor = [pink colorWithAlphaComponent:0.55].CGColor;
+    b.clipsToBounds = YES;
+    // Always glass (system UIGlassEffect on iOS 26+, system blur material before that),
+    // then a soft pink wash on top of the glass.
+    UIVisualEffectView *glass = nil;
+    if (AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial) != nil) {
+        glass = AmeInstallGlassBackdrop(b, 100.0, YES);
+    }
+    if (glass) {
+        glass.contentView.backgroundColor = [pink colorWithAlphaComponent:0.20];
+    } else {
+        b.backgroundColor = [pink colorWithAlphaComponent:0.22];
+    }
+}
 
 @interface BottomActionBarView ()
 @end
@@ -10,9 +32,8 @@ static const CGFloat kBarButtonHeight = 36.0;
 @implementation BottomActionBarView
 
 /// Builds a button styled exactly like the "Sign In and Launch" capsule:
-/// accent-tinted 15% fill, 1pt accent border, subheadline label, accent icon.
+/// pink liquid glass, pink hairline border, subheadline label, pink icon.
 static UIButton *MakeBarButton(NSString *title, NSString *icon) {
-    UIColor *accent = accentColor() ?: [UIColor systemBlueColor];
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
     b.translatesAutoresizingMaskIntoConstraints = NO;
     b.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
@@ -22,15 +43,10 @@ static UIButton *MakeBarButton(NSString *title, NSString *icon) {
     [b setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
     UIImage *image = [[UIImage systemImageNamed:icon] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     if (image) [b setImage:image forState:UIControlStateNormal];
-    b.tintColor = accent;
     b.imageEdgeInsets = UIEdgeInsetsMake(0, -6, 0, 0);
     b.titleEdgeInsets = UIEdgeInsetsMake(0, 6, 0, 0);
     b.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
-    b.backgroundColor = [accent colorWithAlphaComponent:0.15];
-    b.layer.borderWidth = 1.0;
-    b.layer.borderColor = accent.CGColor;
-    b.layer.cornerCurve = kCACornerCurveContinuous;
-    b.clipsToBounds = YES;
+    AmeApplyPinkGlassButtonStyle(b);
     return b;
 }
 

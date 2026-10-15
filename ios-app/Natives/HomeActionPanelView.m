@@ -1,10 +1,14 @@
 #import "HomeActionPanelView.h"
 
-static const CGFloat kCollapsedHeight = 70.0;
-static const CGFloat kExpandedHeight = 210.0;
+// Collapsed = just the round profile picture in the corner; expanded = full glass card.
+static const CGFloat kCollapsedSize = 46.0;
+static const CGFloat kExpandedWidth = 250.0;
+static const CGFloat kExpandedHeight = 252.0;
+static const CGFloat kChipRowHeight = 34.0;
 
 static UIColor *PanelAccentColor(void) {
-    return [UIColor colorWithRed:0.38 green:0.69 blue:1.0 alpha:1.0];
+    // Pink to match the glass nav bar selector.
+    return [UIColor colorWithRed:1.0 green:0.43 blue:0.78 alpha:1.0];
 }
 
 static UIButton *MakeHiddenActionButton(NSString *title, NSString *symbol) {
@@ -16,7 +20,7 @@ static UIButton *MakeHiddenActionButton(NSString *title, NSString *symbol) {
     return button;
 }
 
-static void ApplyGlass(UIView *host) {
+static UIVisualEffectView *ApplyGlass(UIView *host) {
     UIVisualEffect *effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark];
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 260000
     if (@available(iOS 26.0, *)) {
@@ -38,6 +42,7 @@ static void ApplyGlass(UIView *host) {
         [glassView.topAnchor constraintEqualToAnchor:host.topAnchor],
         [glassView.bottomAnchor constraintEqualToAnchor:host.bottomAnchor]
     ]];
+    return glassView;
 }
 
 @interface HomeActionPanelView ()
@@ -47,12 +52,20 @@ static void ApplyGlass(UIView *host) {
 @property (nonatomic, strong, readwrite) UIButton *launchButton;
 @property (nonatomic, strong, readwrite) UIButton *executeJarButton;
 @property (nonatomic, strong, readwrite) UIButton *chooseVersionButton;
+@property (nonatomic, strong, readwrite) UIStackView *chipRow;
+@property (nonatomic, strong, readwrite) UIView *badgeLayer;
+@property (nonatomic, strong) UIVisualEffectView *glassView;
 @property (nonatomic, strong) UILabel *accountNameLabel;
 @property (nonatomic, strong) UIStackView *cardStack;
 @property (nonatomic, strong) UILabel *launcherValue;
 @property (nonatomic, strong) UILabel *gameValue;
 @property (nonatomic, strong) UILabel *deviceValue;
 @property (nonatomic, strong) NSLayoutConstraint *heightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *widthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *avatarLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *avatarTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *avatarWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *avatarHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *cardStackTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *cardStackBottomConstraint;
 @end
@@ -63,8 +76,8 @@ static void ApplyGlass(UIView *host) {
     self = [super initWithFrame:frame];
     if (self) {
         [self buildUI];
-        ApplyGlass(self);
-        [self setExpanded:YES animated:NO];
+        self.glassView = ApplyGlass(self);
+        [self setExpanded:NO animated:NO];
     }
     return self;
 }
@@ -120,7 +133,6 @@ static void ApplyGlass(UIView *host) {
     self.avatarView = [[UIImageView alloc] init];
     self.avatarView.translatesAutoresizingMaskIntoConstraints = NO;
     self.avatarView.backgroundColor = [UIColor colorWithWhite:0.25 alpha:1.0];
-    self.avatarView.layer.cornerRadius = 23.0;
     self.avatarView.layer.borderWidth = 1.0;
     self.avatarView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.35].CGColor;
     self.avatarView.clipsToBounds = YES;
@@ -128,7 +140,8 @@ static void ApplyGlass(UIView *host) {
     self.avatarView.userInteractionEnabled = YES;
     self.avatarView.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
     self.avatarView.tintColor = [UIColor colorWithWhite:0.82 alpha:1.0];
-    [self.avatarView addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(profileTapped)]];
+    // Tapping the picture opens/closes the panel; the name inside the panel opens the account manager.
+    [self.avatarView addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggleTapped)]];
     [self addSubview:self.avatarView];
 
     self.accountNameLabel = [[UILabel alloc] init];
@@ -163,35 +176,73 @@ static void ApplyGlass(UIView *host) {
     UIView *launcherCard = [self cardWithIcon:@"sparkles" title:@"Launcher Version" valueLabel:self.launcherValue];
     UIView *gameCard = [self cardWithIcon:@"gamecontroller.fill" title:@"Game Version" valueLabel:self.gameValue];
     UIView *deviceCard = [self cardWithIcon:@"iphone" title:@"Device" valueLabel:self.deviceValue];
+    self.chipRow = [[UIStackView alloc] init];
+    self.chipRow.translatesAutoresizingMaskIntoConstraints = NO;
+    self.chipRow.axis = UILayoutConstraintAxisHorizontal;
+    self.chipRow.alignment = UIStackViewAlignmentFill;
+    self.chipRow.distribution = UIStackViewDistributionFill;
+    self.chipRow.spacing = 6.0;
+    [self addSubview:self.chipRow];
+
+    self.badgeLayer = [[UIView alloc] init];
+    self.badgeLayer.translatesAutoresizingMaskIntoConstraints = NO;
+    self.badgeLayer.userInteractionEnabled = NO;
+    [self addSubview:self.badgeLayer];
+
     self.cardStack = [[UIStackView alloc] initWithArrangedSubviews:@[launcherCard, gameCard, deviceCard]];
     self.cardStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardStack.axis = UILayoutConstraintAxisVertical;
     self.cardStack.spacing = 6.0;
     [self addSubview:self.cardStack];
 
-    self.heightConstraint = [self.heightAnchor constraintEqualToConstant:kCollapsedHeight];
+    self.heightConstraint = [self.heightAnchor constraintEqualToConstant:kCollapsedSize];
+    self.widthConstraint = [self.widthAnchor constraintEqualToConstant:kCollapsedSize];
+    self.avatarLeadingConstraint = [self.avatarView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:4.0];
+    self.avatarTopConstraint = [self.avatarView.topAnchor constraintEqualToAnchor:self.topAnchor constant:4.0];
+    self.avatarWidthConstraint = [self.avatarView.widthAnchor constraintEqualToConstant:38.0];
+    self.avatarHeightConstraint = [self.avatarView.heightAnchor constraintEqualToConstant:38.0];
     self.cardStackTopConstraint =
-        [self.cardStack.topAnchor constraintEqualToAnchor:self.avatarView.bottomAnchor constant:10.0];
+        [self.cardStack.topAnchor constraintEqualToAnchor:self.chipRow.bottomAnchor constant:8.0];
     self.cardStackBottomConstraint =
         [self.cardStack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-12.0];
+    // The name may be squeezed to nothing while the panel is collapsed: keep that constraint soft.
+    NSLayoutConstraint *nameTrailing =
+        [self.accountNameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.toggleButton.leadingAnchor constant:-6.0];
+    nameTrailing.priority = UILayoutPriorityDefaultHigh;
+    [self.accountNameLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                           forAxis:UILayoutConstraintAxisHorizontal];
     [NSLayoutConstraint activateConstraints:@[
         self.heightConstraint,
-        [self.avatarView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12.0],
-        [self.avatarView.topAnchor constraintEqualToAnchor:self.topAnchor constant:10.0],
-        [self.avatarView.widthAnchor constraintEqualToConstant:46.0],
-        [self.avatarView.heightAnchor constraintEqualToConstant:46.0],
+        self.widthConstraint,
+        self.avatarLeadingConstraint,
+        self.avatarTopConstraint,
+        self.avatarWidthConstraint,
+        self.avatarHeightConstraint,
         [self.accountNameLabel.leadingAnchor constraintEqualToAnchor:self.avatarView.trailingAnchor constant:10.0],
-        [self.accountNameLabel.trailingAnchor constraintEqualToAnchor:self.toggleButton.leadingAnchor constant:-6.0],
+        nameTrailing,
         [self.accountNameLabel.centerYAnchor constraintEqualToAnchor:self.avatarView.centerYAnchor],
         [self.toggleButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-8.0],
         [self.toggleButton.centerYAnchor constraintEqualToAnchor:self.avatarView.centerYAnchor],
         [self.toggleButton.widthAnchor constraintEqualToConstant:32.0],
         [self.toggleButton.heightAnchor constraintEqualToConstant:32.0],
+        [self.chipRow.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:10.0],
+        [self.chipRow.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-10.0],
+        [self.chipRow.topAnchor constraintEqualToAnchor:self.avatarView.bottomAnchor constant:10.0],
+        [self.chipRow.heightAnchor constraintEqualToConstant:kChipRowHeight],
+        [self.badgeLayer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [self.badgeLayer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [self.badgeLayer.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [self.badgeLayer.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
         [self.cardStack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:10.0],
         [self.cardStack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-10.0],
         self.cardStackTopConstraint,
         self.cardStackBottomConstraint
     ]];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    self.avatarView.layer.cornerRadius = self.avatarView.bounds.size.height / 2.0;
 }
 
 - (void)profileTapped {
@@ -204,16 +255,32 @@ static void ApplyGlass(UIView *host) {
 
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated {
     _expanded = expanded;
-    self.heightConstraint.constant = expanded ? kExpandedHeight : kCollapsedHeight;
+    self.widthConstraint.constant = expanded ? kExpandedWidth : kCollapsedSize;
+    self.heightConstraint.constant = expanded ? kExpandedHeight : kCollapsedSize;
+    self.avatarLeadingConstraint.constant = expanded ? 12.0 : 4.0;
+    self.avatarTopConstraint.constant = expanded ? 10.0 : 4.0;
+    self.avatarWidthConstraint.constant = expanded ? 46.0 : 38.0;
+    self.avatarHeightConstraint.constant = expanded ? 46.0 : 38.0;
     self.cardStackTopConstraint.active = expanded;
     self.cardStackBottomConstraint.active = expanded;
     [self.toggleButton setImage:[UIImage systemImageNamed:(expanded ? @"chevron.up" : @"chevron.down")]
                        forState:UIControlStateNormal];
     self.cardStack.userInteractionEnabled = expanded;
+    self.chipRow.userInteractionEnabled = expanded;
+    self.toggleButton.userInteractionEnabled = expanded;
+    self.accountNameLabel.userInteractionEnabled = expanded;
+    CGFloat radius = expanded ? 22.0 : kCollapsedSize / 2.0;
 
     void (^changes)(void) = ^{
         self.cardStack.alpha = expanded ? 1.0 : 0.0;
+        self.chipRow.alpha = expanded ? 1.0 : 0.0;
+        self.badgeLayer.alpha = expanded ? 1.0 : 0.0;
+        self.accountNameLabel.alpha = expanded ? 1.0 : 0.0;
+        self.toggleButton.alpha = expanded ? 1.0 : 0.0;
+        self.layer.cornerRadius = radius;
+        self.glassView.layer.cornerRadius = radius;
         [self.superview layoutIfNeeded];
+        [self layoutIfNeeded];
     };
     if (animated && self.superview) {
         [UIView animateWithDuration:0.22

@@ -1331,8 +1331,6 @@ static NSString *festivalGreeting(void) {
 
 // ★ [TOPBAR2] 顶栏动作 pill 排(JIT 状态侧边;JIT pill 本身仍是 norightJITPill)。
 //   三个动作 pill 全部只转发右栏原方法;下载中心的角标/百分比来自 AmeRightPanelStateNotification。
-@property (nonatomic, strong) UIButton *topbarExecuteJarPill;       // ★ [TOPBAR2] → 右栏 executeJar
-@property (nonatomic, strong) UIButton *topbarVersionPickerPill;    // ★ [TOPBAR2] → 右栏 showVersionPicker
 @property (nonatomic, strong) UIButton *topbarDownloadCenterPill;   // ★ [TOPBAR2] → 右栏 openDownloadCenter
 @property (nonatomic, strong) UILabel  *topbarDownloadBadgeLabel;   // ★ [TOPBAR2] 进行中任务数角标(红)
 @property (nonatomic, copy)   NSString *topbarDownloadBadgeText;    // ★ [TOPBAR2] 角标数字(来自右栏广播)
@@ -1440,6 +1438,19 @@ self.actionPanel.onProfileTap = ^{
 };
 [self.actionPanel setProfileName:self.currentUsername avatar:self.currentAvatar];
 [self updateHomeActionPanelVersion];
+// JIT status + download center chips live inside the panel (visible when it is open).
+[self.actionPanel.chipRow addArrangedSubview:self.norightJITPill];
+[self.actionPanel.chipRow addArrangedSubview:self.topbarDownloadCenterPill];
+[self.norightJITPill setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+[self.topbarDownloadCenterPill setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+[self.topbarDownloadCenterPill setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+[self.actionPanel.badgeLayer addSubview:self.topbarDownloadBadgeLabel];
+[NSLayoutConstraint activateConstraints:@[
+    [self.topbarDownloadBadgeLabel.trailingAnchor constraintEqualToAnchor:self.topbarDownloadCenterPill.trailingAnchor constant:2],
+    [self.topbarDownloadBadgeLabel.centerYAnchor constraintEqualToAnchor:self.topbarDownloadCenterPill.topAnchor constant:3],
+    [self.topbarDownloadBadgeLabel.heightAnchor constraintEqualToConstant:15],
+    [self.topbarDownloadBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:15],
+]];
 BottomActionBarView *bottomBar = [[BottomActionBarView alloc] init];
 bottomBar.translatesAutoresizingMaskIntoConstraints = NO;
 [self.view addSubview:bottomBar];
@@ -1465,44 +1476,13 @@ self.actionPanel.launchButton.hidden = YES;
 self.actionPanel.executeJarButton.hidden = YES;
 self.actionPanel.chooseVersionButton.hidden = YES;
 
-#if 0
+// Profile panel: just the round picture, all the way up in the top-right corner (level with the nav bar).
+// Width/height are owned by the panel itself (it grows when opened).
 [NSLayoutConstraint activateConstraints:@[
     [self.actionPanel.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16],
-        [self.actionPanel.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-16],
-            [self.actionPanel.widthAnchor constraintEqualToConstant:220],
-            [self.actionPanel.launchButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-                    [LauncherRightPanelViewController norightPostAction:@"launch"];
-                    }] forControlEvents:UIControlEventTouchUpInside];
-
-                    [self.actionPanel.executeJarButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-                        [LauncherRightPanelViewController norightPostAction:@"executeJar"];
-                        }] forControlEvents:UIControlEventTouchUpInside];
-
-                        [self.actionPanel.chooseVersionButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-                            [LauncherRightPanelViewController norightPostAction:@"versionPicker"];
-            }]]
-            [self.actionPanel.launchButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-                    [LauncherRightPanelViewController norightPostAction:@"launch"];
-                    }] forControlEvents:UIControlEventTouchUpInside];
-
-                    [self.actionPanel.executeJarButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-                        [LauncherRightPanelViewController norightPostAction:@"executeJar"];
-                        }] forControlEvents:UIControlEventTouchUpInside];
-
-                        [self.actionPanel.chooseVersionButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-                            [LauncherRightPanelViewController norightPostAction:@"versionPicker"];
-            }]]
-            ]];
-            #endif
-            [NSLayoutConstraint activateConstraints:@[
-                    [self.actionPanel.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16],
-                    #if 0
-                        [self.actionPanel.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-16],
-                        #endif
-                        [self.actionPanel.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:56],
-                            [self.actionPanel.widthAnchor constraintEqualToConstant:220],
-                            ]];
-            [self.actionPanel.launchButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
+    [self.actionPanel.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:15],
+]];
+[self.actionPanel.launchButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
     [LauncherRightPanelViewController norightPostAction:@"launch"];
 }] forControlEvents:UIControlEventTouchUpInside];
 
@@ -1620,10 +1600,7 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 
 /// 主题色变化后重刷底部胶囊的淡底 / 描边 / 图标色。
 - (void)norightRefreshCapsuleAppearance {
-    UIColor *accent = accentColor() ?: [UIColor systemBlueColor];
-    self.norightLaunchCapsule.backgroundColor = [accent colorWithAlphaComponent:0.15];
-    self.norightLaunchCapsule.layer.borderColor = accent.CGColor;
-    self.norightLaunchCapsule.tintColor = accent;
+    AmeApplyPinkGlassButtonStyle(self.norightLaunchCapsule);
 }
 
 /// 点击底部启动胶囊 —— 只转发,不在本页复制任何启动逻辑。
@@ -1713,23 +1690,17 @@ self.actionPanel.chooseVersionButton.hidden = YES;
     self.norightJITPill.text = [NSString stringWithFormat:@" %@ ", localize(@"i18n_str_413", nil)];
     self.norightJITPill.textColor = [UIColor secondaryLabelColor];
     self.norightJITPill.backgroundColor = [UIColor tertiarySystemFillColor];
-    [self.headerView addSubview:self.norightJITPill];
+    self.norightJITPill.adjustsFontSizeToFitWidth = YES;
+    self.norightJITPill.minimumScaleFactor = 0.6;
+    // The JIT chip and the download chip now live inside the profile panel (see actionPanel.chipRow).
 
     // ★ [TOPBAR2] 右栏「执行 Jar / 选择版本 / 下载中心」三个入口搬到主页顶栏，
     //   与 JIT 状态同一排(顶栏右侧)。三个 pill 全部只做动作转发到右栏
     //   原方法(executeJar / showVersionPicker / openDownloadCenter)，本页零业务逻辑、零复制。
-    self.topbarExecuteJarPill = [self topbarActionPillWithTitle:localize(@"i18n_str_414", nil)
-                                                          icon:@"doc.badge.arrow.up"
-                                                        action:TopBar2PillActionExecuteJar];
-    self.topbarVersionPickerPill = [self topbarActionPillWithTitle:localize(@"i18n_str_38", nil)
-                                                             icon:@"square.stack.3d.up.fill"
-                                                           action:TopBar2PillActionVersionPicker];
+    // Execute JAR / Choose Version chips were removed from this row (they live in the bottom action bar).
     self.topbarDownloadCenterPill = [self topbarActionPillWithTitle:localize(@"i18n_str_136", nil)
                                                               icon:@"arrow.down.circle"
                                                             action:TopBar2PillActionDownloadCenter];
-    [self.headerView addSubview:self.topbarExecuteJarPill];
-    [self.headerView addSubview:self.topbarVersionPickerPill];
-    [self.headerView addSubview:self.topbarDownloadCenterPill];
 
     // ★ [TOPBAR2] 下载中心角标(进行中任务数)：固定在 pill 右上角，
     //   数值/显隐由右栏 updateDownloadCenterButton 广播驱动 ⇒ 与原按钮同口径。
@@ -1743,7 +1714,7 @@ self.actionPanel.chooseVersionButton.hidden = YES;
     self.topbarDownloadBadgeLabel.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
     self.topbarDownloadBadgeLabel.layer.masksToBounds = YES;
     self.topbarDownloadBadgeLabel.hidden = YES;
-    [self.headerView addSubview:self.topbarDownloadBadgeLabel];
+    // The badge is added to the profile panel's badge layer when the panel is created.
 
     // 公共约束(与朝向无关;不含任何会被两套约束重复钉住的属性)
     [NSLayoutConstraint activateConstraints:@[
@@ -1755,7 +1726,7 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 
         [self.headerTitleLabel.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
         // ★ [NORIGHT] 标题右界改让给 JIT pill(原来直接让给「⚙自定义」)
-        [self.headerTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.norightJITPill.leadingAnchor constant:-8],
+        [self.headerTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.customizeButton.leadingAnchor constant:-8],
 
         [self.customizeButton.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
         [self.customizeButton.heightAnchor constraintEqualToConstant:kHome6PillHeight],
@@ -1765,29 +1736,6 @@ self.actionPanel.chooseVersionButton.hidden = YES;
         [self.homeEditDoneButton.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
         [self.homeEditDoneButton.heightAnchor constraintEqualToConstant:kHome6PillHeight],
 
-        // ★ [TOPBAR2] 顶栏右侧一排(方向无关的唯一一组约束;链式互钉 ⇒ 同一属性只有一条约束):
-        //   JIT 状态 · 执行 Jar · 选择版本 · 下载中心 · ⚙自定义(从左到右)
-        [self.norightJITPill.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
-        [self.norightJITPill.heightAnchor constraintEqualToConstant:kHome6PillHeight],
-        [self.norightJITPill.trailingAnchor constraintEqualToAnchor:self.topbarExecuteJarPill.leadingAnchor constant:-kTopBar2PillGap],
-
-        [self.topbarExecuteJarPill.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
-        [self.topbarExecuteJarPill.heightAnchor constraintEqualToConstant:kHome6PillHeight],
-        [self.topbarExecuteJarPill.trailingAnchor constraintEqualToAnchor:self.topbarVersionPickerPill.leadingAnchor constant:-kTopBar2PillGap],
-
-        [self.topbarVersionPickerPill.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
-        [self.topbarVersionPickerPill.heightAnchor constraintEqualToConstant:kHome6PillHeight],
-        [self.topbarVersionPickerPill.trailingAnchor constraintEqualToAnchor:self.topbarDownloadCenterPill.leadingAnchor constant:-kTopBar2PillGap],
-
-        [self.topbarDownloadCenterPill.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
-        [self.topbarDownloadCenterPill.heightAnchor constraintEqualToConstant:kHome6PillHeight],
-        [self.topbarDownloadCenterPill.trailingAnchor constraintEqualToAnchor:self.customizeButton.leadingAnchor constant:-kTopBar2PillGap],
-
-        // ★ [TOPBAR2] 下载中心角标:贴 pill 右上角、完全落在 34pt 顶栏内(不侵入状态栏)
-        [self.topbarDownloadBadgeLabel.trailingAnchor constraintEqualToAnchor:self.topbarDownloadCenterPill.trailingAnchor constant:2],
-        [self.topbarDownloadBadgeLabel.centerYAnchor constraintEqualToAnchor:self.topbarDownloadCenterPill.topAnchor constant:3],
-        [self.topbarDownloadBadgeLabel.heightAnchor constraintEqualToConstant:15],
-        [self.topbarDownloadBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:15],
     ]];
 
     // ★ [HOME6] 两套头部约束集:竖屏一套(贴 view 边 +13)、横屏一套(贴 safeAreaLayoutGuide 边 +13,
@@ -1813,9 +1761,7 @@ self.actionPanel.chooseVersionButton.hidden = YES;
     self.headerTitleLabel.adjustsFontSizeToFitWidth = YES;
     self.headerTitleLabel.minimumScaleFactor = 0.8;
     self.headerTitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    for (UIView *adaptV in @[self.customizeButton, self.homeEditDoneButton, self.norightJITPill,
-                             self.topbarExecuteJarPill, self.topbarVersionPickerPill,
-                             self.topbarDownloadCenterPill]) {
+    for (UIView *adaptV in @[self.customizeButton, self.homeEditDoneButton]) {
         [adaptV setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                                 forAxis:UILayoutConstraintAxisHorizontal];
     }
@@ -1886,19 +1832,15 @@ self.actionPanel.chooseVersionButton.hidden = YES;
     self.norightLaunchCapsule.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
     self.norightLaunchCapsule.titleLabel.adjustsFontSizeToFitWidth = YES;
     self.norightLaunchCapsule.titleLabel.minimumScaleFactor = 0.7;
-    UIColor *norightAccent = accentColor() ?: [UIColor systemBlueColor];
-    self.norightLaunchCapsule.backgroundColor = [norightAccent colorWithAlphaComponent:0.15];
     self.norightLaunchCapsule.layer.cornerRadius = kNoRightCapsuleHeight / 2.0;
     self.norightLaunchCapsule.layer.cornerCurve = kCACornerCurveContinuous;
-    self.norightLaunchCapsule.layer.borderWidth = 1.0;
-    self.norightLaunchCapsule.layer.borderColor = norightAccent.CGColor;
     [self.norightLaunchCapsule setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
     UIImage *norightPlay = [UIImage systemImageNamed:@"play.fill"];
     if (norightPlay) {
         norightPlay = [norightPlay imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
         [self.norightLaunchCapsule setImage:norightPlay forState:UIControlStateNormal];
     }
-    self.norightLaunchCapsule.tintColor = norightAccent;
+    AmeApplyPinkGlassButtonStyle(self.norightLaunchCapsule);   // pink liquid glass instead of the blue accent fill
     self.norightLaunchCapsule.imageEdgeInsets = UIEdgeInsetsMake(0, -6, 0, 0);
     self.norightLaunchCapsule.titleEdgeInsets = UIEdgeInsetsMake(0, 6, 0, 0);
     self.norightLaunchCapsule.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
@@ -1963,8 +1905,6 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 /// ★ [TOPBAR2] 竖屏窄 ⇒ 三个动作 pill 只留图标;横屏宽 ⇒ 图标 + 小字。
 ///   只切 title 文案，不动任何约束/尺寸常量 ⇒ 不产生约束冲突，也不涉及 frame 硬摆。
 - (void)norightApplyTopBarPillTitlesForLandscape:(BOOL)landscape {
-    [self.topbarExecuteJarPill setTitle:(landscape ? localize(@"i18n_str_414", nil) : @"") forState:UIControlStateNormal];
-    [self.topbarVersionPickerPill setTitle:(landscape ? localize(@"i18n_str_38", nil) : @"") forState:UIControlStateNormal];
     [self norightRefreshDownloadCenterPill];
 }
 
@@ -2570,8 +2510,6 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 ///   只切 hidden,不动任何约束/几何 ⇒ 横竖屏都安全。
 - (void)homeEditSetHeaderChromeHidden:(BOOL)hidden {
     self.norightJITPill.hidden = hidden;
-    self.topbarExecuteJarPill.hidden = hidden;
-    self.topbarVersionPickerPill.hidden = hidden;
     self.topbarDownloadCenterPill.hidden = hidden;
     self.topbarDownloadBadgeLabel.hidden = (hidden ? YES : (self.topbarDownloadBadgeText.length == 0));
 }
@@ -3331,11 +3269,9 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 
     // ★ [TOPBAR2] 朝向变了 ⇒ 顶栏动作 pill 在「图标-only(竖屏)/ 图标+小字(横屏)」之间切文案
     [self norightApplyTopBarPillTitlesForLandscape:[self homeIsLandscape]];
-    if (self.topbarExecuteJarPill) {   // 顶栏 pill 一定在(防御:安全区回调早于 setupHeader 时也不会崩)
-        for (UIButton *p in @[self.topbarExecuteJarPill, self.topbarVersionPickerPill, self.topbarDownloadCenterPill]) {
-            // ★ [GLASS-LIQUID] 系统材质路径不自绘;自绘路径才刷新描边/白底
-            AmeApplyGlassChipStyle(p, AmeRadiusPill, NO);   // ★ [TOPBAR2]
-        }
+    if (self.topbarDownloadCenterPill) {   // defensive: the safe-area callback can run before setupHeader
+        // ★ [GLASS-LIQUID] 系统材质路径不自绘;自绘路径才刷新描边/白底
+        AmeApplyGlassChipStyle(self.topbarDownloadCenterPill, AmeRadiusPill, NO);   // ★ [TOPBAR2]
     }
 
     // ★ [HOME6] 切换后必须重算:invalidate 让 provider 用新的 safeInsets / 列数重建 section,

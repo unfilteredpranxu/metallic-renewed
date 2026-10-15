@@ -11,6 +11,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, readonly) UIButton *executeJarButton;
 @property (nonatomic, strong, readonly) UIButton *chooseVersionButton;
 @property (nonatomic, copy, nullable) void (^onProfileTap)(void);
+/// Horizontal row shown at the top of the expanded panel. The home screen puts the JIT status
+/// and download-center chips in here (arranged subviews fill the row height).
+@property (nonatomic, strong, readonly) UIStackView *chipRow;
+/// Overlay host for small badges that should float over the chips (e.g. the download count).
+@property (nonatomic, strong, readonly) UIView *badgeLayer;
 
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated;
 - (void)setProfileName:(nullable NSString *)name avatar:(nullable UIImage *)avatar;

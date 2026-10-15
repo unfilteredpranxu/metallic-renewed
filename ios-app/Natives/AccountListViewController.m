@@ -170,6 +170,13 @@
     self.ameAddAccountBottomConstraint.constant = -(inset + 16.0);
 }
 
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    // Tell the root tab controller this page has its own Done button, so it can show the floating
+    // bottom-right Done (the navigation-bar one is covered by the top nav pill).
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"AmeFloatingDoneRefresh" object:nil];
+}
+
 /// ★ [ACCOUNTBACK] See the viewWillAppear comment.
 - (void)ameAccountEnsureBackItemIfNeeded {
     UINavigationController *nav = self.navigationController;
@@ -1001,6 +1008,7 @@
     if (self.view.window == nil) {
         [self ameSetLoginInFlight:NO];
     }
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"AmeFloatingDoneRefresh" object:nil];
 }
 
 #pragma mark - UIPopoverPresentationControllerDelegate

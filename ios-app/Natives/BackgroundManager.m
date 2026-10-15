@@ -72,7 +72,34 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     }
 }
 
+/// Default wallpaper bundled with the app (Natives/resources/DefaultBackground.png). Loaded once.
+/// Returns nil when the file is missing, in which case the original gradient is drawn instead.
++ (UIImage *)ame_defaultWallpaperImage {
+    static UIImage *image = nil;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        NSString *path = [[NSBundle mainBundle] pathForResource:@"DefaultBackground" ofType:@"png"];
+        if (path.length) image = [UIImage imageWithContentsOfFile:path];
+    });
+    return image;
+}
+
 - (void)drawRect:(CGRect)rect {
+    // Default wallpaper: aspect-fill the bundled image (same in light and dark mode).
+    UIImage *wallpaper = [AmeGradientBackgroundView ame_defaultWallpaperImage];
+    if (wallpaper && wallpaper.size.width > 0.0 && wallpaper.size.height > 0.0
+        && self.bounds.size.width > 0.0 && self.bounds.size.height > 0.0) {
+        [AmeRGBA(0x05, 0x07, 0x07, 1.0) setFill];
+        UIRectFill(self.bounds);
+        CGFloat scale = MAX(self.bounds.size.width / wallpaper.size.width,
+                            self.bounds.size.height / wallpaper.size.height);
+        CGSize drawn = CGSizeMake(wallpaper.size.width * scale, wallpaper.size.height * scale);
+        CGRect dest = CGRectMake((self.bounds.size.width - drawn.width) * 0.5,
+                                 (self.bounds.size.height - drawn.height) * 0.5,
+                                 drawn.width, drawn.height);
+        [wallpaper drawInRect:dest];
+        return;
+    }
     BOOL dark = YES;
     if (@available(iOS 13.0, *)) {
         dark = (self.traitCollection.userInterfaceStyle != UIUserInterfaceStyleLight);
@@ -594,8 +621,12 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     self.ameDefaultGradientHost = host;   // ★ [E3] Weakly held for cleanup.
     // Fallback base color (matches the gradient base and prevents black from showing through
     // on the first frame or outside the gradient).
+    if ([AmeGradientBackgroundView ame_defaultWallpaperImage]) {
+        host.backgroundColor = AmeRGBA(0x05, 0x07, 0x07, 1.0);   // matches the default wallpaper
+    } else {
     host.backgroundColor = AmeDynamicColor(AmeRGBA(0x10, 0x13, 0x22, 1.0),
                                            AmeRGBA(0xEE, 0xF3, 0xFF, 1.0));
+    }
 }
 
 - (void)applyDefaultBackgroundToContainer:(UIView *)container {

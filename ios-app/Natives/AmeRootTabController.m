@@ -197,6 +197,17 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         [self.floatingDoneButton.widthAnchor constraintGreaterThanOrEqualToConstant:104],
     ]];
 
+    // Pages that swap their content without a navigation push (Accounts, ...) post this so the floating
+    // Done can appear / disappear.
+    __weak typeof(self) refreshWeakSelf = self;
+    [[NSNotificationCenter defaultCenter] addObserverForName:@"AmeFloatingDoneRefresh" object:nil queue:[NSOperationQueue mainQueue]
+                                                  usingBlock:^(NSNotification *note) {
+        __strong typeof(refreshWeakSelf) strongSelf = refreshWeakSelf;
+        if (!strongSelf) return;
+        [strongSelf ameUpdateFloatingDoneButton];
+        dispatch_async(dispatch_get_main_queue(), ^{ [strongSelf ameUpdateFloatingDoneButton]; });
+    }];
+
     __weak typeof(self) weakSelf = self;
     self.topNav.onSelect = ^(NSInteger index) {
         // Home always resets: close anything presented, pop back to the home page, scroll to top.
@@ -213,39 +224,76 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 
 #pragma mark - Floating Done button
 
-/// Shown whenever the selected tab has a page pushed on top of its root.
-- (void)ameUpdateFloatingDoneButton {
-    UIViewController *selected = self.selectedViewController;
-    BOOL deep = [selected isKindOfClass:[UINavigationController class]]
-             && ((UINavigationController *)selected).viewControllers.count > 1;
-    self.floatingDoneButton.hidden = !deep;
-    if (deep) [self.view bringSubviewToFront:self.floatingDoneButton];
+/// Finds the deepest navigation controller currently on screen inside `vc` (pages such as Accounts are
+/// hosted in a nested navigation controller that lives inside a container page).
+- (UINavigationController *)ameDeepestNavigationControllerIn:(UIViewController *)vc {
+    UINavigationController *found = [vc isKindOfClass:[UINavigationController class]] ? (UINavigationController *)vc : nil;
+    UIViewController *probe = found ? found.topViewController : vc;
+    for (NSInteger depth = 0; probe && depth < 8; depth++) {
+        UINavigationController *inner = nil;
+        for (UIViewController *child in probe.childViewControllers) {
+            if ([child isKindOfClass:[UINavigationController class]] && child.isViewLoaded && child.view.window && !child.view.hidden) {
+                inner = (UINavigationController *)child;
+            }
+        }
+        if (!inner) break;
+        found = inner;
+        probe = inner.topViewController;
+    }
+    return found;
 }
 
-/// Runs the page's own Done / Close bar button (so it can save before closing); falls back to going
-/// back to the tab's root page.
-- (void)ameFloatingDoneTapped {
-    UIViewController *selected = self.selectedViewController;
-    if (![selected isKindOfClass:[UINavigationController class]]) return;
-    UINavigationController *nav = (UINavigationController *)selected;
+/// A page's own Done / Close / Back bar button (these sit in the navigation bar, which ends up under
+/// the top nav pill, so they cannot be pressed).
+- (UIBarButtonItem *)ameOwnExitItemOfNav:(UINavigationController *)nav {
     UINavigationItem *item = nav.topViewController.navigationItem;
     NSMutableArray<UIBarButtonItem *> *candidates = [NSMutableArray array];
     if (item.leftBarButtonItems) [candidates addObjectsFromArray:item.leftBarButtonItems];
     if (item.rightBarButtonItems) [candidates addObjectsFromArray:item.rightBarButtonItems];
+    NSString *doneTitle = localize(@"resman.common.done", @"Done");
     for (UIBarButtonItem *bar in candidates) {
         NSString *name = bar.action ? NSStringFromSelector(bar.action) : nil;
         if (!name || !bar.target) continue;
         NSString *lower = name.lowercaseString;
-        if ([lower containsString:@"done"] || [lower containsString:@"close"]) {
-            if ([bar.target respondsToSelector:bar.action]) {
-                void (*send)(id, SEL, id) = (void (*)(id, SEL, id))objc_msgSend;
-                send(bar.target, bar.action, bar);
-                [self ameUpdateFloatingDoneButton];
-                return;
-            }
-        }
+        BOOL byName = [lower containsString:@"done"] || [lower containsString:@"close"]
+                   || [lower containsString:@"back"] || [lower containsString:@"dismiss"]
+                   || [lower containsString:@"finish"];
+        BOOL byTitle = bar.title.length && [bar.title isEqualToString:doneTitle];
+        if ((byName || byTitle) && [bar.target respondsToSelector:bar.action]) return bar;
     }
-    [nav popToRootViewControllerAnimated:YES];
+    return nil;
+}
+
+/// Shown whenever the selected tab has a page pushed on top of its root, or the visible page has its
+/// own Done / Back button (e.g. Accounts).
+- (void)ameUpdateFloatingDoneButton {
+    UIViewController *selected = self.selectedViewController;
+    BOOL deep = [selected isKindOfClass:[UINavigationController class]]
+             && ((UINavigationController *)selected).viewControllers.count > 1;
+    UINavigationController *inner = [self ameDeepestNavigationControllerIn:selected];
+    BOOL hasOwnExit = inner && [self ameOwnExitItemOfNav:inner] != nil;
+    BOOL show = deep || hasOwnExit;
+    self.floatingDoneButton.hidden = !show;
+    if (show) [self.view bringSubviewToFront:self.floatingDoneButton];
+}
+
+/// Runs the page's own Done / Close / Back bar button (so it can save before closing); falls back to
+/// going back to the tab's root page.
+- (void)ameFloatingDoneTapped {
+    UIViewController *selected = self.selectedViewController;
+    UINavigationController *inner = [self ameDeepestNavigationControllerIn:selected];
+    UIBarButtonItem *bar = inner ? [self ameOwnExitItemOfNav:inner] : nil;
+    if (bar) {
+        void (*send)(id, SEL, id) = (void (*)(id, SEL, id))objc_msgSend;
+        send(bar.target, bar.action, bar);
+        [self ameUpdateFloatingDoneButton];
+        dispatch_async(dispatch_get_main_queue(), ^{ [self ameUpdateFloatingDoneButton]; });
+        return;
+    }
+    if ([selected isKindOfClass:[UINavigationController class]]) {
+        [(UINavigationController *)selected popToRootViewControllerAnimated:YES];
+    }
+    [self ameUpdateFloatingDoneButton];
 }
 
 #pragma mark - UINavigationControllerDelegate

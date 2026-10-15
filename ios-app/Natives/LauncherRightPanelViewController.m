@@ -33,6 +33,7 @@ NSString * const AmeRightPanelRequestStateNotification = @"AmeRightPanelRequestS
 // 添加 C 函数声明 - 这些函数在 LauncherPreferences.m 或其他地方定义
 extern void setPrefString(NSString *key, NSString *value);
 extern void setPrefInt(NSString *key, NSInteger value);
+extern UIWindow *mainWindow;
 
 static void *ProgressObserverContext = &ProgressObserverContext;
 
@@ -52,7 +53,6 @@ static void *ProgressObserverContext = &ProgressObserverContext;
 @property(nonatomic, strong) UIImageView *avatarImageView;
 @property(nonatomic, strong) UILabel *usernameLabel;
 @property(nonatomic, strong) UILabel *versionLabel;
-@property(nonatomic, strong) UIButton *launchButton;
 @property(nonatomic, strong) UIButton *manageVersionBtn;
 @property(nonatomic, strong) UIButton *executeJarBtn;
 // JIT 状态指示标签（启动游戏按钮上方）

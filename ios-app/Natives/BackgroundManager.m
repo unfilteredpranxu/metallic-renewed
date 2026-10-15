@@ -9,6 +9,7 @@
 #import "BackgroundManager.h"
 #import "UIKit+GlassSurface.h"   // ★ Liquid Glass material + glass effect (highlight rim)
 #import "AMEGlassStyle.h"        // ★ [GLASS-STYLE] UI style resolution layer (native / Liquid Glass)
+#import "AMEAssetCrypto.h"
 #import <Photos/Photos.h>
 
 static NSString * const kBackgroundTypeKey = @"background_type";
@@ -79,37 +80,19 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     }
 }
 
-/// Default video background bundled with the app (Natives/resources/DefaultVideoBackground.mov). Loaded once.
-+ (NSString *)ame_defaultVideoPath {
-    static NSString *path = nil;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        path = [[NSBundle mainBundle] pathForResource:@"DefaultVideoBackground" ofType:@"mov"];
-        if (!path.length || ![[NSFileManager defaultManager] fileExistsAtPath:path]) {
-            path = nil;
-        }
-    });
-    return path;
-}
-
-/// Default wallpaper bundled with the app (Natives/resources/DefaultBackground.png). Loaded once.
-/// Returns nil when the file is missing, in which case the original gradient is drawn instead.
+/// Default wallpaper bundled with the app (DefaultBackground.enc or DefaultBackground.png).
+/// Loaded via AMEAssetCrypto in-memory decryption.
+/// Returns nil when missing, in which case the procedural gradient is drawn instead.
 + (UIImage *)ame_defaultWallpaperImage {
     static UIImage *image = nil;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
-        NSString *path = [[NSBundle mainBundle] pathForResource:@"DefaultBackground" ofType:@"png"];
-        if (path.length) image = [UIImage imageWithContentsOfFile:path];
+        image = [AMEAssetCrypto imageForResource:@"DefaultBackground" ofType:@"png"];
     });
     return image;
 }
 
 - (void)drawRect:(CGRect)rect {
-    if ([AmeGradientBackgroundView ame_defaultVideoPath].length > 0) {
-        [AmeRGBA(0x05, 0x07, 0x07, 1.0) setFill];
-        UIRectFill(self.bounds);
-        return;
-    }
     // Default wallpaper: aspect-fill the bundled image (same in light and dark mode).
     UIImage *wallpaper = [AmeGradientBackgroundView ame_defaultWallpaperImage];
     if (wallpaper && wallpaper.size.width > 0.0 && wallpaper.size.height > 0.0
@@ -659,21 +642,6 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     g.tag = kDefaultBackgroundTag;
     [host insertSubview:g atIndex:0];
     self.ameDefaultGradientHost = host;   // ★ [E3] Weakly held for cleanup.
-
-    NSString *videoPath = [AmeGradientBackgroundView ame_defaultVideoPath];
-    if (videoPath.length > 0) {
-        NSURL *videoURL = [NSURL fileURLWithPath:videoPath];
-        self.videoPlayer = [AVPlayer playerWithURL:videoURL];
-        self.videoPlayer.actionAtItemEnd = AVPlayerActionAtItemEndNone;
-        self.videoPlayer.muted = YES;
-        self.videoPlayerLayer = [AVPlayerLayer playerLayerWithPlayer:self.videoPlayer];
-        self.videoPlayerLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
-        self.videoPlayerLayer.frame = g.bounds;
-        [g.layer addSublayer:self.videoPlayerLayer];
-        [self.videoPlayer play];
-        host.backgroundColor = AmeRGBA(0x05, 0x07, 0x07, 1.0);
-        return;
-    }
 
     // Fallback base color (matches the gradient base and prevents black from showing through
     // on the first frame or outside the gradient).

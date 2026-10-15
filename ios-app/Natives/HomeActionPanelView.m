@@ -3,7 +3,7 @@
 // Collapsed = just the round profile picture in the corner; expanded = full glass card.
 static const CGFloat kCollapsedSize = 46.0;
 static const CGFloat kExpandedWidth = 250.0;
-static const CGFloat kExpandedHeight = 252.0;
+static const CGFloat kExpandedHeight = 296.0;
 static const CGFloat kChipRowHeight = 34.0;
 static const CGFloat kCollapsedTopOffset = 15.0;   // level with the nav bar
 static const CGFloat kExpandedTopOffset = 84.0;    // opens below the nav bar
@@ -54,6 +54,7 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
 @property (nonatomic, strong, readwrite) UIButton *launchButton;
 @property (nonatomic, strong, readwrite) UIButton *executeJarButton;
 @property (nonatomic, strong, readwrite) UIButton *chooseVersionButton;
+@property (nonatomic, strong, readwrite) UIButton *loginButton;
 @property (nonatomic, strong, readwrite) UIStackView *chipRow;
 @property (nonatomic, strong, readwrite) UIView *badgeLayer;
 @property (nonatomic, strong) UIVisualEffectView *glassView;
@@ -191,7 +192,22 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
     self.badgeLayer.userInteractionEnabled = NO;
     [self addSubview:self.badgeLayer];
 
-    self.cardStack = [[UIStackView alloc] initWithArrangedSubviews:@[launcherCard, gameCard, deviceCard]];
+    self.loginButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.loginButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.loginButton setTitle:@"Log In / Add Account" forState:UIControlStateNormal];
+    [self.loginButton setImage:[UIImage systemImageNamed:@"person.crop.circle.badge.plus"] forState:UIControlStateNormal];
+    self.loginButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    self.loginButton.tintColor = PanelAccentColor();
+    self.loginButton.backgroundColor = [UIColor colorWithWhite:0.04 alpha:0.55];
+    self.loginButton.layer.cornerRadius = 12.0;
+    self.loginButton.layer.borderWidth = 1.0;
+    self.loginButton.layer.borderColor = [PanelAccentColor() colorWithAlphaComponent:0.45].CGColor;
+    self.loginButton.contentEdgeInsets = UIEdgeInsetsMake(0, 10, 0, 10);
+    self.loginButton.imageEdgeInsets = UIEdgeInsetsMake(0, -6, 0, 6);
+    [self.loginButton addTarget:self action:@selector(loginButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self.loginButton.heightAnchor constraintEqualToConstant:38.0].active = YES;
+
+    self.cardStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.loginButton, launcherCard, gameCard, deviceCard]];
     self.cardStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardStack.axis = UILayoutConstraintAxisVertical;
     self.cardStack.spacing = 6.0;
@@ -251,6 +267,14 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
     if (self.onProfileTap) self.onProfileTap();
 }
 
+- (void)loginButtonTapped {
+    if (self.onLoginTap) {
+        self.onLoginTap();
+    } else if (self.onProfileTap) {
+        self.onProfileTap();
+    }
+}
+
 - (void)toggleTapped {
     [self setExpanded:!self.expanded animated:YES];
 }
@@ -297,8 +321,11 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
 }
 
 - (void)setProfileName:(NSString *)name avatar:(UIImage *)avatar {
-    self.accountNameLabel.text = (name.length > 0) ? name : @"Not Logged In";
+    BOOL loggedIn = (name.length > 0 && ![name isEqualToString:@"Not Logged In"]);
+    self.accountNameLabel.text = loggedIn ? name : @"Not Logged In";
     self.avatarView.image = avatar ?: [UIImage systemImageNamed:@"person.crop.circle.fill"];
+    [self.loginButton setTitle:(loggedIn ? @"Switch Account" : @"Log In / Add Account") forState:UIControlStateNormal];
+    [self.loginButton setImage:[UIImage systemImageNamed:(loggedIn ? @"person.2.fill" : @"person.crop.circle.badge.plus")] forState:UIControlStateNormal];
 }
 
 - (void)setLauncherVersion:(NSString *)launcher gameVersion:(NSString *)game device:(NSString *)device {

@@ -380,6 +380,7 @@ message(STATUS "★ [SWIFT-BAR] swiftc=${AME_SWIFTC} triple=${AME_SWIFT_TRIPLE} 
 
 # Angel Aura Amethyst
 add_executable(AngelAuraAmethyst
+  AMEAssetCrypto.m
   dyld_bypass_validation.m
   dyld_patch_platform.m
   main.m

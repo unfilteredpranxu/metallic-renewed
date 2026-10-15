@@ -26,6 +26,8 @@
 #import "LauncherRightPanelViewController.h"   // ★ [NORIGHT] 右栏状态广播 / 动作转发入口
 #import "BottomActionBarView.h"
 #import "HomeActionPanelView.h"
+#import "AccountListViewController.h"
+#import "AMEAssetCrypto.h"
 
 // MARK: - Shortcut Action Constants
 
@@ -1440,7 +1442,10 @@ self.actionPanel.translatesAutoresizingMaskIntoConstraints = NO;
 [self.view bringSubviewToFront:self.actionPanel];
 __weak typeof(self) weakSelf = self;
 self.actionPanel.onProfileTap = ^{
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"ShowAccountManager" object:weakSelf];
+    [weakSelf showAccountManagerModal];
+};
+self.actionPanel.onLoginTap = ^{
+    [weakSelf showAccountManagerModal];
 };
 [self.actionPanel setProfileName:self.currentUsername avatar:self.currentAvatar];
 [self updateHomeActionPanelVersion];
@@ -1548,6 +1553,43 @@ self.actionPanel.topOffsetConstraint = panelTop;
                                              selector:@selector(norightRefreshCapsuleAppearance)
                                                  name:@"LauncherAppearanceChanged"
                                                object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(showAccountManagerModal)
+                                                 name:@"ShowAccountManager"
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(dismissAccountManagerModal)
+                                                 name:@"ShowHomePage"
+                                               object:nil];
+}
+
+#pragma mark - Account Manager Modal
+
+- (void)showAccountManagerModal {
+    if (self.presentedViewController) return;
+    AccountListViewController *vc = [[AccountListViewController alloc] initWithStyle:UITableViewStyleInsetGrouped];
+    __weak typeof(self) weakSelf = self;
+    vc.whenItemSelected = ^{
+        [weakSelf updateSkinDisplay];
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"UpdateAccountInfo" object:nil];
+    };
+    vc.whenDelete = ^(NSString *name) {
+        [weakSelf updateSkinDisplay];
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"UpdateAccountInfo" object:nil];
+    };
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    nav.modalPresentationStyle = UIModalPresentationPageSheet;
+    UIBarButtonItem *done = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(dismissAccountManagerModal)];
+    done.tintColor = [UIColor labelColor];
+    vc.navigationItem.leftBarButtonItem = done;
+    [self presentViewController:nav animated:YES completion:nil];
+}
+
+- (void)dismissAccountManagerModal {
+    if (self.presentedViewController) {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
 }
 
 #pragma mark - ★ [NORIGHT] 右栏状态镜像 + 底部启动胶囊
@@ -1794,12 +1836,12 @@ self.actionPanel.topOffsetConstraint = panelTop;
 
 // MARK: - Animated home blob (replaces the card grid)
 
-/// Loads HomeBlob.gif (bundled) into CGImage frames once.
+/// Loads HomeBlob (bundled or encrypted .enc) into CGImage frames once.
 - (void)homeBlobLoadFrames {
     if (self.homeBlobFrames.count) return;
-    NSString *path = [[NSBundle mainBundle] pathForResource:@"HomeBlob" ofType:@"gif"];
-    if (!path) return;
-    CGImageSourceRef src = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path], NULL);
+    NSData *data = [AMEAssetCrypto dataForResource:@"HomeBlob" ofType:@"gif"];
+    if (!data || data.length == 0) return;
+    CGImageSourceRef src = CGImageSourceCreateWithData((__bridge CFDataRef)data, NULL);
     if (!src) return;
     size_t count = CGImageSourceGetCount(src);
     NSMutableArray *frames = [NSMutableArray arrayWithCapacity:count];

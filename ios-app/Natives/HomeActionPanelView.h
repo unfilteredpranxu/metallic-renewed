@@ -10,7 +10,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, readonly) UIButton *launchButton;
 @property (nonatomic, strong, readonly) UIButton *executeJarButton;
 @property (nonatomic, strong, readonly) UIButton *chooseVersionButton;
+@property (nonatomic, strong, readonly) UIButton *loginButton;
 @property (nonatomic, copy, nullable) void (^onProfileTap)(void);
+@property (nonatomic, copy, nullable) void (^onLoginTap)(void);
 /// The owner's top-edge constraint. The panel moves it so it opens lower (below the nav bar)
 /// and returns to the corner when collapsed.
 @property (nonatomic, weak, nullable) NSLayoutConstraint *topOffsetConstraint;

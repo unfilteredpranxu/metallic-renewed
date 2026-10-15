@@ -180,6 +180,25 @@ jobs:
             echo "AiAssetTools.m patch not needed or pattern not found"
           fi
 
+          # LauncherNewsViewController.m: in supportedInterfaceOrientations the closing "}" of the iPad
+          # one-liner sits inside a "// landscape only" comment, so the brace is never closed
+          # (errors: "expected '}'", "missing '@end'"). Move the comment after the brace.
+          # Patched on the runner only; your repo is not modified.
+          f=$(find . -name "LauncherNewsViewController.m" | head -1)
+          if [ -n "$f" ] && grep -qF 'UIInterfaceOrientationMaskLandscape;   // landscape only }' "$f"; then
+            python3 - "$f" <<'PY'
+          import sys
+          p = sys.argv[1]
+          s = open(p, encoding="utf-8").read()
+          s = s.replace("UIInterfaceOrientationMaskLandscape;   // landscape only }",
+                        "UIInterfaceOrientationMaskLandscape; }   // landscape only")
+          open(p, "w", encoding="utf-8").write(s)
+          PY
+            echo "Patched $f (runner only)"
+          else
+            echo "LauncherNewsViewController.m patch not needed or pattern not found"
+          fi
+
       - name: Build
         shell: bash
         working-directory: ios-app

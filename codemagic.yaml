@@ -1,0 +1,216 @@
+# Codemagic build for Metallic (iOS IPA).
+# Mirrors .github/workflows/build.yml step for step. Your source files are never modified in git;
+# the "Runner-only" patches only touch the build machine's checkout.
+#
+# Setup: in Codemagic choose "Add application" -> GitHub -> tokyo201/metallic-launcher,
+# pick "codemagic.yaml" as the configuration type, then start the "ios-build" workflow.
+
+workflows:
+  ios-build:
+    name: Build iOS
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    environment:
+      xcode: latest
+      java: 8
+    # Manual start only (same as workflow_dispatch). Uncomment to build on every push:
+    # triggering:
+    #   events:
+    #     - push
+    #   branch_patterns:
+    #     - pattern: feature/top-nav-glass
+    scripts:
+      - name: Fetch submodules and LFS files
+        script: |
+          set -e
+          git submodule update --init --recursive
+          git lfs install
+          git lfs pull || true
+
+      - name: Install tools
+        script: |
+          brew install ldid wget
+          command -v cmake >/dev/null 2>&1 || brew install cmake
+
+      - name: Show tool versions
+        script: |
+          xcodebuild -version
+          make --version
+          java -version
+          javac -version
+          echo $JAVA_HOME
+
+      - name: Clone upstream
+        script: |
+          set -e
+          export GIT_LFS_SKIP_SMUDGE=1
+          git clone --depth 1 --recurse-submodules --shallow-submodules \
+            https://github.com/herbrine8403/Amethyst-iOS-MyRemastered.git /tmp/upstream \
+            || { rm -rf /tmp/upstream; git clone --depth 1 --recurse-submodules --shallow-submodules \
+            https://github.com/AngelAuraMC/Amethyst-iOS.git /tmp/upstream; }
+          cd /tmp/upstream
+          cat .gitmodules || true
+          git submodule foreach --quiet --recursive 'echo $displaypath' > /tmp/subpaths.txt
+          echo "---- upstream submodule paths ----"
+          cat /tmp/subpaths.txt
+
+      - name: Fill in missing submodules from upstream
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          while read -r p; do
+            [ -z "$p" ] && continue
+            mkdir -p "ios-app/$p"
+            rsync -a --ignore-existing --exclude '.git' "/tmp/upstream/$p/" "ios-app/$p/"
+          done < /tmp/subpaths.txt
+
+      - name: Fill in missing Natives files from upstream
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          # Copies every file that is missing from Natives (input/, installer/, external/, ...)
+          # File by file, so a folder/file mismatch can never break the step.
+          # Existing files are never overwritten.
+          cd /tmp/upstream/Natives
+          copied=0
+          while IFS= read -r -d '' f; do
+            dest="$CM_BUILD_DIR/ios-app/Natives/$f"
+            if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then
+              mkdir -p "$(dirname "$dest")" 2>/dev/null || continue
+              cp -P "$f" "$dest" 2>/dev/null && copied=$((copied+1)) || true
+            fi
+          done < <(find . -name .git -prune -o \( -type f -o -type l \) -print0)
+          echo "Copied $copied missing files from upstream"
+          cd "$CM_BUILD_DIR"
+
+          echo "---- Natives/input ----"
+          ls -la ios-app/Natives/input || echo "input folder MISSING"
+          echo "---- Natives/installer ----"
+          ls -la ios-app/Natives/installer || echo "installer folder MISSING"
+          echo "---- Natives/external ----"
+          ls -la ios-app/Natives/external || true
+          echo "---- NRFileManager ----"
+          ls -la ios-app/Natives/external/NRFileManager || echo "NRFileManager MISSING"
+          echo "---- FabricInstallViewController ----"
+          find ios-app -name "FabricInstallViewController*" | head -20
+
+          # Fail early with a clear message instead of a CMake error later
+          test -f ios-app/Natives/input/ControllerInput.m \
+            || { echo "ERROR: Natives/input/ControllerInput.m is missing in both your repo and upstream"; exit 1; }
+
+      - name: Check CMake source files exist
+        script: |
+          cd "$CM_BUILD_DIR/ios-app/Natives"
+          echo "---- Source files referenced in CMakeLists.txt that do not exist ----"
+          grep -oE '[A-Za-z0-9_./-]+\.(m|mm|c|cpp|swift)' CMakeLists.txt | sort -u | while read -r f; do
+            [ -f "$f" ] || echo "MISSING: $f"
+          done || true
+
+      - name: Fetch ZeroTier framework
+        script: |
+          DEST=ios-app/Natives/external/ZeroTierFramework
+          if [ ! -d "$DEST/ios-example-app/zt.framework" ]; then
+            rm -rf "$DEST"
+            mkdir -p "$(dirname "$DEST")"
+            git clone --depth 1 https://github.com/zerotier/zerotier-sockets-apple-framework.git "$DEST"
+          fi
+          ls -la "$DEST" "$DEST/ios-example-app" || true
+          test -d "$DEST/ios-example-app/zt.framework"
+
+      - name: Verify home UI source files
+        script: |
+          cd "$CM_BUILD_DIR/ios-app/Natives"
+          for source in HomeActionPanelView.m HomeTopNavView.m BottomActionBarView.m; do
+            test -f "$source" || { echo "Missing home UI source: $source"; exit 1; }
+          done
+
+      - name: Resolve missing classes from your repo
+        script: |
+          cd "$CM_BUILD_DIR"
+          # Every class listed here gets its .m/.mm added to CMakeLists.txt (runner copy only,
+          # your repo is never modified) if it exists in your project but is not listed there yet.
+          # Add any class name the linker reports as: "_OBJC_CLASS_$_Name", referenced from ...
+          CLASSES="HomeActionPanelView HomeTopNavView BottomActionBarView"
+          # Classes whose header must also be imported into LauncherNewsViewController.m
+          # (only needed for the one that was reported as "unknown type name")
+          IMPORT_CLASSES="HomeActionPanelView"
+
+          for c in $CLASSES; do
+            echo "==================== $c ===================="
+            echo "-- files in your project:"
+            find ios-app \( -name "$c.h" -o -name "$c.m" -o -name "$c.mm" \) -not -path "*/.git/*" | head
+            echo "-- files that mention it in your project:"
+            grep -rl "$c" ios-app --include=*.h --include=*.m --include=*.mm --include=CMakeLists.txt 2>/dev/null | head
+            m=$(find ios-app/Natives \( -name "$c.m" -o -name "$c.mm" \) -not -path "*/.git/*" | head -1)
+            if [ -n "$m" ]; then
+              relm="${m#ios-app/Natives/}"
+              if ! grep -q "$relm" ios-app/Natives/CMakeLists.txt; then
+                awk -v rel="$relm" '{print} /LauncherNewsViewController\.m/ && !done {match($0,/^[ \t]*/); print substr($0,1,RLENGTH) rel; done=1}' \
+                  ios-app/Natives/CMakeLists.txt > /tmp/CMakeLists.new && mv /tmp/CMakeLists.new ios-app/Natives/CMakeLists.txt
+                echo "ADDED $relm to CMakeLists.txt (runner only)"
+              else
+                echo "$relm is already listed in CMakeLists.txt"
+              fi
+
+              case " $IMPORT_CLASSES " in
+                *" $c "*)
+                  h=$(find ios-app -name "$c.h" -not -path "*/.git/*" | head -1)
+                  n=$(find ios-app/Natives -name "LauncherNewsViewController.m" | head -1)
+                  echo "---- header found at: $h"
+                  if [ -n "$h" ] && [ -n "$n" ] && ! grep -q "$c.h" "$n"; then
+                    relh=$(python3 -c "import os,sys;print(os.path.relpath(sys.argv[1],sys.argv[2]))" "$h" "$(dirname "$n")")
+                    awk -v h="$relh" '{print} /^#import/ && !d {print "#import \"" h "\""; d=1}' "$n" > /tmp/lnvc.new && mv /tmp/lnvc.new "$n"
+                    echo "NOTE (runner only, your repo is unchanged): added #import \"$relh\" to $n"
+                  fi
+                  ;;
+              esac
+            else
+              echo "ERROR: $c.m is NOT in your repo, so the build cannot compile it."
+              echo "Did you commit and push it? Is it hidden by .gitignore?"
+              git check-ignore -v "ios-app/Natives/$c.m" "ios-app/Natives/$c.h" || echo "(not ignored by .gitignore)"
+              echo "Files git knows about with a similar name:"
+              git ls-files | grep -i "$c" || echo "none"
+            fi
+          done
+
+          echo "---- Other .m/.mm files in Natives that are NOT listed in CMakeLists.txt (info only) ----"
+          cd ios-app/Natives
+          find . -path ./external -prune -o \( -name '*.m' -o -name '*.mm' \) -print | sed 's#^\./##' | while read -r f; do
+            grep -qF "$f" CMakeLists.txt || echo "NOT LISTED: $f"
+          done || true
+
+      - name: Runner-only source fixes
+        script: |
+          cd "$CM_BUILD_DIR/ios-app/Natives"
+          # AI/AiAssetTools.m: second ternary operand is a C string (missing @), which is a compile error.
+          # Patched on the runner only; your repo is not modified.
+          f=$(find . -ipath "./AI/AiAssetTools.m" | head -1)
+          if [ -n "$f" ] && grep -qF 'isQuilt ? @"" : ", and Fabric API' "$f"; then
+            sed -i.bak 's/isQuilt ? @"" : ", and Fabric API/isQuilt ? @"" : @", and Fabric API/' "$f" && rm -f "$f.bak"
+            echo "Patched $f (runner only)"
+          else
+            echo "AiAssetTools.m patch not needed or pattern not found"
+          fi
+
+          # supportedInterfaceOrientations in several view controllers (LauncherNews, HomeCustomize,
+          # Download, ...) has the iPad one-liner "{ return ...;   // landscape only }" where the
+          # comment swallows the closing "}" (errors: "expected '}'", "missing '@end'").
+          # Move the comment after the brace in EVERY .m/.mm file. Runner only; repo is not modified.
+          grep -rlF -e 'MaskLandscape;   // landscape only }' --include='*.m' --include='*.mm' . 2>/dev/null \
+            | grep -v '^./external/' | while read -r f; do
+            sed -i.bak 's#\(Mask[A-Za-z]*;\)[ \t]*// landscape only }#\1 }   // landscape only#' "$f" && rm -f "$f.bak"
+            echo "Patched brace-in-comment in $f (runner only)"
+          done
+
+      - name: Build
+        script: |
+          set -o pipefail
+          cd "$CM_BUILD_DIR/ios-app"
+          make all \
+            BOOTJDK=$JAVA_HOME/bin \
+            SDKPATH=$(xcrun --sdk iphoneos --show-sdk-path) \
+            2>&1 | tee build.log
+
+    artifacts:
+      - ios-app/artifacts/*.ipa
+      - ios-app/build.log

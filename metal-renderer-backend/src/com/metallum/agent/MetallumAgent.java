@@ -2254,6 +2254,15 @@ implements ClassFileTransformer {
         }
         if (!string3.isEmpty() && (byArray = MetallumAgent.readAgentResourceOrNull(string2 + ".class")) != null) {
             System.out.println("[MetallumAgent] FIX461 classset(" + string3 + ") miss -> root fallback: " + string2);
+            return byArray;
+        }
+        if (string2.startsWith("net/fabricmc/") || string2.startsWith("org/slf4j/")) {
+            for (String fallbackPrefix : new String[]{"classes263/", "classes264/", "classes261/"}) {
+                if ((byArray = MetallumAgent.readAgentResourceOrNull(fallbackPrefix + string2 + ".class")) != null) {
+                    System.out.println("[MetallumAgent] FIX461 classset(" + string3 + ") miss -> fallback " + fallbackPrefix + ": " + string2);
+                    return byArray;
+                }
+            }
         }
         return byArray;
     }

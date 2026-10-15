@@ -33,6 +33,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
 @property (nonatomic, assign) BOOL isObservingTaskProgress;
 @property (nonatomic, assign) NSTimeInterval progressLastTime;
 @property (nonatomic, assign) int64_t progressLastCompleted;
+@property (nonatomic, assign) NSTimeInterval lastUIReportTime;
 
 // ===== Stage reporting (redesign-download-ui Phase 3 Task 3.1) =====
 // Stage reporting is enabled only for downloadVersion: (vanilla install flow); modpack downloads are reported by ModpackImportService.
@@ -63,13 +64,10 @@ static const NSUInteger kMCStageIndexVerify = 5;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
-        configuration.timeoutIntervalForRequest = 86400;
-        // Based on FCL (FoldCraftLauncher) and ZalithLauncher2: improve speed with concurrent downloads.
-        // FCL uses an OkHttp thread pool for concurrent downloads on Java. Here, increase NSURLSession's
-        // HTTPMaximumConnectionsPerHost from 16 to 24 to speed up concurrent downloads of hundreds of vanilla assets.
-        // iOS imposes a scheduling limit on actual per-host concurrency, so overly high settings may be reduced by the system;
-        // 24 is an empirically chosen value. Integrity is still ensured by SHA1 checks.
-        configuration.HTTPMaximumConnectionsPerHost = 24;
+        configuration.timeoutIntervalForRequest = 30.0;
+        configuration.timeoutIntervalForResource = 180.0;
+        // Optimal concurrent connections for iOS without overloading network daemon
+        configuration.HTTPMaximumConnectionsPerHost = 16;
         manager = [[AFURLSessionManager alloc] initWithSessionConfiguration:configuration];
     });
     return manager;
@@ -154,15 +152,28 @@ static const NSUInteger kMCStageIndexVerify = 5;
 
 - (NSURLSessionDownloadTask *)createDownloadTask:(NSString *)url size:(NSUInteger)size sha:(NSString *)sha altName:(NSString *)altName toPath:(NSString *)path retryCount:(NSInteger)retryCount success:(void (^)())success {
     BOOL fileExists = [NSFileManager.defaultManager fileExistsAtPath:path];
-    // logSuccess?
-    if (fileExists && [self checkSHA:sha forFile:path altName:altName]) {
-        // Stage count: existing files that pass validation count toward the "libraries/assets" dimension (retries do not enter this branch).
-        if (retryCount == 0) {
-            [self mc_recordStageFileStartedAtPath:path];
-            [self mc_recordStageFileFinishedAtPath:path];
+    if (fileExists) {
+        BOOL valid = YES;
+        if (size > 0) {
+            NSDictionary *attrs = [NSFileManager.defaultManager attributesOfItemAtPath:path error:nil];
+            if ([attrs fileSize] != size) {
+                valid = NO;
+            }
         }
-        if (success) success();
-        return nil;
+        if (valid && sha.length > 0) {
+            valid = [self checkSHAIgnorePref:sha forFile:path altName:altName logSuccess:NO];
+        }
+        if (valid) {
+            if (retryCount == 0) {
+                [self mc_recordStageFileStartedAtPath:path];
+                [self mc_recordStageFileFinishedAtPath:path];
+            }
+            if (success) success();
+            return nil;
+        } else {
+            NSLog(@"[MCDL] Removing corrupted or truncated existing file: %@", path.lastPathComponent);
+            [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+        }
     } else if (![self checkAccessWithDialog:YES]) {
         return nil;
     }
@@ -198,7 +209,9 @@ static const NSUInteger kMCStageIndexVerify = 5;
               name, (long)(retryCount + 1), (long)attemptCount,
               (unsigned long)(candidateIndex + 1), (unsigned long)mirrorCandidates.count);
     }
-    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:replacedURL]];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:replacedURL]
+                                                           cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
+                                                       timeoutInterval:30.0];
     __block NSProgress *progress;
     __weak MinecraftResourceDownloadTask *weakSelf = self;
     __block NSURLSessionDownloadTask *task = [self.manager downloadTaskWithRequest:request progress:nil
@@ -221,6 +234,8 @@ static const NSUInteger kMCStageIndexVerify = 5;
         if (self.progress.cancelled) {
             // Ignore any further errors
         } else if (error != nil) {
+            // Remove any partially written corrupted file
+            [NSFileManager.defaultManager removeItemAtPath:path error:nil];
             // Retry mechanism (candidate-rotation failover: move to the next candidate when the current one's budget is exhausted;
             // fail only after all candidates are exhausted).
             if (retryCount + 1 < attemptCount) {
@@ -260,14 +275,13 @@ static const NSUInteger kMCStageIndexVerify = 5;
                     weakSelf.progress.completedUnitCount += 1;
                 }
             }
-        } else if (![self checkSHA:sha forFile:path altName:altName]) {
+        } else if (sha.length > 0 && ![self checkSHAIgnorePref:sha forFile:path altName:altName logSuccess:YES]) {
+            // Delete the corrupted file.
+            [NSFileManager.defaultManager removeItemAtPath:path error:nil];
             // Retry SHA1 validation failures too (also rotate through candidates for failover).
             if (retryCount + 1 < attemptCount) {
                 NSInteger nextRetry = retryCount + 1;
                 NSLog(@"[MCDL] SHA1 mismatch, retrying %@ (attempt %ld/%ld)", name, (long)(nextRetry + 1), (long)attemptCount);
-
-                // Delete the corrupted file.
-                [NSFileManager.defaultManager removeItemAtPath:path error:nil];
 
                 // Reduce the retry delay for SHA failures to 0.3 seconds.
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -938,6 +952,14 @@ static const NSUInteger kMCStageIndexVerify = 5;
         self.progressLastCompleted = completed;
     }
 
+    // Throttle intermediate UI updates to at most 4 times a second (250ms), preventing lock contention and UI freeze
+    if (!progress.finished && !progress.cancelled) {
+        if (self.lastUIReportTime > 0 && (now - self.lastUIReportTime) < 0.25) {
+            return;
+        }
+    }
+    self.lastUIReportTime = now;
+
     DownloadTaskManager *manager = [DownloadTaskManager sharedManager];
     [manager updateTaskWithId:self.currentDownloadTaskItem.taskId
                      progress:fraction
@@ -948,7 +970,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
        estimatedTimeRemaining:eta];
 
     // Stage reporting: concurrent library/asset stages share the global rate (indeterminate progress, advanced by file counts).
-    if (self.stageReportingEnabled) {
+    if (self.stageReportingEnabled && self.currentDownloadTaskItem.stages.count > kMCStageIndexAssets) {
         [manager updateTaskWithId:self.currentDownloadTaskItem.taskId
                     stageAtIndex:kMCStageIndexLibraries
                             rate:speed];

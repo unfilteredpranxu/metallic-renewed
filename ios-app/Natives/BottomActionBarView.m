@@ -4,26 +4,94 @@
 // Same height as the start capsule (kNoRightCapsuleHeight in LauncherNewsViewController.m).
 static const CGFloat kBarButtonHeight = 36.0;
 
+static UIColor *PinkGlassColor(void) {
+    return [UIColor colorWithRed:1.0 green:0.43 blue:0.78 alpha:1.0];
+}
+
+@interface AmePinkGlassButton ()
+@property (nonatomic, strong) UIVisualEffectView *blurView;
+@property (nonatomic, strong) CAGradientLayer *pinkLayer;
+@property (nonatomic, strong) CAGradientLayer *highlightLayer;
+@end
+
+@implementation AmePinkGlassButton
+
+- (void)ameBuildGlassIfNeeded {
+    if (self.blurView) return;
+    UIColor *pink = PinkGlassColor();
+    self.backgroundColor = UIColor.clearColor;
+    self.clipsToBounds = YES;
+    self.layer.cornerCurve = kCACornerCurveContinuous;
+    self.layer.borderWidth = 1.0;
+    self.layer.borderColor = [pink colorWithAlphaComponent:0.6].CGColor;
+    self.tintColor = pink;
+
+    // 1) Glass base (plain system blur: renders identically on every iOS version).
+    self.blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark]];
+    self.blurView.userInteractionEnabled = NO;
+    self.blurView.clipsToBounds = YES;
+    [self insertSubview:self.blurView atIndex:0];
+
+    // 2) Pink gradient over the glass, edge to edge.
+    self.pinkLayer = [CAGradientLayer layer];
+    self.pinkLayer.colors = @[
+        (id)[pink colorWithAlphaComponent:0.42].CGColor,
+        (id)[pink colorWithAlphaComponent:0.22].CGColor
+    ];
+    self.pinkLayer.startPoint = CGPointMake(0.5, 0.0);
+    self.pinkLayer.endPoint = CGPointMake(0.5, 1.0);
+    [self.blurView.contentView.layer addSublayer:self.pinkLayer];
+
+    // 3) Soft white sheen along the top half for the glassy look.
+    self.highlightLayer = [CAGradientLayer layer];
+    self.highlightLayer.colors = @[
+        (id)[UIColor colorWithWhite:1.0 alpha:0.28].CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor
+    ];
+    self.highlightLayer.startPoint = CGPointMake(0.5, 0.0);
+    self.highlightLayer.endPoint = CGPointMake(0.5, 0.65);
+    [self.blurView.contentView.layer addSublayer:self.highlightLayer];
+}
+
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) [self ameBuildGlassIfNeeded];
+    return self;
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder {
+    self = [super initWithCoder:coder];
+    if (self) [self ameBuildGlassIfNeeded];
+    return self;
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    CGRect bounds = self.bounds;
+    CGFloat radius = MIN(bounds.size.width, bounds.size.height) / 2.0;
+    self.layer.cornerRadius = radius;
+    self.blurView.frame = bounds;
+    self.blurView.layer.cornerRadius = radius;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.pinkLayer.frame = bounds;
+    self.highlightLayer.frame = bounds;
+    [CATransaction commit];
+    [self sendSubviewToBack:self.blurView];
+}
+
+- (void)setHighlighted:(BOOL)highlighted {
+    [super setHighlighted:highlighted];
+    self.alpha = highlighted ? 0.75 : 1.0;
+}
+
+@end
+
 void AmeApplyPinkGlassButtonStyle(UIButton *b) {
-    if (!b) return;
-    UIColor *pink = [UIColor colorWithRed:1.0 green:0.43 blue:0.78 alpha:1.0];
-    b.tintColor = pink;
-    b.backgroundColor = UIColor.clearColor;
-    b.layer.cornerCurve = kCACornerCurveContinuous;
-    b.layer.borderWidth = 1.0;
-    b.layer.borderColor = [pink colorWithAlphaComponent:0.55].CGColor;
-    b.clipsToBounds = YES;
-    // Always glass (system UIGlassEffect on iOS 26+, system blur material before that),
-    // then a soft pink wash on top of the glass.
-    UIVisualEffectView *glass = nil;
-    if (AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial) != nil) {
-        glass = AmeInstallGlassBackdrop(b, 100.0, YES);
-    }
-    if (glass) {
-        glass.contentView.backgroundColor = [pink colorWithAlphaComponent:0.20];
-    } else {
-        b.backgroundColor = [pink colorWithAlphaComponent:0.22];
-    }
+    if (![b isKindOfClass:[AmePinkGlassButton class]]) return;
+    [(AmePinkGlassButton *)b ameBuildGlassIfNeeded];
+    b.tintColor = PinkGlassColor();
+    [b setNeedsLayout];
 }
 
 @interface BottomActionBarView ()
@@ -34,7 +102,7 @@ void AmeApplyPinkGlassButtonStyle(UIButton *b) {
 /// Builds a button styled exactly like the "Sign In and Launch" capsule:
 /// pink liquid glass, pink hairline border, subheadline label, pink icon.
 static UIButton *MakeBarButton(NSString *title, NSString *icon) {
-    UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *b = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
     b.translatesAutoresizingMaskIntoConstraints = NO;
     b.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
     b.titleLabel.adjustsFontSizeToFitWidth = YES;

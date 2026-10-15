@@ -1478,9 +1478,11 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 
 // Profile panel: just the round picture, all the way up in the top-right corner (level with the nav bar).
 // Width/height are owned by the panel itself (it grows when opened).
+NSLayoutConstraint *panelTop = [self.actionPanel.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:15];
+self.actionPanel.topOffsetConstraint = panelTop;
 [NSLayoutConstraint activateConstraints:@[
     [self.actionPanel.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16],
-    [self.actionPanel.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:15],
+    panelTop,
 ]];
 [self.actionPanel.launchButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
     [LauncherRightPanelViewController norightPostAction:@"launch"];
@@ -1841,14 +1843,12 @@ self.actionPanel.chooseVersionButton.hidden = YES;
     //   宽度:由 norightCapsuleWidth 一条**等宽**约束的 constant 表达(applyHomeSafeAreaInsets 里
     //   按实时宽度算:竖屏≈满宽-32、横屏收 320)= 不存在同属性双钉。
     //   行为:点击只发通知 ⇒ 落到右栏原 launchButtonTapped(账号校验/JIT/下载拦截/版本解析全链路不变)。
-    self.norightLaunchCapsule = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.norightLaunchCapsule = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
     self.norightLaunchCapsule.translatesAutoresizingMaskIntoConstraints = NO;
     [self.norightLaunchCapsule setTitle:localize(@"i18n_str_412", nil) forState:UIControlStateNormal];
     self.norightLaunchCapsule.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
     self.norightLaunchCapsule.titleLabel.adjustsFontSizeToFitWidth = YES;
     self.norightLaunchCapsule.titleLabel.minimumScaleFactor = 0.7;
-    self.norightLaunchCapsule.layer.cornerRadius = kNoRightCapsuleHeight / 2.0;
-    self.norightLaunchCapsule.layer.cornerCurve = kCACornerCurveContinuous;
     [self.norightLaunchCapsule setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
     UIImage *norightPlay = [UIImage systemImageNamed:@"play.fill"];
     if (norightPlay) {
@@ -3320,8 +3320,8 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
     // ★ [PORTRAIT-UNLOCK] 放开竖屏:原来是写死 Landscape ⇒ iPhone 上竖屏进不来
     //   (主页是该 VC,它锁横屏 ⇒ 整个 App 被钉在横屏)。游戏页仍单独锁横屏。
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskAll; }
-    return UIInterfaceOrientationMaskAllButUpsideDown;
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskLandscape;   // landscape only }
+    return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
 /// 重新应用背景效果：当 BackgroundUIEffectChanged 通知到达时调用，

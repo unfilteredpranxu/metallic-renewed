@@ -131,7 +131,7 @@ void AmeGameLandscapeLockExit(void) {
     void (^apply)(void) = ^{
         BOOL was = gAmeGameLandscapeLocked;
         gAmeGameLandscapeLocked = NO;
-        AmeGameLandscapeApplyMask(UIInterfaceOrientationMaskAllButUpsideDown);   // 与 SceneDelegate 初始放开值逐字一致
+        AmeGameLandscapeApplyMask(UIInterfaceOrientationMaskLandscape);   // launcher is landscape only
         NSLog(@"★ [GAME-LANDSCAPE] EXIT (wasLocked=%d) ⇒ 恢复启动器方向(竖屏+横屏)", was);
     };
     if ([NSThread isMainThread]) apply();

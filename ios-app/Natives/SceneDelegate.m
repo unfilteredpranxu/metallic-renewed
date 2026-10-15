@@ -36,7 +36,7 @@ extern UIWindow *mainWindow;
             Class prefsCls = NSClassFromString(@"UIWindowSceneGeometryPreferencesIOS");   // ★ 运行期类查找
             if (prefsCls != Nil) {
                 UIWindowSceneGeometryPreferencesIOS *geometryPreferences = [[prefsCls alloc] init];
-                geometryPreferences.interfaceOrientations = UIInterfaceOrientationMaskAllButUpsideDown;   // ★ [PORTRAIT]
+                geometryPreferences.interfaceOrientations = UIInterfaceOrientationMaskLandscape;   // landscape only
                 [windowScene requestGeometryUpdateWithPreferences:geometryPreferences errorHandler:^(NSError *error) {
                     NSLog(@"[SceneDelegate] Failed to update geometry: %@", error);
                 }];
@@ -315,7 +315,7 @@ extern UIWindow *mainWindow;
 - (UIInterfaceOrientationMask)scene:(UIScene *)scene supportedInterfaceOrientationsForWindowScene:(UIWindowScene *)windowScene API_AVAILABLE(ios(16.0)) {
     // ★ [GAME-LANDSCAPE] 启动中/游戏中收窄为仅横屏（与根 VC 层一致；未锁时与改动前逐字一致）
     if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
-    return UIInterfaceOrientationMaskAllButUpsideDown;   // ★ [PORTRAIT] 窗口层放开
+    return UIInterfaceOrientationMaskLandscape;   // landscape only   // ★ [PORTRAIT] 窗口层放开
 }
 
 @end

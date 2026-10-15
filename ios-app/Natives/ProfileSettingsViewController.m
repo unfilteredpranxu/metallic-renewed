@@ -2801,9 +2801,9 @@ static NSString * localizeProfileTitle(NSString *title) {
     //   横屏双列」两套布局 ⇒ 竖屏是设计内形态;原先写死 Landscape 会让本页以模态/根形式出现时
     //   把 App 钉在横屏(与已修的同族页面同型)。
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        return UIInterfaceOrientationMaskAll;
+        return UIInterfaceOrientationMaskLandscape;   // landscape only
     }
-    return UIInterfaceOrientationMaskAllButUpsideDown;
+    return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
 - (void)handleBackgroundUIEffectChanged:(NSNotification *)notification {

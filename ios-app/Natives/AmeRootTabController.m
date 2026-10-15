@@ -24,11 +24,14 @@
 // ★ [MP-RESTORE] Multiplayer entry point.
 #import "TerracottaViewController.h"
 #import "HomeTopNavView.h"
+#import "BottomActionBarView.h"   // AmePinkGlassButton
+#import <objc/message.h>
 
 NSString * const AmeTabTappedNotification = @"AmeTabTapped";   // ★ [ROOTTAB]
 
-@interface AmeRootTabController () <UITabBarControllerDelegate>   // ★ Declare the protocol to eliminate the delegate-assignment warning.
+@interface AmeRootTabController () <UITabBarControllerDelegate, UINavigationControllerDelegate>   // ★ Declare the protocol to eliminate the delegate-assignment warning.
 @property (nonatomic, strong) HomeTopNavView *topNav;
+@property (nonatomic, strong) AmePinkGlassButton *floatingDoneButton;   // bottom-right "Done" shown on pushed pages
 @end
 
 // ★ [TAB-INST-REVERT] Removed the segmented InstancesTabViewController container: the "Instances"
@@ -132,6 +135,10 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         content.tabBarItem.tag = i;
 
         UIViewController *vc = AmeWrapInNav(content);   // ★ Wrap all pages in nav controllers for nested flows (see RootVC:719 comment).
+        // Track the stack depth so the floating Done button knows when to appear.
+        if ([vc isKindOfClass:[UINavigationController class]] && ((UINavigationController *)vc).delegate == nil) {
+            ((UINavigationController *)vc).delegate = tbc;
+        }
         [vcs addObject:vc];
     }
     tbc.viewControllers = vcs;
@@ -167,6 +174,29 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         self.viewControllers[i].additionalSafeAreaInsets = UIEdgeInsetsMake(76, 0, 0, 0);
     }
 
+    // Floating "Done" (bottom-right): the pages' own Done buttons sit in a navigation bar that ends up
+    // under the top nav, so on every pushed page this one is always reachable.
+    self.floatingDoneButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    self.floatingDoneButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.floatingDoneButton setTitle:localize(@"resman.common.done", @"Done") forState:UIControlStateNormal];
+    [self.floatingDoneButton setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
+    self.floatingDoneButton.titleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+    UIImage *doneImage = [[UIImage systemImageNamed:@"checkmark"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    if (doneImage) [self.floatingDoneButton setImage:doneImage forState:UIControlStateNormal];
+    self.floatingDoneButton.contentEdgeInsets = UIEdgeInsetsMake(0, 18, 0, 18);
+    self.floatingDoneButton.imageEdgeInsets = UIEdgeInsetsMake(0, -4, 0, 4);
+    self.floatingDoneButton.titleEdgeInsets = UIEdgeInsetsMake(0, 4, 0, -4);
+    AmeApplyPinkGlassButtonStyle(self.floatingDoneButton);
+    self.floatingDoneButton.hidden = YES;
+    [self.floatingDoneButton addTarget:self action:@selector(ameFloatingDoneTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:self.floatingDoneButton];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.floatingDoneButton.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-16],
+        [self.floatingDoneButton.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-12],
+        [self.floatingDoneButton.heightAnchor constraintEqualToConstant:40],
+        [self.floatingDoneButton.widthAnchor constraintGreaterThanOrEqualToConstant:104],
+    ]];
+
     __weak typeof(self) weakSelf = self;
     self.topNav.onSelect = ^(NSInteger index) {
         // Home always resets: close anything presented, pop back to the home page, scroll to top.
@@ -178,6 +208,52 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [self.view bringSubviewToFront:self.topNav];
+    [self.view bringSubviewToFront:self.floatingDoneButton];
+}
+
+#pragma mark - Floating Done button
+
+/// Shown whenever the selected tab has a page pushed on top of its root.
+- (void)ameUpdateFloatingDoneButton {
+    UIViewController *selected = self.selectedViewController;
+    BOOL deep = [selected isKindOfClass:[UINavigationController class]]
+             && ((UINavigationController *)selected).viewControllers.count > 1;
+    self.floatingDoneButton.hidden = !deep;
+    if (deep) [self.view bringSubviewToFront:self.floatingDoneButton];
+}
+
+/// Runs the page's own Done / Close bar button (so it can save before closing); falls back to going
+/// back to the tab's root page.
+- (void)ameFloatingDoneTapped {
+    UIViewController *selected = self.selectedViewController;
+    if (![selected isKindOfClass:[UINavigationController class]]) return;
+    UINavigationController *nav = (UINavigationController *)selected;
+    UINavigationItem *item = nav.topViewController.navigationItem;
+    NSMutableArray<UIBarButtonItem *> *candidates = [NSMutableArray array];
+    if (item.leftBarButtonItems) [candidates addObjectsFromArray:item.leftBarButtonItems];
+    if (item.rightBarButtonItems) [candidates addObjectsFromArray:item.rightBarButtonItems];
+    for (UIBarButtonItem *bar in candidates) {
+        NSString *name = bar.action ? NSStringFromSelector(bar.action) : nil;
+        if (!name || !bar.target) continue;
+        NSString *lower = name.lowercaseString;
+        if ([lower containsString:@"done"] || [lower containsString:@"close"]) {
+            if ([bar.target respondsToSelector:bar.action]) {
+                void (*send)(id, SEL, id) = (void (*)(id, SEL, id))objc_msgSend;
+                send(bar.target, bar.action, bar);
+                [self ameUpdateFloatingDoneButton];
+                return;
+            }
+        }
+    }
+    [nav popToRootViewControllerAnimated:YES];
+}
+
+#pragma mark - UINavigationControllerDelegate
+
+- (void)navigationController:(UINavigationController *)navigationController
+       didShowViewController:(UIViewController *)viewController
+                    animated:(BOOL)animated {
+    [self ameUpdateFloatingDoneButton];
 }
 
 /// Pressing Home: dismiss any sheet/modal, pop the home stack to its root, switch to the Home tab
@@ -205,6 +281,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 - (void)setSelectedIndex:(NSUInteger)selectedIndex {
     [super setSelectedIndex:selectedIndex];
     self.topNav.selectedIndex = selectedIndex;
+    [self ameUpdateFloatingDoneButton];
 }
 
 #pragma mark - ★ [GAME-LANDSCAPE] Lock landscape during launch/gameplay (root-controller layer)
@@ -221,7 +298,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
     if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;   // ★ [GAME-LANDSCAPE]
-    return [super supportedInterfaceOrientations];
+    return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
 #pragma mark - UITabBarControllerDelegate

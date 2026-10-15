@@ -1911,9 +1911,9 @@ static NSInteger const kSectionVersions    = 1;
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
     if ([ScreenUtils isPad]) {
-        return UIInterfaceOrientationMaskAll;
+        return UIInterfaceOrientationMaskLandscape;   // landscape only
     }
-    return UIInterfaceOrientationMaskAllButUpsideDown;
+    return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
 @end

@@ -1442,9 +1442,9 @@ static const void *kE1InstanceNameKey = &kE1InstanceNameKey;
     // 竖屏排布由 LauncherCardLayoutViewController 切换(三卡竖摞 + 菜单横排);
     // 游戏(SurfaceViewController)单独锁横屏,保证游戏内不会竖过来。
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        return UIInterfaceOrientationMaskAll;
+        return UIInterfaceOrientationMaskLandscape;   // landscape only
     }
-    return UIInterfaceOrientationMaskAllButUpsideDown;
+    return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
 #pragma mark - UINavigationControllerDelegate

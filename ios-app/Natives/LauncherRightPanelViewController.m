@@ -1756,9 +1756,9 @@ static void *ProgressObserverContext = &ProgressObserverContext;
     //   原先写死 Landscape 与「窗口层已放开竖屏」的现状不一致,若哪天以模态形式呈现会钉死横屏。
     //   统一成同族口径(游戏页仍单独锁横屏)。
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        return UIInterfaceOrientationMaskAll;
+        return UIInterfaceOrientationMaskLandscape;   // landscape only
     }
-    return UIInterfaceOrientationMaskAllButUpsideDown;
+    return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
 #pragma mark - ★ [NORIGHT] 右栏卡片下线(新 UI 入口 → 原方法转发)

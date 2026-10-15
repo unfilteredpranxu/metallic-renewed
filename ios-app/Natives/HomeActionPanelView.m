@@ -5,6 +5,8 @@ static const CGFloat kCollapsedSize = 46.0;
 static const CGFloat kExpandedWidth = 250.0;
 static const CGFloat kExpandedHeight = 252.0;
 static const CGFloat kChipRowHeight = 34.0;
+static const CGFloat kCollapsedTopOffset = 15.0;   // level with the nav bar
+static const CGFloat kExpandedTopOffset = 84.0;    // opens below the nav bar
 
 static UIColor *PanelAccentColor(void) {
     // Pink to match the glass nav bar selector.
@@ -255,6 +257,7 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
 
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated {
     _expanded = expanded;
+    self.topOffsetConstraint.constant = expanded ? kExpandedTopOffset : kCollapsedTopOffset;
     self.widthConstraint.constant = expanded ? kExpandedWidth : kCollapsedSize;
     self.heightConstraint.constant = expanded ? kExpandedHeight : kCollapsedSize;
     self.avatarLeadingConstraint.constant = expanded ? 12.0 : 4.0;

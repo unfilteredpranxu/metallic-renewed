@@ -605,8 +605,8 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
     // ★ [PORTRAIT-UNLOCK] Allow portrait: this was hard-coded to Landscape, preventing access in
     //   portrait on iPhone (Home is this VC, so it locked the entire app to landscape). The game page
     //   still locks itself to landscape separately.
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskAll; }
-    return UIInterfaceOrientationMaskAllButUpsideDown;
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskLandscape;   // landscape only }
+    return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
 - (void)handleBackgroundUIEffectChanged:(NSNotification *)notification {

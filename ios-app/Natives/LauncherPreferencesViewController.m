@@ -1596,7 +1596,7 @@
     }
     iconView.tintColor = [UIColor whiteColor];
     iconView.contentMode = UIViewContentModeScaleAspectFit;   // ★ [HOST-BUG-A] 图标按比例铺满(原 Center 只画原尺寸)
-    iconView.backgroundColor = accentColor();
+    iconView.backgroundColor = [UIColor clearColor];   // the real icon fills the tile (no accent bleed)
     iconView.layer.cornerRadius = 14;
     iconView.layer.cornerCurve = kCACornerCurveContinuous;
     iconView.layer.masksToBounds = YES;

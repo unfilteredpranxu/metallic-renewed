@@ -11,6 +11,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, readonly) UIButton *executeJarButton;
 @property (nonatomic, strong, readonly) UIButton *chooseVersionButton;
 @property (nonatomic, copy, nullable) void (^onProfileTap)(void);
+/// The owner's top-edge constraint. The panel moves it so it opens lower (below the nav bar)
+/// and returns to the corner when collapsed.
+@property (nonatomic, weak, nullable) NSLayoutConstraint *topOffsetConstraint;
 /// Horizontal row shown at the top of the expanded panel. The home screen puts the JIT status
 /// and download-center chips in here (arranged subviews fill the row height).
 @property (nonatomic, strong, readonly) UIStackView *chipRow;

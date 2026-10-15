@@ -69,7 +69,7 @@ extern dispatch_group_t fatalExitGroup;
     //   identical to the pre-change value).
     if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
     // Force landscape only
-    return UIInterfaceOrientationMaskAllButUpsideDown;   // ★ [PORTRAIT] Allow all orientations at the window level (the game page locks landscape separately).
+    return UIInterfaceOrientationMaskLandscape;   // landscape only   // ★ [PORTRAIT] Allow all orientations at the window level (the game page locks landscape separately).
 }
 
 @end

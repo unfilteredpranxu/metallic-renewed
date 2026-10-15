@@ -1230,9 +1230,9 @@ ptTopBarHeight = [self.sidebarContainer.heightAnchor constraintEqualToConstant:9
     }
 
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        return UIInterfaceOrientationMaskAll;
+        return UIInterfaceOrientationMaskLandscape;   // landscape only
     }
-    return UIInterfaceOrientationMaskAllButUpsideDown;
+    return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
 #pragma mark - UINavigationControllerDelegate

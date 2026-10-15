@@ -387,9 +387,9 @@
 /// ★ [PORTRAIT] 放开方向:原来写死 Landscape ⇒ 竖屏根本进不去。
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        return UIInterfaceOrientationMaskAll;
+        return UIInterfaceOrientationMaskLandscape;   // landscape only
     }
-    return UIInterfaceOrientationMaskAllButUpsideDown;
+    return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
 #pragma mark - ★ [SWIFT-BAR] 标签图标自愈

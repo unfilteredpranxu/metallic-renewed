@@ -172,9 +172,9 @@ extern NSMutableDictionary *prefDict;
     // LauncherCardLayoutViewController switches to a portrait layout (three stacked cards + horizontal menu);
     // the game (SurfaceViewController) remains separately locked to landscape.
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        return UIInterfaceOrientationMaskAll;
+        return UIInterfaceOrientationMaskLandscape;   // landscape only
     }
-    return UIInterfaceOrientationMaskAllButUpsideDown;
+    return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
 @end

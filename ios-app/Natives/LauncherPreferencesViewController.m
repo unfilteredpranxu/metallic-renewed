@@ -363,7 +363,7 @@
     self.hasDetail = YES;
     self.prefDetailVisible = self.navigationController == nil;
     
-    self.prefSections = @[@"general", @"download", @"video", @"mobileglues", @"control", @"java", @"debug", @"ai"];
+    self.prefSections = @[@"general", @"download", @"video", @"mobileglues", @"control", @"java", @"debug"];
 
     self.rendererKeys = getRendererKeys(NO);
     self.rendererList = getRendererNames(NO);
@@ -1409,62 +1409,6 @@
                 @"hasDetail": @YES,
                 @"icon": @"textformat.abc.dottedunderline",
                 @"type": self.typeSwitch
-            }
-        ], @[
-            // AI 助手 settings（Air AI Agent Phase 2）
-            @{@"icon": @"sparkles"},
-            @{@"key": @"provider_config",
-              @"title": @"Provider Configuration",
-              @"icon": @"globe.asia.australia.fill",
-              @"type": self.typeButton,
-              @"action": ^void(){
-                  AIProviderConfigViewController *vc = [[AIProviderConfigViewController alloc] init];
-                  UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
-                  nav.modalPresentationStyle = UIModalPresentationFormSheet;
-                  [self presentViewController:nav animated:YES completion:nil];
-              }
-            },
-            @{@"key": @"session_list",
-              @"title": @"Session List",
-              @"icon": @"rectangle.stack.badge.person.crop",
-              @"type": self.typeButton,
-              @"action": ^void(){
-                  AISessionListViewController *vc = [[AISessionListViewController alloc] init];
-                  UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
-                  nav.modalPresentationStyle = UIModalPresentationFormSheet;
-                  [self presentViewController:nav animated:YES completion:nil];
-              }
-            },
-            @{@"key": @"safety_mode",
-              @"title": @"Default Safety Mode",
-              @"icon": @"hand.raised.fill",
-              @"type": self.typePickField,
-              @"pickKeys": @[
-                  @"Read-Only Auto-Execute (Safe)",
-                  @"Confirm Each Write (Ask)",
-                  @"Auto-Approve (YOLO)"
-              ],
-              @"pickList": @[
-                  @"Read-Only Auto-Execute (Safe)",
-                  @"Confirm Each Write (Ask)",
-                  @"Auto-Approve (YOLO)"
-              ]
-            },
-            @{@"key": @"markdown_enabled",
-              @"title": @"Markdown Rendering",
-              @"icon": @"textformat",
-              @"type": self.typeSwitch
-            },
-            @{@"key": @"system_prompt",
-              @"title": @"System Prompt",
-              @"icon": @"text.book.closed.fill",
-              @"type": self.typeButton,
-              @"action": ^void(){
-                  AISystemPromptEditorViewController *vc = [[AISystemPromptEditorViewController alloc] init];
-                  UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
-                  nav.modalPresentationStyle = UIModalPresentationFormSheet;
-                  [self presentViewController:nav animated:YES completion:nil];
-              }
             }
         ]
     ];

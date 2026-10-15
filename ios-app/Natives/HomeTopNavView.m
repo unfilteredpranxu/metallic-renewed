@@ -1,6 +1,7 @@
 #import "HomeTopNavView.h"
 #import "UIKit+GlassSurface.h"   // AmeApplyGlassChipStyle / AmeGlassEffect (system Liquid Glass on iOS 26+)
 #import "utils.h"                // localize()
+#import "BottomActionBarView.h"   // AmeThemeTintColor
 
 // Bar geometry. AmeRootTabController and LauncherNewsViewController reserve space for this height,
 // so if you change it, update kHomeNavReserve in LauncherNewsViewController.m and the
@@ -22,7 +23,7 @@ static const CGFloat kNavItemPadH   = 16.0;   // horizontal padding inside each 
 @implementation HomeTopNavView
 
 static UIColor *NavAccentColor(void) {
-    return [UIColor colorWithRed:1.0 green:0.43 blue:0.78 alpha:1.0];
+    return AmeThemeTintColor();   // follows the theme color chosen in Settings (default pink)
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -33,6 +34,11 @@ static UIColor *NavAccentColor(void) {
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(tabNote:)
                                                      name:@"AmeTabSelected"
+                                                   object:nil];
+        // Recolor the sliding bubble and the selected item when the theme color changes.
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(themeChanged:)
+                                                     name:@"LauncherAppearanceChanged"
                                                    object:nil];
     }
     return self;
@@ -213,6 +219,11 @@ static UIColor *NavAccentColor(void) {
         self.labels[i].textColor = color;
     }
     [self placeSelectorAnimated:changed];
+}
+
+- (void)themeChanged:(NSNotification *)notification {
+    self.selector.contentView.backgroundColor = [NavAccentColor() colorWithAlphaComponent:0.22];
+    self.selectedIndex = _selectedIndex;   // re-applies the selected icon / label color
 }
 
 - (void)tabNote:(NSNotification *)notification {

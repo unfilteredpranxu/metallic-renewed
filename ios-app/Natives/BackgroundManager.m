@@ -97,6 +97,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         CGRect dest = CGRectMake((self.bounds.size.width - drawn.width) * 0.5,
                                  (self.bounds.size.height - drawn.height) * 0.5,
                                  drawn.width, drawn.height);
+        CGContextRef wctx = UIGraphicsGetCurrentContext();
+        if (wctx) CGContextSetInterpolationQuality(wctx, kCGInterpolationHigh);   // crisp downscale
         [wallpaper drawInRect:dest];
         return;
     }

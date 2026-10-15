@@ -21,6 +21,7 @@
 #import "IconLoader.h"
 #import <SafariServices/SafariServices.h>
 #import <QuartzCore/QuartzCore.h>
+#import <ImageIO/ImageIO.h>
 #import "UIKit+GlassSurface.h"   // ★ [HOME6] 液态玻璃四要素(运行时取 UIGlassEffect,不用 iOS26 编译期符号)
 #import "LauncherRightPanelViewController.h"   // ★ [NORIGHT] 右栏状态广播 / 动作转发入口
 #import "BottomActionBarView.h"
@@ -1353,6 +1354,10 @@ static NSString *festivalGreeting(void) {
 //   canMoveItemAtIndexPath: / moveItemAtIndexPath:toIndexPath: + begin/update/endInteractiveMovement),
 //   几何仍由 compositional layout 计算 ⇒ 不硬摆 frame、横竖屏都成立。
 @property (nonatomic, strong) UILongPressGestureRecognizer *homeEditLongPress;
+@property (nonatomic, strong) UIView *homeBlobView;                 // animated chrome blob that replaces the cards
+@property (nonatomic, strong) CALayer *homeBlobLayer;
+@property (nonatomic, strong) NSArray *homeBlobFrames;              // CGImageRef frames from HomeBlob.gif
+@property (nonatomic, assign) CFTimeInterval homeBlobDuration;
 @property (nonatomic, strong) UIButton *homeEditDoneButton;     // 顶栏「✓ 完成」(编辑模式出口)
 @property (nonatomic, assign) BOOL      homeEditing;            // 是否处于编辑模式
 @property (nonatomic, assign) BOOL      homeMoveActive;         // 正在拖拽排序(interactive movement)
@@ -1422,6 +1427,7 @@ static NSString *festivalGreeting(void) {
     
     [self setupHeader];
     [self setupCollectionView];
+    [self setupHomeBlob];   // animated chrome blob replaces the card grid
     [self applyHomeSafeAreaInsets];   // ★ [HOME6] 首次按实时安全区铺一次(竖/横通用)
     [self updateSkinDisplay];
     [self checkMinecraftVersions];
@@ -1784,6 +1790,117 @@ self.actionPanel.topOffsetConstraint = panelTop;
     }
 
     [self activateHeaderConstraintsForLandscape:[self homeIsLandscape]];
+}
+
+// MARK: - Animated home blob (replaces the card grid)
+
+/// Loads HomeBlob.gif (bundled) into CGImage frames once.
+- (void)homeBlobLoadFrames {
+    if (self.homeBlobFrames.count) return;
+    NSString *path = [[NSBundle mainBundle] pathForResource:@"HomeBlob" ofType:@"gif"];
+    if (!path) return;
+    CGImageSourceRef src = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path], NULL);
+    if (!src) return;
+    size_t count = CGImageSourceGetCount(src);
+    NSMutableArray *frames = [NSMutableArray arrayWithCapacity:count];
+    CFTimeInterval total = 0;
+    for (size_t i = 0; i < count; i++) {
+        CGImageRef img = CGImageSourceCreateImageAtIndex(src, i, NULL);
+        if (!img) continue;
+        [frames addObject:(__bridge id)img];
+        CGImageRelease(img);
+        NSDictionary *props = CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(src, i, NULL));
+        NSDictionary *gif = props[(__bridge NSString *)kCGImagePropertyGIFDictionary];
+        NSNumber *delay = gif[(__bridge NSString *)kCGImagePropertyGIFUnclampedDelayTime] ?: gif[(__bridge NSString *)kCGImagePropertyGIFDelayTime];
+        total += MAX(0.02, delay.doubleValue > 0 ? delay.doubleValue : 0.07);
+    }
+    CFRelease(src);
+    self.homeBlobFrames = frames;
+    self.homeBlobDuration = total > 0 ? total : frames.count * 0.07;
+}
+
+- (void)setupHomeBlob {
+    [self homeBlobLoadFrames];
+    // The cards (and their "Custom" edit entry) are replaced by the blob.
+    self.collectionView.hidden = YES;
+    self.collectionView.userInteractionEnabled = NO;
+    self.customizeButton.hidden = YES;
+
+    self.homeBlobView = [[UIView alloc] init];
+    self.homeBlobView.userInteractionEnabled = NO;
+    self.homeBlobView.backgroundColor = UIColor.clearColor;
+    [self.view insertSubview:self.homeBlobView aboveSubview:self.collectionView];
+
+    self.homeBlobLayer = [CALayer layer];
+    self.homeBlobLayer.contentsGravity = kCAGravityResizeAspect;
+    self.homeBlobLayer.magnificationFilter = kCAFilterTrilinear;
+    self.homeBlobLayer.minificationFilter = kCAFilterTrilinear;
+    // Screen blend: the frames are on pure black, so the black drops out and the chrome glows over
+    // the wallpaper.
+    self.homeBlobLayer.compositingFilter = @"screenBlendMode";
+    if (self.homeBlobFrames.count) self.homeBlobLayer.contents = self.homeBlobFrames.firstObject;
+    [self.homeBlobView.layer addSublayer:self.homeBlobLayer];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(homeBlobStartAnimating)
+                                                 name:UIApplicationDidBecomeActiveNotification
+                                               object:nil];
+    [self homeBlobStartAnimating];
+}
+
+/// (Re)starts the frame animation plus a slow float / breathe. Core Animation drops animations when
+/// the app is backgrounded, so this is also called on becoming active and on appearing.
+- (void)homeBlobStartAnimating {
+    if (!self.homeBlobLayer || !self.homeBlobFrames.count) return;
+    if ([self.homeBlobLayer animationForKey:@"frames"]) return;
+
+    CAKeyframeAnimation *frames = [CAKeyframeAnimation animationWithKeyPath:@"contents"];
+    frames.values = self.homeBlobFrames;
+    frames.calculationMode = kCAAnimationDiscrete;
+    frames.duration = self.homeBlobDuration;
+    frames.repeatCount = HUGE_VALF;
+    frames.removedOnCompletion = NO;
+    [self.homeBlobLayer addAnimation:frames forKey:@"frames"];
+
+    CABasicAnimation *bob = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    bob.fromValue = @(-7.0);
+    bob.toValue = @(7.0);
+    bob.duration = 3.4;
+    bob.autoreverses = YES;
+    bob.repeatCount = HUGE_VALF;
+    bob.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.homeBlobLayer addAnimation:bob forKey:@"bob"];
+
+    CABasicAnimation *breathe = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    breathe.fromValue = @(0.97);
+    breathe.toValue = @(1.03);
+    breathe.duration = 4.6;
+    breathe.autoreverses = YES;
+    breathe.repeatCount = HUGE_VALF;
+    breathe.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.homeBlobLayer addAnimation:breathe forKey:@"breathe"];
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    // Keep the card grid hidden (the edit-mode code paths can un-hide the Custom button).
+    self.collectionView.hidden = YES;
+    self.customizeButton.hidden = YES;
+    if (!self.homeBlobView) return;
+
+    // The blob fills the area between the header and the bottom buttons, kept square.
+    UIEdgeInsets safe = self.view.safeAreaInsets;
+    CGFloat top = CGRectGetMaxY(self.headerView.frame) + 4.0;
+    CGFloat bottom = self.view.bounds.size.height - safe.bottom - 118.0;
+    CGFloat availH = MAX(120.0, bottom - top);
+    CGFloat side = MIN(availH, self.view.bounds.size.width - 48.0);
+    CGRect area = CGRectMake((self.view.bounds.size.width - side) * 0.5, top + (availH - side) * 0.5, side, side);
+    self.homeBlobView.frame = area;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.homeBlobLayer.frame = self.homeBlobView.bounds;
+    [CATransaction commit];
+    [self homeBlobStartAnimating];
 }
 
 // MARK: - Collection View Setup

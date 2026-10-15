@@ -24,6 +24,7 @@
 #import <ImageIO/ImageIO.h>
 #import "UIKit+GlassSurface.h"   // ★ [HOME6] 液态玻璃四要素(运行时取 UIGlassEffect,不用 iOS26 编译期符号)
 #import "LauncherRightPanelViewController.h"   // ★ [NORIGHT] 右栏状态广播 / 动作转发入口
+#import "DownloadTasksViewController.h"
 #import "BottomActionBarView.h"
 #import "HomeActionPanelView.h"
 #import "AccountListViewController.h"
@@ -1356,10 +1357,9 @@ static NSString *festivalGreeting(void) {
 //   canMoveItemAtIndexPath: / moveItemAtIndexPath:toIndexPath: + begin/update/endInteractiveMovement),
 //   几何仍由 compositional layout 计算 ⇒ 不硬摆 frame、横竖屏都成立。
 @property (nonatomic, strong) UILongPressGestureRecognizer *homeEditLongPress;
-@property (nonatomic, strong) UIView *homeBlobView;                 // animated chrome blob that replaces the cards
-@property (nonatomic, strong) CALayer *homeBlobLayer;
-@property (nonatomic, strong) NSArray *homeBlobFrames;              // CGImageRef frames from HomeBlob.gif
-@property (nonatomic, assign) CFTimeInterval homeBlobDuration;
+@property (nonatomic, strong) UIImageView *homeLogoImageView;
+@property (nonatomic, strong) BottomActionBarView *bottomBar;
+@property (nonatomic, strong) LauncherRightPanelViewController *rightPanelVC;
 @property (nonatomic, strong) UIButton *homeEditDoneButton;     // 顶栏「✓ 完成」(编辑模式出口)
 @property (nonatomic, assign) BOOL      homeEditing;            // 是否处于编辑模式
 @property (nonatomic, assign) BOOL      homeMoveActive;         // 正在拖拽排序(interactive movement)
@@ -1427,9 +1427,24 @@ static NSString *festivalGreeting(void) {
     self.allTileConfigs = [[self configsByApplyingStoredBentoLayout:self.allTileConfigs] mutableCopy];
     [self rebuildDisplaySections];
     
+    // Embed LauncherRightPanelViewController as child view controller to handle launch flow, JIT, downloads, and versions
+    self.rightPanelVC = [[LauncherRightPanelViewController alloc] init];
+    [self addChildViewController:self.rightPanelVC];
+    self.rightPanelVC.view.hidden = YES;
+    self.rightPanelVC.view.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.rightPanelVC.view];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.rightPanelVC.view.widthAnchor constraintEqualToConstant:0],
+        [self.rightPanelVC.view.heightAnchor constraintEqualToConstant:0],
+        [self.rightPanelVC.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.rightPanelVC.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+    ]];
+    [self.rightPanelVC didMoveToParentViewController:self];
+    [self.rightPanelVC norightCollapsePanelLayout:YES];
+    
     [self setupHeader];
     [self setupCollectionView];
-    [self setupHomeBlob];   // animated chrome blob replaces the card grid
+    [self setupHomeLogo];   // responsive transparent emblem replaces old blob
     [self applyHomeSafeAreaInsets];   // ★ [HOME6] 首次按实时安全区铺一次(竖/横通用)
     [self updateSkinDisplay];
     [self checkMinecraftVersions];
@@ -1465,6 +1480,9 @@ self.actionPanel.onLoginTap = ^{
 BottomActionBarView *bottomBar = [[BottomActionBarView alloc] init];
 bottomBar.translatesAutoresizingMaskIntoConstraints = NO;
 [self.view addSubview:bottomBar];
+self.bottomBar = bottomBar;
+[self.view bringSubviewToFront:bottomBar];
+
 // Same width rule as the start capsule (min(view width - 32, kNoRightCapsuleMaxW), centered),
 // so the two rows line up. This row sits UNDER the start capsule: the capsule is raised by
 // (bar height + gap) in setup below, and this row takes the bottom slot.
@@ -1477,12 +1495,8 @@ preferredBarWidth.priority = UILayoutPriorityDefaultHigh;
     [bottomBar.widthAnchor constraintLessThanOrEqualToConstant:kNoRightCapsuleMaxW],
     [bottomBar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8]
 ]];
-[bottomBar.executeJarButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-    [LauncherRightPanelViewController norightPostAction:@"executeJar"];
-}] forControlEvents:UIControlEventTouchUpInside];
-[bottomBar.chooseVersionButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-    [LauncherRightPanelViewController norightPostAction:@"versionPicker"];
-}] forControlEvents:UIControlEventTouchUpInside];
+[bottomBar.executeJarButton addTarget:self action:@selector(bottomBarExecuteJarTapped) forControlEvents:UIControlEventTouchUpInside];
+[bottomBar.chooseVersionButton addTarget:self action:@selector(bottomBarChooseVersionTapped) forControlEvents:UIControlEventTouchUpInside];
 self.actionPanel.launchButton.hidden = YES;
 self.actionPanel.executeJarButton.hidden = YES;
 self.actionPanel.chooseVersionButton.hidden = YES;
@@ -1495,17 +1509,9 @@ self.actionPanel.topOffsetConstraint = panelTop;
     [self.actionPanel.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16],
     panelTop,
 ]];
-[self.actionPanel.launchButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-    [LauncherRightPanelViewController norightPostAction:@"launch"];
-}] forControlEvents:UIControlEventTouchUpInside];
-
-[self.actionPanel.executeJarButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-    [LauncherRightPanelViewController norightPostAction:@"executeJar"];
-}] forControlEvents:UIControlEventTouchUpInside];
-
-[self.actionPanel.chooseVersionButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) {
-    [LauncherRightPanelViewController norightPostAction:@"versionPicker"];
-}] forControlEvents:UIControlEventTouchUpInside];
+[self.actionPanel.launchButton addTarget:self action:@selector(norightLaunchTapped) forControlEvents:UIControlEventTouchUpInside];
+[self.actionPanel.executeJarButton addTarget:self action:@selector(bottomBarExecuteJarTapped) forControlEvents:UIControlEventTouchUpInside];
+[self.actionPanel.chooseVersionButton addTarget:self action:@selector(bottomBarChooseVersionTapped) forControlEvents:UIControlEventTouchUpInside];
 
     // 适配自定义启动器背景：将当前视图控制器透明化，让全局背景（图片/视频）能够透出显示。
     // 本控制器为 UIViewController 子类，其 collectionView 为手动创建，
@@ -1607,9 +1613,19 @@ self.actionPanel.topOffsetConstraint = panelTop;
 /// 每次主页出现都向(不可见的)右栏索取一次最新状态(版本号 / JIT / 启动键文案)。
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    if (self.rightPanelVC) {
+        [self.rightPanelVC norightBroadcastState];
+    }
     // ★ [NORIGHT] 右栏 viewDidLoad 可能早于本页注册监听 ⇒ 这里主动索取一次,保证首屏就有值。
     [[NSNotificationCenter defaultCenter] postNotificationName:AmeRightPanelRequestStateNotification object:nil];
     [self norightRefreshCapsuleAppearance];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    [self.view bringSubviewToFront:self.norightLaunchCapsule];
+    if (self.bottomBar) [self.view bringSubviewToFront:self.bottomBar];
+    if (self.actionPanel) [self.view bringSubviewToFront:self.actionPanel];
 }
 
 /// 右栏广播的状态 → 欢迎卡版本号 / 顶栏 JIT pill / 底部启动胶囊。
@@ -1668,9 +1684,46 @@ self.actionPanel.topOffsetConstraint = panelTop;
     AmeApplyPinkGlassButtonStyle(self.norightLaunchCapsule);
 }
 
-/// 点击底部启动胶囊 —— 只转发,不在本页复制任何启动逻辑。
+/// 点击底部启动胶囊 —— 调用右栏启动逻辑
 - (void)norightLaunchTapped {
-    [LauncherRightPanelViewController norightPostAction:@"launch"];
+    if (self.rightPanelVC) {
+        [self.rightPanelVC launchButtonTapped];
+    } else {
+        [LauncherRightPanelViewController norightPostAction:@"launch"];
+    }
+}
+
+- (void)bottomBarExecuteJarTapped {
+    if (self.rightPanelVC) {
+        [self.rightPanelVC executeJar];
+    } else {
+        [LauncherRightPanelViewController norightPostAction:@"executeJar"];
+    }
+}
+
+- (void)bottomBarChooseVersionTapped {
+    if (self.rightPanelVC) {
+        [self.rightPanelVC showVersionPicker];
+    } else {
+        [LauncherRightPanelViewController norightPostAction:@"versionPicker"];
+    }
+}
+
+- (void)openDownloadCenterModal {
+    if (self.rightPanelVC && self.rightPanelVC.view.window) {
+        [self.rightPanelVC openDownloadCenter];
+    } else {
+        UIViewController *presenter = self;
+        while (presenter.presentedViewController) {
+            presenter = presenter.presentedViewController;
+        }
+        if (![presenter isKindOfClass:[DownloadTasksViewController class]]) {
+            DownloadTasksViewController *downloadCenterVC = [[DownloadTasksViewController alloc] init];
+            downloadCenterVC.modalPresentationStyle = UIModalPresentationFormSheet;
+            downloadCenterVC.preferredContentSize = CGSizeMake(500, 600);
+            [presenter presentViewController:downloadCenterVC animated:YES completion:nil];
+        }
+    }
 }
 
 - (void)dealloc {
@@ -1834,93 +1887,42 @@ self.actionPanel.topOffsetConstraint = panelTop;
     [self activateHeaderConstraintsForLandscape:[self homeIsLandscape]];
 }
 
-// MARK: - Animated home blob (replaces the card grid)
+// MARK: - Responsive Transparent Emblem Logo
 
-/// Loads HomeBlob (bundled or encrypted .enc) into CGImage frames once.
-- (void)homeBlobLoadFrames {
-    if (self.homeBlobFrames.count) return;
-    NSData *data = [AMEAssetCrypto dataForResource:@"HomeBlob" ofType:@"gif"];
-    if (!data || data.length == 0) return;
-    CGImageSourceRef src = CGImageSourceCreateWithData((__bridge CFDataRef)data, NULL);
-    if (!src) return;
-    size_t count = CGImageSourceGetCount(src);
-    NSMutableArray *frames = [NSMutableArray arrayWithCapacity:count];
-    CFTimeInterval total = 0;
-    for (size_t i = 0; i < count; i++) {
-        CGImageRef img = CGImageSourceCreateImageAtIndex(src, i, NULL);
-        if (!img) continue;
-        [frames addObject:(__bridge id)img];
-        CGImageRelease(img);
-        NSDictionary *props = CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(src, i, NULL));
-        NSDictionary *gif = props[(__bridge NSString *)kCGImagePropertyGIFDictionary];
-        NSNumber *delay = gif[(__bridge NSString *)kCGImagePropertyGIFUnclampedDelayTime] ?: gif[(__bridge NSString *)kCGImagePropertyGIFDelayTime];
-        total += MAX(0.02, delay.doubleValue > 0 ? delay.doubleValue : 0.07);
-    }
-    CFRelease(src);
-    self.homeBlobFrames = frames;
-    self.homeBlobDuration = total > 0 ? total : frames.count * 0.07;
-}
-
-- (void)setupHomeBlob {
-    [self homeBlobLoadFrames];
-    // The cards (and their "Custom" edit entry) are replaced by the blob.
+- (void)setupHomeLogo {
     self.collectionView.hidden = YES;
     self.collectionView.userInteractionEnabled = NO;
     self.customizeButton.hidden = YES;
 
-    self.homeBlobView = [[UIView alloc] init];
-    self.homeBlobView.userInteractionEnabled = NO;
-    self.homeBlobView.backgroundColor = UIColor.clearColor;
-    [self.view insertSubview:self.homeBlobView aboveSubview:self.collectionView];
+    self.homeLogoImageView = [[UIImageView alloc] init];
+    self.homeLogoImageView.userInteractionEnabled = NO;
+    self.homeLogoImageView.backgroundColor = UIColor.clearColor;
+    self.homeLogoImageView.contentMode = UIViewContentModeScaleAspectFit;
 
-    self.homeBlobLayer = [CALayer layer];
-    self.homeBlobLayer.contentsGravity = kCAGravityResizeAspect;
-    self.homeBlobLayer.magnificationFilter = kCAFilterTrilinear;
-    self.homeBlobLayer.minificationFilter = kCAFilterTrilinear;
-    // Screen blend: the frames are on pure black, so the black drops out and the chrome glows over
-    // the wallpaper.
-    self.homeBlobLayer.compositingFilter = @"screenBlendMode";
-    if (self.homeBlobFrames.count) self.homeBlobLayer.contents = self.homeBlobFrames.firstObject;
-    [self.homeBlobView.layer addSublayer:self.homeBlobLayer];
+    UIImage *logo = [AMEAssetCrypto imageForResource:@"HomeLogo" ofType:@"png"];
+    self.homeLogoImageView.image = logo;
+
+    [self.view insertSubview:self.homeLogoImageView aboveSubview:self.collectionView];
 
     [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(homeBlobStartAnimating)
+                                             selector:@selector(startHomeLogoAnimation)
                                                  name:UIApplicationDidBecomeActiveNotification
                                                object:nil];
-    [self homeBlobStartAnimating];
+    [self startHomeLogoAnimation];
 }
 
-/// (Re)starts the frame animation plus a slow float / breathe. Core Animation drops animations when
-/// the app is backgrounded, so this is also called on becoming active and on appearing.
-- (void)homeBlobStartAnimating {
-    if (!self.homeBlobLayer || !self.homeBlobFrames.count) return;
-    if ([self.homeBlobLayer animationForKey:@"frames"]) return;
-
-    CAKeyframeAnimation *frames = [CAKeyframeAnimation animationWithKeyPath:@"contents"];
-    frames.values = self.homeBlobFrames;
-    frames.calculationMode = kCAAnimationDiscrete;
-    frames.duration = self.homeBlobDuration;
-    frames.repeatCount = HUGE_VALF;
-    frames.removedOnCompletion = NO;
-    [self.homeBlobLayer addAnimation:frames forKey:@"frames"];
+- (void)startHomeLogoAnimation {
+    if (!self.homeLogoImageView.layer) return;
+    if ([self.homeLogoImageView.layer animationForKey:@"logoBob"]) return;
 
     CABasicAnimation *bob = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-    bob.fromValue = @(-7.0);
-    bob.toValue = @(7.0);
-    bob.duration = 3.4;
+    bob.fromValue = @(-5.0);
+    bob.toValue = @(5.0);
+    bob.duration = 3.6;
     bob.autoreverses = YES;
     bob.repeatCount = HUGE_VALF;
     bob.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.homeBlobLayer addAnimation:bob forKey:@"bob"];
-
-    CABasicAnimation *breathe = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    breathe.fromValue = @(0.97);
-    breathe.toValue = @(1.03);
-    breathe.duration = 4.6;
-    breathe.autoreverses = YES;
-    breathe.repeatCount = HUGE_VALF;
-    breathe.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.homeBlobLayer addAnimation:breathe forKey:@"breathe"];
+    [self.homeLogoImageView.layer addAnimation:bob forKey:@"logoBob"];
 }
 
 - (void)viewDidLayoutSubviews {
@@ -1928,21 +1930,21 @@ self.actionPanel.topOffsetConstraint = panelTop;
     // Keep the card grid hidden (the edit-mode code paths can un-hide the Custom button).
     self.collectionView.hidden = YES;
     self.customizeButton.hidden = YES;
-    if (!self.homeBlobView) return;
+    if (!self.homeLogoImageView) return;
 
-    // The blob fills the area between the header and the bottom buttons, kept square.
+    // The logo fills the area between the header and the bottom buttons, kept square and responsive.
     UIEdgeInsets safe = self.view.safeAreaInsets;
-    CGFloat top = CGRectGetMaxY(self.headerView.frame) + 4.0;
-    CGFloat bottom = self.view.bounds.size.height - safe.bottom - 118.0;
-    CGFloat availH = MAX(120.0, bottom - top);
-    CGFloat side = MIN(availH, self.view.bounds.size.width - 48.0);
+    CGFloat top = CGRectGetMaxY(self.headerView.frame) + 8.0;
+    CGFloat bottom = self.view.bounds.size.height - safe.bottom - 110.0;
+    CGFloat availH = MAX(100.0, bottom - top);
+    CGFloat availW = MAX(100.0, self.view.bounds.size.width - 48.0);
+
+    BOOL isPad = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad);
+    CGFloat maxSide = isPad ? 380.0 : 260.0;
+    CGFloat side = MIN(MIN(availH, availW), maxSide);
     CGRect area = CGRectMake((self.view.bounds.size.width - side) * 0.5, top + (availH - side) * 0.5, side, side);
-    self.homeBlobView.frame = area;
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.homeBlobLayer.frame = self.homeBlobView.bounds;
-    [CATransaction commit];
-    [self homeBlobStartAnimating];
+    self.homeLogoImageView.frame = area;
+    [self startHomeLogoAnimation];
 }
 
 // MARK: - Collection View Setup
@@ -2065,13 +2067,12 @@ self.actionPanel.topOffsetConstraint = panelTop;
     return b;
 }
 
-/// ★ [TOPBAR2] 点击 = 只发动作名 ⇒ 落到右栏 norightHandleAction: 的原方法
-///   (executeJar / showVersionPicker / openDownloadCenter)。不在本页复制任何业务逻辑。
+/// ★ [TOPBAR2] 点击 = 调用右栏动作或直接唤起界面
 - (void)topbarActionTapped:(UIButton *)sender {
     switch ((TopBar2PillAction)sender.tag) {
-        case TopBar2PillActionExecuteJar:     [LauncherRightPanelViewController norightPostAction:@"executeJar"];     break;
-        case TopBar2PillActionVersionPicker:  [LauncherRightPanelViewController norightPostAction:@"versionPicker"];  break;
-        case TopBar2PillActionDownloadCenter: [LauncherRightPanelViewController norightPostAction:@"downloadCenter"]; break;
+        case TopBar2PillActionExecuteJar:     [self bottomBarExecuteJarTapped]; break;
+        case TopBar2PillActionVersionPicker:  [self bottomBarChooseVersionTapped]; break;
+        case TopBar2PillActionDownloadCenter: [self openDownloadCenterModal]; break;
         default: break;
     }
 }

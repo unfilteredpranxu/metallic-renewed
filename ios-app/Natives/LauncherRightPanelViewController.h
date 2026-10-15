@@ -42,6 +42,12 @@ extern NSString * const AmeRightPanelRequestStateNotification;
 // Update the displayed version information.
 - (void)updateVersionInfo;
 
+// Actions
+- (void)launchButtonTapped;
+- (void)executeJar;
+- (void)showVersionPicker;
+- (void)openDownloadCenter;
+
 // ★ [NORIGHT] Collapse (collapsed=YES) / restore all internal panel constraints and hide its subviews. Idempotent.
 - (void)norightCollapsePanelLayout:(BOOL)collapsed;
 

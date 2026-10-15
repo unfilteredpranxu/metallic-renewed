@@ -216,7 +216,6 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 
 @interface BackgroundManager ()
 @property (nonatomic, strong) AVPlayer *videoPlayer;
-@property (nonatomic, strong) AVPlayerLayer *videoPlayerLayer;
 @property (nonatomic, weak) UIView *currentBackgroundView;
 @property (nonatomic, readwrite) BackgroundType currentType;
 @property (nonatomic, readwrite, nullable) NSString *currentBackgroundPath;

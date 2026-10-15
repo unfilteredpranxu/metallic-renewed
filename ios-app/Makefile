@@ -69,7 +69,7 @@ OSVER       := $(shell sw_vers -productVersion | cut -b 1-2)
 ifeq ($(shell sw_vers -productName),macOS)
 IOS         := 0
 SDKPATH     ?= $(shell xcrun --sdk iphoneos --show-sdk-path)
-BOOTJDK     ?= $(shell /usr/libexec/java_home -v 1.8)/bin
+BOOTJDK     ?= $(shell /usr/libexec/java_home -v 17 2>/dev/null || /usr/libexec/java_home -v 11 2>/dev/null || /usr/libexec/java_home -v 1.8 2>/dev/null || /usr/libexec/java_home 2>/dev/null)/bin
 $(warning Building on macOS.)
 else
 IOS         := 1
@@ -286,8 +286,11 @@ $(error You need to install JDK 8)
 endif
 
 ifeq ($(IOS),0)
-ifeq ($(filter 1.8.0,$(shell $(BOOTJDK)/javac -version &> javaver.txt && cat javaver.txt | cut -b 7-11 && rm -rf javaver.txt)),)
-$(error You need to install JDK 8)
+_JAVAVER := $(shell $(BOOTJDK)/javac -version 2>&1 | cut -d' ' -f2 | cut -d'.' -f1)
+ifeq ($(filter 1 8 11 17 18 19 20 21 22 23 24,$(_JAVAVER)),)
+$(error You need to install JDK 8 or later (found: $(_JAVAVER)))
+else
+$(warning Using Java $(_JAVAVER) — JDK 8 is recommended but 11+ is supported)
 endif
 endif
 

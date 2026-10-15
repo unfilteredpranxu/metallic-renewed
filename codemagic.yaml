@@ -12,7 +12,7 @@ workflows:
     max_build_duration: 120
     environment:
       xcode: latest
-      java: 8
+      java: 17
     # Manual start only (same as workflow_dispatch). Uncomment to build on every push:
     # triggering:
     #   events:

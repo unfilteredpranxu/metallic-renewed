@@ -1525,6 +1525,11 @@ self.actionPanel.chooseVersionButton.hidden = YES;
                                                  name:AmeHomeCardLayoutChangedNotification
                                                object:nil];
 
+    // Home button pressed in the top nav ⇒ reset this page.
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(homeTabReset)
+                                                 name:@"AmeHomeTabReset"
+                                               object:nil];
     // ★ [NORIGHT] 右栏状态广播 ⇒ 欢迎卡版本号 / 顶栏 JIT pill / 底部启动胶囊文案保持一致
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(norightStateChanged:)
@@ -1538,6 +1543,16 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 }
 
 #pragma mark - ★ [NORIGHT] 右栏状态镜像 + 底部启动胶囊
+
+/// Home pressed in the top nav: leave edit mode, close the profile panel, scroll back to the top.
+- (void)homeTabReset {
+    if (self.homeEditing) [self homeEditDoneTapped];
+    [self.actionPanel setExpanded:NO animated:YES];
+    UICollectionView *cv = self.collectionView;
+    if (cv) {
+        [cv setContentOffset:CGPointMake(0, -cv.adjustedContentInset.top) animated:YES];
+    }
+}
 
 /// 每次主页出现都向(不可见的)右栏索取一次最新状态(版本号 / JIT / 启动键文案)。
 - (void)viewWillAppear:(BOOL)animated {

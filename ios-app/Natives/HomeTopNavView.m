@@ -117,6 +117,10 @@ static UIColor *NavAccentColor(void) {
             [hit.bottomAnchor constraintEqualToAnchor:item.bottomAnchor]
         ]];
 
+        // The AI entry is no longer shown in the bar. The slot is only hidden (not removed) so the
+        // tab indices used by the rest of the app (Instances = 3, Settings = 4) stay valid.
+        if (index == 2) item.hidden = YES;
+
         [items addObject:item];
         [icons addObject:icon];
         [labels addObject:label];

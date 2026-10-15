@@ -169,6 +169,8 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 
     __weak typeof(self) weakSelf = self;
     self.topNav.onSelect = ^(NSInteger index) {
+        // Home always resets: close anything presented, pop back to the home page, scroll to top.
+        if (index == 0) { [weakSelf ameResetToHome]; return; }
         if (index < (NSInteger)weakSelf.viewControllers.count) weakSelf.selectedIndex = index;
     };
 }
@@ -176,6 +178,28 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [self.view bringSubviewToFront:self.topNav];
+}
+
+/// Pressing Home: dismiss any sheet/modal, pop the home stack to its root, switch to the Home tab
+/// and tell the home page to reset itself (scroll to top, close the profile panel, leave edit mode).
+- (void)ameResetToHome {
+    __weak typeof(self) weakSelf = self;
+    void (^reset)(void) = ^{
+        __strong typeof(weakSelf) self_ = weakSelf;
+        if (!self_) return;
+        UIViewController *homeVC = self_.viewControllers.firstObject;
+        if ([homeVC isKindOfClass:[UINavigationController class]]) {
+            [(UINavigationController *)homeVC popToRootViewControllerAnimated:NO];
+        }
+        self_.selectedIndex = 0;
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"AmeHomeTabReset" object:nil];
+    };
+    UIViewController *presented = self.presentedViewController ?: self.selectedViewController.presentedViewController;
+    if (presented) {
+        [presented dismissViewControllerAnimated:YES completion:reset];
+    } else {
+        reset();
+    }
 }
 
 - (void)setSelectedIndex:(NSUInteger)selectedIndex {

@@ -93,12 +93,7 @@ extern UIWindow *mainWindow;
 
     // Translation notice pop-up intentionally removed from startup.
 
-    // 启动时自动检查启动器更新（参照 ZL2 LauncherUpgradeViewModel.checkOnAppStart）。
-    // 仅当确实存在新版本时才弹窗；请求失败、已是最新、处于限频窗口内一律静默。
-    // 延后一拍执行，等 rootViewController 完成首轮布局后再 present。
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [UpdateChecker performStartupCheckFromPresenter:self.window.rootViewController];
-    });
+    // Startup update-available pop-up intentionally removed.
 
     // Version isolation wizard no longer auto-presents at startup (still reachable from instance settings).
 

@@ -20,6 +20,7 @@
 #import "AvatarManager.h"
 #import "ImageCropperViewController.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import "LauncherNavigationController.h"
 
 #include <sys/time.h>
 
@@ -175,6 +176,12 @@ static void *ProgressObserverContext = &ProgressObserverContext;
                                              selector:@selector(norightHandleStateRequest:)
                                                  name:AmeRightPanelRequestStateNotification
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleFindVersionInRemoteList:)
+                                                 name:@"FindVersionInRemoteList"
+                                               object:nil];
+
+    [self initializeVersionListsIfNeeded];
 
     // ★ [NORIGHT] 首次广播一次状态:主页若已注册监听,即可拿到版本号 / JIT / 启动键文案。
     [self norightBroadcastState];
@@ -1207,12 +1214,41 @@ static void *ProgressObserverContext = &ProgressObserverContext;
     // 设置UI为下载状态
     [self setInteractionEnabled:NO];
     
-    // 查找版本对象
+    // 查找版本对象（优先直接在已加载的远程/本地列表中查找，若无则先刷新一次）
+    [self initializeVersionListsIfNeeded];
+
     NSDictionary *versionObject = nil;
-    
-    // 从远程版本列表中查找（通过 LauncherRootViewController 的 remoteVersionList）
-    // 由于 remoteVersionList 在 LauncherRootViewController 中，我们需要通过其他方式获取
-    // 这里使用通知来请求版本信息
+    for (NSDictionary *v in remoteVersionList) {
+        if ([v[@"id"] isEqualToString:versionId]) {
+            versionObject = v;
+            break;
+        }
+    }
+    if (!versionObject) {
+        for (NSDictionary *v in localVersionList) {
+            if ([v[@"id"] isEqualToString:versionId]) {
+                versionObject = v;
+                break;
+            }
+        }
+    }
+    if (!versionObject) {
+        NSString *localPath = [NSString stringWithFormat:@"%s/versions/%@", getenv("POJAV_GAME_DIR"), versionId];
+        BOOL isDirectory = NO;
+        if ([[NSFileManager defaultManager] fileExistsAtPath:localPath isDirectory:&isDirectory] && isDirectory) {
+            versionObject = @{
+                @"id": versionId,
+                @"type": @"custom"
+            };
+        }
+    }
+
+    if (versionObject) {
+        [self startDownloadWithVersion:versionObject profileName:selectedProfile];
+        return;
+    }
+
+    // 兜底：广播通知以便外部有自定义版本查找器时响应
     NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
     userInfo[@"versionId"] = versionId;
     userInfo[@"callback"] = ^(NSDictionary *version) {
@@ -1229,6 +1265,100 @@ static void *ProgressObserverContext = &ProgressObserverContext;
     };
     
     [[NSNotificationCenter defaultCenter] postNotificationName:@"FindVersionInRemoteList" object:nil userInfo:userInfo];
+}
+
+#pragma mark - Version List Management
+
+- (void)fetchLocalVersionList {
+    if (!localVersionList) {
+        localVersionList = [NSMutableArray new];
+    }
+    [localVersionList removeAllObjects];
+
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSString *versionPath = [NSString stringWithFormat:@"%s/versions/", getenv("POJAV_GAME_DIR")];
+    NSArray *list = [fileManager contentsOfDirectoryAtPath:versionPath error:nil];
+    for (NSString *versionId in list) {
+        NSString *localPath = [NSString stringWithFormat:@"%s/versions/%@", getenv("POJAV_GAME_DIR"), versionId];
+        BOOL isDirectory = NO;
+        if ([fileManager fileExistsAtPath:localPath isDirectory:&isDirectory] && isDirectory) {
+            [localVersionList addObject:@{
+                @"id": versionId,
+                @"type": @"custom"
+            }];
+        }
+    }
+}
+
+- (void)fetchRemoteVersionList {
+    if (!remoteVersionList) {
+        remoteVersionList = [NSMutableArray arrayWithArray:@[
+            @{@"id": @"latest-release", @"type": @"release"},
+            @{@"id": @"latest-snapshot", @"type": @"snapshot"}
+        ]];
+    }
+
+    NSString *downloadSource = getPrefObject(@"general.download_source");
+    NSString *versionManifestURL = [downloadSource isEqualToString:@"bmclapi"] ?
+        @"https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json" :
+        @"https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
+
+    NSURL *url = [NSURL URLWithString:versionManifestURL];
+    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        if (data && !error) {
+            NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+            if (json && json[@"versions"]) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [remoteVersionList addObjectsFromArray:json[@"versions"]];
+                    setPrefObject(@"internal.latest_version", json[@"latest"]);
+                });
+            }
+        }
+    }];
+    [task resume];
+}
+
+- (void)initializeVersionListsIfNeeded {
+    [self fetchLocalVersionList];
+    if (!remoteVersionList || remoteVersionList.count == 0) {
+        [self fetchRemoteVersionList];
+    }
+}
+
+- (void)handleFindVersionInRemoteList:(NSNotification *)notification {
+    NSDictionary *userInfo = notification.userInfo;
+    NSString *versionId = userInfo[@"versionId"];
+    void (^callback)(NSDictionary *) = userInfo[@"callback"];
+    if (!versionId || !callback) return;
+
+    [self initializeVersionListsIfNeeded];
+
+    NSDictionary *versionObject = nil;
+    for (NSDictionary *v in remoteVersionList) {
+        if ([v[@"id"] isEqualToString:versionId]) {
+            versionObject = v;
+            break;
+        }
+    }
+    if (!versionObject) {
+        for (NSDictionary *v in localVersionList) {
+            if ([v[@"id"] isEqualToString:versionId]) {
+                versionObject = v;
+                break;
+            }
+        }
+    }
+    if (!versionObject) {
+        NSString *localPath = [NSString stringWithFormat:@"%s/versions/%@", getenv("POJAV_GAME_DIR"), versionId];
+        BOOL isDirectory = NO;
+        if ([[NSFileManager defaultManager] fileExistsAtPath:localPath isDirectory:&isDirectory] && isDirectory) {
+            versionObject = @{
+                @"id": versionId,
+                @"type": @"custom"
+            };
+        }
+    }
+    callback(versionObject);
 }
 
 - (void)startDownloadWithVersion:(NSDictionary *)versionObject profileName:(NSString *)profileName {
@@ -1404,7 +1534,8 @@ static void *ProgressObserverContext = &ProgressObserverContext;
             }
             
             [self invokeAfterJITEnabled:^{
-                UIKit_launchMinecraftSurfaceVC(self.view.window, self.task.metadata);
+                UIWindow *w = self.view.window ?: mainWindow ?: UIApplication.sharedApplication.keyWindow ?: UIApplication.sharedApplication.windows.firstObject;
+                UIKit_launchMinecraftSurfaceVC(w, self.task.metadata);
             }];
         } else {
             self.task = nil;

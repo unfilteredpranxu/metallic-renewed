@@ -36,6 +36,9 @@ extern NSString * const AmeRightPanelRequestStateNotification;
 
 @interface LauncherRightPanelViewController : UIViewController
 
+// The original right-panel launch button
+@property (nonatomic, strong) UIButton *launchButton;
+
 // Update the displayed account information.
 - (void)updateAccountInfo;
 

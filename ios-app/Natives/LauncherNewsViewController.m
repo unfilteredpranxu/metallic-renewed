@@ -1684,10 +1684,15 @@ self.actionPanel.topOffsetConstraint = panelTop;
     AmeApplyPinkGlassButtonStyle(self.norightLaunchCapsule);
 }
 
-/// 点击底部启动胶囊 —— 调用右栏启动逻辑
+/// 点击底部启动胶囊 —— 直接触发原启动按钮的动作链路
 - (void)norightLaunchTapped {
     if (self.rightPanelVC) {
-        [self.rightPanelVC launchButtonTapped];
+        if (self.rightPanelVC.launchButton) {
+            self.rightPanelVC.launchButton.enabled = YES;
+            [self.rightPanelVC.launchButton sendActionsForControlEvents:UIControlEventTouchUpInside];
+        } else {
+            [self.rightPanelVC launchButtonTapped];
+        }
     } else {
         [LauncherRightPanelViewController norightPostAction:@"launch"];
     }

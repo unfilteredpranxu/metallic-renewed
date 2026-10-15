@@ -249,6 +249,9 @@ jstring UIKit_accessClipboard(JNIEnv* env, jint action, jbyteArray copySrc) {
 }
 
 void UIKit_launchMinecraftSurfaceVC(UIWindow* window, NSDictionary* metadata) {
+    if (!window) {
+        window = mainWindow ?: UIApplication.sharedApplication.keyWindow ?: UIApplication.sharedApplication.windows.firstObject;
+    }
     // Leave this pref, might be useful later for launching with Quick Actions/Shortcuts/URL Scheme
     //setPreference(@"internal_launch_on_boot", getPreference(@"restart_before_launch"));
     BaseAuthenticator *currentAuth = BaseAuthenticator.current;

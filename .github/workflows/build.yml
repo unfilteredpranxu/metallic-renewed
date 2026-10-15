@@ -180,24 +180,15 @@ jobs:
             echo "AiAssetTools.m patch not needed or pattern not found"
           fi
 
-          # LauncherNewsViewController.m: in supportedInterfaceOrientations the closing "}" of the iPad
-          # one-liner sits inside a "// landscape only" comment, so the brace is never closed
-          # (errors: "expected '}'", "missing '@end'"). Move the comment after the brace.
-          # Patched on the runner only; your repo is not modified.
-          f=$(find . -name "LauncherNewsViewController.m" | head -1)
-          if [ -n "$f" ] && grep -qF 'UIInterfaceOrientationMaskLandscape;   // landscape only }' "$f"; then
-            python3 - "$f" <<'PY'
-          import sys
-          p = sys.argv[1]
-          s = open(p, encoding="utf-8").read()
-          s = s.replace("UIInterfaceOrientationMaskLandscape;   // landscape only }",
-                        "UIInterfaceOrientationMaskLandscape; }   // landscape only")
-          open(p, "w", encoding="utf-8").write(s)
-          PY
-            echo "Patched $f (runner only)"
-          else
-            echo "LauncherNewsViewController.m patch not needed or pattern not found"
-          fi
+          # supportedInterfaceOrientations in several view controllers (LauncherNews, HomeCustomize,
+          # Download, ...) has the iPad one-liner "{ return ...;   // landscape only }" where the
+          # comment swallows the closing "}" (errors: "expected '}'", "missing '@end'").
+          # Move the comment after the brace in EVERY .m/.mm file. Runner only; repo is not modified.
+          grep -rlF -e 'MaskLandscape;   // landscape only }' --include='*.m' --include='*.mm' . 2>/dev/null \
+            | grep -v '^./external/' | while read -r f; do
+            sed -i.bak 's#\(Mask[A-Za-z]*;\)[ \t]*// landscape only }#\1 }   // landscape only#' "$f" && rm -f "$f.bak"
+            echo "Patched brace-in-comment in $f (runner only)"
+          done
 
       - name: Build
         shell: bash

@@ -216,6 +216,17 @@ workflows:
             SDKPATH=$(xcrun --sdk iphoneos --show-sdk-path) \
             2>&1 | tee build.log
 
+      - name: Zip IPA artifact
+        script: |
+          cd "$CM_BUILD_DIR/ios-app/artifacts"
+          for ipa in *.ipa; do
+            [ -f "$ipa" ] || continue
+            echo "Zipping $ipa..."
+            zip -9 "${ipa}.zip" "$ipa"
+          done
+
     artifacts:
       - ios-app/artifacts/*.ipa
+      - ios-app/artifacts/*.ipa.zip
+      - ios-app/artifacts/*.zip
       - ios-app/build.log

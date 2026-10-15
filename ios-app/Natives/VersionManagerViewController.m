@@ -1137,15 +1137,17 @@ static NSInteger const kSectionVersions    = 1;
 ///
 /// 注意：与渲染器（renderer）是两个不同维度
 - (void)setupGraphicsApiData {
-    self.graphicsApiKeys = @[@"default", @"prefer_vulkan", @"prefer_opengl"];
-    self.graphicsApiNames = @[localize(@"i18n_str_943", nil), localize(@"i18n_str_941", nil), localize(@"i18n_str_942", nil)];
+    self.graphicsApiKeys = @[@"default", @"prefer_metal", @"prefer_vulkan", @"prefer_opengl"];
+    self.graphicsApiNames = @[localize(@"i18n_str_943", nil), @"Metal (pure)", localize(@"i18n_str_941", nil), localize(@"i18n_str_942", nil)];
     self.graphicsApiIcons = @[
         @"wand.and.stars",
+        @"bolt.fill",
         @"flame.fill",
         @"rectangle.stack.fill"
     ];
     self.graphicsApiDescs = @[
         localize(@"i18n_str_1066", nil),
+        @"Pure Metal backend (com.metallum) without translation layers",
         localize(@"i18n_str_1067", nil),
         localize(@"i18n_str_1068", nil)
     ];

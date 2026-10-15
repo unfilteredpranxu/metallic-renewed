@@ -1667,6 +1667,10 @@ int launchJVM(NSString *accountId, id launchTarget, int width, int height, int m
         if (!graphicsApi || graphicsApi.length == 0) {
             graphicsApi = @"default";
         }
+        if ([graphicsApi isEqualToString:@"prefer_metal"]) {
+            setenv("AMETHYST_METAL", "1", 1);
+            NSLog(@"[JavaLauncher] prefer_metal active: setenv AMETHYST_METAL=1 (pure Metal backend)");
+        }
         setenv("AMETHYST_GRAPHICS_API", graphicsApi.UTF8String, 1);
         NSLog(@"[JavaLauncher] GRAPHICS_API is set to %@\n", graphicsApi);
 

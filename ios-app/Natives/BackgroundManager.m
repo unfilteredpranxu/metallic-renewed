@@ -70,6 +70,26 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         _ameLastLayoutSize = self.bounds.size;
         [self setNeedsDisplay];
     }
+    AVPlayerLayer *vl = [BackgroundManager sharedManager].videoPlayerLayer;
+    if (vl && vl.superlayer == self.layer) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        vl.frame = self.bounds;
+        [CATransaction commit];
+    }
+}
+
+/// Default video background bundled with the app (Natives/resources/DefaultVideoBackground.mov). Loaded once.
++ (NSString *)ame_defaultVideoPath {
+    static NSString *path = nil;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        path = [[NSBundle mainBundle] pathForResource:@"DefaultVideoBackground" ofType:@"mov"];
+        if (!path.length || ![[NSFileManager defaultManager] fileExistsAtPath:path]) {
+            path = nil;
+        }
+    });
+    return path;
 }
 
 /// Default wallpaper bundled with the app (Natives/resources/DefaultBackground.png). Loaded once.
@@ -85,6 +105,11 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)drawRect:(CGRect)rect {
+    if ([AmeGradientBackgroundView ame_defaultVideoPath].length > 0) {
+        [AmeRGBA(0x05, 0x07, 0x07, 1.0) setFill];
+        UIRectFill(self.bounds);
+        return;
+    }
     // Default wallpaper: aspect-fill the bundled image (same in light and dark mode).
     UIImage *wallpaper = [AmeGradientBackgroundView ame_defaultWallpaperImage];
     if (wallpaper && wallpaper.size.width > 0.0 && wallpaper.size.height > 0.0
@@ -574,32 +599,45 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)updateBackgroundFrame {
-    if (!self.globalBackgroundContainer) return;
-    
-    UIView *parent = self.globalBackgroundContainer.superview;
-    if (!parent) return;
-    
-    // Update container frame
-    self.globalBackgroundContainer.frame = parent.bounds;
-    
-    // Update default background view
-    UIView *defaultBg = [self.globalBackgroundContainer viewWithTag:kDefaultBackgroundTag];
-    if (defaultBg) defaultBg.frame = self.globalBackgroundContainer.bounds;
-    
-    // Update image view
-    UIView *imageView = [self.globalBackgroundContainer viewWithTag:kBackgroundImageTag];
-    if (imageView) imageView.frame = self.globalBackgroundContainer.bounds;
-    
-    // Update blur view
-    UIView *blurView = [self.globalBackgroundContainer viewWithTag:kBackgroundBlurTag];
-    if (blurView) blurView.frame = self.globalBackgroundContainer.bounds;
-    
-    // Update dim view
-    UIView *dimView = [self.globalBackgroundContainer viewWithTag:kBackgroundDimTag];
-    if (dimView) dimView.frame = self.globalBackgroundContainer.bounds;
-    
-    // Update video layer
-    if (self.videoPlayerLayer) self.videoPlayerLayer.frame = self.globalBackgroundContainer.bounds;
+    if (self.globalBackgroundContainer) {
+        UIView *parent = self.globalBackgroundContainer.superview;
+        if (parent) {
+            // Update container frame
+            self.globalBackgroundContainer.frame = parent.bounds;
+            
+            // Update default background view
+            UIView *defaultBg = [self.globalBackgroundContainer viewWithTag:kDefaultBackgroundTag];
+            if (defaultBg) defaultBg.frame = self.globalBackgroundContainer.bounds;
+            
+            // Update image view
+            UIView *imageView = [self.globalBackgroundContainer viewWithTag:kBackgroundImageTag];
+            if (imageView) imageView.frame = self.globalBackgroundContainer.bounds;
+            
+            // Update blur view
+            UIView *blurView = [self.globalBackgroundContainer viewWithTag:kBackgroundBlurTag];
+            if (blurView) blurView.frame = self.globalBackgroundContainer.bounds;
+            
+            // Update dim view
+            UIView *dimView = [self.globalBackgroundContainer viewWithTag:kBackgroundDimTag];
+            if (dimView) dimView.frame = self.globalBackgroundContainer.bounds;
+            
+            // Update video layer
+            if (self.videoPlayerLayer) self.videoPlayerLayer.frame = self.globalBackgroundContainer.bounds;
+        }
+    }
+
+    if (self.ameDefaultGradientHost) {
+        UIView *dg = [self.ameDefaultGradientHost viewWithTag:kDefaultBackgroundTag];
+        if (dg) {
+            dg.frame = self.ameDefaultGradientHost.bounds;
+            if (self.videoPlayerLayer && self.videoPlayerLayer.superlayer == dg.layer) {
+                [CATransaction begin];
+                [CATransaction setDisableActions:YES];
+                self.videoPlayerLayer.frame = dg.bounds;
+                [CATransaction commit];
+            }
+        }
+    }
 }
 
 - (void)handleOrientationChange {
@@ -616,11 +654,28 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     if (!host) return;
     UIView *existing = [host viewWithTag:kDefaultBackgroundTag];
     if (existing) [existing removeFromSuperview];
+    [self cleanupVideoPlayer];
 
     AmeGradientBackgroundView *g = [[AmeGradientBackgroundView alloc] initWithFrame:host.bounds];
     g.tag = kDefaultBackgroundTag;
     [host insertSubview:g atIndex:0];
     self.ameDefaultGradientHost = host;   // ★ [E3] Weakly held for cleanup.
+
+    NSString *videoPath = [AmeGradientBackgroundView ame_defaultVideoPath];
+    if (videoPath.length > 0) {
+        NSURL *videoURL = [NSURL fileURLWithPath:videoPath];
+        self.videoPlayer = [AVPlayer playerWithURL:videoURL];
+        self.videoPlayer.actionAtItemEnd = AVPlayerActionAtItemEndNone;
+        self.videoPlayer.muted = YES;
+        self.videoPlayerLayer = [AVPlayerLayer playerLayerWithPlayer:self.videoPlayer];
+        self.videoPlayerLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
+        self.videoPlayerLayer.frame = g.bounds;
+        [g.layer addSublayer:self.videoPlayerLayer];
+        [self.videoPlayer play];
+        host.backgroundColor = AmeRGBA(0x05, 0x07, 0x07, 1.0);
+        return;
+    }
+
     // Fallback base color (matches the gradient base and prevents black from showing through
     // on the first frame or outside the gradient).
     if ([AmeGradientBackgroundView ame_defaultWallpaperImage]) {
@@ -1367,7 +1422,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)resumeVideo {
-    if (self.videoPlayer && self.currentType == BackgroundTypeVideo) {
+    if (self.videoPlayer) {
         [self.videoPlayer play];
     }
 }

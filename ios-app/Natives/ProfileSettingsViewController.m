@@ -2619,6 +2619,7 @@ static NSString * localizeProfileTitle(NSString *title) {
 
 /// 图形 API 显示名
 - (NSString *)graphicsApiDisplayName:(NSString *)api {
+    if ([api isEqualToString:@"prefer_metal"]) return @"Metal (pure)";
     if ([api isEqualToString:@"prefer_vulkan"]) return localize(@"i18n_str_941", nil);
     if ([api isEqualToString:@"prefer_opengl"]) return localize(@"i18n_str_942", nil);
     return localize(@"i18n_str_943", nil);
@@ -2630,8 +2631,8 @@ static NSString * localizeProfileTitle(NSString *title) {
                                                                    message:localize(@"i18n_str_945", nil)
                                                             preferredStyle:UIAlertControllerStyleActionSheet];
 
-    NSArray *keys = @[@"default", @"prefer_vulkan", @"prefer_opengl"];
-    NSArray *names = @[localize(@"i18n_str_943", nil), localize(@"i18n_str_941", nil), localize(@"i18n_str_942", nil)];
+    NSArray *keys = @[@"default", @"prefer_metal", @"prefer_vulkan", @"prefer_opengl"];
+    NSArray *names = @[localize(@"i18n_str_943", nil), @"Metal (pure)", localize(@"i18n_str_941", nil), localize(@"i18n_str_942", nil)];
 
     for (NSInteger i = 0; i < keys.count; i++) {
         NSString *key = keys[i];

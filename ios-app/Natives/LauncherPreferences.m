@@ -414,39 +414,18 @@ static NSArray<NSDictionary *> *rendererCandidates(void) {
         @{@"key": @ RENDERER_NAME_MOBILEGL_GLES,
           @"name": localize(@"preference.title.renderer.debug.mobilegl_gles", nil),
           @"file": @ RENDERER_NAME_MOBILEGL_GLES},
-        // SimpleFPEWrapper（独立选项）：固定管线 (GL 1.x) 仿真层，仅供 <= 1.16.x。
-        // 与上面的叠加开关（video.sfpew_overlay）的区别：叠加是"选中某个 GLES 后端
-        // 再被 SFPEW 顶替"，这里是直接把 SFPEW 选为渲染器，后端由
-        // AMETHYST_SFPEW_BACKEND 指定（缺省 libmobileglues.dylib）。
-        // 两者最终的环境变量形态一致，只是入口不同。
-        @{@"key": @ RENDERER_NAME_SFPEW,
-          @"name": localize(@"preference.title.renderer.debug.sfpew", nil),
-          @"file": @ RENDERER_NAME_SFPEW},
-        // Metal（metallum / MetalUniversal）：原生 Metal 后端，对应 dylib 为
-        // libmetallum.dylib（由 metallum agent jar 在运行期解出到 App.app/Frameworks，
-        // 见 utils.h RENDERER_NAME_METAL 与 JavaLauncher.m 置 AMETHYST_METAL=1 的分支）。
-        // 刻意追加在表末：已有 profile / 全局偏好里存的 renderer 值（libxxx.dylib）
-        // 在 pick 控件里按下标配对，插到中间会让这些已存值显示错位。
+        // Metal (pure): 原生 pure Metal 后端，由 metallum agent 驱动
+        // 设为 always-available (file: @"")，用户随时可选
         @{@"key": @ RENDERER_NAME_METAL,
-          @"name": localize(@"preference.title.renderer.debug.metal", nil),
-          @"file": @ RENDERER_NAME_METAL},
-        // ★ [RENDERER-GAP] 队友仓库（Gsjsjzhznsz/Air-Minecraft-iOS-Launcher）有而我们
-        // 没有的渲染器入口。全部追加在表末：既有的 profile/全局偏好里存的渲染器值
-        // （libxxx.dylib）在 pick 控件里按下标配对，追加在末尾不会让任何既有下标错位。
-        // 这些 dylib 由 Makefile dep_* / CMake 目标构建，availableRendererCandidates()
-        // 的存在性过滤会把缺失的隐藏 —— 构建失败/裁剪时不会显示一个点了就崩的选项。
+          @"name": @"Metal (pure)",
+          @"file": @""},
+        // ★ [RENDERER-GAP] 队友仓库有而我们没有的渲染器入口
         @{@"key": @ RENDERER_NAME_VGPU,
           @"name": localize(@"preference.title.renderer.debug.vgpu", nil),
           @"file": @ RENDERER_NAME_VGPU},
         @{@"key": @ RENDERER_NAME_VIRGL,
           @"name": localize(@"preference.title.renderer.debug.virgl", nil),
           @"file": @ RENDERER_NAME_VIRGL},
-        // NG-GL4ES（"Krypton Wrapper"，ZL2 同款 gl4es——glslang+SPIRV-Cross 着色器
-        // 管线，官方口径几乎全版本可跑）。同样追加在表末，理由同上。
-        // dylib 由 Makefile 的 dep_nggl4es 目标随包构建（无条件，见 Makefile）。
-        @{@"key": @ RENDERER_NAME_NGGL4ES,
-          @"name": localize(@"preference.title.renderer.debug.nggl4es", nil),
-          @"file": @ RENDERER_NAME_NGGL4ES},
         @{@"key": @ RENDERER_NAME_GL4ESZL2,
           @"name": localize(@"preference.title.renderer.debug.gl4eszl2", nil),
           @"file": @ RENDERER_NAME_GL4ESZL2}

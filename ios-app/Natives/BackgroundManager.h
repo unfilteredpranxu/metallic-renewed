@@ -37,6 +37,7 @@ typedef NS_ENUM(NSInteger, BackgroundUIEffect) {
 
 // Global background container
 @property (nonatomic, strong, readonly, nullable) UIView *globalBackgroundContainer;
+@property (nonatomic, strong, nullable) AVPlayerLayer *videoPlayerLayer;
 
 // Apply background globally
 - (void)applyBackgroundToWindow:(UIWindow *)window;

@@ -42,6 +42,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
 @property (nonatomic, assign) NSInteger libTotalFileCount;
 @property (nonatomic, assign) NSInteger libCompletedFileCount;
 @property (nonatomic, assign) NSInteger assetTotalFileCount;
+@property (nonatomic, assign) NSInteger assetCompletedFileCount;
 // Concurrent task queue management to prevent CFNetwork socket/daemon exhaustion and Jetsam freezes
 @property (nonatomic, strong) NSMutableArray<NSURLSessionDownloadTask *> *taskQueue;
 @property (nonatomic, assign) NSInteger runningTasksCount;

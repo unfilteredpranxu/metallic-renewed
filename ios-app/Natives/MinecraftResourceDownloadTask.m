@@ -130,7 +130,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
 }
 
 - (void)drainTaskQueue {
-    const NSInteger kMaxConcurrentDownloads = 8;
+    const NSInteger kMaxConcurrentDownloads = 16;
     while (YES) {
         NSURLSessionDownloadTask *taskToResume = nil;
         @synchronized (self) {

@@ -163,9 +163,6 @@ BOOL PLMirrorIsChinaMainland(void) {
     if (!mirrorURL) return @[originalURL];
 
     PLMirrorPolicy policy = [self policyForType:type];
-    if (isAssetsFile) {
-        policy = PLMirrorPolicyOfficialFirst;
-    }
 
     if (policy == PLMirrorPolicyMirrorFirst) {
         return @[mirrorURL, originalURL];
@@ -237,13 +234,12 @@ BOOL PLMirrorIsChinaMainland(void) {
         if ([value isEqualToString:@"official_first"]) return PLMirrorPolicyOfficialFirst;
         if ([value isEqualToString:@"mirror_first"]) return PLMirrorPolicyMirrorFirst;
         if ([value isEqualToString:@"auto"]) {
-            // 自动档：大陆环境镜像优先，其余官方优先
-            // （对齐 ZL2 resolveMirrorPriority(source = AUTO, mainland)）
-            return PLMirrorIsChinaMainland() ? PLMirrorPolicyMirrorFirst : PLMirrorPolicyOfficialFirst;
+            // Auto mode: default to mirror first to avoid Mojang's aggressive throttling (800 B/s) outside the US
+            return PLMirrorPolicyMirrorFirst;
         }
     }
 
-    // 回退旧键 general.download_source：official → 官方优先，bmclapi / mcim → 镜像优先
+    // Fallback to legacy key general.download_source: official -> official first, otherwise mirror first
     NSString *legacy = getPrefObject(kPrefLegacyDownloadSource);
     if ([legacy isKindOfClass:[NSString class]]) {
         if ([legacy isEqualToString:@"official"]) return PLMirrorPolicyOfficialFirst;
@@ -252,8 +248,8 @@ BOOL PLMirrorIsChinaMainland(void) {
         }
     }
 
-    // 默认按大陆检测（对齐 ZL2 默认 AUTO 档）：大陆镜像优先，其余官方优先
-    return PLMirrorIsChinaMainland() ? PLMirrorPolicyMirrorFirst : PLMirrorPolicyOfficialFirst;
+    // Default to mirror first for fast CDN downloads, with automatic official fallback on 404/error
+    return PLMirrorPolicyMirrorFirst;
 }
 
 @end

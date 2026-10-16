@@ -26,6 +26,19 @@ static const NSUInteger kMCStageIndexLibraries = 3;
 static const NSUInteger kMCStageIndexAssets = 4;
 static const NSUInteger kMCStageIndexVerify = 5;
 
+@interface MCDownloadItem : NSObject
+@property (nonatomic, copy) NSString *url;
+@property (nonatomic, assign) NSUInteger size;
+@property (nonatomic, copy) NSString *sha;
+@property (nonatomic, copy) NSString *altName;
+@property (nonatomic, copy) NSString *toPath;
+@property (nonatomic, assign) NSInteger retryCount;
+@property (nonatomic, copy) void (^success)(void);
+@end
+
+@implementation MCDownloadItem
+@end
+
 @interface MinecraftResourceDownloadTask ()
 @property AFURLSessionManager* manager;
 @property (nonatomic, strong) DownloadTaskItem *currentDownloadTaskItem;
@@ -43,19 +56,6 @@ static const NSUInteger kMCStageIndexVerify = 5;
 @property (nonatomic, assign) NSInteger libCompletedFileCount;
 @property (nonatomic, assign) NSInteger assetTotalFileCount;
 @property (nonatomic, assign) NSInteger assetCompletedFileCount;
-@class MCDownloadItem;
-@interface MCDownloadItem : NSObject
-@property (nonatomic, copy) NSString *url;
-@property (nonatomic, assign) NSUInteger size;
-@property (nonatomic, copy) NSString *sha;
-@property (nonatomic, copy) NSString *altName;
-@property (nonatomic, copy) NSString *toPath;
-@property (nonatomic, assign) NSInteger retryCount;
-@property (nonatomic, copy) void (^success)(void);
-@end
-
-@implementation MCDownloadItem
-@end
 
 // Concurrent task and item queue management to prevent CFNetwork socket/daemon exhaustion and Jetsam freezes
 @property (nonatomic, strong) NSMutableArray<MCDownloadItem *> *itemQueue;

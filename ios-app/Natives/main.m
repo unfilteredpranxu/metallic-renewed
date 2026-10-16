@@ -403,6 +403,38 @@ void init_setupCustomControls() {
     generateAndSaveDefaultControlForGamepad();
 }
 
+static void seedBundledFolder(NSFileManager *fm, NSString *srcFolder, NSString *dstFolder) {
+    if (![fm fileExistsAtPath:srcFolder]) return;
+    NSLog(@"[Amethyst] Seeding bundled resources from %@ to %@", srcFolder.lastPathComponent, dstFolder);
+    NSDirectoryEnumerator *enumerator = [fm enumeratorAtPath:srcFolder];
+    NSString *file;
+    while ((file = [enumerator nextObject])) {
+        @autoreleasepool {
+            NSString *srcFile = [srcFolder stringByAppendingPathComponent:file];
+            NSString *dstFile = [dstFolder stringByAppendingPathComponent:file];
+            BOOL isDir = NO;
+            if ([fm fileExistsAtPath:srcFile isDirectory:&isDir]) {
+                if (isDir) {
+                    [fm createDirectoryAtPath:dstFile withIntermediateDirectories:YES attributes:nil error:nil];
+                } else {
+                    BOOL dstExists = [fm fileExistsAtPath:dstFile];
+                    if (dstExists) {
+                        NSDictionary *attrs = [fm attributesOfItemAtPath:dstFile error:nil];
+                        if ([attrs fileSize] == 0) {
+                            [fm removeItemAtPath:dstFile error:nil];
+                            dstExists = NO;
+                        }
+                    }
+                    if (!dstExists) {
+                        [fm createDirectoryAtPath:dstFile.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
+                        [fm copyItemAtPath:srcFile toPath:dstFile error:nil];
+                    }
+                }
+            }
+        }
+    }
+}
+
 void init_setupMultiDir() {
     NSString *multidir = getPrefObject(@"general.game_directory");
     if (multidir.length == 0) {
@@ -432,28 +464,11 @@ void init_setupMultiDir() {
     [fm changeCurrentDirectoryPath:lasmPath];
     setenv("POJAV_GAME_DIR", lasmPath.UTF8String, 1);
 
-    // Seed bundled game libraries from app bundle into POJAV_GAME_DIR/libraries if present
-    NSString *bundleLibraries = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"bundled_libraries"];
-    NSString *destLibraries = [lasmPath stringByAppendingPathComponent:@"libraries"];
-    if ([fm fileExistsAtPath:bundleLibraries]) {
-        NSDirectoryEnumerator *enumerator = [fm enumeratorAtPath:bundleLibraries];
-        NSString *file;
-        while ((file = [enumerator nextObject])) {
-            @autoreleasepool {
-                NSString *srcFile = [bundleLibraries stringByAppendingPathComponent:file];
-                NSString *dstFile = [destLibraries stringByAppendingPathComponent:file];
-                BOOL isDir = NO;
-                if ([fm fileExistsAtPath:srcFile isDirectory:&isDir]) {
-                    if (isDir) {
-                        [fm createDirectoryAtPath:dstFile withIntermediateDirectories:YES attributes:nil error:nil];
-                    } else if (![fm fileExistsAtPath:dstFile]) {
-                        [fm createDirectoryAtPath:dstFile.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
-                        [fm copyItemAtPath:srcFile toPath:dstFile error:nil];
-                    }
-                }
-            }
-        }
-    }
+    // Seed bundled game libraries, versions, and assets from app bundle into POJAV_GAME_DIR
+    NSString *bundlePath = NSBundle.mainBundle.bundlePath;
+    seedBundledFolder(fm, [bundlePath stringByAppendingPathComponent:@"bundled_libraries"], [lasmPath stringByAppendingPathComponent:@"libraries"]);
+    seedBundledFolder(fm, [bundlePath stringByAppendingPathComponent:@"bundled_versions"], [lasmPath stringByAppendingPathComponent:@"versions"]);
+    seedBundledFolder(fm, [bundlePath stringByAppendingPathComponent:@"bundled_assets"], [lasmPath stringByAppendingPathComponent:@"assets"]);
 }
 
 void init_setupResolvConf() {

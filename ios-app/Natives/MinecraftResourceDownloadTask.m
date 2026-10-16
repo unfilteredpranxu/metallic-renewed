@@ -43,11 +43,30 @@ static const NSUInteger kMCStageIndexVerify = 5;
 @property (nonatomic, assign) NSInteger libCompletedFileCount;
 @property (nonatomic, assign) NSInteger assetTotalFileCount;
 @property (nonatomic, assign) NSInteger assetCompletedFileCount;
-// Concurrent task queue management to prevent CFNetwork socket/daemon exhaustion and Jetsam freezes
+@class MCDownloadItem;
+@interface MCDownloadItem : NSObject
+@property (nonatomic, copy) NSString *url;
+@property (nonatomic, assign) NSUInteger size;
+@property (nonatomic, copy) NSString *sha;
+@property (nonatomic, copy) NSString *altName;
+@property (nonatomic, copy) NSString *toPath;
+@property (nonatomic, assign) NSInteger retryCount;
+@property (nonatomic, copy) void (^success)(void);
+@end
+
+@implementation MCDownloadItem
+@end
+
+// Concurrent task and item queue management to prevent CFNetwork socket/daemon exhaustion and Jetsam freezes
+@property (nonatomic, strong) NSMutableArray<MCDownloadItem *> *itemQueue;
 @property (nonatomic, strong) NSMutableArray<NSURLSessionDownloadTask *> *taskQueue;
 @property (nonatomic, assign) NSInteger runningTasksCount;
 
-- (void)enqueueDownloadTasks:(NSArray<NSURLSessionDownloadTask *> *)tasks;
+- (void)enqueueDownloadItems:(NSArray<MCDownloadItem *> *)items;
+- (void)enqueueDownloadItem:(MCDownloadItem *)item;
+- (void)startDownloadingItem:(MCDownloadItem *)item;
+- (MCDownloadItem *)queueOrVerifyItemWithURL:(NSString *)url size:(NSUInteger)size sha:(NSString *)sha altName:(NSString *)altName toPath:(NSString *)path success:(void (^)(void))success;
+- (void)enqueueDownloadTasks:(NSArray *)tasks;
 - (void)enqueueSingleDownloadTask:(NSURLSessionDownloadTask *)task;
 - (void)drainTaskQueue;
 - (void)taskDidFinish;
@@ -102,20 +121,57 @@ static const NSUInteger kMCStageIndexVerify = 5;
     self.progressList = [NSMutableArray new];
     // Phase 5 fix: initialize the failed-file list (based on FCL's failure summary mechanism).
     self.failedFiles = [NSMutableArray new];
+    self.itemQueue = [NSMutableArray new];
     self.taskQueue = [NSMutableArray new];
     self.runningTasksCount = 0;
     return self;
 }
 
-- (void)enqueueDownloadTasks:(NSArray<NSURLSessionDownloadTask *> *)tasks {
-    if (tasks.count == 0) return;
+- (void)enqueueDownloadItems:(NSArray<MCDownloadItem *> *)items {
+    if (items.count == 0) return;
     @synchronized (self) {
-        if (!self.taskQueue) {
-            self.taskQueue = [NSMutableArray array];
+        if (!self.itemQueue) {
+            self.itemQueue = [NSMutableArray array];
         }
-        [self.taskQueue addObjectsFromArray:tasks];
+        [self.itemQueue addObjectsFromArray:items];
     }
     [self drainTaskQueue];
+}
+
+- (void)enqueueDownloadItem:(MCDownloadItem *)item {
+    if (!item) return;
+    @synchronized (self) {
+        if (!self.itemQueue) {
+            self.itemQueue = [NSMutableArray array];
+        }
+        [self.itemQueue addObject:item];
+    }
+    [self drainTaskQueue];
+}
+
+- (void)enqueueDownloadTasks:(NSArray *)tasks {
+    if (tasks.count == 0) return;
+    NSMutableArray<MCDownloadItem *> *items = [NSMutableArray array];
+    NSMutableArray<NSURLSessionDownloadTask *> *legacyTasks = [NSMutableArray array];
+    for (id obj in tasks) {
+        if ([obj isKindOfClass:[MCDownloadItem class]]) {
+            [items addObject:obj];
+        } else if ([obj isKindOfClass:[NSURLSessionDownloadTask class]]) {
+            [legacyTasks addObject:obj];
+        }
+    }
+    if (items.count > 0) {
+        [self enqueueDownloadItems:items];
+    }
+    if (legacyTasks.count > 0) {
+        @synchronized (self) {
+            if (!self.taskQueue) {
+                self.taskQueue = [NSMutableArray array];
+            }
+            [self.taskQueue addObjectsFromArray:legacyTasks];
+        }
+        [self drainTaskQueue];
+    }
 }
 
 - (void)enqueueSingleDownloadTask:(NSURLSessionDownloadTask *)task {
@@ -132,24 +188,158 @@ static const NSUInteger kMCStageIndexVerify = 5;
 - (void)drainTaskQueue {
     const NSInteger kMaxConcurrentDownloads = 16;
     while (YES) {
+        MCDownloadItem *itemToStart = nil;
         NSURLSessionDownloadTask *taskToResume = nil;
         @synchronized (self) {
             if (self.progress.cancelled) {
+                [self.itemQueue removeAllObjects];
                 [self.taskQueue removeAllObjects];
                 return;
             }
-            if (self.runningTasksCount < kMaxConcurrentDownloads && self.taskQueue.count > 0) {
-                taskToResume = self.taskQueue.firstObject;
-                [self.taskQueue removeObjectAtIndex:0];
-                self.runningTasksCount++;
+            if (self.runningTasksCount < kMaxConcurrentDownloads) {
+                if (self.itemQueue.count > 0) {
+                    itemToStart = self.itemQueue.firstObject;
+                    [self.itemQueue removeObjectAtIndex:0];
+                    self.runningTasksCount++;
+                } else if (self.taskQueue.count > 0) {
+                    taskToResume = self.taskQueue.firstObject;
+                    [self.taskQueue removeObjectAtIndex:0];
+                    self.runningTasksCount++;
+                }
             }
         }
-        if (taskToResume) {
+        if (itemToStart) {
+            [self startDownloadingItem:itemToStart];
+        } else if (taskToResume) {
             [taskToResume resume];
         } else {
             break;
         }
     }
+}
+
+- (void)startDownloadingItem:(MCDownloadItem *)item {
+    NSString *url = item.url;
+    NSUInteger size = item.size;
+    NSString *sha = item.sha;
+    NSString *altName = item.altName;
+    NSString *path = item.toPath;
+    NSInteger retryCount = item.retryCount;
+    void (^success)(void) = item.success;
+
+    NSString *name = altName ?: path.lastPathComponent;
+    @synchronized (self.fileList) {
+        [self.fileList addObject:name];
+    }
+
+    NSArray<NSURL *> *mirrorCandidates = [self mirrorCandidatesForOriginalURL:url];
+    if (mirrorCandidates.count == 0) {
+        NSURL *fallbackURL = [NSURL URLWithString:url];
+        mirrorCandidates = fallbackURL ? @[fallbackURL] : @[];
+    }
+    NSInteger maxRetry = self.maxRetryCount > 0 ? self.maxRetryCount : 3;
+    NSInteger attemptCount = MAX((NSInteger)mirrorCandidates.count, 1) * maxRetry;
+    NSUInteger candidateIndex = mirrorCandidates.count > 0
+        ? MIN((NSUInteger)(MAX(retryCount, 0) / MAX(maxRetry, 1)), mirrorCandidates.count - 1)
+        : 0;
+    NSString *replacedURL = mirrorCandidates.count > 0
+        ? (mirrorCandidates[candidateIndex].absoluteString ?: url)
+        : url;
+
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:replacedURL]
+                                                           cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
+                                                       timeoutInterval:30.0];
+
+    __block int64_t lastCompleted = 0;
+    __weak MinecraftResourceDownloadTask *weakSelf = self;
+    NSURLSessionDownloadTask *task = [self.manager downloadTaskWithRequest:request progress:^(NSProgress * _Nonnull downloadProgress) {
+        int64_t current = downloadProgress.completedUnitCount;
+        int64_t delta = current - lastCompleted;
+        if (delta > 0) {
+            lastCompleted = current;
+            @synchronized (weakSelf) {
+                weakSelf.progress.completedUnitCount += delta;
+            }
+        }
+    } destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
+        [NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
+        [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+        return [NSURL fileURLWithPath:path];
+    } completionHandler:^(NSURLResponse * _Nonnull response, NSURL * _Nullable filePath, NSError * _Nullable error) {
+        @autoreleasepool {
+            int64_t expected = (size > 0 ? size : 1);
+            int64_t remaining = expected - lastCompleted;
+
+            if (weakSelf.progress.cancelled) {
+                // ignore
+            } else if (error != nil) {
+                [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+                if (retryCount + 1 < attemptCount) {
+                    item.retryCount = retryCount + 1;
+                    if (lastCompleted > 0) {
+                        @synchronized (weakSelf) {
+                            if (weakSelf.progress.completedUnitCount >= lastCompleted) {
+                                weakSelf.progress.completedUnitCount -= lastCompleted;
+                            }
+                        }
+                    }
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        [weakSelf enqueueDownloadItem:item];
+                    });
+                } else {
+                    [weakSelf finishDownloadWithError:error file:name];
+                    [weakSelf mc_recordStageFileFinishedAtPath:path];
+                    if (remaining > 0) {
+                        @synchronized (weakSelf) {
+                            weakSelf.progress.completedUnitCount += remaining;
+                        }
+                    }
+                }
+            } else if (sha.length > 0 && ![weakSelf checkSHAIgnorePref:sha forFile:path altName:altName logSuccess:YES]) {
+                [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+                if (retryCount + 1 < attemptCount) {
+                    item.retryCount = retryCount + 1;
+                    if (lastCompleted > 0) {
+                        @synchronized (weakSelf) {
+                            if (weakSelf.progress.completedUnitCount >= lastCompleted) {
+                                weakSelf.progress.completedUnitCount -= lastCompleted;
+                            }
+                        }
+                    }
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        [weakSelf enqueueDownloadItem:item];
+                    });
+                } else {
+                    @synchronized (weakSelf.failedFiles) {
+                        [weakSelf.failedFiles addObject:@{
+                            @"name": path.lastPathComponent ?: @"unknown",
+                            @"error": @"SHA1 mismatch"
+                        }];
+                    }
+                    [weakSelf mc_recordStageFileFinishedAtPath:path];
+                    if (remaining > 0) {
+                        @synchronized (weakSelf) {
+                            weakSelf.progress.completedUnitCount += remaining;
+                        }
+                    }
+                }
+            } else {
+                if (remaining > 0) {
+                    @synchronized (weakSelf) {
+                        weakSelf.progress.completedUnitCount += remaining;
+                    }
+                }
+                [weakSelf mc_recordStageFileFinishedAtPath:path];
+                if (success) success();
+            }
+        }
+        [weakSelf taskDidFinish];
+    }];
+
+    if (task && self.currentDownloadTaskItem) {
+        task.taskDescription = self.currentDownloadTaskItem.taskId;
+    }
+    [task resume];
 }
 
 - (void)taskDidFinish {
@@ -279,17 +469,24 @@ static const NSUInteger kMCStageIndexVerify = 5;
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:replacedURL]
                                                            cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
                                                        timeoutInterval:30.0];
-    __block NSProgress *progress;
+    __block int64_t lastCompleted = 0;
     __weak MinecraftResourceDownloadTask *weakSelf = self;
-    __block NSURLSessionDownloadTask *task = [self.manager downloadTaskWithRequest:request progress:nil
-    destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
+    __block NSURLSessionDownloadTask *task = [self.manager downloadTaskWithRequest:request progress:^(NSProgress * _Nonnull downloadProgress) {
+        int64_t current = downloadProgress.completedUnitCount;
+        int64_t delta = current - lastCompleted;
+        if (delta > 0) {
+            lastCompleted = current;
+            @synchronized (weakSelf) {
+                weakSelf.progress.completedUnitCount += delta;
+            }
+        }
+    } destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
         @autoreleasepool {
             if (!weakSelf) {
                 [NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
                 [NSFileManager.defaultManager removeItemAtPath:path error:nil];
                 return [NSURL fileURLWithPath:path];
             }
-            progress = [weakSelf.manager downloadProgressForTask:task];
             if (!size && task) {
                 [weakSelf addDownloadTaskToProgress:task size:response.expectedContentLength];
                 @synchronized(weakSelf.fileList) {
@@ -302,13 +499,14 @@ static const NSUInteger kMCStageIndexVerify = 5;
         }
     } completionHandler:^(NSURLResponse * _Nonnull response, NSURL * _Nullable filePath, NSError * _Nullable error) {
         @autoreleasepool {
+        int64_t expected = (size > 0 ? size : 1);
+        int64_t remaining = expected - lastCompleted;
+
         if (self.progress.cancelled) {
             // Ignore any further errors
         } else if (error != nil) {
             // Remove any partially written corrupted file
             [NSFileManager.defaultManager removeItemAtPath:path error:nil];
-            // Retry mechanism (candidate-rotation failover: move to the next candidate when the current one's budget is exhausted;
-            // fail only after all candidates are exhausted).
             if (retryCount + 1 < attemptCount) {
                 NSInteger nextRetry = retryCount + 1;
                 NSLog(@"[MCDL] Retrying %@ (attempt %ld/%ld)", name, (long)(nextRetry + 1), (long)attemptCount);
@@ -319,6 +517,14 @@ static const NSUInteger kMCStageIndexVerify = 5;
                     });
                 }
                 
+                if (lastCompleted > 0) {
+                    @synchronized (weakSelf) {
+                        if (weakSelf.progress.completedUnitCount >= lastCompleted) {
+                            weakSelf.progress.completedUnitCount -= lastCompleted;
+                        }
+                    }
+                }
+
                 // Delayed retry through queue to avoid socket flood
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     NSURLSessionDownloadTask *retryTask = [weakSelf createDownloadTask:url size:size sha:sha altName:altName toPath:path retryCount:nextRetry success:success];
@@ -328,31 +534,27 @@ static const NSUInteger kMCStageIndexVerify = 5;
                 });
             } else {
                 [weakSelf finishDownloadWithError:error file:name];
-                // Stage count: count files that ultimately fail as completed too (to prevent the count from stalling).
                 [weakSelf mc_recordStageFileFinishedAtPath:path];
-                // Phase 5 fix (based on FCL): manually advance progress after a single-file failure; otherwise, parent progress
-                // never reaches 100% because no one fills the failed child progress's share, making users think the download is stuck.
-                // Note: the destination block is called only on successful downloads, so progress may be nil here.
-                // Retrieve the child progress for this task from the manager again.
-                NSProgress *taskProgress = progress ?: [weakSelf.manager downloadProgressForTask:task];
-                if (taskProgress) {
-                    int64_t pending = taskProgress.totalUnitCount - taskProgress.completedUnitCount;
-                    if (pending > 0) {
-                        taskProgress.completedUnitCount = taskProgress.totalUnitCount;
+                if (remaining > 0) {
+                    @synchronized (weakSelf) {
+                        weakSelf.progress.completedUnitCount += remaining;
                     }
-                } else if (weakSelf.progress.totalUnitCount > weakSelf.progress.completedUnitCount) {
-                    // Extreme fallback: if even the child progress is unavailable (e.g. unknown size and destination was not called),
-                    // advance the parent progress by one unit to prevent the download indicator from getting stuck.
-                    weakSelf.progress.completedUnitCount += 1;
                 }
             }
         } else if (sha.length > 0 && ![self checkSHAIgnorePref:sha forFile:path altName:altName logSuccess:YES]) {
             // Delete the corrupted file.
             [NSFileManager.defaultManager removeItemAtPath:path error:nil];
-            // Retry SHA1 validation failures too (also rotate through candidates for failover).
             if (retryCount + 1 < attemptCount) {
                 NSInteger nextRetry = retryCount + 1;
                 NSLog(@"[MCDL] SHA1 mismatch, retrying %@ (attempt %ld/%ld)", name, (long)(nextRetry + 1), (long)attemptCount);
+
+                if (lastCompleted > 0) {
+                    @synchronized (weakSelf) {
+                        if (weakSelf.progress.completedUnitCount >= lastCompleted) {
+                            weakSelf.progress.completedUnitCount -= lastCompleted;
+                        }
+                    }
+                }
 
                 // Reduce the retry delay for SHA failures to 0.3 seconds.
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -362,7 +564,6 @@ static const NSUInteger kMCStageIndexVerify = 5;
                     }
                 });
             } else {
-                // Phase 5 fix (based on FCL): record SHA1 validation failures in failedFiles too; do not cancel the whole task.
                 @synchronized(weakSelf.failedFiles) {
                     [weakSelf.failedFiles addObject:@{
                         @"name": path.lastPathComponent ?: @"unknown",
@@ -371,21 +572,19 @@ static const NSUInteger kMCStageIndexVerify = 5;
                 }
                 NSLog(@"[MCDL] SHA1 mismatch for '%@', added to failedFiles (total failed: %lu), other downloads will continue",
                       path.lastPathComponent, (unsigned long)weakSelf.failedFiles.count);
-                // Stage count: count files that ultimately fail SHA validation as completed too.
                 [weakSelf mc_recordStageFileFinishedAtPath:path];
-                // Phase 5 fix: as in the error branch above, advance the parent progress to prevent it from getting stuck.
-                NSProgress *taskProgress2 = progress ?: [weakSelf.manager downloadProgressForTask:task];
-                if (taskProgress2) {
-                    int64_t pending = taskProgress2.totalUnitCount - taskProgress2.completedUnitCount;
-                    if (pending > 0) {
-                        taskProgress2.completedUnitCount = taskProgress2.totalUnitCount;
+                if (remaining > 0) {
+                    @synchronized (weakSelf) {
+                        weakSelf.progress.completedUnitCount += remaining;
                     }
-                } else if (weakSelf.progress.totalUnitCount > weakSelf.progress.completedUnitCount) {
-                    weakSelf.progress.completedUnitCount += 1;
                 }
             }
         } else {
-            progress.totalUnitCount = progress.completedUnitCount;
+            if (remaining > 0) {
+                @synchronized (weakSelf) {
+                    weakSelf.progress.completedUnitCount += remaining;
+                }
+            }
             [self mc_recordStageFileFinishedAtPath:path];
             if (success) success();
         }
@@ -413,14 +612,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
 
 - (void)addDownloadTaskToProgress:(NSURLSessionDownloadTask *)task size:(NSInteger)size {
     @synchronized(self) {
-        NSProgress *progress = [self.manager downloadProgressForTask:task];
-        NSUInteger fileSize = size>0 ? size : 1;
-        progress.kind = NSProgressKindFile;
-        if (size > 0) {
-            progress.totalUnitCount = fileSize;
-        }
-        [self.progressList addObject:progress];
-        [self.progress addChild:progress withPendingUnitCount:fileSize];
+        NSUInteger fileSize = size > 0 ? size : 1;
         self.progress.totalUnitCount += fileSize;
         self.textProgress.totalUnitCount = self.progress.totalUnitCount;
     }
@@ -525,6 +717,50 @@ static const NSUInteger kMCStageIndexVerify = 5;
     [task resume];
 }
 
+- (MCDownloadItem *)queueOrVerifyItemWithURL:(NSString *)url size:(NSUInteger)size sha:(NSString *)sha altName:(NSString *)altName toPath:(NSString *)path success:(void (^)(void))success {
+    BOOL fileExists = [NSFileManager.defaultManager fileExistsAtPath:path];
+    if (fileExists) {
+        BOOL valid = YES;
+        if (size > 0) {
+            NSDictionary *attrs = [NSFileManager.defaultManager attributesOfItemAtPath:path error:nil];
+            if ([attrs fileSize] != size) {
+                valid = NO;
+            }
+        }
+        if (valid && sha.length > 0) {
+            valid = [self checkSHAIgnorePref:sha forFile:path altName:altName logSuccess:NO];
+        }
+        if (valid) {
+            [self mc_recordStageFileStartedAtPath:path];
+            [self mc_recordStageFileFinishedAtPath:path];
+            if (success) success();
+            return nil;
+        } else {
+            NSLog(@"[MCDL] Removing corrupted or truncated existing file: %@", path.lastPathComponent);
+            [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+        }
+    } else if (![self checkAccessWithDialog:YES]) {
+        return nil;
+    }
+
+    [self mc_recordStageFileStartedAtPath:path];
+    NSUInteger fileSize = size > 0 ? size : 1;
+    @synchronized (self) {
+        self.progress.totalUnitCount += fileSize;
+        self.textProgress.totalUnitCount = self.progress.totalUnitCount;
+    }
+
+    MCDownloadItem *item = [MCDownloadItem new];
+    item.url = url;
+    item.size = size;
+    item.sha = sha;
+    item.altName = altName;
+    item.toPath = path;
+    item.retryCount = 0;
+    item.success = success;
+    return item;
+}
+
 - (NSArray *)downloadClientLibraries {
     NSMutableArray *tasks = [NSMutableArray new];
     for (NSDictionary *library in self.metadata[@"libraries"]) {
@@ -558,9 +794,9 @@ static const NSUInteger kMCStageIndexVerify = 5;
             continue;
         }
 
-        NSURLSessionDownloadTask *task = [self createDownloadTask:url size:size sha:sha altName:name toPath:path success:nil];
-        if (task) {
-            [tasks addObject:task];
+        MCDownloadItem *item = [self queueOrVerifyItemWithURL:url size:size sha:sha altName:name toPath:path success:nil];
+        if (item) {
+            [tasks addObject:item];
         } else if (self.progress.cancelled) {
             return nil;
         }
@@ -599,9 +835,9 @@ static const NSUInteger kMCStageIndexVerify = 5;
         }
 
         NSString *url = [NSString stringWithFormat:@"https://resources.download.minecraft.net/%@", pathname];
-        NSURLSessionDownloadTask *task = [self createDownloadTask:url size:size sha:hash altName:name toPath:path success:nil];
-        if (task) {
-            [tasks addObject:task];
+        MCDownloadItem *item = [self queueOrVerifyItemWithURL:url size:size sha:hash altName:name toPath:path success:nil];
+        if (item) {
+            [tasks addObject:item];
         } else if (self.progress.cancelled) {
             return nil;
         }
@@ -801,6 +1037,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
     // Push 1 byte so it won't accidentally finish after downloading assets index
     self.progress.totalUnitCount = 1;
     @synchronized (self) {
+        [self.itemQueue removeAllObjects];
         [self.taskQueue removeAllObjects];
         self.runningTasksCount = 0;
         [self.fileList removeAllObjects];
@@ -942,6 +1179,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
 
 - (void)cancel {
     @synchronized (self) {
+        [self.itemQueue removeAllObjects];
         [self.taskQueue removeAllObjects];
         self.runningTasksCount = 0;
     }

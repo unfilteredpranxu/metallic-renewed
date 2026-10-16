@@ -207,6 +207,12 @@ workflows:
             echo "Patched brace-in-comment in $f (runner only)"
           done
 
+      - name: Pre-bundle Minecraft 26.2 client, libraries, and assets
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          python3 scripts/bundle_minecraft.py --version 26.2 --target-dir ios-app
+
       - name: Build
         script: |
           set -o pipefail

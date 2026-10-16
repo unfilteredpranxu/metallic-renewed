@@ -403,7 +403,7 @@ void init_setupCustomControls() {
     generateAndSaveDefaultControlForGamepad();
 }
 
-static void seedBundledFolder(NSFileManager *fm, NSString *srcFolder, NSString *dstFolder) {
+static void seedBundledFolder(NSString *srcFolder, NSString *dstFolder) {
     if (![fm fileExistsAtPath:srcFolder]) return;
     NSLog(@"[Amethyst] Seeding bundled resources from %@ to %@", srcFolder.lastPathComponent, dstFolder);
     NSDirectoryEnumerator *enumerator = [fm enumeratorAtPath:srcFolder];
@@ -466,9 +466,9 @@ void init_setupMultiDir() {
 
     // Seed bundled game libraries, versions, and assets from app bundle into POJAV_GAME_DIR
     NSString *bundlePath = NSBundle.mainBundle.bundlePath;
-    seedBundledFolder(fm, [bundlePath stringByAppendingPathComponent:@"bundled_libraries"], [lasmPath stringByAppendingPathComponent:@"libraries"]);
-    seedBundledFolder(fm, [bundlePath stringByAppendingPathComponent:@"bundled_versions"], [lasmPath stringByAppendingPathComponent:@"versions"]);
-    seedBundledFolder(fm, [bundlePath stringByAppendingPathComponent:@"bundled_assets"], [lasmPath stringByAppendingPathComponent:@"assets"]);
+    seedBundledFolder([bundlePath stringByAppendingPathComponent:@"bundled_libraries"], [lasmPath stringByAppendingPathComponent:@"libraries"]);
+    seedBundledFolder([bundlePath stringByAppendingPathComponent:@"bundled_versions"], [lasmPath stringByAppendingPathComponent:@"versions"]);
+    seedBundledFolder([bundlePath stringByAppendingPathComponent:@"bundled_assets"], [lasmPath stringByAppendingPathComponent:@"assets"]);
 }
 
 void init_setupResolvConf() {

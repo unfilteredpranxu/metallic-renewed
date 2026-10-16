@@ -431,6 +431,29 @@ void init_setupMultiDir() {
     [fm createSymbolicLinkAtPath:lasmPath withDestinationPath:multidirPath error:nil];
     [fm changeCurrentDirectoryPath:lasmPath];
     setenv("POJAV_GAME_DIR", lasmPath.UTF8String, 1);
+
+    // Seed bundled game libraries from app bundle into POJAV_GAME_DIR/libraries if present
+    NSString *bundleLibraries = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"bundled_libraries"];
+    NSString *destLibraries = [lasmPath stringByAppendingPathComponent:@"libraries"];
+    if ([fm fileExistsAtPath:bundleLibraries]) {
+        NSDirectoryEnumerator *enumerator = [fm enumeratorAtPath:bundleLibraries];
+        NSString *file;
+        while ((file = [enumerator nextObject])) {
+            @autoreleasepool {
+                NSString *srcFile = [bundleLibraries stringByAppendingPathComponent:file];
+                NSString *dstFile = [destLibraries stringByAppendingPathComponent:file];
+                BOOL isDir = NO;
+                if ([fm fileExistsAtPath:srcFile isDirectory:&isDir]) {
+                    if (isDir) {
+                        [fm createDirectoryAtPath:dstFile withIntermediateDirectories:YES attributes:nil error:nil];
+                    } else if (![fm fileExistsAtPath:dstFile]) {
+                        [fm createDirectoryAtPath:dstFile.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
+                        [fm copyItemAtPath:srcFile toPath:dstFile error:nil];
+                    }
+                }
+            }
+        }
+    }
 }
 
 void init_setupResolvConf() {

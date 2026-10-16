@@ -42,7 +42,14 @@ static const NSUInteger kMCStageIndexVerify = 5;
 @property (nonatomic, assign) NSInteger libTotalFileCount;
 @property (nonatomic, assign) NSInteger libCompletedFileCount;
 @property (nonatomic, assign) NSInteger assetTotalFileCount;
-@property (nonatomic, assign) NSInteger assetCompletedFileCount;
+// Concurrent task queue management to prevent CFNetwork socket/daemon exhaustion and Jetsam freezes
+@property (nonatomic, strong) NSMutableArray<NSURLSessionDownloadTask *> *taskQueue;
+@property (nonatomic, assign) NSInteger runningTasksCount;
+
+- (void)enqueueDownloadTasks:(NSArray<NSURLSessionDownloadTask *> *)tasks;
+- (void)enqueueSingleDownloadTask:(NSURLSessionDownloadTask *)task;
+- (void)drainTaskQueue;
+- (void)taskDidFinish;
 
 // Task 5.10: Unified import entry point after an online modpack ZIP download completes (reuses ModpackImportService).
 - (void)importDownloadedModpackPackage:(NSString *)packagePath;
@@ -65,7 +72,10 @@ static const NSUInteger kMCStageIndexVerify = 5;
     dispatch_once(&onceToken, ^{
         NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
         configuration.timeoutIntervalForRequest = 30.0;
-        configuration.timeoutIntervalForResource = 180.0;
+        configuration.timeoutIntervalForResource = 60.0;
+        configuration.URLCache = nil;
+        configuration.requestCachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+        configuration.URLCredentialStorage = nil;
         // Optimal concurrent connections for iOS without overloading network daemon
         configuration.HTTPMaximumConnectionsPerHost = 16;
         manager = [[AFURLSessionManager alloc] initWithSessionConfiguration:configuration];
@@ -91,7 +101,63 @@ static const NSUInteger kMCStageIndexVerify = 5;
     self.progressList = [NSMutableArray new];
     // Phase 5 fix: initialize the failed-file list (based on FCL's failure summary mechanism).
     self.failedFiles = [NSMutableArray new];
+    self.taskQueue = [NSMutableArray new];
+    self.runningTasksCount = 0;
     return self;
+}
+
+- (void)enqueueDownloadTasks:(NSArray<NSURLSessionDownloadTask *> *)tasks {
+    if (tasks.count == 0) return;
+    @synchronized (self) {
+        if (!self.taskQueue) {
+            self.taskQueue = [NSMutableArray array];
+        }
+        [self.taskQueue addObjectsFromArray:tasks];
+    }
+    [self drainTaskQueue];
+}
+
+- (void)enqueueSingleDownloadTask:(NSURLSessionDownloadTask *)task {
+    if (!task) return;
+    @synchronized (self) {
+        if (!self.taskQueue) {
+            self.taskQueue = [NSMutableArray array];
+        }
+        [self.taskQueue addObject:task];
+    }
+    [self drainTaskQueue];
+}
+
+- (void)drainTaskQueue {
+    const NSInteger kMaxConcurrentDownloads = 8;
+    while (YES) {
+        NSURLSessionDownloadTask *taskToResume = nil;
+        @synchronized (self) {
+            if (self.progress.cancelled) {
+                [self.taskQueue removeAllObjects];
+                return;
+            }
+            if (self.runningTasksCount < kMaxConcurrentDownloads && self.taskQueue.count > 0) {
+                taskToResume = self.taskQueue.firstObject;
+                [self.taskQueue removeObjectAtIndex:0];
+                self.runningTasksCount++;
+            }
+        }
+        if (taskToResume) {
+            [taskToResume resume];
+        } else {
+            break;
+        }
+    }
+}
+
+- (void)taskDidFinish {
+    @synchronized (self) {
+        if (self.runningTasksCount > 0) {
+            self.runningTasksCount--;
+        }
+    }
+    [self drainTaskQueue];
 }
 
 // Selects and substitutes the download source according to configuration.
@@ -216,21 +282,25 @@ static const NSUInteger kMCStageIndexVerify = 5;
     __weak MinecraftResourceDownloadTask *weakSelf = self;
     __block NSURLSessionDownloadTask *task = [self.manager downloadTaskWithRequest:request progress:nil
     destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
-        NSLog(@"[MCDL] Downloading %@", name);
-        if (!weakSelf) {
+        @autoreleasepool {
+            if (!weakSelf) {
+                [NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
+                [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+                return [NSURL fileURLWithPath:path];
+            }
+            progress = [weakSelf.manager downloadProgressForTask:task];
+            if (!size && task) {
+                [weakSelf addDownloadTaskToProgress:task size:response.expectedContentLength];
+                @synchronized(weakSelf.fileList) {
+                    [weakSelf.fileList addObject:name];
+                }
+            }
             [NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
             [NSFileManager.defaultManager removeItemAtPath:path error:nil];
             return [NSURL fileURLWithPath:path];
         }
-        progress = [weakSelf.manager downloadProgressForTask:task];
-        if (!size && task) {
-            [weakSelf addDownloadTaskToProgress:task size:response.expectedContentLength];
-            [weakSelf.fileList addObject:name];
-        }
-        [NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
-        [NSFileManager.defaultManager removeItemAtPath:path error:nil];
-        return [NSURL fileURLWithPath:path];
     } completionHandler:^(NSURLResponse * _Nonnull response, NSURL * _Nullable filePath, NSError * _Nullable error) {
+        @autoreleasepool {
         if (self.progress.cancelled) {
             // Ignore any further errors
         } else if (error != nil) {
@@ -248,11 +318,11 @@ static const NSUInteger kMCStageIndexVerify = 5;
                     });
                 }
                 
-                // Delayed retry (reduced to 0.5 seconds to avoid long cumulative delays when hundreds of files retry).
+                // Delayed retry through queue to avoid socket flood
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     NSURLSessionDownloadTask *retryTask = [weakSelf createDownloadTask:url size:size sha:sha altName:altName toPath:path retryCount:nextRetry success:success];
                     if (retryTask) {
-                        [retryTask resume];
+                        [weakSelf enqueueSingleDownloadTask:retryTask];
                     }
                 });
             } else {
@@ -287,7 +357,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     NSURLSessionDownloadTask *retryTask = [weakSelf createDownloadTask:url size:size sha:sha altName:altName toPath:path retryCount:nextRetry success:success];
                     if (retryTask) {
-                        [retryTask resume];
+                        [weakSelf enqueueSingleDownloadTask:retryTask];
                     }
                 });
             } else {
@@ -318,11 +388,15 @@ static const NSUInteger kMCStageIndexVerify = 5;
             [self mc_recordStageFileFinishedAtPath:path];
             if (success) success();
         }
+        } // @autoreleasepool
+        [weakSelf taskDidFinish];
     }];
 
     if (size && task) {
         [self addDownloadTaskToProgress:task size:size];
-        [self.fileList addObject:name];
+        @synchronized(self.fileList) {
+            [self.fileList addObject:name];
+        }
     }
 
     if (task && self.currentDownloadTaskItem) {
@@ -337,16 +411,18 @@ static const NSUInteger kMCStageIndexVerify = 5;
 }
 
 - (void)addDownloadTaskToProgress:(NSURLSessionDownloadTask *)task size:(NSInteger)size {
-    NSProgress *progress = [self.manager downloadProgressForTask:task];
-    NSUInteger fileSize = size>0 ? size : 1;
-    progress.kind = NSProgressKindFile;
-    if (size > 0) {
-        progress.totalUnitCount = fileSize;
+    @synchronized(self) {
+        NSProgress *progress = [self.manager downloadProgressForTask:task];
+        NSUInteger fileSize = size>0 ? size : 1;
+        progress.kind = NSProgressKindFile;
+        if (size > 0) {
+            progress.totalUnitCount = fileSize;
+        }
+        [self.progressList addObject:progress];
+        [self.progress addChild:progress withPendingUnitCount:fileSize];
+        self.progress.totalUnitCount += fileSize;
+        self.textProgress.totalUnitCount = self.progress.totalUnitCount;
     }
-    [self.progressList addObject:progress];
-    [self.progress addChild:progress withPendingUnitCount:fileSize];
-    self.progress.totalUnitCount += fileSize;
-    self.textProgress.totalUnitCount = self.progress.totalUnitCount;
 }
 
 - (void)downloadVersionMetadata:(NSDictionary *)version success:(void (^)())success {
@@ -451,6 +527,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
 - (NSArray *)downloadClientLibraries {
     NSMutableArray *tasks = [NSMutableArray new];
     for (NSDictionary *library in self.metadata[@"libraries"]) {
+        @autoreleasepool {
         NSString *name = library[@"name"];
 
         NSMutableDictionary *artifact = library[@"downloads"][@"artifact"];
@@ -486,6 +563,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
         } else if (self.progress.cancelled) {
             return nil;
         }
+        } // @autoreleasepool
     }
     return tasks;
 }
@@ -497,6 +575,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
         return @[];
     }
     for (NSString *name in assets[@"objects"]) {
+        @autoreleasepool {
         NSDictionary *object = assets[@"objects"][name];
         NSString *hash = object[@"hash"];
         NSString *pathname = [NSString stringWithFormat:@"%@/%@", [hash substringToIndex:2], hash];
@@ -525,6 +604,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
         } else if (self.progress.cancelled) {
             return nil;
         }
+        } // @autoreleasepool
     }
     return tasks;
 }
@@ -591,8 +671,8 @@ static const NSUInteger kMCStageIndexVerify = 5;
             [manager updateTaskWithId:taskId stageAtIndex:kMCStageIndexAssets progress:-1 message:nil];
             [manager updateTaskWithId:taskId currentStageIndex:kMCStageIndexLibraries];
             [strongSelf mc_reportStageFileCounts];
-            [libTasks makeObjectsPerformSelector:@selector(resume)];
-            [assetTasks makeObjectsPerformSelector:@selector(resume)];
+            [strongSelf enqueueDownloadTasks:libTasks];
+            [strongSelf enqueueDownloadTasks:assetTasks];
             [strongSelf.metadata removeObjectForKey:@"assetIndexObj"];
 
             if (strongSelf.currentDownloadTaskItem) {
@@ -719,10 +799,14 @@ static const NSUInteger kMCStageIndexVerify = 5;
     self.progress = [NSProgress new];
     // Push 1 byte so it won't accidentally finish after downloading assets index
     self.progress.totalUnitCount = 1;
-    [self.fileList removeAllObjects];
-    [self.progressList removeAllObjects];
-    // Phase 5 fix: reset the failed-file list (based on FCL).
-    [self.failedFiles removeAllObjects];
+    @synchronized (self) {
+        [self.taskQueue removeAllObjects];
+        self.runningTasksCount = 0;
+        [self.fileList removeAllObjects];
+        [self.progressList removeAllObjects];
+        // Phase 5 fix: reset the failed-file list (based on FCL).
+        [self.failedFiles removeAllObjects];
+    }
     // Reset stage counts (each entry point sets stageReportingEnabled itself:
     // downloadVersion: sets YES; downloadModpackFromAPI: sets NO).
     self.libTotalFileCount = 0;
@@ -776,12 +860,14 @@ static const NSUInteger kMCStageIndexVerify = 5;
 /// Classifies by destination path and adds to the stage file total (libraries/assets; version JSON is excluded).
 - (void)mc_recordStageFileStartedAtPath:(NSString *)path {
     if (!self.stageReportingEnabled) return;
-    if ([path containsString:@"/libraries/"]) {
-        self.libTotalFileCount++;
-    } else if ([path containsString:@"/assets/"] || [path containsString:@"/resources/"]) {
-        self.assetTotalFileCount++;
-    } else {
-        return; // Version JSON and asset indexes under versions/ belong to the stage 1/4 JSON downloads; exclude from dual counts.
+    @synchronized (self) {
+        if ([path containsString:@"/libraries/"]) {
+            self.libTotalFileCount++;
+        } else if ([path containsString:@"/assets/"] || [path containsString:@"/resources/"]) {
+            self.assetTotalFileCount++;
+        } else {
+            return; // Version JSON and asset indexes under versions/ belong to the stage 1/4 JSON downloads; exclude from dual counts.
+        }
     }
     [self mc_reportStageFileCounts];
 }
@@ -789,12 +875,14 @@ static const NSUInteger kMCStageIndexVerify = 5;
 /// Counts a file toward the stage completion total when it reaches a terminal state (skipped/succeeded/ultimately failed).
 - (void)mc_recordStageFileFinishedAtPath:(NSString *)path {
     if (!self.stageReportingEnabled) return;
-    if ([path containsString:@"/libraries/"]) {
-        self.libCompletedFileCount++;
-    } else if ([path containsString:@"/assets/"] || [path containsString:@"/resources/"]) {
-        self.assetCompletedFileCount++;
-    } else {
-        return;
+    @synchronized (self) {
+        if ([path containsString:@"/libraries/"]) {
+            self.libCompletedFileCount++;
+        } else if ([path containsString:@"/assets/"] || [path containsString:@"/resources/"]) {
+            self.assetCompletedFileCount++;
+        } else {
+            return;
+        }
     }
     [self mc_reportStageFileCounts];
 }
@@ -852,6 +940,10 @@ static const NSUInteger kMCStageIndexVerify = 5;
 }
 
 - (void)cancel {
+    @synchronized (self) {
+        [self.taskQueue removeAllObjects];
+        self.runningTasksCount = 0;
+    }
     // Cancel the root NSProgress: all child task progress is cancelled recursively, and the KVO cancelled branch handles cleanup as before.
     [self.progress cancel];
 }
@@ -1048,36 +1140,38 @@ static const NSUInteger kMCStageIndexVerify = 5;
 
 // Check SHA of the file
 - (BOOL)checkSHAIgnorePref:(NSString *)sha forFile:(NSString *)path altName:(NSString *)altName logSuccess:(BOOL)logSuccess {
-    if (sha.length == 0) {
-        // When sha = skip, only check for file existence
-        BOOL existence = [NSFileManager.defaultManager fileExistsAtPath:path];
-        if (existence) {
-            NSLog(@"[MCDL] Warning: couldn't find SHA for %@, have to assume it's good.", path);
+    @autoreleasepool {
+        if (sha.length == 0) {
+            // When sha = skip, only check for file existence
+            BOOL existence = [NSFileManager.defaultManager fileExistsAtPath:path];
+            if (existence) {
+                NSLog(@"[MCDL] Warning: couldn't find SHA for %@, have to assume it's good.", path);
+            }
+            return existence;
         }
-        return existence;
-    }
 
-    NSData *data = [NSData dataWithContentsOfFile:path];
-    if (data == nil) {
-        NSLog(@"[MCDL] SHA1 checker: file doesn't exist: %@", altName ? altName : path.lastPathComponent);
-        return NO;
-    }
+        NSData *data = [NSData dataWithContentsOfFile:path options:NSDataReadingMappedIfSafe error:nil];
+        if (data == nil) {
+            NSLog(@"[MCDL] SHA1 checker: file doesn't exist: %@", altName ? altName : path.lastPathComponent);
+            return NO;
+        }
 
-    unsigned char digest[CC_SHA1_DIGEST_LENGTH];
-    CC_SHA1(data.bytes, (CC_LONG)data.length, digest);
-    NSMutableString *localSHA = [NSMutableString stringWithCapacity:CC_SHA1_DIGEST_LENGTH * 2];
-    for(int i = 0; i < CC_SHA1_DIGEST_LENGTH; i++) {
-        [localSHA appendFormat:@"%02x", digest[i]];
-    }
+        unsigned char digest[CC_SHA1_DIGEST_LENGTH];
+        CC_SHA1(data.bytes, (CC_LONG)data.length, digest);
+        NSMutableString *localSHA = [NSMutableString stringWithCapacity:CC_SHA1_DIGEST_LENGTH * 2];
+        for(int i = 0; i < CC_SHA1_DIGEST_LENGTH; i++) {
+            [localSHA appendFormat:@"%02x", digest[i]];
+        }
 
-    BOOL check = [sha isEqualToString:localSHA];
-    if (!check || (getPrefBool(@"general.debug_logging") && logSuccess)) {
-        NSLog(@"[MCDL] SHA1 %@ for %@%@",
-          (check ? @"passed" : @"failed"), 
-          (altName ? altName : path.lastPathComponent),
-          (check ? @"" : [NSString stringWithFormat:@" (expected: %@, got: %@)", sha, localSHA]));
+        BOOL check = [sha isEqualToString:localSHA];
+        if (!check || (getPrefBool(@"general.debug_logging") && logSuccess)) {
+            NSLog(@"[MCDL] SHA1 %@ for %@%@",
+              (check ? @"passed" : @"failed"), 
+              (altName ? altName : path.lastPathComponent),
+              (check ? @"" : [NSString stringWithFormat:@" (expected: %@, got: %@)", sha, localSHA]));
+        }
+        return check;
     }
-    return check;
 }
 
 - (BOOL)checkSHA:(NSString *)sha forFile:(NSString *)path altName:(NSString *)altName logSuccess:(BOOL)logSuccess {

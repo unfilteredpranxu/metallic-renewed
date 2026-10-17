@@ -88,6 +88,13 @@ workflows:
           echo "Copied $copied missing files from upstream"
           cd "$CM_BUILD_DIR"
 
+          # Pure Metal: purge any iris dylibs, ensure libmetallum.dylib is the complete 92-symbol pure Metal library
+          if [ -f "ios-app/Natives/resources/Frameworks/libmetallum_iris.dylib" ]; then
+            echo "Promoting complete 92-symbol Metal library to libmetallum.dylib..."
+            mv -f "ios-app/Natives/resources/Frameworks/libmetallum_iris.dylib" "ios-app/Natives/resources/Frameworks/libmetallum.dylib"
+          fi
+          rm -f ios-app/Natives/resources/Frameworks/*iris*
+
           echo "---- Natives/input ----"
           ls -la ios-app/Natives/input || echo "input folder MISSING"
           echo "---- Natives/installer ----"

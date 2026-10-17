@@ -202,7 +202,7 @@ METHOD_DIRCHECK   = \
 METHOD_CHANGE_PLAT = \
 	if [ '$(1)' != '11' ] && [ '$(1)' != '12' ]; then \
 		vtool -arch arm64 -set-build-version $(1) 14.0 26.2 -replace -output $(2) $(2); \
-		ldid -S -M $(2); \
+		ldid -S $(2); \
 	else \
 		vtool -arch arm64 -set-build-version $(1) 1.0 1.0 -replace -output $(2) $(2); \
 	fi \
@@ -346,26 +346,8 @@ help:
 	echo '    make deploy                         Copies files to local iDevice'
 	echo '    make dsym                           Generate debug symbol files'
 	echo '    make clean                          Cleans build directories'
-	echo '    make check                          Dump all variables for checking'
-	echo '    make iris-bridge-on                 ★ 26.2 Iris<->Metal bridge on (default; see Natives/shader_iris_bridge.sh)'
-	echo '    make iris-bridge-off                ★ 26.2 Iris<->Metal bridge off (revert to the old classes262/ class set)'
-	echo '    make shader-glslang-pack            ★ package the missing glslang native for shaders (including the classes added for classes262iris)'
+	echo '    make shader-glslang-pack            ★ package the missing glslang native for shaders'
 	echo '    make shader-glslang-check           ★ check whether the glslang native is included in the package'
-	echo '    make verify-iris-integrate          ★ [IRIS-INTEGRATE] verify the 91-symbol native wiring and ensure the class set has not regressed from r10'
-	echo '    make shader-iris-integrate          ★ [IRIS-INTEGRATE] wire 26.2-iris to the 91-symbol libmetallum_iris.dylib'
-
-# ★ [SHADER-FAST] 26.2 Iris↔Metal bridge switch (only changes the marker resource inside the agent JAR metallum_iris.mode).
-#   Can also be overridden at runtime (takes precedence over the marker): -Dmetallum.iris.bridge=0|1 / AMETHYST_METALLUM_IRIS=0|1
-#   Class sets classes262iris/ + natives/ir1/ remain in the JAR; turning this off only prevents them from being selected by routing, with no side effects.
-#   ★ One-command rollback: `make iris-bridge-off`; full-package rollback: cp D:/CTF/_510src/_bak_/shaderfast_*/metallum_agent.jar.orig
-iris-bridge-on:
-	sh Natives/shader_iris_bridge.sh on
-
-iris-bridge-off:
-	sh Natives/shader_iris_bridge.sh off
-
-iris-bridge-status:
-	sh Natives/shader_iris_bridge.sh status
 
 # ★ [SHADER-GLSLANG] Package the final native piece for shader rendering (idempotent).
 #   ★ [SHADER-SIGBUS] This target now means **glslang is loaded only from Frameworks and must not be in the JAR**:
@@ -406,7 +388,6 @@ shader-glslang-pack:
 
 shader-glslang-check:
 	python3 Natives/pack_shader_glslang.py --check
-	python3 Natives/verify_iris_integrate.py          # ★ [IRIS-INTEGRATE]
 	python3 Natives/check_spvc_provenance.py          # ★ [26.4-SPVC]
 
 # ★ [26.4-SPVC] Verify spvc native-library provenance (prevent omissions when moving the build).
@@ -430,22 +411,6 @@ check-spvc-provenance:
 #   run only on a machine with D:\CTF\client-26.2.jar (not required on the Mac packaging line).
 blaze3d-group-check:
 	python3 Natives/extract_blaze3d_group.py --check
-
-# ★ [IRIS-INTEGRATE] Make 26.2-iris use the 91-symbol libmetallum_iris.dylib, while 26.3/26.1 continue using
-#   Frameworks/libmetallum.dylib (75 symbols, including getError/getStatus/get_last_error) — two routes in one package.
-#   Method: change only the two MetalNativeBridge routes from System.loadLibrary("metallum") to "metallum_iris"
-#         (resolve the §6.7 "shared filename" tradeoff through **renamed routing**, without overwriting or rebuilding native code).
-#   ★ Why **not** copy in the r10 class set: this repository's agent classes262iris is **newer** than r10 —
-#     per-class javap comparison: 21 classes differ (9 differ only in debug info); all remaining 12 are larger/more complete on the agent side
-#     (SHADER-CAP GL_EXTENSIONS / shadowColorFormatsFrom / sodium(...GpuFormat[]) /
-#       MetalNativeBridge extraction path /natives/ir1 vs r10 /natives/ios). Replacing it would regress functionality.
-#     See the header comments in Natives/pack_iris_integrate.py and Natives/verify_iris_integrate.py.
-#   ★ Idempotent; verify with make verify-iris-integrate (the same assertions are also called by shader-glslang-check).
-shader-iris-integrate:
-	python3 Natives/pack_iris_integrate.py
-
-verify-iris-integrate:
-	python3 Natives/verify_iris_integrate.py
 
 check:
 	$(foreach v, \
@@ -1193,7 +1158,16 @@ payload: native dep_mg dep_shader_shims dep_openal_shim dep_angle_freeze dep_sdl
 	# The previous [ PLATFORM != 2 ] guard assumed all committed dylibs were already tagged for iOS;
 	# that assumption was broken when syncing top-level dylibs from Ynnyny.
 	$(call METHOD_MACHO,$(OUTPUTDIR)/Payload/AngelAuraAmethyst.app,$(call METHOD_CHANGE_PLAT,$(PLATFORM),$$file)); \
-	$(call METHOD_MACHO,$(OUTPUTDIR)/java_runtimes,$(call METHOD_CHANGE_PLAT,$(PLATFORM),$$file));
+	$(call METHOD_MACHO,$(OUTPUTDIR)/java_runtimes,$(call METHOD_CHANGE_PLAT,$(PLATFORM),$$file)); \
+	find $(OUTPUTDIR)/Payload/AngelAuraAmethyst.app/Frameworks -name '*.dylib' -exec ldid -S {} + 2>/dev/null || true; \
+	ldid -S $(OUTPUTDIR)/Payload/AngelAuraAmethyst.app; \
+	if [ '$(TROLLSTORE_JIT_ENT)' == '1' ]; then \
+		ldid -S$(SOURCEDIR)/entitlements.trollstore.xml $(OUTPUTDIR)/Payload/AngelAuraAmethyst.app/AngelAuraAmethyst; \
+	elif [ '$(PLATFORM)' == '6' ]; then \
+		ldid -S$(SOURCEDIR)/entitlements.codesign.xml $(OUTPUTDIR)/Payload/AngelAuraAmethyst.app/AngelAuraAmethyst; \
+	else \
+		ldid -S$(SOURCEDIR)/entitlements.sideload.xml $(OUTPUTDIR)/Payload/AngelAuraAmethyst.app/AngelAuraAmethyst; \
+	fi
 	echo '[Amethyst v$(VERSION)] payload - end'
 
 deploy:

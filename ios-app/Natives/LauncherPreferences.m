@@ -68,7 +68,8 @@ static int ame173_safeHeapCeilingMB(void) {
 int ame141_currentLaunchAllocMem(void) {
     int deviceMB = (int)(NSProcessInfo.processInfo.physicalMemory >> 20);
     int allocmem;
-    if (getPrefBool(@"java.auto_ram")) {
+    BOOL isAutoRAM = getPrefBool(@"java.auto_ram");
+    if (isAutoRAM) {
         // Flux 同款修复：jetsam 上限有两条抬升路径——越狱的
         // com.apple.private.memorystatus，以及带 profile 签名的
         // com.apple.developer.kernel.increased-memory-limit。只查前者会把正确
@@ -105,16 +106,26 @@ int ame141_currentLaunchAllocMem(void) {
     // 习惯手动调大实例内存（如 1129MB）会被压回 ceiling，制造
     // limit 偏低的低顶。无 entitlement（限额提不上去，只能吃系统默认）时
     // 保持钳制作为安全网。
+    //
+    // 当用户手动关闭 auto_ram 自由调节内存滑块（或设备安装了 getmoreram 等提权工具）时，
+    // 充分信任用户的内存选择，仅以物理内存 85% 作为绝对硬保护，绝不强行截断至 ceiling。
     const char *noClamp = getenv("AMETHYST_MEM_NO_CLAMP");
-    bool canRaiseJetsamLimit = getEntitlementValue(@"com.apple.private.memorystatus");
-    if (!(noClamp && noClamp[0] == '1') && !canRaiseJetsamLimit) {
+    bool canRaiseJetsamLimit = getEntitlementValue(@"com.apple.private.memorystatus")
+        || getEntitlementValue(@"com.apple.developer.kernel.increased-memory-limit");
+    if (isAutoRAM && !(noClamp && noClamp[0] == '1') && !canRaiseJetsamLimit) {
         int ceiling = ame173_safeHeapCeilingMB();
         if (allocmem > ceiling) {
-            NSLog(@"[Task173] launch memory %dMB exceeds safe ceiling %dMB -- clamping (preference on disk preserved)", allocmem, ceiling);
+            NSLog(@"[Task173] launch memory %dMB exceeds safe ceiling %dMB -- clamping (auto_ram=YES)", allocmem, ceiling);
             allocmem = ceiling;
         }
-    } else if (canRaiseJetsamLimit) {
-        NSLog(@"[Task173] memorystatus entitlement present -- jetsam limit will be raised to %d MB (allocmem %d + 1024 native); heap clamp bypassed", allocmem + 1024, allocmem);
+    } else {
+        int maxPhysicalSafe = (int)(deviceMB * 0.85);
+        if (allocmem > maxPhysicalSafe) {
+            NSLog(@"[Task141] launch memory %dMB exceeds 85%% physical RAM (%dMB) -- clamping", allocmem, maxPhysicalSafe);
+            allocmem = maxPhysicalSafe;
+        } else {
+            NSLog(@"[Task141] manual RAM or raised jetsam limit: respecting allocated memory %d MB", allocmem);
+        }
     }
     NSLog(@"[Task141] final launch memory = %d MB (device %d MB, jetsam limit %d MB)", allocmem, deviceMB, allocmem + 1024);
     return allocmem;

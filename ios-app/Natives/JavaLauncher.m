@@ -2228,7 +2228,12 @@ int launchJVM(NSString *accountId, id launchTarget, int width, int height, int m
         // MC 有大量重复字符串（方块名、物品名、I18N key 等），可节省 5-10% 堆内存。
         // 仅在 G1GC 下生效，开销极小。
         PUSH_MARGV_LITERAL("-XX:+UseStringDeduplication");
-        NSLog(@"[JavaLauncher] JVM GC optimization: G1GC + MaxGCPauseMillis=50 + StringDeduplication (Java 17+)");
+        // G1GC 启发式调优：平滑内存分配曲线，避免突发高分配率触发昂贵停顿
+        PUSH_MARGV_LITERAL("-XX:G1ReservePercent=15");
+        PUSH_MARGV_LITERAL("-XX:InitiatingHeapOccupancyPercent=45");
+        // 禁用 hsperfdata 性能计数器持久化写盘（iOS 闪存写入会引发工作线程微卡顿，消除 I/O 阻塞）
+        PUSH_MARGV_LITERAL("-XX:+PerfDisableSharedMem");
+        NSLog(@"[JavaLauncher] JVM GC optimization: G1GC + MaxGCPauseMillis=50 + StringDeduplication + PerfDisableSharedMem (Java 17+)");
     } else {
         NSLog(@"[JavaLauncher] Java 8 detected, skipping G1GC tuning (using default GC)");
     }

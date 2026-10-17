@@ -47,9 +47,9 @@ import com.mojang.blaze3d.vertex.VertexFormatElement;
 import com.mojang.blaze3d.vulkan.VulkanBindGroupLayout;
 import com.mojang.blaze3d.vulkan.glsl.IntermediaryShaderModule;
 import com.mojang.blaze3d.vulkan.glsl.ShaderCompileException;
-import com.mojang.blaze3d.vulkan.glsl.SpvSampler;
-import com.mojang.blaze3d.vulkan.glsl.SpvUniformBuffer;
-import com.mojang.blaze3d.vulkan.glsl.SpvVariable;
+
+
+
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
@@ -62,7 +62,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import org.jspecify.annotations.Nullable;
+
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -72,7 +72,7 @@ import org.lwjgl.util.spvc.SpvcReflectedResource;
 
 @Environment(value=EnvType.CLIENT)
 final class MetalCrossShaderCompiler {
-    private static final Set<String> BUILT_IN_UNIFORMS = Set.of((Object)"Projection", (Object)"Lighting", (Object)"Fog", (Object)"Globals");
+    private static final Set<String> BUILT_IN_UNIFORMS = Set.of("Projection", "Lighting", "Fog", "Globals");
     private static final int MSL_VERSION_4_0 = 262144;
     private static final Pattern VERTEX_ENTRY_PATTERN = Pattern.compile("\\bvertex\\s+\\w+\\s+(\\w+)\\s*\\(");
     private static final Pattern FRAGMENT_ENTRY_PATTERN = Pattern.compile("\\bfragment\\s+\\w+\\s+(\\w+)\\s*\\(");
@@ -106,21 +106,67 @@ final class MetalCrossShaderCompiler {
         }
     }
 
+        private static String getSpvName(Object obj) {
+        if (obj == null) return "";
+        try {
+            java.lang.reflect.Method m = obj.getClass().getMethod("name");
+            m.setAccessible(true);
+            return (String) m.invoke(obj);
+        } catch (Throwable t) {
+            try {
+                java.lang.reflect.Method m = obj.getClass().getDeclaredMethod("name");
+                m.setAccessible(true);
+                return (String) m.invoke(obj);
+            } catch (Throwable t2) {
+                try {
+                    java.lang.reflect.Field f = obj.getClass().getDeclaredField("name");
+                    f.setAccessible(true);
+                    return (String) f.get(obj);
+                } catch (Throwable t3) {
+                    return "";
+                }
+            }
+        }
+    }
+
+    private static int getSpvDimensions(Object obj) {
+        if (obj == null) return 0;
+        try {
+            java.lang.reflect.Method m = obj.getClass().getMethod("dimensions");
+            m.setAccessible(true);
+            return ((Number) m.invoke(obj)).intValue();
+        } catch (Throwable t) {
+            try {
+                java.lang.reflect.Method m = obj.getClass().getDeclaredMethod("dimensions");
+                m.setAccessible(true);
+                return ((Number) m.invoke(obj)).intValue();
+            } catch (Throwable t2) {
+                try {
+                    java.lang.reflect.Field f = obj.getClass().getDeclaredField("dimensions");
+                    f.setAccessible(true);
+                    return ((Number) f.get(obj)).intValue();
+                } catch (Throwable t3) {
+                    return 0;
+                }
+            }
+        }
+    }
+
     private static void addToBindGroup(List<VulkanBindGroupLayout.Entry> entries, IntermediaryShaderModule shader, RenderPipeline pipeline) throws ShaderCompileException {
         String name;
         List uniforms = BindGroupLayout.flattenUniforms((List)pipeline.getBindGroupLayouts());
         List samplers = BindGroupLayout.flattenSamplers((List)pipeline.getBindGroupLayouts());
-        for (SpvUniformBuffer buffer : shader.uniformBuffers()) {
-            name = buffer.name();
+        for (Object buffer : shader.uniformBuffers()) {
+            name = getSpvName(buffer);
             if (MetalCrossShaderCompiler.findUniform(uniforms, name) == null && !BUILT_IN_UNIFORMS.contains(name)) {
                 throw new ShaderCompileException("Unable to find shader defined uniform (" + name + ")");
             }
             MetalCrossShaderCompiler.addBindingIfAbsent(entries, VulkanBindGroupLayout.VulkanBindGroupEntryType.UNIFORM_BUFFER, name, null);
         }
-        for (SpvSampler sampler : shader.samplers()) {
-            name = sampler.name();
+        for (Object sampler : shader.samplers()) {
+            name = getSpvName(sampler);
             BindGroupLayout.UniformDescription uniform = MetalCrossShaderCompiler.findUniform(uniforms, name);
-            int dimensions = sampler.dimensions();
+            int dimensions = getSpvDimensions(sampler);
             if (uniform != null) {
                 if (dimensions != 5) {
                     throw new ShaderCompileException("UTB (" + name + ") must have type of SpvDimBuffer");
@@ -139,7 +185,7 @@ final class MetalCrossShaderCompiler {
     }
 
     private static // Could not load outer class - annotation placement on inner may be incorrect
-    @Nullable BindGroupLayout.UniformDescription findUniform(List<BindGroupLayout.UniformDescription> uniforms, String name) {
+    BindGroupLayout.UniformDescription findUniform(List<BindGroupLayout.UniformDescription> uniforms, String name) {
         for (BindGroupLayout.UniformDescription uniform : uniforms) {
             if (!uniform.name().equals(name)) continue;
             return uniform;
@@ -147,7 +193,7 @@ final class MetalCrossShaderCompiler {
         return null;
     }
 
-    private static void addBindingIfAbsent(List<VulkanBindGroupLayout.Entry> entries, VulkanBindGroupLayout.VulkanBindGroupEntryType type, String name, @Nullable GpuFormat texelBufferFormat) {
+    private static void addBindingIfAbsent(List<VulkanBindGroupLayout.Entry> entries, VulkanBindGroupLayout.VulkanBindGroupEntryType type, String name, GpuFormat texelBufferFormat) {
         for (VulkanBindGroupLayout.Entry entry : entries) {
             if (entry.type() != type || !entry.name().equals(name)) continue;
             return;
@@ -155,10 +201,10 @@ final class MetalCrossShaderCompiler {
         entries.add(new VulkanBindGroupLayout.Entry(type, name, texelBufferFormat));
     }
 
-    private static List<String> tolerateUnprovidedInputs(List<String> provided, List<SpvVariable> shaderInputs) {
+    private static List<String> tolerateUnprovidedInputs(List<String> provided, List<?> shaderInputs) {
         ArrayList<String> result = null;
-        for (SpvVariable input : shaderInputs) {
-            String name = input.name();
+        for (Object input : shaderInputs) {
+            String name = getSpvName(input);
             if (provided.contains(name)) continue;
             if (result == null) {
                 result = new ArrayList<String>(provided);
@@ -169,10 +215,10 @@ final class MetalCrossShaderCompiler {
         return result == null ? provided : result;
     }
 
-    private static List<String> extractVariableNames(List<SpvVariable> variables) {
+    private static List<String> extractVariableNames(List<?> variables) {
         ArrayList<String> names = new ArrayList<String>(variables.size());
-        for (SpvVariable variable : variables) {
-            names.add(variable.name());
+        for (Object variable : variables) {
+            names.add(getSpvName(variable));
         }
         return names;
     }
@@ -248,7 +294,7 @@ final class MetalCrossShaderCompiler {
             SpvcReflectedResource input = (SpvcReflectedResource)list.get(i);
             GpuFormat format = attributeFormats.get(input.nameString());
             if (format == null || !format.name().endsWith("_UINT")) continue;
-            int n = format.name().contains("8") ? 1 : (width = format.name().contains("16") ? 2 : 0);
+            width = format.name().contains("8") ? 1 : (format.name().contains("16") ? 2 : 0);
             if (width == 0 || (baseType = Spvc.spvc_type_get_basetype((long)(typeHandle = Spvc.spvc_compiler_get_type_handle((long)compiler, (int)input.type_id())))) != 3 && baseType != 5 && baseType != 7 && baseType != 9) continue;
             SpvcMslShaderInterfaceVar2 var = SpvcMslShaderInterfaceVar2.malloc((MemoryStack)stack);
             Spvc.spvc_msl_shader_interface_var_init_2((SpvcMslShaderInterfaceVar2)var);
@@ -370,4 +416,7 @@ final class MetalCrossShaderCompiler {
     record MslShader(String source, boolean hasPushConstants, Set<String> activeResources) {
     }
 }
+
+
+
 

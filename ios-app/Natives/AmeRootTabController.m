@@ -60,6 +60,32 @@ NSString * const AmeTabTappedNotification = @"AmeTabTapped";   // ★ [ROOTTAB]
     return 0.0;
 }
 
+static void AmePurgeSystemTabBars(UIView *view, UIView *preserveTopNav) {
+    if (!view) return;
+    for (UIView *subview in [view.subviews copy]) {
+        if (subview == preserveTopNav) continue;
+        NSString *className = NSStringFromClass([subview class]);
+        BOOL isSystemBar = [subview isKindOfClass:[UITabBar class]]
+                        || [className containsString:@"TabBar"]
+                        || [className containsString:@"FloatingTab"]
+                        || [className containsString:@"TabContainer"]
+                        || [className containsString:@"TabOutline"]
+                        || [className containsString:@"TabSidebar"];
+        if (isSystemBar) {
+            subview.hidden = YES;
+            subview.alpha = 0.0;
+            subview.userInteractionEnabled = NO;
+            subview.frame = CGRectZero;
+            subview.transform = CGAffineTransformMakeTranslation(0, -9999);
+            if (![subview isKindOfClass:[UITabBar class]]) {
+                [subview removeFromSuperview];
+            }
+        } else {
+            AmePurgeSystemTabBars(subview, preserveTopNav);
+        }
+    }
+}
+
 - (void)animateTransition:(id<UIViewControllerContextTransitioning>)transitionContext {
     UIView *container = transitionContext.containerView;
     UIViewController *fromVC = [transitionContext viewControllerForKey:UITransitionContextFromViewControllerKey];
@@ -76,14 +102,7 @@ NSString * const AmeTabTappedNotification = @"AmeTabTapped";   // ★ [ROOTTAB]
     if (fromView && fromView.superview == container) {
         [fromView removeFromSuperview];    // ★ Key: remove the old page immediately, leaving no snapshot ⇒ no overlap.
     }
-    for (UIView *sv in container.subviews) {
-        if ([sv isKindOfClass:[UITabBar class]]) {
-            sv.hidden = YES;
-            sv.alpha = 0.0;
-            sv.userInteractionEnabled = NO;
-            sv.transform = CGAffineTransformMakeTranslation(0, -9999);
-        }
-    }
+    AmePurgeSystemTabBars(container, nil);
     [transitionContext completeTransition:YES];
 }
 
@@ -131,8 +150,10 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         // automatically creates a floating top capsule tab bar from tabBarItem titles.
         // Metallic uses its own custom HomeTopNavView exclusively.
         content.tabBarItem = [[UITabBarItem alloc] initWithTitle:nil image:nil tag:i];
+        content.hidesBottomBarWhenPushed = YES;
 
         UIViewController *vc = AmeWrapInNav(content);   // ★ Wrap all pages in nav controllers for nested flows (see RootVC:719 comment).
+        vc.hidesBottomBarWhenPushed = YES;
         // Track the stack depth so the floating Done button knows when to appear.
         if ([vc isKindOfClass:[UINavigationController class]] && ((UINavigationController *)vc).delegate == nil) {
             ((UINavigationController *)vc).delegate = tbc;
@@ -142,6 +163,18 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     tbc.viewControllers = vcs;
     tbc.selectedIndex = 0;
     tbc.delegate = tbc;
+
+    if (@available(iOS 18.0, *)) {
+        if ([tbc respondsToSelector:@selector(setTabBarHidden:animated:)]) {
+            ((void (*)(id, SEL, BOOL, BOOL))objc_msgSend)(tbc, @selector(setTabBarHidden:animated:), YES, NO);
+        }
+        if ([tbc respondsToSelector:@selector(traitOverrides)]) {
+            id overrides = [tbc performSelector:@selector(traitOverrides)];
+            if ([overrides respondsToSelector:@selector(setHorizontalSizeClass:)]) {
+                ((void (*)(id, SEL, NSInteger))objc_msgSend)(overrides, @selector(setHorizontalSizeClass:), UIUserInterfaceSizeClassCompact);
+            }
+        }
+    }
 
     // ★ Do not set UITabBarAppearance; doing so overrides the system glass on iOS 26.
     return tbc;
@@ -153,11 +186,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     // window and individual pages handle the wallpaper.
     self.view.backgroundColor = [UIColor clearColor];
     
-    self.tabBar.hidden = YES;
-    self.tabBar.alpha = 0.0;
-    self.tabBar.userInteractionEnabled = NO;
-    self.tabBar.frame = CGRectZero;
-    self.tabBar.transform = CGAffineTransformMakeTranslation(0, -9999);
+    [self ameSuppressSystemTabBar];
 
     self.topNav = [[HomeTopNavView alloc] init];
     self.topNav.translatesAutoresizingMaskIntoConstraints = NO;
@@ -218,40 +247,83 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     };
 }
 
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
+- (void)ameSuppressSystemTabBar {
     self.tabBar.hidden = YES;
     self.tabBar.alpha = 0.0;
     self.tabBar.userInteractionEnabled = NO;
     self.tabBar.frame = CGRectZero;
     self.tabBar.transform = CGAffineTransformMakeTranslation(0, -9999);
+
+    if (@available(iOS 18.0, *)) {
+        if ([self respondsToSelector:@selector(setTabBarHidden:animated:)]) {
+            ((void (*)(id, SEL, BOOL, BOOL))objc_msgSend)(self, @selector(setTabBarHidden:animated:), YES, NO);
+        }
+        if ([self respondsToSelector:@selector(traitOverrides)]) {
+            id overrides = [self performSelector:@selector(traitOverrides)];
+            if ([overrides respondsToSelector:@selector(setHorizontalSizeClass:)]) {
+                ((void (*)(id, SEL, NSInteger))objc_msgSend)(overrides, @selector(setHorizontalSizeClass:), UIUserInterfaceSizeClassCompact);
+            }
+        }
+        if ([self respondsToSelector:@selector(sidebar)]) {
+            id sidebar = [self performSelector:@selector(sidebar)];
+            if ([sidebar respondsToSelector:@selector(setHidden:)]) {
+                ((void (*)(id, SEL, BOOL))objc_msgSend)(sidebar, @selector(setHidden:), YES);
+            }
+        }
+    }
+
+    AmePurgeSystemTabBars(self.view, self.topNav);
+    if (self.tabBar.superview && self.tabBar.superview != self.view) {
+        AmePurgeSystemTabBars(self.tabBar.superview, self.topNav);
+    }
+    if (self.view.window) {
+        for (UIView *wSub in self.view.window.subviews) {
+            NSString *cn = NSStringFromClass([wSub class]);
+            if ([cn containsString:@"FloatingTab"] || [cn containsString:@"TabContainer"] || [cn containsString:@"TabSidebar"]) {
+                wSub.hidden = YES;
+                wSub.alpha = 0.0;
+                wSub.userInteractionEnabled = NO;
+                wSub.frame = CGRectZero;
+                [wSub removeFromSuperview];
+            }
+        }
+    }
+}
+
+- (BOOL)isTabBarHidden {
+    return YES;
+}
+
+- (void)setTabBarHidden:(BOOL)hidden animated:(BOOL)animated {
+    [super setTabBarHidden:YES animated:NO];
+}
+
+- (BOOL)_canShowFloatingTabBar {
+    return NO;
+}
+
+- (BOOL)_shouldShowFloatingTabBar {
+    return NO;
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self ameSuppressSystemTabBar];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    self.tabBar.hidden = YES;
-    self.tabBar.alpha = 0.0;
-    self.tabBar.userInteractionEnabled = NO;
-    self.tabBar.frame = CGRectZero;
-    self.tabBar.transform = CGAffineTransformMakeTranslation(0, -9999);
+    [self ameSuppressSystemTabBar];
 }
 
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
-    self.tabBar.hidden = YES;
-    self.tabBar.alpha = 0.0;
-    self.tabBar.userInteractionEnabled = NO;
-    self.tabBar.frame = CGRectZero;
-    self.tabBar.transform = CGAffineTransformMakeTranslation(0, -9999);
+    [self ameSuppressSystemTabBar];
 }
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    self.tabBar.hidden = YES;
-    self.tabBar.alpha = 0.0;
-    self.tabBar.userInteractionEnabled = NO;
-    self.tabBar.frame = CGRectZero;
-    self.tabBar.transform = CGAffineTransformMakeTranslation(0, -9999);
+    [self ameSuppressSystemTabBar];
     [self.view bringSubviewToFront:self.topNav];
     [self.view bringSubviewToFront:self.floatingDoneButton];
 }

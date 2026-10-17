@@ -1,12 +1,26 @@
 #import "HomeActionPanelView.h"
 
-// Collapsed = just the round profile picture in the corner; expanded = full glass card.
-static const CGFloat kCollapsedSize = 46.0;
-static const CGFloat kExpandedWidth = 250.0;
-static const CGFloat kExpandedHeight = 296.0;
+static inline BOOL AmeIsPad(void) {
+    return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
+}
+
+static inline CGFloat AmeCollapsedSize(void) {
+    return AmeIsPad() ? 56.0 : 46.0;
+}
+
+static inline CGFloat AmeAvatarSize(void) {
+    return AmeIsPad() ? 48.0 : 38.0;
+}
+
+static inline CGFloat AmeAvatarPadding(void) {
+    return (AmeCollapsedSize() - AmeAvatarSize()) / 2.0;
+}
+
+static const CGFloat kExpandedWidth = 260.0;
+static const CGFloat kExpandedHeight = 306.0;
 static const CGFloat kChipRowHeight = 34.0;
-static const CGFloat kCollapsedTopOffset = 15.0;   // level with the nav bar
-static const CGFloat kExpandedTopOffset = 84.0;    // opens below the nav bar
+static const CGFloat kCollapsedTopOffset = 8.0;    // level with the top nav bar (safe.topAnchor + 8)
+static const CGFloat kExpandedTopOffset = 76.0;   // opens right below the nav bar
 
 static UIColor *PanelAccentColor(void) {
     // Pink to match the glass nav bar selector.
@@ -213,12 +227,15 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
     self.cardStack.spacing = 6.0;
     [self addSubview:self.cardStack];
 
-    self.heightConstraint = [self.heightAnchor constraintEqualToConstant:kCollapsedSize];
-    self.widthConstraint = [self.widthAnchor constraintEqualToConstant:kCollapsedSize];
-    self.avatarLeadingConstraint = [self.avatarView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:4.0];
-    self.avatarTopConstraint = [self.avatarView.topAnchor constraintEqualToAnchor:self.topAnchor constant:4.0];
-    self.avatarWidthConstraint = [self.avatarView.widthAnchor constraintEqualToConstant:38.0];
-    self.avatarHeightConstraint = [self.avatarView.heightAnchor constraintEqualToConstant:38.0];
+    CGFloat collSize = AmeCollapsedSize();
+    CGFloat avSize = AmeAvatarSize();
+    CGFloat pad = AmeAvatarPadding();
+    self.heightConstraint = [self.heightAnchor constraintEqualToConstant:collSize];
+    self.widthConstraint = [self.widthAnchor constraintEqualToConstant:collSize];
+    self.avatarLeadingConstraint = [self.avatarView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:pad];
+    self.avatarTopConstraint = [self.avatarView.topAnchor constraintEqualToAnchor:self.topAnchor constant:pad];
+    self.avatarWidthConstraint = [self.avatarView.widthAnchor constraintEqualToConstant:avSize];
+    self.avatarHeightConstraint = [self.avatarView.heightAnchor constraintEqualToConstant:avSize];
     self.cardStackTopConstraint =
         [self.cardStack.topAnchor constraintEqualToAnchor:self.chipRow.bottomAnchor constant:8.0];
     self.cardStackBottomConstraint =
@@ -260,7 +277,15 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    self.avatarView.layer.cornerRadius = self.avatarView.bounds.size.height / 2.0;
+    CGFloat collSize = AmeCollapsedSize();
+    CGFloat avSize = AmeAvatarSize();
+    if (!self.expanded) {
+        self.layer.cornerRadius = collSize / 2.0;
+        self.avatarView.layer.cornerRadius = avSize / 2.0;
+    } else {
+        self.layer.cornerRadius = 22.0;
+        self.avatarView.layer.cornerRadius = (AmeIsPad() ? 52.0 : 46.0) / 2.0;
+    }
 }
 
 - (void)profileTapped {
@@ -281,13 +306,16 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
 
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated {
     _expanded = expanded;
+    CGFloat collSize = AmeCollapsedSize();
+    CGFloat avSize = AmeAvatarSize();
+    CGFloat pad = AmeAvatarPadding();
     self.topOffsetConstraint.constant = expanded ? kExpandedTopOffset : kCollapsedTopOffset;
-    self.widthConstraint.constant = expanded ? kExpandedWidth : kCollapsedSize;
-    self.heightConstraint.constant = expanded ? kExpandedHeight : kCollapsedSize;
-    self.avatarLeadingConstraint.constant = expanded ? 12.0 : 4.0;
-    self.avatarTopConstraint.constant = expanded ? 10.0 : 4.0;
-    self.avatarWidthConstraint.constant = expanded ? 46.0 : 38.0;
-    self.avatarHeightConstraint.constant = expanded ? 46.0 : 38.0;
+    self.widthConstraint.constant = expanded ? (AmeIsPad() ? 280.0 : kExpandedWidth) : collSize;
+    self.heightConstraint.constant = expanded ? (AmeIsPad() ? 320.0 : kExpandedHeight) : collSize;
+    self.avatarLeadingConstraint.constant = expanded ? 12.0 : pad;
+    self.avatarTopConstraint.constant = expanded ? 10.0 : pad;
+    self.avatarWidthConstraint.constant = expanded ? (AmeIsPad() ? 52.0 : 46.0) : avSize;
+    self.avatarHeightConstraint.constant = expanded ? (AmeIsPad() ? 52.0 : 46.0) : avSize;
     self.cardStackTopConstraint.active = expanded;
     self.cardStackBottomConstraint.active = expanded;
     [self.toggleButton setImage:[UIImage systemImageNamed:(expanded ? @"chevron.up" : @"chevron.down")]
@@ -296,7 +324,7 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
     self.chipRow.userInteractionEnabled = expanded;
     self.toggleButton.userInteractionEnabled = expanded;
     self.accountNameLabel.userInteractionEnabled = expanded;
-    CGFloat radius = expanded ? 22.0 : kCollapsedSize / 2.0;
+    CGFloat radius = expanded ? 22.0 : collSize / 2.0;
 
     void (^changes)(void) = ^{
         self.cardStack.alpha = expanded ? 1.0 : 0.0;

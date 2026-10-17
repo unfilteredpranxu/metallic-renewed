@@ -1503,10 +1503,11 @@ self.actionPanel.chooseVersionButton.hidden = YES;
 
 // Profile panel: just the round picture, all the way up in the top-right corner (level with the nav bar).
 // Width/height are owned by the panel itself (it grows when opened).
-NSLayoutConstraint *panelTop = [self.actionPanel.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:15];
+NSLayoutConstraint *panelTop = [self.actionPanel.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0];
 self.actionPanel.topOffsetConstraint = panelTop;
+CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) ? -20.0 : -16.0;
 [NSLayoutConstraint activateConstraints:@[
-    [self.actionPanel.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16],
+    [self.actionPanel.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:trailingMargin],
     panelTop,
 ]];
 [self.actionPanel.launchButton addTarget:self action:@selector(norightLaunchTapped) forControlEvents:UIControlEventTouchUpInside];

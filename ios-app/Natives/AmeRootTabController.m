@@ -76,11 +76,12 @@ NSString * const AmeTabTappedNotification = @"AmeTabTapped";   // ★ [ROOTTAB]
     if (fromView && fromView.superview == container) {
         [fromView removeFromSuperview];    // ★ Key: remove the old page immediately, leaving no snapshot ⇒ no overlap.
     }
-    // The tab bar is also a sibling of the container: after adding the new page on top, bring the bar
-    // back to the front so content does not cover it.
     for (UIView *sv in container.subviews) {
         if ([sv isKindOfClass:[UITabBar class]]) {
-            [container bringSubviewToFront:sv];
+            sv.hidden = YES;
+            sv.alpha = 0.0;
+            sv.userInteractionEnabled = NO;
+            sv.transform = CGAffineTransformMakeTranslation(0, -9999);
         }
     }
     [transitionContext completeTransition:YES];
@@ -126,13 +127,10 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
             default: content = [[UIViewController alloc] init]; break;
         }
 
-        // ★ [ROOTTAB-FIX] tabBarItem must be set on the content VC: a navigation controller replaces
-        //   its own item with the top page's item — in the previous version it was set on the nav,
-        //   so the third tab appeared as "Session List".
-        content.tabBarItem = [[UITabBarItem alloc] initWithTitle:items[i][@"t"]
-                                                          image:[UIImage systemImageNamed:items[i][@"i"]]
-                                                  selectedImage:nil];
-        content.tabBarItem.tag = i;
+        // Do not set title/image on content.tabBarItem — on iPadOS 18+, UITabBarController
+        // automatically creates a floating top capsule tab bar from tabBarItem titles.
+        // Metallic uses its own custom HomeTopNavView exclusively.
+        content.tabBarItem = [[UITabBarItem alloc] initWithTitle:nil image:nil tag:i];
 
         UIViewController *vc = AmeWrapInNav(content);   // ★ Wrap all pages in nav controllers for nested flows (see RootVC:719 comment).
         // Track the stack depth so the floating Done button knows when to appear.
@@ -155,7 +153,11 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     // window and individual pages handle the wallpaper.
     self.view.backgroundColor = [UIColor clearColor];
     
-    self.tabBar.hidden = YES; // hide the bottom system bar
+    self.tabBar.hidden = YES;
+    self.tabBar.alpha = 0.0;
+    self.tabBar.userInteractionEnabled = NO;
+    self.tabBar.frame = CGRectZero;
+    self.tabBar.transform = CGAffineTransformMakeTranslation(0, -9999);
 
     self.topNav = [[HomeTopNavView alloc] init];
     self.topNav.translatesAutoresizingMaskIntoConstraints = NO;
@@ -216,8 +218,40 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     };
 }
 
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    self.tabBar.hidden = YES;
+    self.tabBar.alpha = 0.0;
+    self.tabBar.userInteractionEnabled = NO;
+    self.tabBar.frame = CGRectZero;
+    self.tabBar.transform = CGAffineTransformMakeTranslation(0, -9999);
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    self.tabBar.hidden = YES;
+    self.tabBar.alpha = 0.0;
+    self.tabBar.userInteractionEnabled = NO;
+    self.tabBar.frame = CGRectZero;
+    self.tabBar.transform = CGAffineTransformMakeTranslation(0, -9999);
+}
+
+- (void)viewWillLayoutSubviews {
+    [super viewWillLayoutSubviews];
+    self.tabBar.hidden = YES;
+    self.tabBar.alpha = 0.0;
+    self.tabBar.userInteractionEnabled = NO;
+    self.tabBar.frame = CGRectZero;
+    self.tabBar.transform = CGAffineTransformMakeTranslation(0, -9999);
+}
+
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    self.tabBar.hidden = YES;
+    self.tabBar.alpha = 0.0;
+    self.tabBar.userInteractionEnabled = NO;
+    self.tabBar.frame = CGRectZero;
+    self.tabBar.transform = CGAffineTransformMakeTranslation(0, -9999);
     [self.view bringSubviewToFront:self.topNav];
     [self.view bringSubviewToFront:self.floatingDoneButton];
 }

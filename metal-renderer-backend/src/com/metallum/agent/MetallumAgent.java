@@ -128,12 +128,7 @@ implements ClassFileTransformer {
             System.out.println("[MetallumAgent] non-Metal renderer: SDL stubs + metallum classes only (render patches disabled)");
         }
         if (MetallumAgent.isFabricLoaderPresent()) {
-            if (MC_VERSION.contains("26.3")) {
-                System.out.println("[MetallumAgent] Fabric Loader + 26.3 - official mod does not support 26.3, injecting via agent");
-            } else {
-                System.out.println("[MetallumAgent] Fabric Loader detected - skipping injection (use official MetalUniversal Fabric mod)");
-                return;
-            }
+            System.out.println("[MetallumAgent] Fabric Loader detected - injecting pure Metal classes for Fabric 26.2");
         }
         try {
             System.out.println("[MetallumAgent] spvc preload skipped (FIX-LWJGL-INIT)");

@@ -2125,7 +2125,10 @@ int launchJVM(NSString *accountId, id launchTarget, int width, int height, int m
             if (metallumMcVersionId.length > 0) {
                 PUSH_MARGV_FORMAT(@"-Dmetallum.mc.version=%@", metallumMcVersionId);
             }
-            NSLog(@"[JavaLauncher] Metallum agent enabled: -javaagent:metallum_agent.jar (mcVersion=%@)",
+            // 纯净原版 Metal：彻底关闭 Iris / Sodium 桥接，强制走 classes262 原版 Metal 类集
+            PUSH_MARGV_LITERAL("-Dmetallum.iris.bridge=0");
+            setenv("AMETHYST_METALLUM_IRIS", "0", 1);
+            NSLog(@"[JavaLauncher] Metallum agent enabled: -javaagent:metallum_agent.jar (mcVersion=%@, irisBridge=0)",
                   metallumMcVersionId);
         } else {
             NSLog(@"[JavaLauncher] Metallum agent skipped: MC major %ld < 26 (agent needs Java 21+ class files, this session runs Java 8)",

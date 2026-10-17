@@ -162,7 +162,7 @@ GLSLANG_GROUP_SRC      = os.path.join(HERE, "shader_glslang", "blaze3d")
 #   agent 只按前缀枚举/读取 blaze3d 类集(collectBlaze3dMissing(resPrefix) 与
 #   readClassResource(resPrefix, …)), jar 根副本【从未被读】⇒ 移除后功能零变化,
 #   只消除影子风险。本脚本同时把历史遗留的 jar 根 blaze3d 镜像【清掉】(幂等)。
-GLSLANG_IFACE_PREFIXES = ["classes262iris/", "classes262/"]
+GLSLANG_IFACE_PREFIXES = ["classes262/"]
 ROOT_BLAZE3D_PREFIX = "com/mojang/blaze3d/"
 
 

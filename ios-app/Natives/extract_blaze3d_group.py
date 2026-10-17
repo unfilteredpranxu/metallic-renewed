@@ -51,7 +51,7 @@ RESOLVABLE_OUT = os.path.join(HERE, "shader_glslang", "blaze3d_group_resolvable.
 MIXIN_TARGETS_OUT = os.path.join(HERE, "shader_glslang", "blaze3d_group_mixintargets.txt")
 
 B3 = "com/mojang/blaze3d/"
-PREFIXES = ["classes262iris/", "classes262/", ""]
+PREFIXES = ["classes262/", ""]
 IFACES = ["com/mojang/blaze3d/systems/GpuSurfaceBackend",
           "com/mojang/blaze3d/systems/CommandEncoderBackend",
           "com/mojang/blaze3d/systems/TransientMemory"]

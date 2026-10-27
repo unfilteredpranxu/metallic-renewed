@@ -17,13 +17,14 @@ static const CGFloat kNavItemPadH   = 16.0;   // horizontal padding inside each 
 @property (nonatomic, strong) NSArray<UIView *> *items;
 @property (nonatomic, strong) NSArray<UIImageView *> *icons;
 @property (nonatomic, strong) NSArray<UILabel *> *labels;
+@property (nonatomic, strong) NSArray<UIButton *> *buttons;
 @property (nonatomic, assign) CGFloat lastBarWidth;
 @end
 
 @implementation HomeTopNavView
 
 static UIColor *NavAccentColor(void) {
-    return AmeThemeTintColor();   // follows the theme color chosen in Settings (default pink)
+    return AmeUIAccentColor();   // follows the theme color chosen in Settings (default pink)
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -35,11 +36,12 @@ static UIColor *NavAccentColor(void) {
                                                  selector:@selector(tabNote:)
                                                      name:@"AmeTabSelected"
                                                    object:nil];
-        // Recolor the sliding bubble and the selected item when the theme color changes.
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(themeChanged:)
-                                                     name:@"LauncherAppearanceChanged"
-                                                   object:nil];
+        // One visual refresh path; no extra tab-selection observer or callback.
+        for (NSString *name in @[@"LauncherAppearanceChanged", @"UIThemeChanged", AMEGlassStyleChangedNotification,
+                                 UIContentSizeCategoryDidChangeNotification]) {
+            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(themeChanged:)
+                                                         name:name object:nil];
+        }
     }
     return self;
 }
@@ -62,7 +64,7 @@ static UIColor *NavAccentColor(void) {
     self.selector.userInteractionEnabled = NO;
     self.selector.clipsToBounds = YES;
     self.selector.layer.cornerCurve = kCACornerCurveContinuous;
-    self.selector.contentView.backgroundColor = [NavAccentColor() colorWithAlphaComponent:0.22];
+    self.selector.contentView.backgroundColor = AmeUISelectedFillColor();
     [self.bar addSubview:self.selector];
 
     // 3) Items: icon + label. The last one (Help) is icon-only and does not switch tabs.
@@ -82,6 +84,7 @@ static UIColor *NavAccentColor(void) {
     NSMutableArray<UIView *> *items = [NSMutableArray array];
     NSMutableArray<UIImageView *> *icons = [NSMutableArray array];
     NSMutableArray<UILabel *> *labels = [NSMutableArray array];
+    NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
     for (NSInteger index = 0; index < (NSInteger)symbols.count; index++) {
         UIImageView *icon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:symbols[index]]];
         icon.translatesAutoresizingMaskIntoConstraints = NO;
@@ -91,7 +94,7 @@ static UIColor *NavAccentColor(void) {
 
         UILabel *label = [[UILabel alloc] init];
         label.text = titles[index];
-        label.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+        label.font = AmeUINavigationFont();
         label.hidden = (titles[index].length == 0);
 
         UIStackView *content = [[UIStackView alloc] initWithArrangedSubviews:@[icon, label]];
@@ -100,6 +103,7 @@ static UIColor *NavAccentColor(void) {
         content.alignment = UIStackViewAlignmentCenter;
         content.spacing = 7.0;
         content.userInteractionEnabled = NO;
+        content.accessibilityElementsHidden = YES;
 
         UIView *item = [[UIView alloc] init];
         item.translatesAutoresizingMaskIntoConstraints = NO;
@@ -130,10 +134,12 @@ static UIColor *NavAccentColor(void) {
         [items addObject:item];
         [icons addObject:icon];
         [labels addObject:label];
+        [buttons addObject:hit];
     }
     self.items = items;
     self.icons = icons;
     self.labels = labels;
+    self.buttons = buttons;
 
     self.stack = [[UIStackView alloc] initWithArrangedSubviews:items];
     self.stack.translatesAutoresizingMaskIntoConstraints = NO;
@@ -165,8 +171,7 @@ static UIColor *NavAccentColor(void) {
     }
 }
 
-/// Moves the glass selector over the selected item. Animated moves use a spring with a small
-/// squash-and-stretch so the capsule behaves like a drop of liquid sliding between items.
+/// Move only the decorative selection capsule; controller transitions remain untouched.
 - (void)placeSelectorAnimated:(BOOL)animated {
     if (self.items.count == 0 || self.bar.bounds.size.width < 1.0) return;
     [self.bar layoutIfNeeded];
@@ -182,31 +187,15 @@ static UIColor *NavAccentColor(void) {
     };
 
     BOOL firstPlacement = (self.selector.bounds.size.width < 1.0);
-    if (!animated || firstPlacement) {
+    if (!animated || firstPlacement || UIAccessibilityIsReduceMotionEnabled()) {
+        [self.selector.layer removeAllAnimations];
         self.selector.transform = CGAffineTransformIdentity;
         place();
         return;
     }
 
     UIViewAnimationOptions options = UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction;
-    [UIView animateWithDuration:0.55
-                          delay:0
-         usingSpringWithDamping:0.62
-          initialSpringVelocity:0.5
-                        options:options
-                     animations:place
-                     completion:nil];
-    [UIView animateKeyframesWithDuration:0.55
-                                   delay:0
-                                 options:UIViewKeyframeAnimationOptionAllowUserInteraction
-                              animations:^{
-        [UIView addKeyframeWithRelativeStartTime:0.0 relativeDuration:0.35 animations:^{
-            self.selector.transform = CGAffineTransformMakeScale(1.16, 0.90);
-        }];
-        [UIView addKeyframeWithRelativeStartTime:0.35 relativeDuration:0.65 animations:^{
-            self.selector.transform = CGAffineTransformIdentity;
-        }];
-    } completion:nil];
+    [UIView animateWithDuration:0.22 delay:0 options:options animations:place completion:nil];
 }
 
 - (void)setSelectedIndex:(NSInteger)index {
@@ -214,16 +203,34 @@ static UIColor *NavAccentColor(void) {
     _selectedIndex = index;
     for (NSInteger i = 0; i < (NSInteger)self.icons.count; i++) {
         BOOL selected = (i == index);
-        UIColor *color = selected ? NavAccentColor() : [UIColor colorWithWhite:0.92 alpha:0.9];
+        UIColor *color = selected ? NavAccentColor() : AmeUIPrimaryTextColor();
         self.icons[i].tintColor = color;
         self.labels[i].textColor = color;
+        self.buttons[i].accessibilityTraits = UIAccessibilityTraitButton | (selected ? UIAccessibilityTraitSelected : 0);
     }
     [self placeSelectorAnimated:changed];
 }
 
 - (void)themeChanged:(NSNotification *)notification {
-    self.selector.contentView.backgroundColor = [NavAccentColor() colorWithAlphaComponent:0.22];
-    self.selectedIndex = _selectedIndex;   // re-applies the selected icon / label color
+    if ([notification.name isEqualToString:AMEGlassStyleChangedNotification]) {
+        AmeApplyGlassChipStyle(self.bar, kNavBarHeight / 2.0, YES);
+        self.selector.effect = AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial);
+    }
+    self.selector.contentView.backgroundColor = AmeUISelectedFillColor();
+    if ([notification.name isEqualToString:UIContentSizeCategoryDidChangeNotification]) {
+        for (UILabel *label in self.labels) label.font = AmeUINavigationFont();
+        // Text width can change without the outer bar width changing.
+        self.lastBarWidth = -1.0;
+        [self setNeedsLayout];
+    }
+    self.selectedIndex = _selectedIndex;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    // Refresh layer-backed colors only in the existing opt-in highlight path.
+    if (AMEGlassStyleAllowsHandDrawnGlass()) AmeApplyGlassChipStyle(self.bar, kNavBarHeight / 2.0, YES);
+    self.selectedIndex = _selectedIndex;
 }
 
 - (void)tabNote:(NSNotification *)notification {

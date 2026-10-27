@@ -2,7 +2,7 @@
 
 ## Authority and implementation boundary
 
-Primary visual authority: the user's six screenshots, which are NOT attached in the current conversation. The following is the user's textual design specification and source-informed implementation plan, not a screenshot-verified design. Do not invent pixel measurements, color hex values, font sizes or screenshot fidelity. Read `METALLIC_RENEWED_PROGRESS.md` first for scope, existing actions, protected modules and baseline.
+Primary visual authority: the screenshot set attached to M2 (including repeated Home, Appearance, Downloads and Settings captures). These were reviewed in M2. The following records their visual direction alongside the user's textual specification; it does not claim native screenshot matching. Do not invent pixel measurements, color hex values, font sizes or screenshot fidelity. Read `METALLIC_RENEWED_PROGRESS.md` first for scope, existing actions, protected modules and baseline.
 
 Same application, same engine and same functionality; customize existing UIKit. Keep existing SwiftUI components when working. M0 implements no redesign.
 
@@ -34,3 +34,16 @@ Current root order is Home / Downloads / AI / Instances / Settings. Desired prim
 Support iPhone/iPad, compact/wide widths, supported portrait/landscape, safe areas, keyboard, sheets and anchored popovers. Avoid clipping, double insets and invisible interactive overlays. Dynamic Type, VoiceOver, meaningful labels, contrast, touch comfort and reduced-motion behavior require device review. Do not optimize for a single iPad screenshot at the expense of iPhone.
 
 Existing source layout values are recorded in progress as compatibility constraints, not reference measurements. All visual, functional and persistence acceptance checks remain PENDING until executed; see `METALLIC_RENEWED_TEST_MATRIX.md`.
+
+
+## M2 reference interpretation and implemented foundation
+
+The supplied captures show wide wallpaper composition, restrained dark neutral translucent surfaces, thin low-contrast outlines, rounded panels, pill navigation with a distinct filled selected segment, SF Symbols, and readable main/supporting text hierarchy. Home includes both empty and selected-instance states; Appearance distinguishes UI Blur/Panel Opacity from wallpaper; Downloads uses a category rail and quiet rows; Settings uses a rail plus grouped panels. These compositions guide subsequent milestones and are not implemented wholesale in M2. Exact colors, point sizes, radii and spacing cannot be reliably inferred from scaled screenshots alone. No new gradients/neon/dashboard layout is introduced.
+
+Implemented APIs in existing `UIKit+GlassSurface.h`: `AmeUIAccentColor` delegates to `AmeThemeTintColor` (existing accent preference/default); semantic primary/secondary/tertiary text, disabled, destructive, panel tint, border, selection-fill and overlay-contrast helpers; `AmeUIResolvedColor` for host-trait CGColors; `AmeUIHairlineWidth`; `AmeUIFont` roles and bounded `AmeUINavigationFont`. Existing card radius helpers and true native material resolver remain the surface foundation. Spacing tokens are conservative implementation defaults, not reference measurements. Font role users must enable adjustsFontForContentSizeCategory on their labels; navigation explicitly refreshes its capped font on content-size changes.
+
+Applied now: existing shared glass button has a quiet material/semantic border instead of permanent glow, optional primary/secondary/subtle/navigation/destructive roles, highlighted/disabled/selected appearance and opt-in busy presentation. Existing bottom actions use secondary role. Navigation adopts semantic foreground/selection, restrained animation/Reduce Motion and selected accessibility state. No new target/action route, product control or preference key exists. Full settings/slider design, screen cards and wallpaper layouts remain planned.
+
+Theme auto/light/dark and notification/window flow remain unchanged. Glass defaults/migration, existing material availability detection and native fallback remain unchanged. No wallpaper dimming or slider values are inferred from panel styles. The new contrast token is a foreground decoration resource, not a wallpaper preference. Current material integration does not implement the reference's blur-zero behavior or change existing intensity/opacity ranges; resolve that separately in M3 using existing functionality.
+
+Existing fixed 60/76 navigation geometry and 36-point bottom actions remain; 44-point touch-size token is guidance for later adaptive layouts, not a claim that every current control meets it. iPhone/wide-screen/large-type/VoiceOver/keyboard/rotation/contrast acceptance remains PENDING. No build/visual/device result supersedes M1's BLOCKED state.

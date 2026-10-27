@@ -1,5 +1,9 @@
 # Metallic Renewed progress
 
+## Current continuation checkpoint
+
+M2 implementation is complete in source; native build remains BLOCKED under M1. Read the M2 record at the end before editing. Active branch: `feat/renewed-uikit-home`. Next milestone: Wallpaper, Glass, Blur and Opacity integration. Earlier M0/M1 sections are historical records, not instructions to repeat those audits.
+
 ## Permanent scope
 
 This is UIKit customization of the existing application, not a port. Success means the same application, engine, and functionality with a better UI.
@@ -177,3 +181,39 @@ Changed files: only `docs/METALLIC_RENEWED_PROGRESS.md` and `docs/METALLIC_RENEW
 ### M1 commit record
 
 Verification documentation: `299449a4e05dd18fc224a08d5aa6065865346684` (`docs(build): record blocked M1 verification`). Final bookkeeping commit records this SHA; resolve its own SHA with `git log -1 --format=%H -- docs/METALLIC_RENEWED_PROGRESS.md`. Precommit and post-inspection protection gates PASS: only the two M1 documentation files changed, and every non-document tracked input remains identical to protected baseline. M1 stays BLOCKED; native build/artifact/device results remain pending. Next milestone: Unified UIKit design foundation.
+
+
+## M2: shared UIKit appearance foundation (2026-10-27)
+
+**Status: COMPLETE in source, with native build and all runtime/visual tests pending.** Started on verified feature branch at published M1 commit `a08a458a78e908bb993b7f7edc84359295c740fc`, clean working tree, required baseline ancestry preserved. The attached M2 screenshot set was visible and reviewed (including repeated captures of Home empty/selected-instance states, Appearance, Downloads and Settings). This supersedes earlier missing-reference observations. No screen layout was invented or redesigned in M2.
+
+### Implemented UI changes / interfaces
+
+Only four existing UI files changed; no new compilation unit or build registration:
+
+- `ios-app/Natives/UIKit+GlassSurface.h`: additive `AmeUI*` semantic color/geometry helpers and `AmeUIFont(AmeUIFontRole)` for screen/section/card/body/status/button/description text. Accent delegates to the unchanged `AmeThemeTintColor` preference adapter. Primary/secondary/tertiary/disabled/destructive colors use semantic UIKit colors; panel/selection/border and overlay contrast tokens are trait aware. Layer-backed colors use `AmeUIResolvedColor` and display-scale hairlines. Existing card radius enum (13/16/22/26) and material helpers remain unchanged. New spacing values (16 margin/padding, 8 item gap, 24 section gap, 44 minimum touch target) are implementation defaults, NOT inferred screenshot measurements; only the unchanged 8-point bottom-row spacing is adopted in this milestone. Other tokens are opt-in for later screens.
+- `ios-app/Natives/BottomActionBarView.h`: preserves existing class/function names; adds `AmeGlassButtonRole` primary/secondary/subtle/navigation/destructive and properties `ameRole`, `ameShowsActivityIndicator`. Roles style existing controls; no new product buttons/settings were created. Primary is default. Busy property is presentation only: action owners must retain existing enable/busy guards; no launch logic is connected to it or replaced.
+- `ios-app/Natives/BottomActionBarView.m`: existing `AmePinkGlassButton` now has one real native material instead of permanent gradient/glow decoration. Thin semantic border and foreground states, opt-in low-strength hand-drawn tint, disabled/highlighted/selected appearance, optional noninteractive activity indicator, UIFontMetrics button typography. Bottom row adopts secondary role; its actual Execute Jar / Choose Version buttons remain the same objects. Effect created once and replaced only on explicit material-style notification; layout adjusts frames/radii only. No new constraints or observers in layout; each instance registers visual observers once and removes them on deallocation. Trait changes refresh layer-backed borders. No preference writes.
+- `ios-app/Natives/HomeTopNavView.m`: unselected text now semantic rather than hardcoded near-white; selected accent uses existing preference adapter, selector uses semantic neutral fill. Text scaling bounded to 20 points for the existing fixed-height bar, with content-size notification and width-cache invalidation. Selection capsule moves in a restrained 0.22-second animation, no squash, immediate placement with Reduce Motion. Hit buttons expose selected accessibility traits; decorative text/icon stack is hidden from accessibility to avoid duplicate elements. Existing tap selector/event and tab notification callback are byte-identical. Material/theme changes have one visual refresh path and cleanup.
+
+### Preserved architecture and settings
+
+No controller, containment, root installation, navigation stack, zero-duration tab-transition safeguard, Home refresh, right-panel launch/JIT bridge, theme persistence or SceneDelegate implementation changed. Tab arrays/order and baseline hidden AI slot remain unchanged (no removal or new AI restriction). HomeTopNavView's 60-point height, existing constraints, and the untouched 76-point reservations are preserved. Existing 36-point bottom actions are NOT enlarged in M2 because parent geometry is coupled; minimum-touch and full accessibility layout verification remains pending for the later adaptive milestone.
+
+`general.accent_color` adapter and its default are byte-identical; `auto/light/dark`, `UIThemeChanged`, `LauncherAppearanceChanged`, `AMEGlassStyleChanged` are reused, no parallel theme store. `AMEGlassStyle.h` and `BackgroundManager.h/.m` are unchanged, preserving absent-key checks, migrations, nil-safe wallpaper persistence, slider ranges/defaults, `background_ui_opacity`, `background_blur_intensity`, and glass keys. Current material behavior remains governed by existing resolver, with fallback to public system UIBlurEffect. No new private API or tuning introduced; existing legacy private-tuning helpers were not edited or invoked by new code. The material remains beneath title/image and does not intercept touch/accessibility. No opacity/blur sliders or wallpaper controls are implemented in M2; M3 must integrate their existing semantics carefully.
+
+### Validation actually executed
+
+- `git diff --check`: PASS.
+- Objective-C grammar parsing using tree-sitter + tree-sitter-objc, installed only under `/tmp/metallic-m2-parser`: both changed .m files parsed with zero errors directly. Both changed .h files and their baseline versions parsed with zero errors after parser-only expansion of NS_ENUM and removal/normalization of NS_ASSUME_NONNULL/FOUNDATION_EXPORT macros. This is grammar validation, NOT Apple SDK type checking, Objective-C linking, IPA compilation, visual verification or button-tap testing. No C/Objective-C compiler with UIKit SDK is available here.
+- Targeted assertions: nav `tapped:` and `tabNote:` bodies, existing hit target/event, AI hidden-slot statement, geometry constants/anchor lines, bottom-button anchor lines/titles, and `AmeThemeTintColor` implementation are unchanged. No new/changed preference keys. Local quoted imports resolve; HomeTopNavView.m and BottomActionBarView.m already appear in native CMakeLists.txt. PASS.
+- Reviewed entire UI diff: presentation-only enum/tokens/styles/states/observers/animation/accessibility; no action selectors replaced, callbacks forwarded twice, added gestures, enabled-state mutation, or controller changes. Only material/indicator descendants are noninteractive. Observer cleanup and construction guards retained. Font/style changes do not add constraints. Public APIs introduced are available before the existing iOS 14 minimum; newer glass remains resolved by the existing helper.
+- Protected gate: compare every path to `fe379d4f3723764ec0a8b6a6728368ac3492c4d8` allowing ONLY these four UI files and the three M0/M1/M2 docs. All other tracked content identical: **engine/framework/JIT/Java/Metal/launch/auth/startup/signing/dependencies/build/workflow diff ZERO**. This gate is repeated before committing. UI spec and matrix updated below; no unrelated or new source files.
+
+### Limitations / risks / exact next action
+
+M1 stays **BLOCKED**, not failed: existing CI substitutes/patches protected inputs and this Linux worker has no Xcode/Apple SDK. No unsuitable workflow was dispatched. No native compile, screenshot render, simulator, device tap, lifecycle, persistence restart, JIT, Java, Metal or gameplay test passed. Historical working IPA is not evidence of these source changes running successfully.
+
+Residual risks needing native validation: dynamic type versus fixed pill/bottom-bar geometry, light-theme contrast over arbitrary dark wallpaper, disabled/selected combinations and UIKit system-button highlighting, semantic border appearance on each display scale, busy presentation with existing launch owner, material changes while visible, rapid-tap/rotation behavior, and existing compact layout limitations. Opt-in roles/busy presentation beyond current primary/secondary callers need future adoption testing. No claim of matching complete screenshots. Screenshots' JIT labels, runtime value 0 and example profiles are visual references, not values to hardcode.
+
+**Next milestone: M3 — Wallpaper, Glass, Blur and Opacity integration.** Start with this checkpoint, the existing BackgroundSettingsViewController actions and BackgroundManager public interface, AMEGlassStyle, and M0 persistence map. Use the newly supplied Appearance reference; preserve engine settings. Confirm current shared blur/opacity behavior, design safe UI-only integration with the existing keys, and distinguish wallpaper dimming/blur from interface tint/material. Do not promise a physical blur radius or change ranges/defaults. Keep M1 build blockers and all device/runtime tests open. Do not restructure navigation or redesign Home/Downloads/Settings in that milestone unless explicitly requested.

@@ -15,11 +15,7 @@ UIColor *AmeThemeTintColor(void) {
 
 @interface AmePinkGlassButton ()
 @property (nonatomic, strong) UIVisualEffectView *blurView;
-@property (nonatomic, strong) CAGradientLayer *tintLayer;        // translucent theme tint, edge to edge
-@property (nonatomic, strong) CAGradientLayer *highlightLayer;   // specular sheen on the top half
-@property (nonatomic, strong) CAGradientLayer *glowLayer;        // soft inner glow along the bottom edge
-@property (nonatomic, strong) CAGradientLayer *rimLayer;         // gradient hairline (bright top, tinted bottom)
-@property (nonatomic, strong) CAShapeLayer *rimMask;
+@property (nonatomic, strong) UIActivityIndicatorView *activityIndicator;
 @end
 
 @implementation AmePinkGlassButton
@@ -27,84 +23,91 @@ UIColor *AmeThemeTintColor(void) {
 - (void)ameBuildGlassIfNeeded {
     if (self.blurView) return;
     self.backgroundColor = UIColor.clearColor;
-    self.clipsToBounds = NO;                       // lets the tinted glow shadow show; the glass clips itself
     self.layer.cornerCurve = kCACornerCurveContinuous;
+    self.clipsToBounds = YES;
 
-    // 1) Glass base: the system Liquid Glass material on iOS 26+, a thin blur on older systems.
-    self.blurView = [[UIVisualEffectView alloc] initWithEffect:AmeGlassEffect(UIBlurEffectStyleSystemUltraThinMaterial)];
+    // One native material, beneath UIKit's title/image. No gesture recognizer or action forwarding.
+    self.blurView = [[UIVisualEffectView alloc] initWithEffect:AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial)];
     self.blurView.userInteractionEnabled = NO;
+    self.blurView.isAccessibilityElement = NO;
     self.blurView.clipsToBounds = YES;
     self.blurView.layer.cornerCurve = kCACornerCurveContinuous;
     [self insertSubview:self.blurView atIndex:0];
 
-    // 2) Light theme tint over the glass (kept translucent so the wallpaper shows through).
-    self.tintLayer = [CAGradientLayer layer];
-    self.tintLayer.startPoint = CGPointMake(0.5, 0.0);
-    self.tintLayer.endPoint = CGPointMake(0.5, 1.0);
-    [self.blurView.contentView.layer addSublayer:self.tintLayer];
-
-    // 3) Soft glow rising from the bottom edge (reads as light refracting through the glass).
-    self.glowLayer = [CAGradientLayer layer];
-    self.glowLayer.startPoint = CGPointMake(0.5, 1.0);
-    self.glowLayer.endPoint = CGPointMake(0.5, 0.45);
-    [self.blurView.contentView.layer addSublayer:self.glowLayer];
-
-    // 4) Specular sheen along the top half.
-    self.highlightLayer = [CAGradientLayer layer];
-    self.highlightLayer.colors = @[
-        (id)[UIColor colorWithWhite:1.0 alpha:0.50].CGColor,
-        (id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor
-    ];
-    self.highlightLayer.startPoint = CGPointMake(0.5, 0.0);
-    self.highlightLayer.endPoint = CGPointMake(0.5, 0.60);
-    [self.blurView.contentView.layer addSublayer:self.highlightLayer];
-
-    // 5) Gradient hairline rim (masked to a stroke): bright at the top, theme-tinted at the bottom.
-    self.rimLayer = [CAGradientLayer layer];
-    self.rimLayer.startPoint = CGPointMake(0.5, 0.0);
-    self.rimLayer.endPoint = CGPointMake(0.5, 1.0);
-    self.rimMask = [CAShapeLayer layer];
-    self.rimMask.fillColor = UIColor.clearColor.CGColor;
-    self.rimMask.strokeColor = UIColor.whiteColor.CGColor;
-    self.rimMask.lineWidth = 1.2;
-    self.rimLayer.mask = self.rimMask;
-    [self.blurView.contentView.layer addSublayer:self.rimLayer];
-
-    self.layer.shadowOffset = CGSizeMake(0, 4);
-    self.layer.shadowRadius = 10.0;
-    self.layer.shadowOpacity = 0.35;
-
+    self.titleLabel.font = AmeUIFont(AmeUIFontRoleButton);
+    self.titleLabel.adjustsFontForContentSizeCategory = YES;
+    for (NSString *name in @[@"LauncherAppearanceChanged", @"UIThemeChanged", AMEGlassStyleChangedNotification]) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(ameAppearanceChanged:)
+                                                     name:name object:nil];
+    }
     [self ameApplyThemeColors];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(ameApplyThemeColors)
-                                                 name:@"LauncherAppearanceChanged"
-                                               object:nil];
 }
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-/// Re-reads the theme color and recolors every tinted part (tint, glow, rim, icon, shadow).
+- (void)ameAppearanceChanged:(NSNotification *)notification {
+    // Replace the effect only for a material-style change, not for every layout/theme update.
+    if ([notification.name isEqualToString:AMEGlassStyleChangedNotification]) {
+        self.blurView.effect = AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial);
+    }
+    [self ameApplyThemeColors];
+}
+
 - (void)ameApplyThemeColors {
-    UIColor *tint = AmeThemeTintColor();
-    self.tintColor = tint;
+    UIColor *foreground = AmeUIPrimaryTextColor();
+    if (self.ameRole == AmeGlassButtonRolePrimary) foreground = AmeUIAccentColor();
+    if (self.ameRole == AmeGlassButtonRoleSubtle) foreground = AmeUISecondaryTextColor();
+    if (self.ameRole == AmeGlassButtonRoleDestructive) foreground = AmeUIDestructiveColor();
+    self.tintColor = self.enabled ? foreground : AmeUIDisabledColor();
+    [self setTitleColor:foreground forState:UIControlStateNormal];
+    [self setTitleColor:AmeUIDisabledColor() forState:UIControlStateDisabled];
+    [self setTitleColor:foreground forState:UIControlStateHighlighted];
+    [self setTitleColor:foreground forState:UIControlStateSelected];
+
+    // Quiet native surfaces replace the old permanent neon glow. Keep hand-drawn tint opt-in.
+    BOOL selectedPill = self.ameRole == AmeGlassButtonRoleNavigation && self.selected;
+    self.blurView.contentView.backgroundColor = selectedPill ? AmeUISelectedFillColor() : UIColor.clearColor;
+    if (!selectedPill && AMEGlassStyleAllowsHandDrawnGlass()) {
+        self.blurView.contentView.backgroundColor = [foreground colorWithAlphaComponent:0.08];
+    }
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.tintLayer.colors = @[
-        (id)[tint colorWithAlphaComponent:0.30].CGColor,
-        (id)[tint colorWithAlphaComponent:0.10].CGColor
-    ];
-    self.glowLayer.colors = @[
-        (id)[tint colorWithAlphaComponent:0.38].CGColor,
-        (id)[tint colorWithAlphaComponent:0.0].CGColor
-    ];
-    self.rimLayer.colors = @[
-        (id)[UIColor colorWithWhite:1.0 alpha:0.80].CGColor,
-        (id)[tint colorWithAlphaComponent:0.65].CGColor
-    ];
-    self.layer.shadowColor = tint.CGColor;
+    self.layer.borderWidth = AmeUIHairlineWidth(self);
+    self.layer.borderColor = AmeUIResolvedColor(AmeUIBorderColor(), self).CGColor;
     [CATransaction commit];
+    self.activityIndicator.color = foreground;
+    [self ameUpdateControlAppearance];
+}
+
+- (void)ameUpdateControlAppearance {
+    // Dim the decorative material, not the whole control: labels remain legible over wallpaper.
+    self.blurView.alpha = self.enabled ? (self.highlighted ? 0.75 : 1.0) : 0.55;
+    self.titleLabel.alpha = self.ameShowsActivityIndicator ? 0.0 : 1.0;
+    self.imageView.alpha = self.ameShowsActivityIndicator ? 0.0 : 1.0;
+}
+
+- (void)setAmeRole:(AmeGlassButtonRole)ameRole {
+    _ameRole = ameRole;
+    [self ameApplyThemeColors];
+}
+
+- (void)setAmeShowsActivityIndicator:(BOOL)show {
+    _ameShowsActivityIndicator = show;
+    if (show && !self.activityIndicator) {
+        self.activityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+        self.activityIndicator.userInteractionEnabled = NO;
+        self.activityIndicator.isAccessibilityElement = NO;
+        self.activityIndicator.hidesWhenStopped = YES;
+        [self addSubview:self.activityIndicator];
+    }
+    self.activityIndicator.color = self.tintColor;
+    if (show) [self.activityIndicator startAnimating];
+    else [self.activityIndicator stopAnimating];
+    [self ameUpdateControlAppearance];
+    [self setNeedsLayout];
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -121,28 +124,34 @@ UIColor *AmeThemeTintColor(void) {
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    CGRect bounds = self.bounds;
-    CGFloat radius = MIN(bounds.size.width, bounds.size.height) / 2.0;
+    CGFloat radius = MIN(self.bounds.size.width, self.bounds.size.height) / 2.0;
     self.layer.cornerRadius = radius;
-    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:bounds cornerRadius:radius].CGPath;
-    self.blurView.frame = bounds;
+    self.blurView.frame = self.bounds;
     self.blurView.layer.cornerRadius = radius;
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.tintLayer.frame = bounds;
-    self.glowLayer.frame = bounds;
-    self.highlightLayer.frame = bounds;
-    self.rimLayer.frame = bounds;
-    CGRect inset = CGRectInset(bounds, 0.6, 0.6);
-    self.rimMask.frame = bounds;
-    self.rimMask.path = [UIBezierPath bezierPathWithRoundedRect:inset cornerRadius:MIN(inset.size.width, inset.size.height) / 2.0].CGPath;
-    [CATransaction commit];
+    self.activityIndicator.center = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
     [self sendSubviewToBack:self.blurView];
+    [self ameUpdateControlAppearance];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    // UIKit resolves semantic view colors; explicitly refresh CGColor snapshots for borders.
+    [self ameApplyThemeColors];
+}
+
+- (void)setEnabled:(BOOL)enabled {
+    [super setEnabled:enabled];
+    [self ameApplyThemeColors];
+}
+
+- (void)setSelected:(BOOL)selected {
+    [super setSelected:selected];
+    [self ameApplyThemeColors];
 }
 
 - (void)setHighlighted:(BOOL)highlighted {
     [super setHighlighted:highlighted];
-    self.alpha = highlighted ? 0.75 : 1.0;
+    [self ameUpdateControlAppearance];
 }
 
 @end
@@ -159,12 +168,12 @@ void AmeApplyPinkGlassButtonStyle(UIButton *b) {
 
 @implementation BottomActionBarView
 
-/// Builds a button styled exactly like the "Sign In and Launch" capsule:
-/// pink liquid glass, pink hairline border, subheadline label, pink icon.
+/// Existing bottom actions share the native secondary-action appearance.
 static UIButton *MakeBarButton(NSString *title, NSString *icon) {
     UIButton *b = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
     b.translatesAutoresizingMaskIntoConstraints = NO;
-    b.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
+    ((AmePinkGlassButton *)b).ameRole = AmeGlassButtonRoleSecondary;
+    b.titleLabel.font = AmeUIFont(AmeUIFontRoleButton);
     b.titleLabel.adjustsFontSizeToFitWidth = YES;
     b.titleLabel.minimumScaleFactor = 0.7;
     [b setTitle:title forState:UIControlStateNormal];
@@ -187,7 +196,7 @@ static UIButton *MakeBarButton(NSString *title, NSString *icon) {
     UIStackView *row = [[UIStackView alloc] initWithArrangedSubviews:@[_executeJarButton, _chooseVersionButton]];
     row.axis = UILayoutConstraintAxisHorizontal;
     row.distribution = UIStackViewDistributionFillEqually;
-    row.spacing = 8;
+    row.spacing = AmeUIItemSpacing;
     row.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:row];
 

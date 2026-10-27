@@ -27,6 +27,7 @@
 //   本文件所有「纯代码玻璃」助手(描边/内高光/外阴影/私有 backdrop 调参/玻璃底填充)
 //   都按它收敛:iOS<26 ⇒ 原生(全部失效);iOS>=26 且非「原生」设置 ⇒ 液态玻璃(系统 UIGlassEffect)。
 #import "AMEGlassStyle.h"
+#import "BottomActionBarView.h"   // Existing launcher accent preference adapter
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -140,6 +141,73 @@ static inline UIColor *AmeSideColor(void) {
 /// 分段 / 标签底:深 rgba(118,118,128,.28) / 浅 rgba(118,118,128,.12)(SPEC §2.1 seg)
 static inline UIColor *AmeSegColor(void) {
     return AmeDynamicColor(AmeRGBA(118, 118, 128, 0.28), AmeRGBA(118, 118, 128, 0.12));
+}
+
+#pragma mark - Metallic Renewed shared UIKit foundation
+
+// Launcher UI tokens only. Existing preference storage/material resolution stays authoritative.
+// New screen layouts should opt into these values; do not replace the coupled 60/76pt nav geometry.
+static const CGFloat AmeUIHorizontalMargin = 16.0;
+static const CGFloat AmeUIItemSpacing = 8.0;
+static const CGFloat AmeUICardPadding = 16.0;
+static const CGFloat AmeUISectionSpacing = 24.0;
+static const CGFloat AmeUIMinimumTouchSize = 44.0;
+
+static inline UIColor *AmeUIAccentColor(void) { return AmeThemeTintColor(); }
+static inline UIColor *AmeUIPrimaryTextColor(void) { return UIColor.labelColor; }
+static inline UIColor *AmeUISecondaryTextColor(void) { return UIColor.secondaryLabelColor; }
+static inline UIColor *AmeUITertiaryTextColor(void) { return UIColor.tertiaryLabelColor; }
+static inline UIColor *AmeUIPanelTintColor(void) { return UIColor.secondarySystemFillColor; }
+static inline UIColor *AmeUIBorderColor(void) { return UIColor.separatorColor; }
+static inline UIColor *AmeUISelectedFillColor(void) { return UIColor.tertiarySystemFillColor; }
+static inline UIColor *AmeUIDisabledColor(void) { return UIColor.tertiaryLabelColor; }
+static inline UIColor *AmeUIDestructiveColor(void) { return UIColor.systemRedColor; }
+// Contrast overlay for foreground content, never wallpaper dimming or a stored opacity value.
+static inline UIColor *AmeUIOverlayContrastColor(void) {
+    return AmeDynamicColor([UIColor colorWithWhite:0.0 alpha:0.16],
+                           [UIColor colorWithWhite:1.0 alpha:0.16]);
+}
+
+// CALayer stores CGColor snapshots: resolve with the actual host traits and refresh on trait change.
+static inline UIColor *AmeUIResolvedColor(UIColor *color, UIView *host) {
+    return [color resolvedColorWithTraitCollection:host.traitCollection];
+}
+static inline CGFloat AmeUIHairlineWidth(UIView *host) {
+    return 1.0 / MAX(host.traitCollection.displayScale, 1.0);
+}
+
+typedef NS_ENUM(NSInteger, AmeUIFontRole) {
+    AmeUIFontRoleScreenTitle,
+    AmeUIFontRoleSectionHeading,
+    AmeUIFontRoleCardTitle,
+    AmeUIFontRoleBody,
+    AmeUIFontRoleStatus,
+    AmeUIFontRoleButton,
+    AmeUIFontRoleDescription,
+};
+
+// System point sizes are foundation choices, not measurements inferred from the screenshots.
+static inline UIFont *AmeUIFont(AmeUIFontRole role) {
+    UIFontTextStyle style = UIFontTextStyleBody;
+    CGFloat size = 17.0;
+    UIFontWeight weight = UIFontWeightRegular;
+    switch (role) {
+        case AmeUIFontRoleScreenTitle: style = UIFontTextStyleTitle2; size = 22.0; weight = UIFontWeightBold; break;
+        case AmeUIFontRoleSectionHeading: style = UIFontTextStyleHeadline; weight = UIFontWeightSemibold; break;
+        case AmeUIFontRoleCardTitle: style = UIFontTextStyleTitle3; size = 20.0; weight = UIFontWeightSemibold; break;
+        case AmeUIFontRoleStatus: style = UIFontTextStyleCaption1; size = 13.0; break;
+        case AmeUIFontRoleButton: style = UIFontTextStyleSubheadline; size = 15.0; weight = UIFontWeightSemibold; break;
+        case AmeUIFontRoleDescription: style = UIFontTextStyleSubheadline; size = 15.0; break;
+        case AmeUIFontRoleBody: break;
+    }
+    return [[UIFontMetrics metricsForTextStyle:style] scaledFontForFont:[UIFont systemFontOfSize:size weight:weight]];
+}
+
+// Fixed-height navigation gets bounded scaling until the later adaptive navigation milestone.
+static inline UIFont *AmeUINavigationFont(void) {
+    return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+            scaledFontForFont:[UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold]
+            maximumPointSize:20.0];
 }
 
 #pragma mark - ★ [GLASS-STYLE] 玻璃底填充按风格收敛

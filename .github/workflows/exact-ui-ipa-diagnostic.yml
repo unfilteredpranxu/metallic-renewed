@@ -1,0 +1,176 @@
+name: Exact UI IPA diagnostic
+run-name: Exact UI 1813bb51 prerequisite check
+
+# One push of this file requests one diagnostic run without touching main.
+# Application checkout is independently locked to the user's checkpoint below.
+on:
+  push:
+    branches: [feat/renewed-uikit-home]
+    paths: [.github/workflows/exact-ui-ipa-diagnostic.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: metallic-exact-ui-ipa-diagnostic
+  cancel-in-progress: false
+
+env:
+  SOURCE_SHA: 1813bb51ac2b6cc0faec72b38f27c448f1d34dac
+
+jobs:
+  prerequisites:
+    if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/renewed-uikit-home'
+    runs-on: macos-15
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Initialize retained diagnostics
+        run: |
+          mkdir -p "$RUNNER_TEMP/metallic-exact-ui"
+          {
+            printf 'Application source: %s\n' "$SOURCE_SHA"
+            printf 'Workflow revision: %s\n' "$GITHUB_SHA"
+            printf 'Run: %s/%s/actions/runs/%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+            printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+            printf 'No source substitutions, signing changes, dependency patches or build recipes authorized.\n'
+          } | tee "$RUNNER_TEMP/metallic-exact-ui/run.txt"
+
+      - name: Check out exact application source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: unfilteredpranxu/metallic-renewed
+          ref: 1813bb51ac2b6cc0faec72b38f27c448f1d34dac
+          path: source
+          fetch-depth: 1
+          lfs: true
+          submodules: false
+          persist-credentials: false
+
+      - name: Record exact source and native toolchain
+        working-directory: source
+        run: |
+          set -euo pipefail
+          {
+            test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+            git show -s --format='Source commit: %H%nTree: %T%nSubject: %s' HEAD
+            git ls-tree HEAD ios-app/Natives ios-app/JavaApp ios-app/Makefile bundle-templates .github/workflows/build.yml
+            git submodule status
+            git lfs ls-files
+            xcodebuild -version
+            xcrun --sdk iphoneos --show-sdk-version
+            xcrun --sdk iphoneos --show-sdk-path
+            xcrun --find clang
+            make --version
+            python3 --version
+            sw_vers
+          } 2>&1 | tee "$RUNNER_TEMP/metallic-exact-ui/source-toolchain.log"
+
+      - name: Verify mandatory inputs without modifying source
+        working-directory: source
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' 2>&1 | tee "$RUNNER_TEMP/metallic-exact-ui/preflight.log"
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+
+          source = Path.cwd()
+          output = Path(os.environ["RUNNER_TEMP"]) / "metallic-exact-ui"
+          expected = os.environ["SOURCE_SHA"]
+          actual = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          if actual != expected:
+              raise SystemExit("Source revision mismatch; no compilation permitted")
+          subprocess.run(["git", "diff", "--exit-code", "HEAD", "--"], check=True)
+          required = [
+              ("ios-app/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt",
+               "CMakeLists.txt:75 explicitly requires this binary; no ZeroTier revision/hash pin exists in this checkpoint"),
+              ("ios-app/Natives/input/ControllerInput.m", "Native source listed by CMakeLists.txt:446"),
+              ("ios-app/Natives/resources/Frameworks/libEGL.framework/libEGL", "Required native link framework"),
+              ("ios-app/Natives/resources/Frameworks/libGLESv2.framework/libGLESv2", "Required native link framework"),
+              ("ios-app/Natives/resources/Frameworks/AltKit.framework/AltKit", "Required native link framework"),
+              ("ios-app/Natives/resources/Frameworks/CAltKit.framework/CAltKit", "Required native link framework"),
+              ("ios-app/Natives/resources/Frameworks/UnzipKit.framework/UnzipKit", "Required native link framework"),
+          ]
+          inputs = []
+          for relative, reason in required:
+              path = source / relative
+              entry = {"path": relative, "present": path.is_file(), "reason": reason}
+              if entry["present"]:
+                  digest = hashlib.sha256()
+                  with path.open("rb") as stream:
+                      for block in iter(lambda: stream.read(1024 * 1024), b""):
+                          digest.update(block)
+                  entry["sha256"] = digest.hexdigest()
+              inputs.append(entry)
+          missing = [entry for entry in inputs if not entry["present"]]
+          first = missing[0] if missing else {
+              "path": "ios-app/Makefile",
+              "reason": "dep_mg/payload recipes patch protected source/binaries; a no-mutation build route still requires separate validation",
+          }
+          report = {
+              "source_sha": actual,
+              "workflow_sha": os.environ.get("GITHUB_SHA"),
+              "run_url": (os.environ.get("GITHUB_SERVER_URL", "https://github.com") + "/" +
+                          os.environ["GITHUB_REPOSITORY"] + "/actions/runs/" + os.environ["GITHUB_RUN_ID"])
+                         if os.environ.get("GITHUB_RUN_ID") else None,
+              "status": "BLOCKED",
+              "compilation_attempted": False,
+              "ipa_produced": False,
+              "first_blocker": first,
+              "required_inputs": inputs,
+              "submodule": {
+                  "path": "ios-app/ThirdParty/NG-GL4ES",
+                  "revision": "6e153a1622a8d9ef903f7975aafbef2453571bab",
+                  "fetched": False,
+                  "reason": "No external dependency fetch before mandatory-input provenance is established",
+              },
+              "actions": {
+                  "checkout_v4.2.2": "11bd71901bbe5b1630ceea73d27597364c9af683",
+                  "upload_artifact_v4.6.2": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+              },
+              "next_action": "Obtain the original Alpha 1.2 ZeroTier framework with immutable release/commit provenance and SHA-256; do not clone a moving upstream substitute",
+              "remaining_gates": [
+                  "Restore remaining original inputs with verified provenance, including missing ControllerInput.m",
+                  "Validate a full build route without Makefile source/binary patches or upstream application substitution",
+                  "Verify full JRE/Java 25 and JIT script payload plus unchanged original signing",
+              ],
+          }
+          (output / "prerequisites.json").write_text(json.dumps(report, indent=2) + "\n")
+          print(json.dumps(report, indent=2))
+          summary = ("## Exact-source IPA: BLOCKED\n\nSource: `" + actual + "`\n\nFirst blocker: `" +
+                     first["path"] + "`\n\n" + first["reason"] +
+                     "\n\nNo native compilation or IPA creation was attempted. No application source, dependency binary, signing, or existing workflow was changed.\n\n" +
+                     report["next_action"] + "\n")
+          (output / "result.md").write_text(summary)
+          if os.environ.get("GITHUB_STEP_SUMMARY"):
+              with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as stream:
+                  stream.write(summary)
+          print("::error::Exact-source IPA blocked by " + first["path"])
+          raise SystemExit(1)
+          PY
+
+      - name: Prove tracked application inputs stayed unchanged
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d source/.git ]; then
+            git -C source diff --exit-code HEAD -- 2>&1 | tee "$RUNNER_TEMP/metallic-exact-ui/source-invariance.log"
+            git -C source status --short >> "$RUNNER_TEMP/metallic-exact-ui/source-invariance.log"
+          else
+            printf 'Checkout did not complete; source invariance unavailable.\n' > "$RUNNER_TEMP/metallic-exact-ui/source-invariance.log"
+          fi
+
+      - name: Upload diagnostic evidence even when blocked
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: metallic-exact-ui-diagnostics-${{ github.run_id }}
+          path: ${{ runner.temp }}/metallic-exact-ui/
+          if-no-files-found: error
+          retention-days: 7

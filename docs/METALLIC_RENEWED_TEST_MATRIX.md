@@ -306,3 +306,19 @@ Every runtime row is unexecuted. Native build remains BLOCKED. Use disposable co
 | Pagination/reuse | Scroll rapidly while changing filters/sources; reuse icon/button cells repeatedly | Existing dedup/cancellation and button tags target intended current item once | Not run | PENDING | Native build/device unavailable |
 
 M1 stays BLOCKED; M3 global consumers PARTIAL; M4 Home and M5 Instances/navigation device acceptance PENDING. M6 task-centre visual styling and unsupported Versions Sort remain deferred. Historical Alpha 1.2 gameplay does not establish new-build compatibility. Next: Appearance and Settings UI completion.
+
+
+## Urgent exact-source IPA diagnostic (2026-10-27)
+
+| Feature | Test procedure | Expected result | Actual result | Status | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Workflow static safety | Parse YAML, bash -n all scripts, compile embedded Python; inspect triggers/pins/permissions | Exact application SHA, feature-only trigger, read-only token, immutable Actions, artifact upload on failure | Checks passed | PASS | Local /tmp/verify_exact_ui_diagnostic.py; no native execution |
+| Read-only prerequisite probe | Run embedded probe locally at 1813bb51… | Stop without source mutation when required input missing | Exit 1 BLOCKED at ZeroTier zt.framework/zt | FAIL | /tmp/metallic-ipa-preflight/metallic-exact-ui/prerequisites.json; confirmed prerequisite failure, not a native compiler failure |
+| Source protection | Compare application/signing/build files and existing workflows against 1813bb51… | Zero changes | Zero changes | PASS | git diff --exit-code; only new diagnostic workflow + continuity records |
+| GitHub Actions API | Read workflow list with existing CLI authentication | Reach API to dispatch/monitor | Transport Forbidden; api.github.com absent from environment allowlist | FAIL | gh api output and network-policy.json; network draft saved, not applied |
+| macOS diagnostic run | Execute new workflow, inspect source/toolchain/preflight result | Exact SHA and first blocker logged; artifact retained on failure | Execution not yet verified | PENDING | Feature push requests run; Actions evidence required |
+| Diagnostic artifact | Download metallic-exact-ui-diagnostics-<run_id> | Source/toolchain/prerequisite/invariance logs present | Upload not yet verified | PENDING | Requires completed Actions run |
+| Full native IPA | Build only after original dependencies and no-patch recipe are verified | Full runtime/framework/JIT payload, unchanged source/signing | Not attempted; prerequisite gate blocks it | PENDING | No IPA produced |
+| iPad installation/UI/gameplay | Install verified FULL IPA and test on iPad | Actual UI works with original engine | Not run | PENDING | No installable artifact |
+
+UI work paused. First source prerequisite: original Alpha 1.2 ZeroTier framework plus immutable provenance/checksum. Restoring it does not resolve all remaining M1 build-input gaps. Existing UI/runtime acceptance records remain pending.

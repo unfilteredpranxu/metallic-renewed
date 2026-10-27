@@ -2,7 +2,7 @@
 
 ## Current continuation checkpoint
 
-M6 is PARTIAL: Downloads catalogue presentation is implemented and statically checked; native compilation, runtime and screenshot acceptance remain PENDING. Active branch: `feat/renewed-uikit-home`, starting checkpoint `0a824b3a30b1029be5a354c85de75609320e1095`. Read M6 below before editing. M1 stays BLOCKED, M3 global legacy coverage PARTIAL, M4 Home and M5 Instances/navigation device acceptance PENDING. Next: Appearance and Settings UI completion. Earlier sections are historical, not instructions to repeat audits.
+UI redesign is PAUSED for the urgent exact-source test-IPA request. Application checkpoint: `1813bb51ac2b6cc0faec72b38f27c448f1d34dac` on `feat/renewed-uikit-home`. Read “Urgent exact-source test IPA” below first. Build remains BLOCKED by missing original inputs; the separate diagnostic workflow is read-only and cannot produce an IPA from incomplete prerequisites. M1/M3/M4/M5/M6 acceptance limitations remain. Do not start Appearance/Settings or any further UI milestone until this test-build request is resolved.
 
 ## Permanent scope
 
@@ -470,3 +470,24 @@ M6 unfinished/PENDING: native SDK/type/link check; rendered screenshot fidelity;
 ### M6 commit record
 
 Implementation: `d482f4698bc528e5ba8f83da1da12497c4e22f27` (`feat(ui): customize native Downloads catalogue`), parent M5 `0a824b3a30b1029be5a354c85de75609320e1095`. This bookkeeping commit records the implementation SHA; resolve the final checkpoint with `git log -1 --format=%H -- docs/METALLIC_RENEWED_PROGRESS.md`. Publication uses the existing command-scoped credential helper and a normal fast-forward restricted to `feat/renewed-uikit-home`. No saved credentials/configuration or protected baseline/main changes. M6 PARTIAL, M1 BLOCKED, device/screenshot acceptance PENDING. Next: Appearance and Settings UI completion.
+
+
+## Urgent exact-source test IPA (2026-10-27)
+
+User requested one safe macOS route for application checkpoint `1813bb51ac2b6cc0faec72b38f27c448f1d34dac`, with no UI/engine/installer/signing changes and no upstream substitutions. This request explicitly authorizes a **separate diagnostic workflow**, unlike M1's prior no-CI-edit scope. Existing workflows, Makefile, CMake, source/frameworks, signing and protected baseline remain untouched.
+
+Added `.github/workflows/exact-ui-ipa-diagnostic.yml`: feature-branch-only, path-filtered push trigger plus optional manual dispatch; `macos-15`, read-only contents permission, immutable application checkout at the exact checkpoint. A workflow-file push requests one diagnostic run; documentation-only follow-up commits do not trigger it. Workflow revision and application revision are recorded separately. Official Actions pins verified via remote tag refs: checkout v4.2.2 `11bd71901bbe5b1630ceea73d27597364c9af683`; upload-artifact v4.6.2 `ea165f8d65b6e75b540449e92b4886f43607fa02`. Runner image/Xcode/iPhoneOS SDK versions are recorded when executed, not assumed reproducible from the macOS label.
+
+The workflow captures source commit/tree, relevant Git trees/submodule/LFS state, native toolchain and prerequisite JSON/Markdown/logs. It always uploads `metallic-exact-ui-diagnostics-<run_id>` with seven-day retention, even on blocked prerequisites, provided the runner/checkout/artifact steps execute successfully. This is a diagnostic-only route, not a verified full-IPA build workflow. No dependency fetch, source substitution, application patch, unsafe `make all`, signing change, or simulated IPA occurs. Compilation is gated off because requirements are demonstrably unmet; no IPA artifact exists from local validation.
+
+**FIRST exact native-input blocker:** `ios-app/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt` is absent. `ios-app/Natives/CMakeLists.txt:75` explicitly raises FATAL_ERROR without it. No ZeroTier Git link, version or checksum pin exists in this checkpoint; `.gitmodules` contains only NG-GL4ES. This is a confirmed local prerequisite failure / predicted CMake fatal, not a compiler failure or a confirmed macOS-run outcome.
+
+**Smallest safe next source-build action:** obtain the original Alpha 1.2 ZeroTier framework with immutable release/commit provenance and SHA-256. Do not fetch the moving ZeroTier repository used by the old CI or accept arbitrary “latest” binaries. That alone is not a promise of a complete build: `input/ControllerInput.m` (listed in CMake) and linked EGL/GLES/AltKit/CAltKit/UnzipKit frameworks are also absent. Further M1 gates remain: full JRE/Java 25/JIT payload provenance and a validated build route that does not run the Makefile's protected-source/binary patching recipes. Do not bypass those patches/guards or modify application code to make compilation proceed.
+
+Local checks executed: YAML parse; `bash -n` on every run block; embedded Python grammar; actual read-only prerequisite probe on the exact checkpoint (exit 1, BLOCKED at the ZeroTier binary, no compilation/IPA, no fabricated run URL); source SHA/feature-only trigger/read-only permission/action pins/artifact-on-failure checks; `git diff --check`; exact application/existing-workflow equality against `1813bb51…`. Native macOS execution/artifact status requires Actions evidence and is not established by those local checks.
+
+**Actions access limitation:** existing HTTPS Git read/push access works, but `gh api repos/unfilteredpranxu/metallic-renewed/actions/workflows` returns a transport Forbidden. `/etc/codex/network-policy.json` excludes `api.github.com`. GitHub web Actions page returns unauthenticated 404, not a usable run listing. Saved a narrowly scoped environment draft adding only `api.github.com` (existing package-manager destinations preserved); saving the draft does not apply/publish it. No new token requested or credential/config file saved. Apply that network update in environment settings to enable API dispatch/monitoring checks. Do not claim successful execution/upload from a push alone.
+
+Workflow URL after publication: https://github.com/unfilteredpranxu/metallic-renewed/actions/workflows/exact-ui-ipa-diagnostic.yml
+
+Publication/run evidence will be recorded separately when known. Current result: **no full IPA; not ready for iPad installation/testing**. UI/engine/installer/JIT/Java/Metal/signing inputs remain identical to the requested checkpoint. No other repository/application sources fetched; only official Actions version metadata was read. Continue the urgent build request, not another UI milestone.

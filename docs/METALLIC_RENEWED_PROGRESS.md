@@ -2,7 +2,7 @@
 
 ## Current continuation checkpoint
 
-M2 implementation is complete in source; native build remains BLOCKED under M1. Read the M2 record at the end before editing. Active branch: `feat/renewed-uikit-home`. Next milestone: Wallpaper, Glass, Blur and Opacity integration. Earlier M0/M1 sections are historical records, not instructions to repeat those audits.
+M3 is PARTIAL: the safe appearance subset is implemented; full legacy-consumer coverage and all native/runtime acceptance remain open. M1 native build is still BLOCKED. Active branch: `feat/renewed-uikit-home`. Read the latest M3 record below. Next: Polished and fully functional Home screen. Historical M0/M1/M2 sections are not instructions to repeat their audits.
 
 ## Permanent scope
 
@@ -221,3 +221,51 @@ Residual risks needing native validation: dynamic type versus fixed pill/bottom-
 ### M2 commit record
 
 Implementation commit: `031de92d00a056a38e791e93fedc7fceae0f330d` (`feat(ui): establish shared UIKit appearance foundation`). Final documentation bookkeeping records this SHA; resolve its own SHA with `git log -1 --format=%H -- docs/METALLIC_RENEWED_PROGRESS.md`. Source-only M2 completion does not change M1 BLOCKED or pending device/build statuses. Next: Wallpaper, Glass, Blur and Opacity integration.
+
+
+## M3: wallpaper, glass and live appearance (2026-10-27)
+
+**Status: PARTIAL.** Real UI code implemented and statically checked; not a claim of complete global coverage or native/device validation. Start: published M2 `0940a6d9d9824c10ee5eaad0e07267a7ccea48fc` on `feat/renewed-uikit-home`, clean tree. Origin/remote feature/protected-baseline refs verified. M2 tokens/typography/roles/accessibility/Reduce Motion and 60/76-point navigation geometry preserved. M1 remains BLOCKED; no workflows or build settings changed.
+
+### Files and actual rendering responsibilities
+
+Modified existing UI files only: `ios-app/Natives/BackgroundManager.h`, `BackgroundManager.m`, `BackgroundSettingsViewController.m`, `BottomActionBarView.m`, `HomeTopNavView.m`. No new compilation unit/dependency/registration. Three continuity documents updated.
+
+The original single `blurIntensity` controlled wallpaper material alpha, wallpaper dim alpha, and some interface panel alpha. One number cannot represent independent values. Two new UI-only NSUserDefaults keys therefore live in the same BackgroundManager store, with the legacy key preserved:
+
+| Control / property | Key / range / migration | Actual rendered target |
+| --- | --- | --- |
+| Wallpaper Blur / `blurIntensity` / existing `blurIntensitySliderChanged:` | Existing `background_blur_intensity`, 0–1, absent/invalid default 0.7; explicit zero retained | Custom wallpaper's standard system thin-material view alpha = value × 0.5. No longer a live input to interface materials or dimming |
+| UI Blur / `interfaceBlurIntensity` / new `interfaceBlurSliderChanged:` | New `background_interface_blur_intensity_v1`, 0–1; when absent seed previous panel visibility: min(1, 0.3 + legacy × 0.7 + 0.2 if no custom wallpaper). Existing zero is retained. Invalid/non-finite values safely clamp/fall back to 0.79 | Only decorative interface material alpha; zero makes the material invisible while panel tint/text remain. Does not claim arbitrary Gaussian blur radius. Disabled in Translucent mode; stored value preserved |
+| UI Panel Opacity / `uiOpacity` / existing `opacitySliderChanged:` | Existing `background_ui_opacity`, 0.1–1; existing default 0.7 | Managed panel backdrop tint, separate from content alpha: tint alpha = opacity × 0.22 in Blur mode, opacity in Translucent mode. 100% means maximum tint strength for the chosen material, not opaque text/card hierarchy. No wallpaper dimming |
+| Wallpaper Dimming / `wallpaperDimming` / new `wallpaperDimmingSliderChanged:` | New `background_wallpaper_dimming_v1`, 0–1; absent seed validated legacy blur; invalid fallback 0.7; explicit zero retained | Dedicated black wallpaper overlay alpha up to 0.2 in Dark, 0.08 in Light. Corrects old labelColor overlay that whitened Dark mode; saved intensity retained but appearance intentionally corrected |
+
+Both new keys are initialized once when absent, persisted alongside existing appearance values, and never written through PLPreferences. Old keys/defaults/glass migrations are unchanged. Downgrading ignores new keys and resumes the old coupling, without losing wallpaper paths or legacy blur/opacity values. Wallpaper controls apply to custom images/videos and are disabled without one; established default wallpaper stays unchanged. Theme System/Light/Dark remains in existing main Settings with its original preference/enable conditions; no duplicate theme control/store or new Appearance destination was introduced.
+
+### Surfaces, performance and state consistency
+
+Manager-owned ordinary views/table-cell backgrounds/collection-cell backgrounds now reuse one noninteractive native UIVisualEffectView. `applyInterfaceAppearanceToMaterial:inView:` updates decoration alpha and host tint; it never fades labels/buttons/icons or changes their enabled state. Uses unchanged `AmeGlassEffect`/AMEGlassStyle capability checks and public UIKit material fallback. No private backdrop tuning in changed manager paths. Optional highlight/rim controls are retained; table/collection rows preserve no-rim treatment and frame repair is retained for other rim hosts.
+
+A weak registry updates only attached managed hosts. `refreshUIEffect` coalesces requests to one next-frame update, without traversing the root tree, reading wallpaper files, rebuilding materials or recreating players. It is the sole BackgroundUIEffectChanged sender in the manager; effect picker/rim/style callbacks route through it rather than issuing extra direct broadcasts. Explicit style changes may traverse existing glass once; they skip the wallpaper container so interface style never replaces wallpaper material. NSUserDefaults synchronous flushes removed from slider saving; native asynchronous persistence used. Process-kill/restart durability still needs device testing.
+
+M2 glass buttons and top bar now consume the shared material/tint values and existing appearance notification. Their state multipliers/targets/selection/geometry/Reduce Motion remain. BackgroundSettings uses a construction-only slider builder with 44-point slider height, Auto Layout, M2 fonts/semantic colors, distinct live percentage and VoiceOver value. No reload or target duplication in value-change callbacks; synchronization skips tracking sliders. Reopening reads actual manager state; visible style/switch/highlight/slider/effect labels update without replacing cells. Existing main Settings glass keys and notifications remain shared. No competing preferences.
+
+### Wallpaper and reset safety
+
+Default renderer/aspect-fill bundled image/fallback, image crop/picker flow, video aspect-fill, pause/resume/loop methods preserved. Host assignment now occurs after removal of old presentation (previously removal nulled the newly assigned window/split controller). Reapplying the same path/host or default presentation reuses it; no new player on navigation. Cold image reads run off-main and cache a single image/preview, with path/container identity checks; the established default fills the loading interval. Invalid/missing paths/types fall back safely and nil path uses removeObjectForKey. Corrupt or invalid video playback still requires native validation; no new format/codec implementation.
+
+New wallpaper is encoded/copied before changing the current wallpaper; failure retains previous state. Successful replacement/model/UI work occurs on main. UUID file names avoid same-second collisions. A pending-selection token prevents a delayed completion from undoing a newer pick/clear. Security scopes for Files are retained through reads/copy; image File reads moved off-main with error feedback. Cancellation delegates remain no-op/dismiss-only. Clear installs default immediately, retains the host, preserves appearance properties, and deletes only app-owned generated copies within the backgrounds folder, never arbitrary persisted Documents paths. No game/world/account data touched. AVPlayer behavior/lifecycle methods themselves remain unchanged.
+
+New **Reset to Recommended** (Interface Glass row) confirms its exact scope, then resets only `uiEffect=Blur`, `uiOpacity=0.7`, `interfaceBlurIntensity=0.79` (derived from existing 0.7 recommendation). Persists once and schedules one appearance refresh; visible controls reload only after the reset action, not during slider tracking. It retains wallpaper/path, wallpaper blur/dimming, theme, glass style/highlights, account/profile and all gameplay/JIT/Java/renderer settings. Existing **Restore Default Background** intentionally still clears custom wallpaper and resets UI effect/opacity as before; **Clear Background** leaves appearance values alone. These legacy flows are not silently redefined.
+
+### Checks actually executed and boundaries
+
+PASS: `git diff --check`; grammar parsing of four changed .m files plus normalized BackgroundManager.h; local imports and existing source registration; all old preference constants unchanged, exactly two new keys; source assertions of control→property→save→render paths and reset's three assignments; zero/absence guards; one manager appearance broadcast; no private tuning call in manager; tracking-safe refresh; M2 tap/tab/selector animation and accent adapter bodies unchanged. The actual production pure-C clamping function was extracted and compiled with GCC; nine boundary cases executed (zero, minimum, negative, above maximum, in-range, maximum, NaN, positive/negative infinity). This is not an Objective-C/UIKit or NSUserDefaults runtime test. Temporary grammar/clamp tools live only in /tmp.
+
+Protected-file comparison against `fe379d4f3723764ec0a8b6a6728368ac3492c4d8` permits only approved M2/M3 UI files and these three docs; every other tracked file is identical. **JIT/Java/Metallum/Metal/launch/auth/framework/signing/dependency/CI/Makefile diff ZERO.** No native compilation, IPA, signature inspection, iPhone/iPad interaction, restart, visual, performance or new gameplay evidence. JavaGUI's original root-transparency semantics are explicitly preserved in the appearance helper without editing that controller.
+
+### Remaining limits and next step
+
+Independence is implemented in source for manager-owned panels/cells, M2 buttons/top navigation and custom wallpaper. Legacy system UINavigationBar/UIToolbar cached appearances, search-field styling, and arbitrary controls using separate chip helpers have not all been adapted to the new UI Blur/tint semantics. Do not claim global consistency; that coverage and visual acceptance remain PENDING. No new global Appearance destination or theme picker/launch-intro control was added. English fallback strings for new localize keys need translation review. Fixed legacy glass-control rows/large type, video file errors, cold preview timing, rapid switching, Light/Dark tint readability and memory/performance require device validation.
+
+Next milestone: **Polished and fully functional Home screen**. Start in `LauncherNewsViewController.m`, reuse M0's original right-panel launch/version/account/download callbacks, M2 tokens and M3 appearance interface. Keep root containment, 60/76 geometry and tab transition protections; do not move JIT/engine behavior. Carry forward M1 BLOCKED and the pending global appearance/device matrix. Read this progress first; do not repeat M0–M2.

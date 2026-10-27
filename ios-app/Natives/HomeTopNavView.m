@@ -1,4 +1,5 @@
 #import "HomeTopNavView.h"
+#import "BackgroundManager.h"
 #import "UIKit+GlassSurface.h"   // AmeApplyGlassChipStyle / AmeGlassEffect (system Liquid Glass on iOS 26+)
 #import "utils.h"                // localize()
 #import "BottomActionBarView.h"   // AmeThemeTintColor
@@ -32,12 +33,13 @@ static UIColor *NavAccentColor(void) {
     if (self) {
         [self build];
         self.selectedIndex = 0;
+        [self themeChanged:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(tabNote:)
                                                      name:@"AmeTabSelected"
                                                    object:nil];
         // One visual refresh path; no extra tab-selection observer or callback.
-        for (NSString *name in @[@"LauncherAppearanceChanged", @"UIThemeChanged", AMEGlassStyleChangedNotification,
+        for (NSString *name in @[@"LauncherAppearanceChanged", @"UIThemeChanged", @"BackgroundUIEffectChanged", AMEGlassStyleChangedNotification,
                                  UIContentSizeCategoryDidChangeNotification]) {
             [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(themeChanged:)
                                                          name:name object:nil];
@@ -217,6 +219,10 @@ static UIColor *NavAccentColor(void) {
         self.selector.effect = AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial);
     }
     self.selector.contentView.backgroundColor = AmeUISelectedFillColor();
+    BackgroundManager *manager = [BackgroundManager sharedManager];
+    UIVisualEffectView *backdrop = (UIVisualEffectView *)[self.bar viewWithTag:kAmeGlassBackdropTag];
+    [manager applyInterfaceAppearanceToMaterial:backdrop inView:self.bar];
+    self.selector.alpha = manager.uiEffect == BackgroundUIEffectBlur ? manager.interfaceBlurIntensity : 0.0;
     if ([notification.name isEqualToString:UIContentSizeCategoryDidChangeNotification]) {
         for (UILabel *label in self.labels) label.font = AmeUINavigationFont();
         // Text width can change without the outer bar width changing.

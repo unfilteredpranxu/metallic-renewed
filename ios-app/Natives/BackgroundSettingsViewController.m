@@ -9,13 +9,19 @@
 #import "BackgroundSettingsViewController.h"
 #import "BackgroundManager.h"
 #import "ImageCropperViewController.h"
+#import "UIKit+GlassSurface.h"
 #import "AMEGlassStyle.h"   // ★ [GLASS-STYLE] UI style (auto / native / Liquid Glass) resolution layer
 
 @interface BackgroundSettingsViewController ()
+- (UITableViewCell *)appearanceSliderCell:(NSString *)identifier title:(NSString *)title
+                                  value:(CGFloat)value minimum:(CGFloat)minimum action:(SEL)action;
+- (void)updatePercentageForSlider:(UISlider *)slider value:(CGFloat)value;
+- (void)interfaceBlurSliderChanged:(UISlider *)slider;
+- (void)wallpaperDimmingSliderChanged:(UISlider *)slider;
+- (void)resetInterfaceAppearance;
+- (void)wallpaperChanged:(NSNotification *)notification;
 @property (nonatomic, strong) NSArray<NSArray *> *sections;
 @property (nonatomic, strong) UIImageView *previewImageView;
-@property (nonatomic, strong) UISlider *opacitySlider;
-@property (nonatomic, weak) UILabel *opacityValueLabel;
 @property (nonatomic, weak) UILabel *glassStrengthValueLabel;   // ★ [GLASSUI] Glass-intensity value label
 @end
 
@@ -32,7 +38,7 @@
         self.tableView.backgroundColor = [UIColor clearColor];
         self.tableView.backgroundView = nil;
     } else {
-        self.view.backgroundColor = [UIColor systemBackgroundColor];
+        self.view.backgroundColor = [UIColor clearColor];
     }
     
     // Setup table view
@@ -41,6 +47,8 @@
     // ★ [GLASS-STYLE] The "UI Style" footer contains multiple lines ⇒ use adaptive height (otherwise
     // the text will be clipped or compressed).
     self.tableView.sectionFooterHeight = UITableViewAutomaticDimension;
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 96.0;
     
     // Setup preview header
     [self setupPreviewHeader];
@@ -71,6 +79,8 @@
                                              selector:@selector(reapplyBackgroundEffect)
                                                  name:@"BackgroundUIEffectChanged"
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wallpaperChanged:)
+                                                 name:@"BackgroundChanged" object:nil];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -109,7 +119,8 @@
     UILabel *placeholderLabel = [[UILabel alloc] init];
     placeholderLabel.text = localize(@"i18n_str_54", nil);
     placeholderLabel.textColor = [UIColor secondaryLabelColor];
-    placeholderLabel.font = [UIFont systemFontOfSize:16];
+    placeholderLabel.font = AmeUIFont(AmeUIFontRoleDescription);
+    placeholderLabel.adjustsFontForContentSizeCategory = YES;
     placeholderLabel.textAlignment = NSTextAlignmentCenter;
     placeholderLabel.tag = 100;
     placeholderLabel.frame = self.previewImageView.bounds;
@@ -146,7 +157,8 @@
     // Sections: [UI effect settings], [Choose background type], [Image background, Video background],
     // [Restore default background, Clear background].
     self.sections = @[
-        @[localize(@"i18n_str_57", nil), localize(@"i18n_str_1296", nil), localize(@"i18n_str_1297", nil)],
+        @[localize(@"i18n_str_57", nil), localize(@"renewed.appearance.panel_opacity", @"UI Panel Opacity"),
+          localize(@"renewed.appearance.ui_blur", @"UI Blur"), localize(@"renewed.appearance.reset", @"Reset to Recommended")],
         @[localize(@"i18n_str_60", nil)],
         @[localize(@"i18n_str_61", nil), localize(@"i18n_str_55", nil)],
         @[localize(@"i18n_str_62", nil), localize(@"i18n_str_63", nil)],
@@ -157,7 +169,9 @@
         //   avoiding "two conflicting sets of switches".
         @[localize(@"preference.title.glass_style", nil),
           localize(@"preference.title.glass_handdrawn", nil),
-          localize(@"preference.title.glass_strength", nil)]
+          localize(@"preference.title.glass_strength", nil)],
+        @[localize(@"renewed.appearance.wallpaper_blur", @"Wallpaper Blur"),
+          localize(@"renewed.appearance.wallpaper_dimming", @"Wallpaper Dimming")]
     ];
 }
 
@@ -172,30 +186,81 @@
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    // Hide the UI effect settings section if no custom background is set.
-    if (section == 0 && ![[BackgroundManager sharedManager] hasBackground]) {
-        return 0;
-    }
     return [self.sections[section] count];
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    if (section == 0 && ![[BackgroundManager sharedManager] hasBackground]) {
-        return nil;
-    }
+    if (section == 0) return localize(@"renewed.appearance.interface", @"Interface Glass");
+    if (section == 5) return localize(@"renewed.appearance.wallpaper", @"Wallpaper");
     return self.sections[section][0];
+}
+
+- (UITableViewCell *)appearanceSliderCell:(NSString *)identifier title:(NSString *)title
+                                      value:(CGFloat)value minimum:(CGFloat)minimum action:(SEL)action {
+    UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:identifier];
+    if (!cell) {
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        UILabel *heading = [[UILabel alloc] init];
+        heading.tag = 502;
+        heading.numberOfLines = 0;
+        heading.font = AmeUIFont(AmeUIFontRoleBody);
+        heading.adjustsFontForContentSizeCategory = YES;
+        UILabel *percentage = [[UILabel alloc] init];
+        percentage.tag = 501;
+        percentage.font = AmeUIFont(AmeUIFontRoleStatus);
+        percentage.adjustsFontForContentSizeCategory = YES;
+        percentage.textAlignment = NSTextAlignmentRight;
+        UISlider *slider = [[UISlider alloc] init];
+        slider.tag = 500;
+        slider.minimumValue = minimum;
+        slider.maximumValue = 1.0;
+        [slider addTarget:self action:action forControlEvents:UIControlEventValueChanged];
+        for (UIView *view in @[heading, percentage, slider]) {
+            view.translatesAutoresizingMaskIntoConstraints = NO;
+            [cell.contentView addSubview:view];
+        }
+        UILayoutGuide *guide = cell.contentView.layoutMarginsGuide;
+        [NSLayoutConstraint activateConstraints:@[
+            [heading.leadingAnchor constraintEqualToAnchor:guide.leadingAnchor],
+            [heading.topAnchor constraintEqualToAnchor:guide.topAnchor constant:8],
+            [heading.trailingAnchor constraintLessThanOrEqualToAnchor:percentage.leadingAnchor constant:-8],
+            [percentage.trailingAnchor constraintEqualToAnchor:guide.trailingAnchor],
+            [percentage.topAnchor constraintEqualToAnchor:heading.topAnchor],
+            [percentage.widthAnchor constraintGreaterThanOrEqualToConstant:56],
+            [slider.leadingAnchor constraintEqualToAnchor:guide.leadingAnchor],
+            [slider.trailingAnchor constraintEqualToAnchor:guide.trailingAnchor],
+            [slider.topAnchor constraintGreaterThanOrEqualToAnchor:heading.bottomAnchor constant:8],
+            [slider.topAnchor constraintGreaterThanOrEqualToAnchor:percentage.bottomAnchor constant:8],
+            [slider.heightAnchor constraintEqualToConstant:AmeUIMinimumTouchSize],
+            [slider.bottomAnchor constraintEqualToAnchor:guide.bottomAnchor constant:-8]
+        ]];
+    }
+    [self styleCell:cell hasBackground:[[BackgroundManager sharedManager] hasBackground]];
+    UILabel *heading = (UILabel *)[cell.contentView viewWithTag:502];
+    heading.text = title;
+    heading.textColor = AmeUIPrimaryTextColor();
+    UILabel *percentage = (UILabel *)[cell.contentView viewWithTag:501];
+    percentage.text = [NSString stringWithFormat:@"%.0f%%", value * 100];
+    percentage.textColor = AmeUISecondaryTextColor();
+    UISlider *slider = (UISlider *)[cell.contentView viewWithTag:500];
+    if (!slider.tracking) slider.value = value;
+    slider.enabled = [identifier isEqualToString:@"InterfaceBlur"] ? [BackgroundManager sharedManager].uiEffect == BackgroundUIEffectBlur
+        : (![identifier hasPrefix:@"Wallpaper"] || [[BackgroundManager sharedManager] hasBackground]);
+    slider.minimumTrackTintColor = AmeUIAccentColor();
+    slider.accessibilityLabel = title;
+    slider.accessibilityValue = percentage.text;
+    return cell;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     static NSString *cellIdentifier = @"BackgroundCell";
-    static NSString *sliderCellIdentifier = @"SliderCell";
-    static NSString *blurSliderCellIdentifier = @"BlurSliderCell";
     
     BackgroundManager *manager = [BackgroundManager sharedManager];
     BOOL hasBackground = [manager hasBackground];
     
     // UI effect settings section.
-    if (indexPath.section == 0 && hasBackground) {
+    if (indexPath.section == 0) {
         if (indexPath.row == 0) {
             // UI effect selection.
             UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellIdentifier];
@@ -214,92 +279,25 @@
             return cell;
             
         } else if (indexPath.row == 1) {
-            // Opacity slider.
-            UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:sliderCellIdentifier];
-            if (!cell) {
-                cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:sliderCellIdentifier];
-                cell.selectionStyle = UITableViewCellSelectionStyleNone;
-                
-                // Create slider.
-                UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(16, 0, cell.bounds.size.width - 120, 30)];
-                slider.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-                slider.minimumValue = 0.1f;
-                slider.maximumValue = 1.0f;
-                slider.tag = 200;
-                [slider addTarget:self action:@selector(opacitySliderChanged:) forControlEvents:UIControlEventValueChanged];
-                
-                // Create value label.
-                UILabel *valueLabel = [[UILabel alloc] initWithFrame:CGRectMake(cell.bounds.size.width - 80, 0, 60, 30)];
-                valueLabel.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
-                valueLabel.textAlignment = NSTextAlignmentRight;
-                valueLabel.tag = 201;
-                valueLabel.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightRegular];
-                
-                [cell.contentView addSubview:slider];
-                [cell.contentView addSubview:valueLabel];
-                
-                cell.contentView.layoutMargins = UIEdgeInsetsMake(8, 16, 8, 16);
-            }
-            
-            [self styleCell:cell hasBackground:hasBackground];
-            
-            UISlider *slider = [cell.contentView viewWithTag:200];
-            slider.value = manager.uiOpacity;
-            
-            UILabel *valueLabel = [cell.contentView viewWithTag:201];
-            valueLabel.text = [NSString stringWithFormat:@"%.0f%%", manager.uiOpacity * 100];
-            valueLabel.textColor = hasBackground ? [UIColor whiteColor] : [UIColor labelColor];
-            self.opacityValueLabel = valueLabel;
-            
-            cell.textLabel.text = nil;
-            cell.imageView.image = [UIImage systemImageNamed:@"slider.horizontal.3"];
-            
-            return cell;
-            
+            return [self appearanceSliderCell:@"InterfaceOpacity" title:self.sections[0][1]
+                                       value:manager.uiOpacity minimum:0.1 action:@selector(opacitySliderChanged:)];
         } else if (indexPath.row == 2) {
-            // Blur-intensity slider.
-            UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:blurSliderCellIdentifier];
-            if (!cell) {
-                cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:blurSliderCellIdentifier];
-                cell.selectionStyle = UITableViewCellSelectionStyleNone;
-                
-                // Create slider.
-                UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(16, 0, cell.bounds.size.width - 120, 30)];
-                slider.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-                slider.minimumValue = 0.0f;
-                slider.maximumValue = 1.0f;
-                slider.tag = 300;
-                [slider addTarget:self action:@selector(blurIntensitySliderChanged:) forControlEvents:UIControlEventValueChanged];
-                
-                // Create value label.
-                UILabel *valueLabel = [[UILabel alloc] initWithFrame:CGRectMake(cell.bounds.size.width - 80, 0, 60, 30)];
-                valueLabel.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
-                valueLabel.textAlignment = NSTextAlignmentRight;
-                valueLabel.tag = 301;
-                valueLabel.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightRegular];
-                
-                [cell.contentView addSubview:slider];
-                [cell.contentView addSubview:valueLabel];
-                
-                cell.contentView.layoutMargins = UIEdgeInsetsMake(8, 16, 8, 16);
-            }
-            
-            [self styleCell:cell hasBackground:hasBackground];
-            
-            UISlider *slider = [cell.contentView viewWithTag:300];
-            slider.value = manager.blurIntensity;
-            
-            UILabel *valueLabel = [cell.contentView viewWithTag:301];
-            valueLabel.text = [NSString stringWithFormat:@"%.0f%%", manager.blurIntensity * 100];
-            valueLabel.textColor = hasBackground ? [UIColor whiteColor] : [UIColor labelColor];
-            
-            cell.textLabel.text = nil;
-            cell.imageView.image = [UIImage systemImageNamed:@"slider.horizontal.3"];
-            
+            return [self appearanceSliderCell:@"InterfaceBlur" title:self.sections[0][2]
+                                       value:manager.interfaceBlurIntensity minimum:0.0 action:@selector(interfaceBlurSliderChanged:)];
+        } else {
+            UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+            cell.textLabel.text = self.sections[0][3];
+            cell.textLabel.textColor = AmeUIAccentColor();
+            [manager applyEffectToCell:cell];
             return cell;
         }
     }
-    
+    if (indexPath.section == 5) {
+        return indexPath.row == 0
+            ? [self appearanceSliderCell:@"WallpaperBlur" title:self.sections[5][0] value:manager.blurIntensity minimum:0.0 action:@selector(blurIntensitySliderChanged:)]
+            : [self appearanceSliderCell:@"WallpaperDimming" title:self.sections[5][1] value:manager.wallpaperDimming minimum:0.0 action:@selector(wallpaperDimmingSliderChanged:)];
+    }
+
     // ★ [GLASS-STYLE] "UI Style" section: row0=style (auto/native/Liquid Glass) · row1=highlight switch · row2=intensity slider.
     if (indexPath.section == 4) {
         // ★ [GLASS-STYLE] row0: UI-style segmented control (iOS<26 ⇒ "Liquid Glass" disabled + footer explanation).
@@ -415,7 +413,7 @@
         UILabel *valueLabel = [cell.contentView viewWithTag:411];
         if ([valueLabel isKindOfClass:[UILabel class]]) {
             valueLabel.text = [NSString stringWithFormat:@"%.0f%%", manager.glassRimStrength * 100];
-            valueLabel.textColor = hasBackground ? [UIColor whiteColor] : [UIColor labelColor];
+            valueLabel.textColor = AmeUISecondaryTextColor();
             valueLabel.alpha = ameSliderEnabled ? 1.0 : 0.35;
         }
         cell.imageView.alpha = ameSliderEnabled ? 1.0 : 0.35;
@@ -468,6 +466,8 @@
 // ★ [GLASS-STYLE] "UI Style" footer: explain the automatic decision / reason for disabling
 // controls (native style / hand-drawn highlight state).
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+    if (section == 0) return localize(@"renewed.appearance.interface_help", @"UI Blur changes material visibility in Blur mode, not a Gaussian blur radius. Panel Opacity changes only panel tint. Wallpaper controls are separate.");
+    if (section == 5) return localize(@"renewed.appearance.wallpaper_help", @"Wallpaper Blur changes the background material. Wallpaper Dimming is a separate, gentler overlay in Light mode. Neither changes panel opacity. Choose a custom image or video to enable these controls.");
     if (section == 4) {
         NSMutableString *ameFooter = [NSMutableString string];
         [ameFooter appendString:AMEGlassStyleSystemSupportsLiquid()
@@ -490,45 +490,70 @@
 
 // ★ [GLASS-STYLE] The footer contains multiple lines ⇒ use adaptive height (supported for
 // titleForFooterInSection since iOS 11).
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    // Existing style controls use centered/frame layout. Retain a stable touch-height for those rows.
+    if (indexPath.section == 4) return 52.0;
+    return UITableViewAutomaticDimension;
+}
+
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
     return UITableViewAutomaticDimension;
 }
 
 - (void)styleCell:(UITableViewCell *)cell hasBackground:(BOOL)hasBackground {
-    if (hasBackground) {
-        [[BackgroundManager sharedManager] applyEffectToCell:cell];
-        cell.textLabel.textColor = [UIColor whiteColor];
-    } else {
-        cell.backgroundColor = [UIColor secondarySystemBackgroundColor];
-        cell.textLabel.textColor = [UIColor labelColor];
-    }
+    [[BackgroundManager sharedManager] applyEffectToCell:cell];
+    cell.textLabel.textColor = AmeUIPrimaryTextColor();
+    cell.detailTextLabel.textColor = AmeUISecondaryTextColor();
+    cell.textLabel.font = AmeUIFont(AmeUIFontRoleBody);
+    cell.textLabel.adjustsFontForContentSizeCategory = YES;
 }
 
 #pragma mark - Slider Actions
 
+- (void)updatePercentageForSlider:(UISlider *)slider value:(CGFloat)value {
+    UILabel *label = (UILabel *)[slider.superview viewWithTag:501];
+    label.text = [NSString stringWithFormat:@"%.0f%%", value * 100];
+    slider.accessibilityValue = label.text;
+}
+
 - (void)opacitySliderChanged:(UISlider *)slider {
-    CGFloat value = slider.value;
-    [BackgroundManager sharedManager].uiOpacity = value;
-    
-    self.opacityValueLabel.text = [NSString stringWithFormat:@"%.0f%%", value * 100];
-    
-    // Refresh UI effect in real time.
-    [[BackgroundManager sharedManager] refreshUIEffect];
+    BackgroundManager *manager = [BackgroundManager sharedManager];
+    manager.uiOpacity = slider.value;
+    [self updatePercentageForSlider:slider value:manager.uiOpacity];
+    [manager refreshUIEffect];
+}
+
+- (void)interfaceBlurSliderChanged:(UISlider *)slider {
+    BackgroundManager *manager = [BackgroundManager sharedManager];
+    manager.interfaceBlurIntensity = slider.value;
+    [self updatePercentageForSlider:slider value:manager.interfaceBlurIntensity];
+    [manager refreshUIEffect];
 }
 
 - (void)blurIntensitySliderChanged:(UISlider *)slider {
-    CGFloat value = slider.value;
-    [BackgroundManager sharedManager].blurIntensity = value;
-    
-    // Update the label display.
-    UITableViewCell *cell = (UITableViewCell *)slider.superview.superview;
-    if ([cell isKindOfClass:[UITableViewCell class]]) {
-        UILabel *valueLabel = [cell.contentView viewWithTag:301];
-        valueLabel.text = [NSString stringWithFormat:@"%.0f%%", value * 100];
-    }
-    
-    // Refresh UI effect in real time.
-    [[BackgroundManager sharedManager] refreshUIEffect];
+    BackgroundManager *manager = [BackgroundManager sharedManager];
+    manager.blurIntensity = slider.value;
+    [self updatePercentageForSlider:slider value:manager.blurIntensity];
+    [manager refreshUIEffect];
+}
+
+- (void)wallpaperDimmingSliderChanged:(UISlider *)slider {
+    BackgroundManager *manager = [BackgroundManager sharedManager];
+    manager.wallpaperDimming = slider.value;
+    [self updatePercentageForSlider:slider value:manager.wallpaperDimming];
+    [manager refreshUIEffect];
+}
+
+- (void)resetInterfaceAppearance {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:self.sections[0][3]
+        message:localize(@"renewed.appearance.reset_help", @"Reset UI effect, UI Blur and Panel Opacity only. Wallpaper, theme, accounts and game settings stay unchanged.")
+        preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"resman.common.cancel", @"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"renewed.appearance.reset", @"Reset to Recommended") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [[BackgroundManager sharedManager] resetInterfaceAppearance];
+        [self.tableView reloadData];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 #pragma mark - ★ [GLASSUI] Glass switch / intensity
@@ -595,14 +620,10 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     
-    BackgroundManager *manager = [BackgroundManager sharedManager];
-    BOOL hasBackground = [manager hasBackground];
-    
     // UI effect settings section.
-    if (indexPath.section == 0 && hasBackground) {
-        if (indexPath.row == 0) {
-            [self showUIEffectPicker];
-        }
+    if (indexPath.section == 0) {
+        if (indexPath.row == 0) [self showUIEffectPicker];
+        else if (indexPath.row == 3) [self resetInterfaceAppearance];
         return;
     }
     
@@ -649,7 +670,6 @@
         manager.uiEffect = BackgroundUIEffectBlur;
         [manager refreshUIEffect];
         [self.tableView reloadData];
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"BackgroundUIEffectChanged" object:nil];
     }]];
     
     [alert addAction:[UIAlertAction actionWithTitle:localize(@"i18n_str_68", nil)
@@ -658,7 +678,6 @@
         manager.uiEffect = BackgroundUIEffectTranslucent;
         [manager refreshUIEffect];
         [self.tableView reloadData];
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"BackgroundUIEffectChanged" object:nil];
     }]];
     
     [alert addAction:[UIAlertAction actionWithTitle:localize(@"resman.common.cancel", nil)
@@ -755,13 +774,14 @@
         BackgroundManager *manager = [BackgroundManager sharedManager];
         manager.uiEffect = BackgroundUIEffectBlur;
         manager.uiOpacity = 0.7;
+        [manager refreshUIEffect];
         
         [self updatePreview];
         [self.tableView reloadData];
         
         // Restore default background color.
-        self.view.backgroundColor = [UIColor systemBackgroundColor];
-        self.tableView.backgroundColor = [UIColor systemBackgroundColor];
+        self.view.backgroundColor = [UIColor clearColor];
+        self.tableView.backgroundColor = [UIColor clearColor];
         self.tableView.backgroundView = nil;
         
         [[NSNotificationCenter defaultCenter] postNotificationName:@"BackgroundChanged" object:nil];
@@ -787,8 +807,8 @@
         [self.tableView reloadData];
         
         // Restore default background color
-        self.view.backgroundColor = [UIColor systemBackgroundColor];
-        self.tableView.backgroundColor = [UIColor systemBackgroundColor];
+        self.view.backgroundColor = [UIColor clearColor];
+        self.tableView.backgroundColor = [UIColor clearColor];
         
         [[NSNotificationCenter defaultCenter] postNotificationName:@"BackgroundChanged" object:nil];
     }]];
@@ -877,9 +897,19 @@
         //   without accessing its scope, imageWithContentsOfFile: returns nil (appearing as "image
         //   selection does nothing").
         BOOL ame92Scoped = [url startAccessingSecurityScopedResource];
-        UIImage *image = [UIImage imageWithContentsOfFile:url.path];
-        if (ame92Scoped) [url stopAccessingSecurityScopedResource];
-        if (image) [self processSelectedImage:image];
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+            UIImage *image = [UIImage imageWithContentsOfFile:url.path];
+            if (ame92Scoped) [url stopAccessingSecurityScopedResource];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (image) [self processSelectedImage:image];
+                else {
+                    UIAlertController *alert = [UIAlertController alertControllerWithTitle:localize(@"i18n_str_42", @"Error")
+                        message:localize(@"i18n_str_48", @"The image could not be read.") preferredStyle:UIAlertControllerStyleAlert];
+                    [alert addAction:[UIAlertAction actionWithTitle:localize(@"i18n_str_44", @"OK") style:UIAlertActionStyleDefault handler:nil]];
+                    [self presentViewController:alert animated:YES completion:nil];
+                }
+            });
+        });
     } else if ([@[@"mp4", @"mov", @"m4v"] containsObject:extension]) {
         [self processSelectedVideo:url];
     }
@@ -971,8 +1001,48 @@
 /// show through correctly.
 - (void)reapplyBackgroundEffect {
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
-    self.tableView.backgroundColor = [UIColor clearColor];
+    self.tableView.backgroundColor = UIColor.clearColor;
     self.tableView.backgroundView = nil;
+    BackgroundManager *manager = [BackgroundManager sharedManager];
+    for (UITableViewCell *cell in self.tableView.visibleCells) {
+        // Synchronize the existing style controls too, without replacing an actively tracking cell.
+        UISegmentedControl *style = (UISegmentedControl *)[cell.contentView viewWithTag:420];
+        if (style && !style.tracking) style.selectedSegmentIndex = AMEGlassStyleConfigured();
+        UISwitch *highlights = (UISwitch *)[cell.accessoryView viewWithTag:400];
+        if (highlights && !highlights.tracking) {
+            highlights.on = AMEGlassStyleHandDrawnOverlayEnabled();
+            highlights.enabled = AMEGlassStyleSystemSupportsLiquid();
+        }
+        UISlider *strength = (UISlider *)[cell.contentView viewWithTag:410];
+        if (strength && !strength.tracking) {
+            strength.value = manager.glassRimStrength;
+            strength.enabled = AMEGlassStyleSystemSupportsLiquid() && AMEGlassStyleHandDrawnOverlayEnabled();
+            UILabel *label = (UILabel *)[cell.contentView viewWithTag:411];
+            label.text = [NSString stringWithFormat:@"%.0f%%", manager.glassRimStrength * 100];
+            label.alpha = strength.enabled ? 1.0 : 0.35;
+        }
+        UISlider *slider = (UISlider *)[cell.contentView viewWithTag:500];
+        NSIndexPath *path = [self.tableView indexPathForCell:cell];
+        if (path.section == 0 && path.row == 0) cell.detailTextLabel.text = manager.uiEffect == BackgroundUIEffectBlur
+            ? localize(@"i18n_str_2017", nil) : localize(@"i18n_str_65", nil);
+        if (!slider || slider.tracking || !path) continue;
+        slider.enabled = path.section == 5 ? [manager hasBackground] : (path.row != 2 || manager.uiEffect == BackgroundUIEffectBlur);
+        CGFloat value = path.section == 5 ? (path.row == 0 ? manager.blurIntensity : manager.wallpaperDimming)
+            : (path.row == 1 ? manager.uiOpacity : manager.interfaceBlurIntensity);
+        slider.value = value;
+        [self updatePercentageForSlider:slider value:value];
+    }
+}
+
+- (void)wallpaperChanged:(NSNotification *)notification {
+    [self updatePreview];
+    [self reapplyBackgroundEffect];
+    BackgroundManager *manager = [BackgroundManager sharedManager];
+    for (UITableViewCell *cell in self.tableView.visibleCells) {
+        NSIndexPath *path = [self.tableView indexPathForCell:cell];
+        if (path && path.section == 2) cell.accessoryType = (path.row == 0 ? manager.hasImageBackground : manager.hasVideoBackground)
+            ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
+    }
 }
 
 - (void)dealloc {

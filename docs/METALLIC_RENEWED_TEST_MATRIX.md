@@ -99,3 +99,44 @@ Source start: feature branch at `a08a458a78e908bb993b7f7edc84359295c740fc`. All 
 | Persistence/lifecycle/gameplay | Repeat M0/M1 restart, background, JIT/Java/Metal/Minecraft device matrix using new IPA | Same functionality and engine behavior | No IPA built; no new gameplay/restart evidence | PENDING | M1 BLOCKED; historical original IPA evidence unchanged |
 
 Next: Wallpaper, Glass, Blur and Opacity integration. Maintain existing runtime gates and record exact source/build/device identity when execution becomes available.
+
+
+## M3 source / logic verification (2026-10-27)
+
+Start: `0940a6d9d9824c10ee5eaad0e07267a7ccea48fc`, feature branch. M3 PARTIAL; M1 native build BLOCKED. Source equality/logic checks are separate from runtime acceptance.
+
+| Feature | Procedure | Expected result | Actual result | Status | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Objective-C syntax grammar / imports | Parse four changed implementations and normalized manager header, resolve local imports / existing CMake registrations | No grammar errors, no new source registration | Checks passed | PASS | tree-sitter grammar parsing via /tmp/m3_verify.py; not Apple SDK compilation |
+| Numeric boundaries | Compile and execute production AMEClampAppearance C body with GCC | Preserve valid zero, clamp ranges, reject non-finite values | Nine assertions passed | PASS | /tmp/m3_clamp.c binary: zero, min, negative, above-max, in-range, max, NaN, ±infinity |
+| Control/render/reset paths | Trace four slider selectors to property/save/decoration; assert reset assignments | Distinct model/render responsibilities; reset limited to three UI values | Source assertions passed | PASS | /tmp/m3_verify.py; not UIKit event execution |
+| Preferences / migration | Compare old constants, new keys, objectForKey presence guards and save calls | Old keys unchanged, two unique keys, explicit zero kept | Source checks passed | PASS | Manager constants/load/save; NSUserDefaults runtime still pending |
+| Refresh / wiring / M2 preservation | Inspect construction-only targets, tracking checks, observer cleanup, coalesced sender, M2 action/animation/accent bodies | No added action forwarding or gesture/constraint/material accumulation | Source checks passed | PASS | Grammar/source review; manager sends appearance notification at one site |
+| Protected engine boundary | Compare baseline allowing only approved M2/M3 UI files and three docs | No engine/framework/JIT/Java/Metal/launch/auth/signing/build changes | All other tracked paths identical | PASS | Exact path gate; source equality only |
+
+## M3 native acceptance (not executed)
+
+| Feature | Procedure | Expected result | Actual result | Status | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Default wallpaper | Open/reopen, rotate phone/tablet | Established default aspect-fill, no blank flash or repeated setup | Not run | PENDING | Default rendering preserved; native build unavailable |
+| Custom image | Pick/crop image from Photos and Files, then reopen | Wallpaper/preview update; same storage folder and crop, cached without repeated reads | Not run | PENDING | Async/cache source path implemented only |
+| Custom video | Pick supported video, navigate, background/foreground | Aspect-fill playback, one player, original lifecycle retained | Not run | PENDING | Same-host reuse and original player/lifecycle methods; no AVPlayer runtime |
+| Picker cancellation / file error | Cancel both pickers; choose inaccessible/invalid media | Old state/files retained, no crash; useful error | Not run | PENDING | Cancellation delegates unchanged; copy-before-replace and Files error source checks only |
+| Missing wallpaper | Restart with missing/invalid path and corrupt image | Safe default, nil-safe persistence, no blank or unrelated deletion | Not run | PENDING | Path validation, async fallback and removeObjectForKey inspected |
+| Clear wallpaper | Confirm clear, then pick another wallpaper | Immediate default, host retained, UI/engine values unchanged | Not run | PENDING | Manager clear path implemented; UI confirmation not executed |
+| Light theme | Existing Light switch, bright/dark wallpapers | Readable semantic panels; gentler dimming, no opaque page overlay | Not run | PENDING | Semantic material/tint source only |
+| Dark theme | Existing Dark switch, bright/dark wallpapers | Readable native glass; dimming is black, not white | Not run | PENDING | Dynamic color source only |
+| Liquid Glass | Supported OS, style auto/liquid and highlights toggle | Native effect and existing optional highlights function | Not run | PENDING | Capability resolver preserved; no new private tuning |
+| Native fallback | Older OS / native choice | Valid UIKit blur; no forced unavailable APIs | Not run | PENDING | Resolver unchanged, no native execution |
+| UI Blur | Drag 0/mid/100 in Blur mode, reopen | Material visibility changes on managed panels/cells and M2 controls; tint/text retained at zero | Not run | PENDING | Independent new key and rendering helper inspected |
+| Panel Opacity | Drag 10/mid/100 in both modes | Backdrop tint changes, no text fade or wallpaper dimming | Not run | PENDING | Separate host tint path inspected; no rendered comparison |
+| Wallpaper dimming independence | Change each wallpaper/UI slider separately, switch glass style | Only intended wallpaper/material/tint/overlay changes | Not run | PENDING | Source paths split; legacy bars/chip coverage incomplete |
+| Reset to Recommended | Change UI/wallpaper/game settings, confirm reset | Only Blur mode + opacity .7 + interface material .79 reset | Not run | PENDING | Three backing assignments verified; runtime settings not observed |
+| Legacy wallpaper restore | Confirm original Restore Default Background | Original clear + UI effect/opacity reset retained; no new UI intensity reset | Not run | PENDING | Compatibility source path documented |
+| Persistence | Change all four sliders, explicit zero, terminate/reopen; test legacy defaults migration | Values, image/video selection and shared screens restore correctly | Not run | PENDING | Save/load source checked; real process restart not performed |
+| Rapid slider movement | Drag quickly, switch direction, leave/reenter, change style | Responsive thumb, no cell replacement, targets/layers do not accumulate | Not run | PENDING | Tracking guards/coalescing/reuse inspected; performance not measured |
+| Multiple navigation changes | Rapid tabs/modals/rotation while media and sliders active | No duplicate overlay/player, blocked control, page overlap or lost JIT refresh | Not run | PENDING | Root/tab lifecycle not edited; UIKit runtime unavailable |
+| Global consumer coverage | Compare manager surfaces, M2 controls, legacy bars/toolbars/search/chips | Consistent complete interface behavior | Legacy consumers not fully converted | PENDING | Explicit partial scope, no global parity claim |
+| JIT / Java / Metal / gameplay | Build safely, validate historical known configuration on device | Same engine and working Minecraft world | New runtime test not performed; protected source diff zero | PENDING | M1 BLOCKED; original IPA user evidence remains historical |
+
+Next milestone: Polished and fully functional Home screen. Keep every unexecuted acceptance test pending and carry forward legacy-consumer coverage and M1 blockers.

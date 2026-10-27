@@ -11,12 +11,19 @@
 #import "AMEGlassStyle.h"        // ★ [GLASS-STYLE] UI style resolution layer (native / Liquid Glass)
 #import "AMEAssetCrypto.h"
 #import <Photos/Photos.h>
+#import <math.h>
 
 static NSString * const kBackgroundTypeKey = @"background_type";
 static NSString * const kBackgroundPathKey = @"background_path";
 static NSString * const kBackgroundUIEffectKey = @"background_ui_effect";
 static NSString * const kBackgroundUIOpacityKey = @"background_ui_opacity";
 static NSString * const kBackgroundBlurIntensityKey = @"background_blur_intensity";
+// Split only the previously coupled responsibilities; the legacy wallpaper key is unchanged.
+static NSString * const kInterfaceBlurKey = @"background_interface_blur_intensity_v1";
+static NSString * const kWallpaperDimmingKey = @"background_wallpaper_dimming_v1";
+static CGFloat AMEClampAppearance(CGFloat value, CGFloat minimum, CGFloat fallback) {
+    return isfinite(value) ? MAX(minimum, MIN(1.0, value)) : fallback;
+}
 static NSString * const kGlassRimEnabledKey  = @"background_glass_rim_enabled";   // ★ [RIM-UI]
 static NSString * const kGlassRimStrengthKey = @"background_glass_rim_strength";  // ★ [RIM-UI]
 static NSString * const kBackgroundsFolder = @"backgrounds";
@@ -199,6 +206,14 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 
 @interface BackgroundManager ()
 @property (nonatomic, strong) AVPlayer *videoPlayer;
+@property (nonatomic, strong) NSHashTable<UIView *> *appearanceHosts;
+@property (nonatomic, assign) BOOL appearanceRefreshPending;
+@property (nonatomic, copy) NSString *renderedBackgroundPath;
+@property (nonatomic, strong) NSUUID *pendingWallpaperSelection;
+@property (nonatomic, strong) UIImage *cachedBackgroundImage;
+@property (nonatomic, copy) NSString *cachedImagePath;
+- (void)addBlurEffectToContainer:(UIView *)container;
+- (void)handleUIThemeChanged:(NSNotification *)notification;
 @property (nonatomic, weak) UIView *currentBackgroundView;
 @property (nonatomic, readwrite) BackgroundType currentType;
 @property (nonatomic, readwrite, nullable) NSString *currentBackgroundPath;
@@ -241,6 +256,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)setupNotifications {
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleUIThemeChanged:)
+                                                 name:@"UIThemeChanged" object:nil];
     // App lifecycle
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(appDidEnterBackground)
@@ -305,7 +322,9 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     self.currentBackgroundPath = [defaults stringForKey:kBackgroundPathKey];
     
     // Validate path exists
-    if (self.currentBackgroundPath && ![[NSFileManager defaultManager] fileExistsAtPath:self.currentBackgroundPath]) {
+    if ((self.currentType != BackgroundTypeNone &&
+         (self.currentBackgroundPath.length == 0 || ![[NSFileManager defaultManager] fileExistsAtPath:self.currentBackgroundPath])) ||
+        self.currentType < BackgroundTypeNone || self.currentType > BackgroundTypeVideo) {
         self.currentBackgroundPath = nil;
         self.currentType = BackgroundTypeNone;
         [self saveBackgroundSettings];
@@ -342,7 +361,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     }
     
     _uiOpacity = [defaults floatForKey:kBackgroundUIOpacityKey];
-    if (_uiOpacity < 0.1 || _uiOpacity > 1.0) {
+    if (!isfinite(_uiOpacity) || _uiOpacity < 0.1 || _uiOpacity > 1.0) {
         _uiOpacity = 0.7; // Default opacity
     }
     
@@ -351,7 +370,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     //   imperceptible. Use 0.7 as the default.
     id ameBlurObj = [defaults objectForKey:kBackgroundBlurIntensityKey];
     _blurIntensity = ameBlurObj ? [defaults floatForKey:kBackgroundBlurIntensityKey] : 0.7;
-    if (_blurIntensity < 0.0 || _blurIntensity > 1.0) {
+    if (!isfinite(_blurIntensity) || _blurIntensity < 0.0 || _blurIntensity > 1.0) {
         _blurIntensity = 0.7; // Default blur intensity
     }
 
@@ -373,12 +392,21 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     _glassRimEnabled  = ameRimObj ? [defaults boolForKey:kGlassRimEnabledKey] : YES;
     id ameRimSObj = [defaults objectForKey:kGlassRimStrengthKey];
     _glassRimStrength = ameRimSObj ? [defaults floatForKey:kGlassRimStrengthKey] : 1.0;
-    if (_glassRimStrength < 0.0 || _glassRimStrength > 1.0) _glassRimStrength = 1.0;
+    if (!isfinite(_glassRimStrength) || _glassRimStrength < 0.0 || _glassRimStrength > 1.0) _glassRimStrength = 1.0;
     // ★ [GLASS-STYLE] Resolve the active UI style (single source of truth) and adjust the hand-drawn
     //   glass intensity accordingly. Native style (always on iOS<26; user-selectable on iOS>=26)
     //   forces intensity to 0 (the rim helper also short-circuits internally; this is a second safeguard).
     AMEGlassStyleLogResolvedOnce();
     [self ameSyncGlassRimStrengthForCurrentStyle];
+
+    // One-time split: preserve old wallpaper blur and seed the previous panel/dimming appearance.
+    id interfaceValue = [defaults objectForKey:kInterfaceBlurKey];
+    _interfaceBlurIntensity = interfaceValue ? AMEClampAppearance(([interfaceValue respondsToSelector:@selector(doubleValue)] ? [interfaceValue doubleValue] : NAN), 0.0, 0.79)
+        : MIN(1.0, 0.3 + _blurIntensity * 0.7 + ([self hasBackground] ? 0.0 : 0.2));
+    id dimValue = [defaults objectForKey:kWallpaperDimmingKey];
+    _wallpaperDimming = dimValue ? AMEClampAppearance(([dimValue respondsToSelector:@selector(doubleValue)] ? [dimValue doubleValue] : NAN), 0.0, 0.7) : _blurIntensity;
+    [defaults setDouble:_interfaceBlurIntensity forKey:kInterfaceBlurKey];
+    [defaults setDouble:_wallpaperDimming forKey:kWallpaperDimmingKey];
 
     NSLog(@"[glass] settings loaded: uiEffect=%ld (0=Translucent,1=Blur) blurIntensity=%.2f uiOpacity=%.2f",
           (long)_uiEffect, _blurIntensity, _uiOpacity);
@@ -395,9 +423,11 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     [defaults setInteger:self.uiEffect forKey:kBackgroundUIEffectKey];
     [defaults setFloat:self.uiOpacity forKey:kBackgroundUIOpacityKey];
     [defaults setFloat:self.blurIntensity forKey:kBackgroundBlurIntensityKey];
+    [defaults setDouble:self.interfaceBlurIntensity forKey:kInterfaceBlurKey];
+    [defaults setDouble:self.wallpaperDimming forKey:kWallpaperDimmingKey];
     [defaults setBool:self.glassRimEnabled forKey:kGlassRimEnabledKey];      // ★ [RIM-UI]
     [defaults setFloat:self.glassRimStrength forKey:kGlassRimStrengthKey];   // ★ [RIM-UI]
-    [defaults synchronize];
+    // NSUserDefaults persists asynchronously; avoid synchronous disk flushes while tracking sliders.
 }
 
 - (void)setUiEffect:(BackgroundUIEffect)uiEffect {
@@ -406,13 +436,33 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)setUiOpacity:(CGFloat)uiOpacity {
-    _uiOpacity = MAX(0.1, MIN(1.0, uiOpacity));
+    _uiOpacity = AMEClampAppearance(uiOpacity, 0.1, 0.7);
     [self saveUISettings];
 }
 
 - (void)setBlurIntensity:(CGFloat)blurIntensity {
-    _blurIntensity = MAX(0.0, MIN(1.0, blurIntensity));
+    _blurIntensity = AMEClampAppearance(blurIntensity, 0.0, 0.7);
     [self saveUISettings];
+    if (self.globalBackgroundContainer) [self addBlurEffectToContainer:self.globalBackgroundContainer];
+}
+
+- (void)setInterfaceBlurIntensity:(CGFloat)value {
+    _interfaceBlurIntensity = AMEClampAppearance(value, 0.0, 0.79);
+    [self saveUISettings];
+}
+
+- (void)setWallpaperDimming:(CGFloat)value {
+    _wallpaperDimming = AMEClampAppearance(value, 0.0, 0.7);
+    [self saveUISettings];
+    if (self.globalBackgroundContainer) [self addBlurEffectToContainer:self.globalBackgroundContainer];
+}
+
+- (void)resetInterfaceAppearance {
+    _uiEffect = BackgroundUIEffectBlur;
+    _uiOpacity = 0.7;
+    _interfaceBlurIntensity = 0.3 + 0.7 * 0.7; // Existing recommended intensity mapped to material visibility.
+    [self saveUISettings];
+    [self refreshUIEffect];
 }
 
 #pragma mark - ★ [GLASSUI] Glass highlight switch / intensity (Settings integration: clamp + persist + apply immediately)
@@ -436,7 +486,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)setGlassRimStrength:(CGFloat)glassRimStrength {
-    _glassRimStrength = MAX(0.0, MIN(1.0, glassRimStrength));   // ★ Clamp to 0…1; ignore out-of-range values
+    _glassRimStrength = AMEClampAppearance(glassRimStrength, 0.0, 1.0);   // ★ Clamp to 0…1; ignore out-of-range values
     [self saveUISettings];
     [self ameSyncGlassRimStrengthForCurrentStyle];   // ★ [GLASS-STYLE] Always 0 for native style
     [self applyGlassRimSettingsNow];
@@ -450,12 +500,18 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         return;
     }
     
+    if (self.currentWindow == window && self.currentType == BackgroundTypeNone &&
+        [window viewWithTag:kDefaultBackgroundTag]) { [self updateBackgroundFrame]; return; }
+    if (self.currentWindow == window && self.currentType != BackgroundTypeNone &&
+        [self.renderedBackgroundPath isEqualToString:self.currentBackgroundPath] && self.globalBackgroundContainer.superview == window) {
+        [self updateBackgroundFrame];
+        return;
+    }
+    [self removeGlobalBackground];
     self.currentWindow = window;
     self.currentSplitVC = nil;
+    self.renderedBackgroundPath = self.currentBackgroundPath;
     
-    // Remove existing
-    [self removeGlobalBackground];
-
     // For default background, just set the window's background color
     // No need for container
     // Fix: use systemBackgroundColor to adapt to light and dark modes.
@@ -476,7 +532,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     UIView *container = [[UIView alloc] initWithFrame:window.bounds];
     container.tag = kGlobalBackgroundTag;
     container.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    container.backgroundColor = [UIColor clearColor];
+    container.backgroundColor = [UIColor systemBackgroundColor];
+    container.userInteractionEnabled = NO;
     
     // Insert at index 0 (behind everything)
     [window insertSubview:container atIndex:0];
@@ -501,11 +558,17 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         return;
     }
     
+    if (self.currentSplitVC == splitVC && self.currentType == BackgroundTypeNone &&
+        [splitVC.view viewWithTag:kDefaultBackgroundTag]) { [self updateBackgroundFrame]; return; }
+    if (self.currentSplitVC == splitVC && self.currentType != BackgroundTypeNone &&
+        [self.renderedBackgroundPath isEqualToString:self.currentBackgroundPath] && self.globalBackgroundContainer.superview == splitVC.view) {
+        [self updateBackgroundFrame];
+        return;
+    }
+    [self removeGlobalBackground];
     self.currentSplitVC = splitVC;
     self.currentWindow = nil;
-    
-    // Remove existing
-    [self removeGlobalBackground];
+    self.renderedBackgroundPath = self.currentBackgroundPath;
     
     // For default background, just set the view's background color
     // No need for container or transparency
@@ -520,7 +583,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     UIView *container = [[UIView alloc] initWithFrame:splitVC.view.bounds];
     container.tag = kGlobalBackgroundTag;
     container.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    container.backgroundColor = [UIColor clearColor];
+    container.backgroundColor = [UIColor systemBackgroundColor];
+    container.userInteractionEnabled = NO;
     
     // Insert at the very bottom
     [splitVC.view insertSubview:container atIndex:0];
@@ -576,6 +640,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     // Cleanup
     [self cleanupVideoPlayer];
     self.globalBackgroundContainer = nil;
+    self.renderedBackgroundPath = nil;
     self.currentWindow = nil;
     self.currentSplitVC = nil;
 }
@@ -668,26 +733,42 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)applyImageBackgroundToContainer:(UIView *)container {
-    if (!self.currentBackgroundPath) return;
-    
-    UIImage *image = [UIImage imageWithContentsOfFile:self.currentBackgroundPath];
-    if (!image) return;
-    
-    // Remove existing
-    UIView *existing = [container viewWithTag:kBackgroundImageTag];
-    if (existing) [existing removeFromSuperview];
-    
-    // Image view
-    UIImageView *imageView = [[UIImageView alloc] initWithImage:image];
-    imageView.tag = kBackgroundImageTag;
-    imageView.contentMode = UIViewContentModeScaleAspectFill;
-    imageView.clipsToBounds = YES;
-    imageView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    imageView.frame = container.bounds;
-    
-    [container addSubview:imageView];
-    
-    // Add blur effect for UI readability
+    NSString *path = self.currentBackgroundPath;
+    if (path.length == 0) { [self applyDefaultBackgroundToContainer:container]; return; }
+    if (![self.cachedImagePath isEqualToString:path] || !self.cachedBackgroundImage) {
+        // An established default fills the loading interval; no synchronous file read on navigation.
+        [self applyDefaultBackgroundToContainer:container];
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+            UIImage *image = [UIImage imageWithContentsOfFile:path];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (![self.currentBackgroundPath isEqualToString:path] || self.globalBackgroundContainer != container) return;
+                if (!image) {
+                    self.currentBackgroundPath = nil;
+                    self.currentType = BackgroundTypeNone;
+                    [self saveBackgroundSettings];
+                    [[NSNotificationCenter defaultCenter] postNotificationName:@"BackgroundChanged" object:nil];
+                    return;
+                }
+                self.cachedBackgroundImage = image;
+                self.cachedImagePath = path;
+                [self applyImageBackgroundToContainer:container];
+                [[NSNotificationCenter defaultCenter] postNotificationName:@"BackgroundChanged" object:nil];
+            });
+        });
+        return;
+    }
+    [[container viewWithTag:kDefaultBackgroundTag] removeFromSuperview];
+    UIImageView *imageView = (UIImageView *)[container viewWithTag:kBackgroundImageTag];
+    if (!imageView) {
+        imageView = [[UIImageView alloc] initWithFrame:container.bounds];
+        imageView.tag = kBackgroundImageTag;
+        imageView.contentMode = UIViewContentModeScaleAspectFill;
+        imageView.clipsToBounds = YES;
+        imageView.userInteractionEnabled = NO;
+        imageView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [container insertSubview:imageView atIndex:0];
+    }
+    imageView.image = self.cachedBackgroundImage;
     [self addBlurEffectToContainer:container];
 }
 
@@ -695,7 +776,13 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     if (!self.currentBackgroundPath) return;
     
     NSURL *videoURL = [NSURL fileURLWithPath:self.currentBackgroundPath];
-    if (![[NSFileManager defaultManager] fileExistsAtPath:self.currentBackgroundPath]) return;
+    if (![[NSFileManager defaultManager] fileExistsAtPath:self.currentBackgroundPath]) {
+        self.currentBackgroundPath = nil;
+        self.currentType = BackgroundTypeNone;
+        [self saveBackgroundSettings];
+        [self applyDefaultBackgroundToContainer:container];
+        return;
+    }
     
     [self cleanupVideoPlayer];
     
@@ -720,45 +807,29 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)addBlurEffectToContainer:(UIView *)container {
-    // Remove existing blur
-    UIView *existingBlur = [container viewWithTag:kBackgroundBlurTag];
-    if (existingBlur) [existingBlur removeFromSuperview];
-
-    UIView *existingDim = [container viewWithTag:kBackgroundDimTag];
-    if (existingDim) [existingDim removeFromSuperview];
-
-    // Fix: use SystemThinMaterial (adapts to light/dark mode and is more translucent) instead of
-    // hard-coded Dark. Previously, UIBlurEffectStyleDark + an overlaid black dim view caused:
-    // 1. The background image to become so dark in light mode that "the middle was all black".
-    // 2. The sidebars to be completely opaque, hiding the background image.
-    // SystemThinMaterial is light frosted glass in light mode and dark frosted glass in dark mode,
-    // with moderate opacity so the background remains visible.
-    UIBlurEffect *blurEffect;
-    if (@available(iOS 13.0, *)) {
-        blurEffect = AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial);   // ★ Liquid Glass (iOS 26+) / fallback on older systems
-    } else {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
+    UIVisualEffectView *blurView = (UIVisualEffectView *)[container viewWithTag:kBackgroundBlurTag];
+    if (!blurView) {
+        // Wallpaper gets standard public UIKit material, independent of interface glass style.
+        blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+        blurView.tag = kBackgroundBlurTag;
+        blurView.userInteractionEnabled = NO;
+        blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [container addSubview:blurView];
     }
-    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
-    blurView.tag = kBackgroundBlurTag;
-    blurView.alpha = self.blurIntensity * 0.5; // max 0.5 for readability
-    blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     blurView.frame = container.bounds;
-
-    [container addSubview:blurView];
-
-    // Fix: use an adaptive color for the dim view instead of pure black to avoid over-darkening in light mode.
-    UIView *dimView = [[UIView alloc] initWithFrame:container.bounds];
-    dimView.tag = kBackgroundDimTag;
-    if (@available(iOS 13.0, *)) {
-        dimView.backgroundColor = [UIColor labelColor];
-    } else {
-        dimView.backgroundColor = [UIColor blackColor];
+    blurView.alpha = self.blurIntensity * 0.5;
+    UIView *dimView = [container viewWithTag:kBackgroundDimTag];
+    if (!dimView) {
+        dimView = [[UIView alloc] initWithFrame:container.bounds];
+        dimView.tag = kBackgroundDimTag;
+        dimView.userInteractionEnabled = NO;
+        dimView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [container addSubview:dimView];
     }
-    dimView.alpha = self.blurIntensity * 0.2; // Reduced to 0.2 to avoid over-darkening.
-    dimView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-
-    [container addSubview:dimView];
+    dimView.frame = container.bounds;
+    // Dimming is black, never the white labelColor used in Dark mode. Keep Light mode gentler.
+    dimView.backgroundColor = AmeDynamicColor(UIColor.blackColor, [UIColor.blackColor colorWithAlphaComponent:0.4]);
+    dimView.alpha = self.wallpaperDimming * 0.2;
 }
 
 #pragma mark - Transparency Helpers with UI Effect Support
@@ -766,21 +837,16 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 - (void)makeViewControllerTransparent:(UIViewController *)viewController {
     if (!viewController) return;
     
-    // Main view - apply effect based on settings
-    if (self.uiEffect == BackgroundUIEffectBlur) {
-        // Frosted-glass effect — clear background to let the blur show through.
-        viewController.view.backgroundColor = [UIColor clearColor];
+    // Launcher pages must not become full-screen opacity overlays. Keep the Java GUI's existing
+    // presentation semantics, without changing that protected controller or its runtime behavior.
+    Class javaGUIClass = NSClassFromString(@"JavaGUIViewController");
+    if (javaGUIClass && [viewController isKindOfClass:javaGUIClass]) {
+        viewController.view.backgroundColor = self.uiEffect == BackgroundUIEffectBlur ? UIColor.clearColor
+            : [UIColor.systemBackgroundColor colorWithAlphaComponent:1.0 - self.uiOpacity];
     } else {
-        // Translucent effect — semi-transparent background.
-        // Fix: use systemBackgroundColor instead of hard-coded black to adapt to light/dark mode.
-        if (@available(iOS 13.0, *)) {
-            UIColor *base = [UIColor systemBackgroundColor];
-            viewController.view.backgroundColor = [base colorWithAlphaComponent:1.0 - self.uiOpacity];
-        } else {
-            viewController.view.backgroundColor = [UIColor colorWithWhite:0 alpha:1.0 - self.uiOpacity];
-        }
+        viewController.view.backgroundColor = UIColor.clearColor;
     }
-    
+
     // For UITableViewController
     if ([viewController isKindOfClass:[UITableViewController class]]) {
         UITableViewController *tableVC = (UITableViewController *)viewController;
@@ -809,62 +875,21 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)applyEffectToCell:(UITableViewCell *)cell {
-    if (cell == nil) { return; }
-    // ★ [RIM-STATE] Do not overlay highlights on list rows (see [NO-RIM] below), but rows are reused
-    //   and may carry old layers ⇒ always remove any previous highlight before applying an effect,
-    //   so none remains when using "Native / highlights off" (user confirmed a small highlight
-    //   remained on the Settings screen after switching from glass to native).
-    AmeDetachGlassRim(cell);
-    if (self.uiEffect == BackgroundUIEffectBlur) {
-        // Frosted-glass effect — use UIBlurEffect for the cell background.
-        if (@available(iOS 13.0, *)) {
-            UIVisualEffect *blur = AmeGlassEffect(UIBlurEffectStyleSystemMaterial);   // ★ Glass effect for list rows
-            UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-            blurView.frame = cell.bounds;
-            // ★ [E3] SPEC §2: glass base + blur 26 / saturate 180%.
-            //   ★ [GLASS-STYLE] Base fill depends on style (liquid = white fill; native = none,
-            //   leave the system material unchanged).
-            AmeApplyGlassFillForCurrentStyle(blurView);
-            AmeTuneGlassBackdrop(blurView, AmeGlassBlurRadius, AmeGlassSaturate);   // Internally short-circuits by style.
-            // ★ [NO-RIM] Do not add highlights to list rows (user feedback: remove this stroke from
-            //   Settings / instance subdirectories). The rim remains on home-screen cards in
-            //   applyEffectToView:.
-            blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-
-            // Remove old background views
-            for (UIView *subview in cell.contentView.superview.subviews) {
-                if ([subview isKindOfClass:[UIVisualEffectView class]] && subview != blurView) {
-                    [subview removeFromSuperview];
-                }
-            }
-
-            // ★ [ROUND-ROW] Round the option rows (Settings / instance subdirectories).
-            CGFloat rowRadius = 12.0;
-            blurView.layer.cornerRadius = rowRadius;
-            blurView.layer.masksToBounds = YES;
-            cell.layer.cornerRadius = rowRadius;
-            cell.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (match system cards).
-            cell.layer.masksToBounds = YES;
-            cell.backgroundView = blurView;
-        } else {
-            cell.backgroundColor = [UIColor colorWithWhite:0.1 alpha:self.uiOpacity];
-        }
-        cell.contentView.backgroundColor = [UIColor clearColor];
-    } else {
-        // Translucent effect — simple semi-transparent background.
-        // Fix: use secondarySystemBackgroundColor instead of hard-coded 0.1 black.
-        if (@available(iOS 13.0, *)) {
-            cell.backgroundColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:self.uiOpacity];
-        } else {
-            cell.backgroundColor = [UIColor colorWithWhite:0.1 alpha:self.uiOpacity];
-        }
-        cell.contentView.backgroundColor = [UIColor clearColor];
-        cell.backgroundView = nil;
-        // ★ [ROUND-ROW] Also round rows in translucent mode (to match frosted-glass mode).
-        cell.layer.cornerRadius = 12.0;
-        cell.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Continuous corners (match system cards).
-        cell.layer.masksToBounds = YES;
+    if (!cell) return;
+    UIView *background = cell.backgroundView;
+    if (background.tag != kBackgroundBlurTag) {
+        background = [[UIView alloc] initWithFrame:cell.bounds];
+        background.tag = kBackgroundBlurTag;
+        background.userInteractionEnabled = NO;
+        background.layer.cornerRadius = 12.0;
+        background.layer.cornerCurve = kCACornerCurveContinuous;
+        background.clipsToBounds = YES;
+        cell.backgroundView = background;
     }
+    cell.backgroundColor = UIColor.clearColor;
+    cell.contentView.backgroundColor = UIColor.clearColor;
+    objc_setAssociatedObject(background, "ameNoPanelRim", @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [self applyEffectToView:background];
 }
 
 - (void)makeSplitViewControllerTransparent:(UISplitViewController *)splitVC {
@@ -1086,123 +1111,66 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
     }
 }
 
-- (void)refreshUIEffect {
-    if (self.currentSplitVC && self.currentType != BackgroundTypeNone) {
-        [self makeSplitViewControllerTransparent:self.currentSplitVC];
-    }
-    
-    // Re-apply blur intensity to background container
-    if (self.globalBackgroundContainer) {
-        [self addBlurEffectToContainer:self.globalBackgroundContainer];
-    }
-    
-    // Post notification for other views to refresh
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"BackgroundUIEffectChanged" object:nil];
+- (void)handleUIThemeChanged:(NSNotification *)notification {
+    [self refreshUIEffect];
 }
 
-#pragma mark - Unified View Effect Application
+- (void)refreshUIEffect {
+    if (self.appearanceRefreshPending) return;
+    self.appearanceRefreshPending = YES;
+    // At most one refresh per frame, no wallpaper decoding/player rebuild or root-tree traversal.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(NSEC_PER_SEC / 60)), dispatch_get_main_queue(), ^{
+        self.appearanceRefreshPending = NO;
+        for (UIView *host in self.appearanceHosts.allObjects) {
+            if (host.window) [self applyEffectToView:host];
+        }
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"BackgroundUIEffectChanged" object:nil];
+    });
+}
+
+- (void)applyInterfaceAppearanceToMaterial:(UIVisualEffectView *)material inView:(UIView *)host {
+    // Material visibility and panel tint are separate from both content alpha and wallpaper effects.
+    material.alpha = self.uiEffect == BackgroundUIEffectBlur ? self.interfaceBlurIntensity : 0.0;
+    CGFloat tintStrength = self.uiEffect == BackgroundUIEffectBlur ? self.uiOpacity * 0.22 : self.uiOpacity;
+    host.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:tintStrength];
+}
 
 - (void)applyEffectToView:(UIView *)view {
     if (!view) return;
-
-    if (self.uiEffect == BackgroundUIEffectBlur) {
-        // ★ [GLASS-LIQUID] Clearly distinguish the two paths: system material (default) vs hand-drawn
-        //   overlay (only when explicitly enabled by the user).
-        //   The old "BLUR path" log was misread as "still drawing glass entirely in code" ⇒ report
-        //   the actual current style instead.
-        //   · System material: iOS≥26 ⇒ system UIGlassEffect; iOS<26 ⇒ standard system UIBlurEffect.
-        //     Neither draws glass in code.
-        BOOL ameSystemMaterial = AMEGlassStyleUsesSystemMaterial();
-        NSLog(@"[glass] applyEffectToView: %@ on %@ (blur=%.1f sat=%.2f intensity=%.2f hasBg=%d)",
-              ameSystemMaterial ? @"SYSTEM-material path (system material, not hand-drawn)"
-                                : @"HAND-DRAWN overlay path (explicitly enabled)",
-              NSStringFromClass(view.class), (double)AmeGlassBlurRadius, (double)AmeGlassSaturate,
-              (double)self.blurIntensity, (int)[self hasBackground]);
-        // Frosted-glass effect — create a UIVisualEffectView as a subview.
-        // Remove any existing blur view first.
-        for (UIView *subview in view.subviews) {
-            if ([subview isKindOfClass:[UIVisualEffectView class]] && subview.tag == kBackgroundBlurTag) {
-                [subview removeFromSuperview];
-            }
+    if (!self.appearanceHosts) self.appearanceHosts = [NSHashTable weakObjectsHashTable];
+    [self.appearanceHosts addObject:view];
+    UIVisualEffectView *material = nil;
+    for (UIView *subview in view.subviews) {
+        if (subview.tag == kBackgroundBlurTag && [subview isKindOfClass:UIVisualEffectView.class]) {
+            material = (UIVisualEffectView *)subview;
+            break;
         }
-
-        // Fix: use SystemThinMaterial instead of SystemMaterialDark so the sidebars adapt to light/dark
-        // mode and remain translucent enough for the background image to show through.
-        // SystemMaterialDark was too opaque, making "both sides completely opaque".
-        // ★ Use real glass when available (iOS 26 devices); otherwise use system material plus the
-        // highlight rim added below.
-        UIVisualEffect *blur = AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial);
-        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-        blurView.tag = kBackgroundBlurTag;
-        blurView.frame = view.bounds;
-        blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        blurView.layer.cornerRadius = view.layer.cornerRadius;
-        blurView.layer.masksToBounds = YES;
-
-        // Follow ZL2's two-layer opacity control:
-        // 1. blurIntensity controls the frosted-glass blur strength (0.3~1.0, avoiding full
-        //    transparency at low values).
-        // 2. Reduce opacity when a custom background is present to let it show through; keep opacity
-        //    higher when no background is set.
-        // This implements ZL2's influencedByBackgroundColor behavior:
-        // cards are more translucent over an image/video and more opaque without one (matching the system default).
-        CGFloat effectiveAlpha = 0.3 + (self.blurIntensity * 0.7);  // 0.3~1.0
-        if (![self hasBackground]) {
-            // Increase opacity without a custom background to make the UI clearer.
-            effectiveAlpha = MIN(effectiveAlpha + 0.2, 1.0);
-        }
-        blurView.alpha = effectiveAlpha;
-
-        // Do not let the frosted-glass view respond to touches; pass events through to the host view
-        // (such as a UIControl card). Otherwise blurView intercepts touches and the sign-in cards in
-        // AccountLoginViewController do not respond (UIControlEventTouchUpInside never fires).
-        blurView.userInteractionEnabled = NO;
-
-        [view insertSubview:blurView atIndex:0];
-        view.backgroundColor = [UIColor clearColor];
-        // ★ [E3] SPEC §2 design tokens: glass base fill (glass dark .10 / light .55) + blur 26 / saturate 180%.
-        //   ★ [GLASS-STYLE] Apply base fill and private backdrop tuning by style (liquid = apply; native = skip).
-        AmeApplyGlassFillForCurrentStyle(blurView);
-        AmeTuneGlassBackdrop(blurView, AmeGlassBlurRadius, AmeGlassSaturate);
-        // ★ Glass effect: highlight stroke + inner highlight on the top edge (does not depend on the iOS 26 SDK).
-        // ★ [RIM-UI] Apply highlights according to the user's switch/intensity; remove old layers first,
-        // then reapply at the new intensity.
-        // ★ [GLASS-STYLE] Constrain intensity by current style (native ⇒ always 0; the rim helper below
-        // then short-circuits as a no-op).
-        [self ameSyncGlassRimStrengthForCurrentStyle];
-        AmeDetachGlassRim(view);
+    }
+    BOOL installed = (material == nil);
+    if (!material) {
+        material = [[UIVisualEffectView alloc] initWithEffect:AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial)];
+        material.tag = kBackgroundBlurTag;
+        material.userInteractionEnabled = NO;
+        material.isAccessibilityElement = NO;
+        material.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [view insertSubview:material atIndex:0];
+    }
+    NSNumber *oldStyle = objc_getAssociatedObject(material, "ameInterfaceStyle");
+    NSInteger style = AMEGlassStyleResolved();
+    if (oldStyle && oldStyle.integerValue != style) material.effect = AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial);
+    objc_setAssociatedObject(material, "ameInterfaceStyle", @(style), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    material.frame = view.bounds;
+    material.layer.cornerRadius = view.layer.cornerRadius;
+    material.clipsToBounds = YES;
+    [self applyInterfaceAppearanceToMaterial:material inView:view];
+    // Keep established optional highlight hosting and frame repair, without private backdrop tuning.
+    if (![objc_getAssociatedObject(view, "ameNoPanelRim") boolValue]) {
         AmeAttachGlassRim(view, view.layer.cornerRadius);
-        // ★ [UI-B] Fix (2026-10-02): AmeRefreshGlassRim previously had no callers in the project,
-        //   so the highlight CAGradientLayer frame always remained (0,0,0,0) and the top-edge
-        //   highlight was never drawn.
-        dispatch_async(dispatch_get_main_queue(), ^{
+        AmeRefreshGlassRim(view);
+        if (installed || CGRectIsEmpty(view.bounds)) dispatch_async(dispatch_get_main_queue(), ^{
+            [view layoutIfNeeded];
             AmeRefreshGlassRim(view);
-            [self ameRefreshRimsRecursive:view];
         });
-    } else {
-        NSLog(@"[glass] applyEffectToView: TRANSLUCENT path on %@ (uiEffect=%ld)",
-              NSStringFromClass(view.class), (long)self.uiEffect);
-        // Translucent effect — remove the blur view and use a translucent background.
-        // Fix: use systemBackgroundColor instead of hard-coded dark gray to adapt to light/dark mode.
-        for (UIView *subview in view.subviews) {
-            if ([subview isKindOfClass:[UIVisualEffectView class]] && subview.tag == kBackgroundBlurTag) {
-                [subview removeFromSuperview];
-            }
-        }
-        if (@available(iOS 13.0, *)) {
-            // Use secondarySystemBackgroundColor as the translucent base, then apply alpha.
-            // Follow ZL2's two-layer opacity control: reduce opacity when a background is present
-            // so it shows through.
-            CGFloat effectiveOpacity = self.uiOpacity;
-            if (![self hasBackground]) {
-                // Increase opacity without a custom background to make the UI clearer.
-                effectiveOpacity = MIN(effectiveOpacity + 0.3, 1.0);
-            }
-            UIColor *base = [UIColor secondarySystemBackgroundColor];
-            view.backgroundColor = [base colorWithAlphaComponent:effectiveOpacity];
-        } else {
-            view.backgroundColor = [UIColor colorWithWhite:0.08 alpha:self.uiOpacity];
-        }
     }
 }
 
@@ -1229,46 +1197,9 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         cell.contentView.layer.masksToBounds = YES;
     }
 
-    if (self.uiEffect == BackgroundUIEffectBlur) {
-        // Frosted-glass effect.
-        for (UIView *subview in cell.contentView.subviews) {
-            if ([subview isKindOfClass:[UIVisualEffectView class]] && subview.tag == kBackgroundBlurTag) {
-                [subview removeFromSuperview];
-            }
-        }
-
-        // ★ [GLASS-LIQUID] Do not bypass the style layer: iOS≥26 must use system UIGlassEffect
-        // (the old code called UIBlurEffect directly).
-        UIVisualEffect *blur = AmeGlassEffect(UIBlurEffectStyleSystemMaterial);
-        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-        blurView.tag = kBackgroundBlurTag;
-        blurView.frame = cell.contentView.bounds;
-        blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        blurView.layer.cornerRadius = ameEffectiveRadius;   // ★ [CORNER-FIX] Use the effective radius (see start of method).
-        blurView.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] Match system cards.
-        blurView.layer.masksToBounds = YES;
-        // ★ [E3] SPEC §2.5: blur 26 / saturate 180% (apply to system material if possible; otherwise
-        // fall back to the default and log it).
-        AmeTuneGlassBackdrop(blurView, AmeGlassBlurRadius, AmeGlassSaturate);
-
-        [cell.contentView insertSubview:blurView atIndex:0];
-        cell.backgroundColor = [UIColor clearColor];
-        cell.contentView.backgroundColor = [UIColor clearColor];
-    } else {
-        // Translucent effect.
-        for (UIView *subview in cell.contentView.subviews) {
-            if ([subview isKindOfClass:[UIVisualEffectView class]] && subview.tag == kBackgroundBlurTag) {
-                [subview removeFromSuperview];
-            }
-        }
-        // Fix: use secondarySystemBackgroundColor instead of hard-coded 0.1 black.
-        if (@available(iOS 13.0, *)) {
-            cell.backgroundColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:self.uiOpacity];
-        } else {
-            cell.backgroundColor = [UIColor colorWithWhite:0.1 alpha:self.uiOpacity];
-        }
-        cell.contentView.backgroundColor = [UIColor clearColor];
-    }
+    cell.backgroundColor = UIColor.clearColor;
+    objc_setAssociatedObject(cell.contentView, "ameNoPanelRim", @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [self applyEffectToView:cell.contentView];
 }
 
 - (void)applyEffectToSearchBar:(UISearchBar *)searchBar {
@@ -1404,12 +1335,11 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         return;
     }
     
+    NSUUID *selection = NSUUID.UUID;
+    self.pendingWallpaperSelection = selection;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-        // Clear existing
-        [self clearBackgroundInternal];
-        
         // Save image
-        NSString *fileName = [NSString stringWithFormat:@"background_image_%ld.jpg", (long)[[NSDate date] timeIntervalSince1970]];
+        NSString *fileName = [NSString stringWithFormat:@"background_image_%@.jpg", NSUUID.UUID.UUIDString];
         NSString *filePath = [[self backgroundsFolderPath] stringByAppendingPathComponent:fileName];
         
         NSData *imageData = UIImageJPEGRepresentation(image, 0.85);
@@ -1423,11 +1353,18 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         BOOL saved = [imageData writeToFile:filePath atomically:YES];
         
         if (saved) {
-            self.currentType = BackgroundTypeImage;
-            self.currentBackgroundPath = filePath;
-            [self saveBackgroundSettings];
-            
             dispatch_async(dispatch_get_main_queue(), ^{
+                if (self.pendingWallpaperSelection != selection) {
+                    [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
+                    if (completion) completion(NO, [NSError errorWithDomain:NSCocoaErrorDomain code:NSUserCancelledError userInfo:nil]);
+                    return;
+                }
+                [self clearBackgroundInternal];
+                self.currentType = BackgroundTypeImage;
+                self.currentBackgroundPath = filePath;
+                [self saveBackgroundSettings];
+                self.cachedBackgroundImage = image;
+                self.cachedImagePath = filePath;
                 // Reapply if needed
                 if (self.currentSplitVC) {
                     [self applyBackgroundToSplitViewController:self.currentSplitVC];
@@ -1467,12 +1404,11 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         return;
     }
     
+    NSUUID *selection = NSUUID.UUID;
+    self.pendingWallpaperSelection = selection;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-        // Clear existing
-        [self clearBackgroundInternal];
-        
         // Copy video
-        NSString *fileName = [NSString stringWithFormat:@"background_video_%ld.mp4", (long)[[NSDate date] timeIntervalSince1970]];
+        NSString *fileName = [NSString stringWithFormat:@"background_video_%@.mp4", NSUUID.UUID.UUIDString];
         NSString *filePath = [[self backgroundsFolderPath] stringByAppendingPathComponent:fileName];
         
         NSError *copyError = nil;
@@ -1482,11 +1418,16 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         if (ame92Scoped) [videoURL stopAccessingSecurityScopedResource];
         
         if (copied) {
-            self.currentType = BackgroundTypeVideo;
-            self.currentBackgroundPath = filePath;
-            [self saveBackgroundSettings];
-            
             dispatch_async(dispatch_get_main_queue(), ^{
+                if (self.pendingWallpaperSelection != selection) {
+                    [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
+                    if (completion) completion(NO, [NSError errorWithDomain:NSCocoaErrorDomain code:NSUserCancelledError userInfo:nil]);
+                    return;
+                }
+                [self clearBackgroundInternal];
+                self.currentType = BackgroundTypeVideo;
+                self.currentBackgroundPath = filePath;
+                [self saveBackgroundSettings];
                 // Reapply if needed
                 if (self.currentSplitVC) {
                     [self applyBackgroundToSplitViewController:self.currentSplitVC];
@@ -1505,18 +1446,28 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 }
 
 - (void)clearBackground {
+    self.pendingWallpaperSelection = nil;
+    UIWindow *window = self.currentWindow;
+    UISplitViewController *split = self.currentSplitVC;
     [self clearBackgroundInternal];
-    [self removeGlobalBackground];
     [self saveBackgroundSettings];
+    // Install the established default immediately, retaining the presentation host for future picks.
+    if (split) [self applyBackgroundToSplitViewController:split];
+    else if (window) [self applyBackgroundToWindow:window];
+    [self refreshUIEffect];
 }
 
 - (void)clearBackgroundInternal {
     [self cleanupVideoPlayer];
-    
-    if (self.currentBackgroundPath) {
-        [[NSFileManager defaultManager] removeItemAtPath:self.currentBackgroundPath error:nil];
+    // Delete only app-owned wallpaper copies, never arbitrary persisted Documents paths.
+    NSString *path = self.currentBackgroundPath.stringByStandardizingPath;
+    NSString *folder = [[self backgroundsFolderPath].stringByStandardizingPath stringByAppendingString:@"/"];
+    NSString *name = path.lastPathComponent;
+    if ([path hasPrefix:folder] && ([name hasPrefix:@"background_image_"] || [name hasPrefix:@"background_video_"])) {
+        [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
     }
-    
+    self.cachedBackgroundImage = nil;
+    self.cachedImagePath = nil;
     self.currentType = BackgroundTypeNone;
     self.currentBackgroundPath = nil;
 }
@@ -1539,7 +1490,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 
 - (nullable UIImage *)backgroundPreview {
     if (self.currentType == BackgroundTypeImage && self.currentBackgroundPath) {
-        return [UIImage imageWithContentsOfFile:self.currentBackgroundPath];
+        return [self.cachedImagePath isEqualToString:self.currentBackgroundPath] ? self.cachedBackgroundImage : nil;
     }
     return nil;
 }
@@ -1600,7 +1551,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
         for (UIWindow *w in [UIApplication sharedApplication].windows) {
             [self ameApplyGlassRimSettingsToViewTree:w];
         }
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"BackgroundUIEffectChanged" object:nil];
+        [self refreshUIEffect];
     });
 }
 
@@ -1620,7 +1571,8 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
 // container's blur layer, which has no managed marker; therefore, change only its material and
 // never overlay a white fill.
 - (void)ameReapplyGlassStyleToViewTree:(UIView *)root {
-    if (root == nil) { return; }
+    // Interface glass changes must never replace the independent wallpaper material.
+    if (root == nil || root == self.globalBackgroundContainer) { return; }
     for (UIView *sub in [root.subviews copy]) {
         if ([sub isKindOfClass:[UIVisualEffectView class]] && sub.tag == kBackgroundBlurTag) {
             UIVisualEffectView *vev = (UIVisualEffectView *)sub;
@@ -1631,14 +1583,11 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
                          [vev.superview isKindOfClass:[UICollectionViewCell class]] ||
                          [vev.superview.superview isKindOfClass:[UITableViewCell class]] ||
                          [vev.superview.superview isKindOfClass:[UICollectionViewCell class]];
-            // ★ Replacing the effect makes UIKit rebuild the backdrop (resetting private tuning);
-            // then reapply the style-dependent fill and tuning.
+            // An explicit style change replaces the system material; slider updates never do.
             vev.effect = AmeGlassEffect(isRow ? UIBlurEffectStyleSystemMaterial : UIBlurEffectStyleSystemThinMaterial);
+            objc_setAssociatedObject(vev, "ameInterfaceStyle", @(AMEGlassStyleResolved()), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
             if (AmeIsManagedGlass(vev)) {
                 AmeApplyGlassFillForCurrentStyle(vev);
-                if (AMEGlassStyleAllowsHandDrawnGlass()) {
-                    AmeTuneGlassBackdrop(vev, AmeGlassBlurRadius, AmeGlassSaturate);
-                }
             }
         }
         [self ameReapplyGlassStyleToViewTree:sub];
@@ -1657,7 +1606,7 @@ static BOOL gAmeGlassRimApplyScheduled = NO;
             [self ameReapplyGlassStyleToViewTree:w];
             [self ameApplyGlassRimSettingsToViewTree:w];
         }
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"BackgroundUIEffectChanged" object:nil];
+        [self refreshUIEffect];
         NSLog(@"[glass] UI style change applied: configured=%@ · actually in effect=%@",
               AMEGlassStyleStringFromEnum(AMEGlassStyleConfigured()),
               AMEGlassStyleStringFromEnum(AMEGlassStyleResolved()));

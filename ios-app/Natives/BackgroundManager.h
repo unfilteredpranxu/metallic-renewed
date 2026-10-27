@@ -30,10 +30,15 @@ typedef NS_ENUM(NSInteger, BackgroundUIEffect) {
 @property (nonatomic, readonly) BackgroundType currentType;
 @property (nonatomic, readonly, nullable) NSString *currentBackgroundPath;
 
-// UI effect settings (for custom background)
+// Launcher UI appearance and independent custom-wallpaper effects
 @property (nonatomic, assign) BackgroundUIEffect uiEffect;
-@property (nonatomic, assign) CGFloat uiOpacity;  // 0.0 ~ 1.0
-@property (nonatomic, assign) CGFloat blurIntensity; // 0.0 ~ 1.0, background blur intensity
+@property (nonatomic, assign) CGFloat uiOpacity;  // 0.1 ~ 1.0
+@property (nonatomic, assign) CGFloat blurIntensity; // Legacy wallpaper blur, 0...1 (material alpha 0...0.5).
+@property (nonatomic, assign) CGFloat interfaceBlurIntensity; // UI material visibility, 0...1; not blur radius.
+@property (nonatomic, assign) CGFloat wallpaperDimming; // Wallpaper dimming, 0...1 (max alpha 0.2 dark / 0.08 light).
+// Applies only to decoration; never changes host/content alpha or control state.
+- (void)applyInterfaceAppearanceToMaterial:(UIVisualEffectView * _Nullable)material inView:(UIView *)host;
+- (void)resetInterfaceAppearance; // Effect, UI intensity and panel opacity only; preserves wallpaper/theme.
 
 // Global background container
 @property (nonatomic, strong, readonly, nullable) UIView *globalBackgroundContainer;

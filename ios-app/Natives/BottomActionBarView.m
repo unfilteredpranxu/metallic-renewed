@@ -1,5 +1,6 @@
 #import "BottomActionBarView.h"
 #import "UIKit+GlassSurface.h"    // AmeInstallGlassBackdrop / AmeGlassEffect
+#import "BackgroundManager.h"
 #import "LauncherPreferences.h"   // getPrefObject / accentColor (theme color)
 
 // Same height as the start capsule (kNoRightCapsuleHeight in LauncherNewsViewController.m).
@@ -36,7 +37,7 @@ UIColor *AmeThemeTintColor(void) {
 
     self.titleLabel.font = AmeUIFont(AmeUIFontRoleButton);
     self.titleLabel.adjustsFontForContentSizeCategory = YES;
-    for (NSString *name in @[@"LauncherAppearanceChanged", @"UIThemeChanged", AMEGlassStyleChangedNotification]) {
+    for (NSString *name in @[@"LauncherAppearanceChanged", @"UIThemeChanged", @"BackgroundUIEffectChanged", AMEGlassStyleChangedNotification]) {
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(ameAppearanceChanged:)
                                                      name:name object:nil];
@@ -84,7 +85,8 @@ UIColor *AmeThemeTintColor(void) {
 
 - (void)ameUpdateControlAppearance {
     // Dim the decorative material, not the whole control: labels remain legible over wallpaper.
-    self.blurView.alpha = self.enabled ? (self.highlighted ? 0.75 : 1.0) : 0.55;
+    [[BackgroundManager sharedManager] applyInterfaceAppearanceToMaterial:self.blurView inView:self];
+    self.blurView.alpha *= self.enabled ? (self.highlighted ? 0.75 : 1.0) : 0.55;
     self.titleLabel.alpha = self.ameShowsActivityIndicator ? 0.0 : 1.0;
     self.imageView.alpha = self.ameShowsActivityIndicator ? 0.0 : 1.0;
 }

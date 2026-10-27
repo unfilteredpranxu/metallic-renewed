@@ -9,7 +9,7 @@
 // additionalSafeAreaInsets value in AmeRootTabController.m as well (height + 8 top margin + 8 gap).
 static const CGFloat kNavBarHeight  = 60.0;
 static const CGFloat kNavBarPad     = 6.0;    // gap between the bar edge and the selector
-static const CGFloat kNavItemPadH   = 16.0;   // horizontal padding inside each item
+static const CGFloat kNavItemPadH   = 8.0;   // horizontal padding inside each item
 
 @interface HomeTopNavView ()
 @property (nonatomic, strong) UIView *bar;
@@ -69,18 +69,16 @@ static UIColor *NavAccentColor(void) {
     self.selector.contentView.backgroundColor = AmeUISelectedFillColor();
     [self.bar addSubview:self.selector];
 
-    // 3) Items: icon + label. The last one (Help) is icon-only and does not switch tabs.
+    // Visible order is independent of the stable internal controller array.
     NSArray<NSString *> *symbols = @[
-        @"house.fill", @"arrow.down", @"sparkles",
-        @"puzzlepiece.extension.fill", @"gearshape.fill", @"questionmark"
+        @"house", @"square.stack.3d.up", @"arrow.down.circle", @"paintpalette", @"slider.horizontal.3"
     ];
     NSArray<NSString *> *titles = @[
         localize(@"tab.home", @"Home"),
-        localize(@"tab.download", @"Downloads"),
-        localize(@"tab.ai", @"AI"),
         localize(@"tab.instances", @"Instances"),
-        localize(@"tab.settings", @"Settings"),
-        @""
+        localize(@"tab.download", @"Downloads"),
+        localize(@"renewed.appearance.title", @"Appearance"),
+        localize(@"tab.settings", @"Settings")
     ];
 
     NSMutableArray<UIView *> *items = [NSMutableArray array];
@@ -120,18 +118,16 @@ static UIColor *NavAccentColor(void) {
 
         [NSLayoutConstraint activateConstraints:@[
             [item.heightAnchor constraintEqualToConstant:kNavBarHeight - 2.0 * kNavBarPad],
-            [content.leadingAnchor constraintEqualToAnchor:item.leadingAnchor constant:kNavItemPadH],
-            [content.trailingAnchor constraintEqualToAnchor:item.trailingAnchor constant:-kNavItemPadH],
+            [content.leadingAnchor constraintGreaterThanOrEqualToAnchor:item.leadingAnchor constant:kNavItemPadH],
+            [content.trailingAnchor constraintLessThanOrEqualToAnchor:item.trailingAnchor constant:-kNavItemPadH],
             [content.centerYAnchor constraintEqualToAnchor:item.centerYAnchor],
+            [content.centerXAnchor constraintEqualToAnchor:item.centerXAnchor],
+            [item.widthAnchor constraintGreaterThanOrEqualToConstant:44],
             [hit.leadingAnchor constraintEqualToAnchor:item.leadingAnchor],
             [hit.trailingAnchor constraintEqualToAnchor:item.trailingAnchor],
             [hit.topAnchor constraintEqualToAnchor:item.topAnchor],
             [hit.bottomAnchor constraintEqualToAnchor:item.bottomAnchor]
         ]];
-
-        // The AI entry is no longer shown in the bar. The slot is only hidden (not removed) so the
-        // tab indices used by the rest of the app (Instances = 3, Settings = 4) stay valid.
-        if (index == 2) item.hidden = YES;
 
         [items addObject:item];
         [icons addObject:icon];
@@ -147,7 +143,8 @@ static UIColor *NavAccentColor(void) {
     self.stack.translatesAutoresizingMaskIntoConstraints = NO;
     self.stack.axis = UILayoutConstraintAxisHorizontal;
     self.stack.alignment = UIStackViewAlignmentCenter;
-    self.stack.spacing = 2.0;
+    self.stack.spacing = 0.0;
+    self.stack.distribution = UIStackViewDistributionFillEqually;
     [self.bar addSubview:self.stack];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -167,6 +164,16 @@ static UIColor *NavAccentColor(void) {
     // Re-seat the selector only when the bar's width changed (rotation, first layout), so a running
     // slide animation is never interrupted by an unrelated layout pass.
     CGFloat width = self.bar.bounds.size.width;
+    CGFloat widest = 0;
+    for (UILabel *label in self.labels) widest = MAX(widest, label.intrinsicContentSize.width);
+    BOOL compact = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory)
+        || width < self.items.count * (widest + 24 + 7 + 2 * kNavItemPadH) + 2 * kNavBarPad;
+    BOOL changed = self.labels.firstObject.hidden != compact;
+    for (UILabel *label in self.labels) label.hidden = compact;
+    if (changed) {
+        [self.stack layoutIfNeeded];
+        self.lastBarWidth = -1;
+    }
     if (fabs(width - self.lastBarWidth) > 0.5) {
         self.lastBarWidth = width;
         [self placeSelectorAnimated:NO];
@@ -178,7 +185,9 @@ static UIColor *NavAccentColor(void) {
     if (self.items.count == 0 || self.bar.bounds.size.width < 1.0) return;
     [self.bar layoutIfNeeded];
 
-    NSInteger index = MAX(0, MIN(self.selectedIndex, (NSInteger)self.items.count - 1));
+    NSInteger index = AMEPrimaryDestinationForTab(self.selectedIndex);
+    self.selector.hidden = (index == NSNotFound);
+    if (index == NSNotFound) return;
     UIView *item = self.items[index];
     CGRect target = [self.bar convertRect:item.bounds fromView:item];
     self.selector.layer.cornerRadius = target.size.height / 2.0;
@@ -204,7 +213,7 @@ static UIColor *NavAccentColor(void) {
     BOOL changed = (_selectedIndex != index);
     _selectedIndex = index;
     for (NSInteger i = 0; i < (NSInteger)self.icons.count; i++) {
-        BOOL selected = (i == index);
+        BOOL selected = (i == AMEPrimaryDestinationForTab(index));
         UIColor *color = selected ? NavAccentColor() : AmeUIPrimaryTextColor();
         self.icons[i].tintColor = color;
         self.labels[i].textColor = color;
@@ -245,8 +254,8 @@ static UIColor *NavAccentColor(void) {
 }
 
 - (void)tapped:(UIButton *)button {
-    if (button.tag <= 4) self.selectedIndex = button.tag;
-    if (self.onSelect) self.onSelect(button.tag);
+    // The root owns selection; presenting Appearance must not pretend to switch internal tabs.
+    if (self.onSelect) self.onSelect((AMEPrimaryDestination)button.tag);
 }
 
 @end

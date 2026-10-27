@@ -2,7 +2,7 @@
 
 ## Current continuation checkpoint
 
-M4 is PARTIAL: the new Home overview and safe launch forwarding are implemented in source; native visual/interaction acceptance is pending. M1 remains BLOCKED and M3 legacy appearance coverage remains PARTIAL. Active branch: `feat/renewed-uikit-home`. Read M4 below before editing. Next: Instances and navigation customization. Earlier milestone sections are historical, not instructions to repeat audits.
+M5 is PARTIAL: Instances presentation and safe visible navigation routing are implemented and statically checked; native visual/interaction acceptance remains PENDING. Branch: `feat/renewed-uikit-home`, based on published M4 `59faa8bb812e561b576f7ac755b76890be73738e`. Read M5 below before editing. M1 remains BLOCKED, M3 legacy appearance coverage PARTIAL, M4 Home acceptance PARTIAL. Next: Downloads UI customization. Earlier milestone sections are historical, not instructions to repeat audits.
 
 ## Permanent scope
 
@@ -322,3 +322,71 @@ Next milestone: **Instances and navigation customization.** Read this checkpoint
 ### M4 commit record
 
 Implementation: `97884714f7144bf16368c041c1bead95f88e6a71` (`feat(ui): recreate functional Metallic Home dashboard`). Final documentation commit records this SHA; resolve its own SHA with `git log -1 --format=%H -- docs/METALLIC_RENEWED_PROGRESS.md`. Git access was verified with the existing GH CLI credentials via command-scoped `git -c credential.helper='!gh auth git-credential'`; no credentials or Git configuration were saved. M4 stays PARTIAL, M1 BLOCKED and device acceptance PENDING. Next: Instances and navigation customization.
+
+
+## M5 — Instances and safe global navigation (2026-10-27)
+
+Status: **PARTIAL**. Production UI source changes implemented; native compilation, rendered fidelity and device interaction are not validated. Verified clean feature checkout and fetched feature/protected baseline before editing: feature `59faa8bb812e561b576f7ac755b76890be73738e`, baseline `fe379d4f3723764ec0a8b6a6728368ac3492c4d8`. No user changes were present. No main/baseline update, force push, workflow dispatch or build repair.
+
+### Changed files and actual presentation
+
+- `ios-app/Natives/VersionManagerViewController.m`: same native collection/controller/data model. Adds a self-sizing, scrolling overview with Instances title, actual saved-profile count and New Instance. Header stacks at compact widths/accessibility sizes, so it cannot consume a fixed short landscape viewport. Game directories stay reachable with zero profiles; profile section shows original empty guidance. New opens the existing native Downloads tab, never hidden Home content.
+- `VMVersionCardCell`: M2 fonts/semantic colors, M3-managed native material, quiet rounded cards and selected checkmark/border. Real name, lastVersionId, cached isolation flag, existing loader icon and lastPlayed formatter; no installed/runtime/performance claims. One/two/three columns according to available width (single at accessibility sizes), font-based row heights, real 44-point More control. More captures a copied profile name rather than a reused index path; callback cleared on reuse and weakly captures controller. VoiceOver selected traits and Profile actions custom action; original tap still selects the profile then opens ProfileSettings.
+- `VMGameDirCell` presentation: scaled fonts, semantic border, clear inner fill, correct selected accessibility state, live accessibility value from the size label. Directory cache, in-flight dedup, background enumeration and identity-based visible-cell update remain unchanged. Base cell retains rounded content clipping and cached shadowPath; subtle native highlight feedback respects Reduce Motion and resets on reuse.
+- Section headers use scalable text/count without a second independent blur overlay. Removed the Instances `BackgroundUIEffectChanged` reload observer/handler: M3 already refreshes registered cell material/tint, so slider ticks no longer cause collection rebuilding. Existing accent/profile/reload observers and dealloc cleanup remain; no new controller observers or preference keys.
+- `ios-app/Natives/HomeTopNavView.h`: stable `AMELauncherTab` constants and `AMEPrimaryDestination` with two inline translation helpers. No new source registration.
+- `ios-app/Natives/HomeTopNavView.m`: five visible items in reference order. `selectedIndex` retains INTERNAL semantics for existing callers/notifications; root owns selection, without optimistic tap highlighting. Equal tap areas, icon-only compact/accessibility presentation with full accessibility labels, existing theme/material/Reduce Motion behavior. Height stays 60.
+- `ios-app/Natives/AmeRootTabController.m`: uses named constants in existing factory, unchanged controller order/wrappers. Routes five visible actions; adds a 44-point native Tools menu with actual AI entry. Appearance is a functional settings sheet, leaving the underlying stack/tab intact. Root reservation stays 76; Tools stays alongside the pill. Initial and subsequent selection synchronizes the pill and Tools selected state.
+- `ios-app/Natives/LauncherNewsViewController.m`: one-line correction of the existing M4 global header factory to `boundarySupplementaryItemWithLayoutSize:elementKind:alignment:` (the same public boundary-item selector used by native section headers). M5 overview uses that selector too. No Home callbacks, state, layout stores, containment or launch forwarding changed. Apple documentation fetch was unavailable (HTTP 403); this is source/API review, not native SDK verification.
+- The three continuity documents: this record, implemented UI specification and M5 acceptance matrix. No other paths changed in M5.
+
+### Native actions and persistence preserved
+
+| Control | Actual callback / native state / persistence |
+| --- | --- |
+| New instance | Overview `createTapped` → weak `onCreate` → unchanged `createNewVersion` semantics → `AMELauncherTabDownloads` (1); standalone legacy ShowDownloadPage fallback retained |
+| Profile card | Existing `collectionView:didSelectItemAtIndexPath:` → `editProfile:` → existing `PLProfiles.current.selectedProfileName` setter (save + SelectedProfileChanged) → `ProfileSettingsViewController.profileName` push |
+| Profile More / VoiceOver actions / long press | Copied profile identity → original `showProfileActions:`; Select/Edit/Delete options unchanged |
+| Profile deletion | Original `deleteProfile:`: last-profile restriction, native cancel/confirm, existing profile-only removal/selection/save/UI refresh unchanged |
+| Directory selection/create/actions/delete | Original `switchGameDirTo:`, `showCreateGameDirAlert`, `createGameDirWithName:`, `showGameDirActions:`, `confirmDeleteGameDir:`, `deleteGameDir:` and safeguards byte-identical; UI-only tap/transition guards added at collection entry points |
+| Renderer / graphics API | Existing `ProfileSettingsViewController` entry retained; VersionManager renderer/graphics setup/resolvers/selectors unchanged, including `renderer`, `graphicsApi` and global fallback semantics. No automatic engine switch |
+| Mods/Shaders/Resource Packs/Data Packs/Worlds | Existing profile settings access and all five VersionManager `open…Manager` methods unchanged; no fake quick-action section |
+| Home launch / profile refresh | Home action/state paths and original right-panel coordinator untouched (one Home header factory selector corrected). Canonical selected-profile setter/notification remains the source for Home and next launch |
+| Back/Done/Close | Existing nav controllers; `ameOwnExitItemOfNav:`, `ameFloatingDoneTapped`, nav-delegate refresh and Home reset unchanged. Appearance uses its own existing `closeTapped` dismissal |
+
+New UI action guards reject duplicate presentations/selection while the native navigation controller is transitioning; they do not alter model operations. No direct game launch, JIT logic or profile/renderer storage implementation was added.
+
+### Visible navigation contract (do not renumber internal tabs)
+
+| Visible destination | Existing native destination |
+| --- | --- |
+| Home | Internal 0, existing Home reset and Home UINavigationController |
+| Instances | Internal 3, VersionManagerViewController stack |
+| Downloads | Internal 1, DownloadViewController stack |
+| Appearance | BackgroundSettingsViewController in a form-sheet UINavigationController; actual wallpaper, glass style, UI Blur, Panel Opacity and scoped Reset to Recommended. No sixth internal slot |
+| Settings | Internal 4, LauncherPreferencesViewController stack; System/Light/Dark remains here |
+| Tools → AI (secondary) | Internal 2, AISessionListViewController stack; Tools selected, no unrelated primary pill highlighted |
+
+While the Appearance sheet is visible, the underlying tab remains selected, as it remains the sheet's return destination. Appearance is temporarily an action route, not a selected tab. Screenshot-accurate consolidated Appearance/theme/intro composition is deferred to the Settings/Appearance milestone; no empty page or duplicate settings store was added.
+
+Targeted numeric-consumer review: Home's `fix2PushTab:0/1/3` (multiplayer/Downloads/modpack/Instances/mods/shaders/See All), SceneDelegate language rebuild Settings=4, legacy LauncherMenu/AmeTabBar internal notifications, root factory/setSelectedIndex, and Instances New=1. Internal values stay 0 Home / 1 Downloads / 2 AI / 3 Instances / 4 Settings. Only root factory and New use new named constants; unchanged legacy consumers remain valid. Root does not replace Home content, pop unrelated stacks for normal tab changes or add another root/tab controller. The former Help pill had no handled destination; functional AI Tools replaces that unused item.
+
+### Verification and protected diff
+
+Executed `git diff --check`; Tree-sitter Objective-C grammar parse for the four changed .m files and HomeTopNavView.h (NS_ENUM expanded for parser only), header/import/source-inclusion review, duplicate-method and new-selector/target checks. Used temporary `/tmp/m5_verify.py` and existing temporary parser tooling; no test dependency or source registration added to the app.
+
+Compared native profile edit/delete/select/action-sheet, directory operations, renderer/graphics resolver/selectors, load/cache/async enumeration and lifecycle methods against M4: unchanged bodies, except UI entry-point guards and New's equivalent named tab constant. Cell data/configuration path differs only by identity-bound More callback. Existing animator, Home reset, floating Done/own-exit/navigation delegate/game-orientation bodies unchanged. Home differs only by the boundary-header factory selector correction; tile preferences/editor and canonical Play forwarding are untouched by M5. Source checks do not establish that callbacks physically work on device.
+
+Compiled and executed the ACTUAL inline routing helpers as C with Foundation integer typedefs/NS_ENUM normalized: stable numeric slots, five visible mappings, Appearance/AI sentinel behavior, reverse mapping round trips and invalid destinations passed under gcc `-Wall -Wextra -Werror`. UIKit APIs were not compiled or executed. New menu API floor is iOS 14, matching the existing CMake/Makefile deployment floor; native materials use the existing guarded resolver.
+
+Cumulative baseline comparison allows only eleven approved UI files (M2/M3/M4 plus HomeTopNavView.h, AmeRootTabController.m and VersionManagerViewController.m) and the three docs. Full Git content diff outside that allowlist is zero. **ENGINE DIFF: ZERO**: JIT, Java, Metal, game launch, auth, framework binaries, native dependencies, signing, entitlements, Makefile/workflows and protected baseline unchanged. No new appearance/game preference keys or defaults.
+
+### Limitations and exact continuation
+
+M1 remains **BLOCKED**: no Xcode/Apple SDK toolchain; existing CI substitutes upstream source/patches protected inputs; dependencies/framework and JIT packaging unverified. No workflow run, IPA build, simulator or physical-device test. M3 remains **PARTIAL** for legacy bars/search/chips; M4 remains **PARTIAL** for Home visual/interaction acceptance. Historical Alpha 1.2 gameplay is not M5 runtime evidence.
+
+M5 risks/PENDING: native type/link validation; self-sizing global/empty supplementary headers; typography/long translations and extreme Dynamic Type; compact pill and Tools/menu fit; VoiceOver activation/custom-action focus; supported rotation; rapid tab/modal/push interactions; material contrast across wallpaper/theme/opacity; profile edit/delete/directory safety on disposable data; Home/JIT live-state and real launch after navigation. No dedicated Instances screenshot was supplied with M5; established card/material references and saved specification guide styling, not a claimed rendered match. English fallback strings are localized at call sites; translation coverage is pending. Existing landscape policy is unchanged. Directory metadata invalidation behavior remains native; do not broaden this into game-data refactoring.
+
+**Next milestone: Downloads UI customization.** Start with progress, then existing `DownloadViewController` and only its directly relevant UI consumers; reuse stable navigation constants, M2 styles and M3 material settings. Preserve real downloader/install logic, task/error state, AI route, profile storage and all pending native acceptance gates. Do not re-audit M0–M4 or repair the build system without separate authorization.
+
+M5 public-selector review: both the Instances overview and existing Home global header now call `NSCollectionLayoutBoundarySupplementaryItem boundarySupplementaryItemWithLayoutSize:elementKind:alignment:`. The Home change is exactly one factory-selector correction; native SDK/type checking remains BLOCKED.

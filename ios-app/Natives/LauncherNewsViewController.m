@@ -2752,7 +2752,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     UICollectionViewCompositionalLayoutConfiguration *configuration = layout.configuration;
     NSCollectionLayoutSize *headerSize = [NSCollectionLayoutSize sizeWithWidthDimension:[NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                                                      heightDimension:[NSCollectionLayoutDimension estimatedDimension:640.0]];
-    configuration.boundarySupplementaryItems = @[[NSCollectionLayoutBoundarySupplementaryItem supplementaryItemWithLayoutSize:headerSize
+    configuration.boundarySupplementaryItems = @[[NSCollectionLayoutBoundarySupplementaryItem boundarySupplementaryItemWithLayoutSize:headerSize
         elementKind:UICollectionElementKindSectionHeader alignment:NSRectAlignmentTop]];
     layout.configuration = configuration;
     return layout;

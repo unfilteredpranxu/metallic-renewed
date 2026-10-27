@@ -24,6 +24,7 @@
 // ★ [MP-RESTORE] Multiplayer entry point.
 #import "TerracottaViewController.h"
 #import "HomeTopNavView.h"
+#import "BackgroundSettingsViewController.h"
 #import "BottomActionBarView.h"   // AmePinkGlassButton
 #import <objc/message.h>
 
@@ -31,6 +32,7 @@ NSString * const AmeTabTappedNotification = @"AmeTabTapped";   // ★ [ROOTTAB]
 
 @interface AmeRootTabController () <UITabBarControllerDelegate, UINavigationControllerDelegate>   // ★ Declare the protocol to eliminate the delegate-assignment warning.
 @property (nonatomic, strong) HomeTopNavView *topNav;
+@property (nonatomic, strong) AmePinkGlassButton *toolsButton;
 @property (nonatomic, strong) AmePinkGlassButton *floatingDoneButton;   // bottom-right "Done" shown on pushed pages
 @end
 
@@ -135,14 +137,14 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     for (NSInteger i = 0; i < (NSInteger)items.count; i++) {
         UIViewController *content = nil;
         switch (i) {
-            case 0: content = home ?: [[UIViewController alloc] init]; break;   // Home = all existing launcher screens.
+            case AMELauncherTabHome: content = home ?: [[UIViewController alloc] init]; break;   // Home = all existing launcher screens.
             // ★ [ROOTTAB-FIX] Downloads = "Download Instances" (DownloadViewController: seven tabs for versions/mods/shaders/resource packs…).
             //   ★ Do not wrap it in a navigation controller — that adds another navigation bar and pushes the
             //   entire content down (user report: "the Download Instances screen is still a little too low").
-            case 1: content = [[DownloadViewController alloc] init]; break;
-            case 2: content = [[AISessionListViewController alloc] init]; break;
-            case 3: content = [[VersionManagerViewController alloc] init]; break;   // ★ [TAB-INST-REVERT] Instances tab = single Version Manager page (restored, no segments).
-            case 4: content = [[LauncherPreferencesViewController alloc] init]; break;
+            case AMELauncherTabDownloads: content = [[DownloadViewController alloc] init]; break;
+            case AMELauncherTabAI: content = [[AISessionListViewController alloc] init]; break;
+            case AMELauncherTabInstances: content = [[VersionManagerViewController alloc] init]; break;   // ★ [TAB-INST-REVERT] Instances tab = single Version Manager page (restored, no segments).
+            case AMELauncherTabSettings: content = [[LauncherPreferencesViewController alloc] init]; break;
             default: content = [[UIViewController alloc] init]; break;
         }
 
@@ -161,7 +163,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         [vcs addObject:vc];
     }
     tbc.viewControllers = vcs;
-    tbc.selectedIndex = 0;
+    tbc.selectedIndex = AMELauncherTabHome;
     tbc.delegate = tbc;
 
     if (@available(iOS 18.0, *)) {
@@ -191,11 +193,30 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     self.topNav = [[HomeTopNavView alloc] init];
     self.topNav.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.topNav];
+    self.toolsButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    self.toolsButton.ameRole = AmeGlassButtonRoleSubtle;
+    self.toolsButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.toolsButton setImage:[UIImage systemImageNamed:@"ellipsis"] forState:UIControlStateNormal];
+    self.toolsButton.accessibilityLabel = localize(@"renewed.navigation.tools", @"Tools");
+    self.toolsButton.showsMenuAsPrimaryAction = YES; // Public UIKit API, deployment target iOS 14.
+    __weak typeof(self) toolsWeakSelf = self;
+    UIAction *ai = [UIAction actionWithTitle:localize(@"tab.ai", @"AI")
+        image:[UIImage systemImageNamed:@"sparkles"] identifier:nil handler:^(__kindof UIAction *action) {
+        __strong typeof(toolsWeakSelf) strongSelf = toolsWeakSelf;
+        if (!strongSelf || strongSelf.presentedViewController) return;
+        strongSelf.selectedIndex = AMELauncherTabAI;
+    }];
+    self.toolsButton.menu = [UIMenu menuWithTitle:@"" children:@[ai]];
+    [self.view addSubview:self.toolsButton];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
         [self.topNav.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8],
         [self.topNav.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:16],
-        [self.topNav.trailingAnchor constraintLessThanOrEqualToAnchor:safe.trailingAnchor constant:-16],
+        [self.topNav.trailingAnchor constraintEqualToAnchor:self.toolsButton.leadingAnchor constant:-8],
+        [self.toolsButton.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-16],
+        [self.toolsButton.centerYAnchor constraintEqualToAnchor:self.topNav.centerYAnchor],
+        [self.toolsButton.widthAnchor constraintEqualToConstant:44],
+        [self.toolsButton.heightAnchor constraintEqualToConstant:44],
     ]];
 
     // Pages below the bar start under it: bar height 60 + 8 top margin + 8 gap = 76.
@@ -240,10 +261,24 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     }];
 
     __weak typeof(self) weakSelf = self;
-    self.topNav.onSelect = ^(NSInteger index) {
-        // Home always resets: close anything presented, pop back to the home page, scroll to top.
-        if (index == 0) { [weakSelf ameResetToHome]; return; }
-        if (index < (NSInteger)weakSelf.viewControllers.count) weakSelf.selectedIndex = index;
+    self.topNav.selectedIndex = self.selectedIndex;
+    self.toolsButton.selected = (self.selectedIndex == AMELauncherTabAI);
+    self.toolsButton.accessibilityTraits = UIAccessibilityTraitButton | (self.toolsButton.selected ? UIAccessibilityTraitSelected : 0);
+    self.topNav.onSelect = ^(AMEPrimaryDestination destination) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (destination == AMEPrimaryDestinationHome) { [strongSelf ameResetToHome]; return; }
+        if (strongSelf.presentedViewController) return;
+        if (destination == AMEPrimaryDestinationAppearance) {
+            // Keep the current tab/stack and its selection intact under this functional sheet.
+            BackgroundSettingsViewController *appearance = [[BackgroundSettingsViewController alloc] init];
+            UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:appearance];
+            nav.modalPresentationStyle = UIModalPresentationFormSheet;
+            [strongSelf presentViewController:nav animated:YES completion:nil];
+            return;
+        }
+        NSInteger tab = AMETabForPrimaryDestination(destination);
+        if (tab != NSNotFound && tab < (NSInteger)strongSelf.viewControllers.count) strongSelf.selectedIndex = tab;
     };
 }
 
@@ -325,6 +360,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     [super viewDidLayoutSubviews];
     [self ameSuppressSystemTabBar];
     [self.view bringSubviewToFront:self.topNav];
+    [self.view bringSubviewToFront:self.toolsButton];
     [self.view bringSubviewToFront:self.floatingDoneButton];
 }
 
@@ -435,6 +471,8 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 - (void)setSelectedIndex:(NSUInteger)selectedIndex {
     [super setSelectedIndex:selectedIndex];
     self.topNav.selectedIndex = selectedIndex;
+    self.toolsButton.selected = (selectedIndex == AMELauncherTabAI);
+    self.toolsButton.accessibilityTraits = UIAccessibilityTraitButton | (self.toolsButton.selected ? UIAccessibilityTraitSelected : 0);
     [self ameUpdateFloatingDoneButton];
 }
 

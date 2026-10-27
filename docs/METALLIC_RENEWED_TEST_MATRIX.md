@@ -191,3 +191,56 @@ Start: `6d260fb2a11293306d7e0b3543653cc3759152c3`; branch `feat/renewed-uikit-ho
 | Real gameplay | Safely build and launch known Minecraft/Java/JIT/Metallum configuration on device | Same native engine and working world; independent new evidence | Not run | PENDING | Native build/device environment unavailable |
 
 Native build stays BLOCKED under M1. M3 global legacy-bar/search/chip coverage stays PARTIAL. Screenshot interpretation/source checks do not establish rendered fidelity or physical interaction. Next: Instances and navigation customization, retaining these pending acceptance gates.
+
+
+## M5 executed source checks (2026-10-27)
+
+| Feature | Test procedure | Expected result | Actual result | Status | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Whitespace | git diff --check | No whitespace errors | No errors | PASS | Executed on M5 diff |
+| Objective-C grammar/imports | Parse 4 changed .m files + HomeTopNavView.h; check local imports and duplicate methods | Valid grammar/declared imports | No grammar errors after NS_ENUM parser expansion; imports exist, no duplicate method definitions | PASS | Temporary Tree-sitter /tmp/m5_verify.py; NOT Apple SDK compilation |
+| Routing helper behavior | Compile/run actual inline helpers with Foundation integer/macro normalization | Fixed 0/1/2/3/4, visible mapping/reverse/sentinels/invalid routes | Assertions passed | PASS | gcc -std=c11 -Wall -Wextra -Werror; actual /tmp/m5_routes.c executable, no UIKit |
+| Real route ownership | Compare factory/animator/Home reset/floating Done/delegate and route sources with M4 | Existing five native controllers, stacks and transition/exit semantics retained | Bodies/order retained; functional Appearance sheet + Tools AI route traced | PASS | Source comparison and public controller interfaces; not runtime navigation |
+| Profile/renderer/directory protection | Compare native method bodies and preference-key occurrences with M4 | Original storage, safeguards, selection-before-edit, renderer/API and cache logic unchanged | Equal bodies/keys; cell data path only adds copied-identity More callback | PASS | /tmp/m5_verify.py AST/source comparisons |
+| UI controls/reuse/performance | Trace New/More/pill/Tools; check new targets, callback cleanup, layout/I/O and observers | Single dispatch sites, correct identity, no new observers/per-layout I/O/constraint installation | Traced; callbacks reset on reuse; removed per-slider cell reload observer | PASS | Source checks; physical taps not executed |
+| Inclusion/API floor | Check existing CMake source list and new public UIKit APIs | No build registration/dependency changes; compatible minimum | Existing sources included; menu APIs iOS 14, matching native target | PASS | Source inspection; SDK type/link validation unavailable |
+| Protected engine | Full baseline content diff outside 11 approved UI files + 3 docs | Zero differences | Zero | PASS | git diff --exit-code fe379d4… with explicit UI/docs exclusions; not runtime engine proof |
+
+## M5 required runtime acceptance
+
+Every row below is unexecuted. Use disposable profiles/directories for destructive tests; never real user worlds/accounts. M1 native build remains BLOCKED.
+
+| Feature | Test procedure | Expected result | Actual result | Status | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Open Instances from Home | Use pill and Home See All | Internal 3 native Instances stack, correct highlight | Not run | PENDING | Native build/device unavailable |
+| Home from Instances | Tap Home after a nested return | Real Home reset; no root substitution | Not run | PENDING | Native build/device unavailable |
+| Downloads from Instances | Tap Downloads pill | Internal 1 downloader, correct highlight | Not run | PENDING | Native build/device unavailable |
+| Appearance | Tap Appearance, change real controls, dismiss via Done/swipe | Functional M3 sheet, one presentation; underlying stack/selection restored | Not run | PENDING | Native build/device unavailable |
+| Settings | Tap Settings | Internal 4, all original settings/theme controls accessible | Not run | PENDING | Native build/device unavailable |
+| AI | Open Tools → AI, return with pill | Actual internal 2 AISessionList, Tools selected, no false pill selection | Not run | PENDING | Native build/device unavailable |
+| New Instance | Tap header New repeatedly | Existing Downloads tab opens once, Home not replaced | Not run | PENDING | Native build/device unavailable |
+| Select profile | More → Select on another disposable profile | PLProfiles setter/save/notification, correct selected state | Not run | PENDING | Native build/device unavailable |
+| Edit profile | Tap an unselected card, edit and return | Native profile selected before settings; valid back/Done path | Not run | PENDING | Native build/device unavailable |
+| Renderer | Change supported renderer through native profile settings | Existing profile renderer key/launch target consistent, no global switch | Not run | PENDING | Native build/device unavailable |
+| Graphics API | Change supported API using native controls | Existing graphicsApi values/default/fallback retained | Not run | PENDING | Native build/device unavailable |
+| Management quick actions | Open Mods, Shaders, Resource Packs, Data Packs and Worlds from existing settings | Five real destinations and valid return stacks | Not run | PENDING | Native build/device unavailable |
+| Directories | Create/switch/delete disposable directory; scroll sizes repeatedly | Original safeguards, cache/dedup, identity-safe updates; no unrelated files changed | Not run | PENDING | Native build/device unavailable |
+| Cancel dialogs | Cancel profile/directory destructive sheets/alerts on iPad/iPhone | No state/file deletion; valid popover anchor, no double presentation | Not run | PENDING | Native build/device unavailable |
+| Delete eligible profile | Delete a disposable non-last profile; try last-profile removal | Confirmation/selection consistency, last-profile guard; empty guidance correct | Not run | PENDING | Native build/device unavailable |
+| Rapid tabs | Alternate all pill destinations and Tools quickly | One actual page, correct highlights, no ghosting/overlay | Not run | PENDING | Native build/device unavailable |
+| Nested returns | Open edits/managers; Back/Done/Close repeatedly | Original own Save/Close semantics and real Home preserved | Not run | PENDING | Native build/device unavailable |
+| Selection persistence | Select profile, restart app | Same PLProfiles selection restored | Not run | PENDING | Native build/device unavailable |
+| Home state update | Select/edit/delete disposable profile, return Home | Home reflects native SelectedProfileChanged/ReloadProfileList state | Not run | PENDING | Native build/device unavailable |
+| Original Play target | Select a profile then use Home launch with safe configuration | Existing coordinator uses intended profile and canonical gate | Not run | PENDING | Native build/device unavailable |
+| JIT refresh | Navigate repeatedly/background/foreground with real status changes | Existing lifecycle/native broadcasts continue, no stuck Checking due UI containment | Not run | PENDING | Native build/device unavailable |
+| Compact iPhone | Test smallest supported width, zero/one/many profiles and long names | Single-column cards, readable actions, scrolling header/empty guidance/directories | Not run | PENDING | Native build/device unavailable |
+| Wide iPad | Test wide/multitasking widths, scrolling and More | Balanced adaptive columns/rail; reused cells keep correct identity/selection | Not run | PENDING | Native build/device unavailable |
+| Orientation | Rotate through supported orientations during nested/modal/scroll flows | Same orientation policy, no conflicting constraints or doubled 76-point offset | Not run | PENDING | Native build/device unavailable |
+| Theme/wallpaper | Light/Dark/System with bright/dark/default/image/video wallpaper | Native semantic text/material contrast, no opaque inner card hiding wallpaper | Not run | PENDING | Native build/device unavailable |
+| Blur/opacity | UI Blur 0/50/100, panel min/mid/max; move sliders rapidly then return | Correct material/tint only, no text fade, duplicate layer or cell rebuild per tick | Not run | PENDING | Native build/device unavailable |
+| Accessibility | Dynamic Type including maximum, VoiceOver activate/More/selected state; Reduce Motion | Self-sizing/scrolling, full destination names, real custom action and restrained motion | Not run | PENDING | Native build/device unavailable |
+| Hit testing | Tap New, More, profiles/directories/pill/Tools; touch-hold/scroll rapidly | No decorative interception, double profile push, duplicate dialogs or wrong identity | Not run | PENDING | Native build/device unavailable |
+
+M1 remains BLOCKED; M3 legacy bars/search/chips PARTIAL and M4 Home acceptance PARTIAL. Source equality does not validate new-build JIT/Java/Metal/Minecraft gameplay. Next: Downloads UI customization, retaining all pending tests.
+
+M5 public-selector review: both the Instances overview and existing Home global header now call `NSCollectionLayoutBoundarySupplementaryItem boundarySupplementaryItemWithLayoutSize:elementKind:alignment:`. The Home change is exactly one factory-selector correction; native SDK/type checking remains BLOCKED.

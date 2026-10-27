@@ -29,6 +29,7 @@
 #import "HomeActionPanelView.h"
 #import "AccountListViewController.h"
 #import "AMEAssetCrypto.h"
+#import "DownloadViewController.h"
 
 // MARK: - Shortcut Action Constants
 
@@ -643,10 +644,14 @@ static NSString *festivalGreeting(void) {
 ///   · 退出且 animated:把手淡出 + 缩小,动画结束后才 hidden=YES(期间被复用由 prepareForReuse 兜底);
 ///   · animated=NO:一律立即 hidden 复位 —— 复用路径“不残留”的保证。
 - (void)homeEditTransitionToEditing:(BOOL)editing animated:(BOOL)animated {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        animated = NO;
+        [self.layer removeAnimationForKey:@"ameHomeEditWiggle"];
+    }
     self.homeEditAppearanceOn = editing;
     UIView *handle = self.homeEditHandleView;
     if (editing) {
-        if (![self.layer animationForKey:@"ameHomeEditWiggle"]) {
+        if (!UIAccessibilityIsReduceMotionEnabled() && ![self.layer animationForKey:@"ameHomeEditWiggle"]) {
             CABasicAnimation *wiggle = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
             wiggle.fromValue = @(-0.012);
             wiggle.toValue   = @(0.012);
@@ -1291,7 +1296,291 @@ static NSString *festivalGreeting(void) {
 
 // MARK: - LauncherNewsViewController
 
+// M4 overview is supplementary presentation, not a replacement for the saved tile collection.
+@interface AMERenewedHomeHeader : UICollectionReusableView
+@property (nonatomic, strong) UIStackView *rootStack;
+@property (nonatomic, strong) UIStackView *mainRow;
+@property (nonatomic, strong) UIStackView *instanceRow;
+@property (nonatomic, strong) UIStackView *launchRow;
+@property (nonatomic, strong) UIView *hero;
+@property (nonatomic, strong) UIView *status;
+@property (nonatomic, strong) UILabel *welcome;
+@property (nonatomic, strong) UILabel *profileTitle;
+@property (nonatomic, strong) UILabel *selectedHeading;
+@property (nonatomic, strong) UILabel *versionText;
+@property (nonatomic, strong) UILabel *accountText;
+@property (nonatomic, strong) UILabel *minecraftStatus;
+@property (nonatomic, strong) UILabel *javaStatus;
+@property (nonatomic, strong) UILabel *jitStatus;
+@property (nonatomic, strong) UILabel *downloadStatus;
+@property (nonatomic, strong) AmePinkGlassButton *playButton;
+@property (nonatomic, strong) AmePinkGlassButton *discoverButton;
+@property (nonatomic, strong) UIButton *chooseButton;
+@property (nonatomic, strong) UILabel *emptyInstances;
+@property (nonatomic, strong) NSLayoutConstraint *heroRatio;
+@property (nonatomic, copy) NSArray<NSString *> *profileNames;
+@property (nonatomic, copy) NSDictionary *profileVersions;
+@property (nonatomic, copy) NSString *selectedName;
+@property (nonatomic, copy) void (^onAction)(NSInteger action);
+@property (nonatomic, copy) void (^onProfile)(NSString *name);
+@property (nonatomic, copy) void (^onNeedsSizing)(void);
+- (void)showProfiles:(NSDictionary *)versions selected:(NSString *)selected;
+- (void)refreshAppearance;
+@end
+
+@implementation AMERenewedHomeHeader
+
+static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
+    UILabel *label = [[UILabel alloc] init];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.text = text;
+    label.font = AmeUIFont(role);
+    label.adjustsFontForContentSizeCategory = YES;
+    label.textColor = AmeUIPrimaryTextColor();
+    label.numberOfLines = 0;
+    return label;
+}
+
+- (UIButton *)action:(NSInteger)action title:(NSString *)title primary:(BOOL)primary {
+    AmePinkGlassButton *button = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.ameRole = primary ? AmeGlassButtonRolePrimary : AmeGlassButtonRoleSecondary;
+    [button setTitle:title forState:UIControlStateNormal];
+    button.titleLabel.numberOfLines = 0;
+    button.titleLabel.textAlignment = NSTextAlignmentCenter;
+    button.contentEdgeInsets = UIEdgeInsetsMake(10, 16, 10, 16);
+    button.tag = action;
+    [button.heightAnchor constraintGreaterThanOrEqualToConstant:AmeUIMinimumTouchSize].active = YES;
+    [button addTarget:self action:@selector(actionTapped:) forControlEvents:UIControlEventTouchUpInside];
+    return button;
+}
+
+- (UIStackView *)panel:(UIView *)panel {
+    panel.layer.cornerRadius = AmeGlassRadiusPanel;
+    panel.layer.cornerCurve = kCACornerCurveContinuous;
+    UIStackView *stack = [[UIStackView alloc] init];
+    stack.axis = UILayoutConstraintAxisVertical;
+    stack.spacing = 16;
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    [panel addSubview:stack];
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor constant:20],
+        [stack.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor constant:-20],
+        [stack.topAnchor constraintEqualToAnchor:panel.topAnchor constant:20],
+        [stack.bottomAnchor constraintEqualToAnchor:panel.bottomAnchor constant:-20]
+    ]];
+    [[BackgroundManager sharedManager] applyEffectToView:panel];
+    return stack;
+}
+
+- (UILabel *)statusRow:(NSString *)title symbol:(NSString *)symbol inStack:(UIStackView *)stack {
+    UIImageView *icon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:symbol]];
+    icon.translatesAutoresizingMaskIntoConstraints = NO;
+    icon.contentMode = UIViewContentModeScaleAspectFit;
+    icon.tintColor = AmeUISecondaryTextColor();
+    icon.isAccessibilityElement = NO;
+    [icon.widthAnchor constraintEqualToConstant:22].active = YES;
+    UILabel *heading = AMEHomeLabel(title, AmeUIFontRoleStatus);
+    heading.textColor = AmeUISecondaryTextColor();
+    UILabel *value = AMEHomeLabel(localize(@"renewed.home.unavailable", @"Not reported"), AmeUIFontRoleDescription);
+    value.numberOfLines = 1;
+    value.adjustsFontSizeToFitWidth = YES;
+    value.minimumScaleFactor = 0.85;
+    UIStackView *labels = [[UIStackView alloc] initWithArrangedSubviews:@[heading, value]];
+    labels.axis = UILayoutConstraintAxisVertical;
+    labels.spacing = 4;
+    UIStackView *row = [[UIStackView alloc] initWithArrangedSubviews:@[icon, labels]];
+    row.alignment = UIStackViewAlignmentCenter;
+    row.spacing = 12;
+    [stack addArrangedSubview:row];
+    return value;
+}
+
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (!self) return nil;
+    self.backgroundColor = UIColor.clearColor;
+    self.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(16, 20, 20, 20);
+    self.rootStack = [[UIStackView alloc] init];
+    self.rootStack.axis = UILayoutConstraintAxisVertical;
+    self.rootStack.spacing = 24;
+    self.rootStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [self addSubview:self.rootStack];
+    UILayoutGuide *guide = self.layoutMarginsGuide;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.rootStack.leadingAnchor constraintEqualToAnchor:guide.leadingAnchor],
+        [self.rootStack.trailingAnchor constraintEqualToAnchor:guide.trailingAnchor],
+        [self.rootStack.topAnchor constraintEqualToAnchor:guide.topAnchor],
+        [self.rootStack.bottomAnchor constraintEqualToAnchor:guide.bottomAnchor]
+    ]];
+    UILabel *eyebrow = AMEHomeLabel(localize(@"renewed.home.tagline", @"YOUR WORLD. ANYWHERE."), AmeUIFontRoleStatus);
+    eyebrow.textColor = AmeUISecondaryTextColor();
+    self.welcome = AMEHomeLabel(localize(@"renewed.home.welcome", @"Welcome back."), AmeUIFontRoleScreenTitle);
+    UIStackView *welcome = [[UIStackView alloc] initWithArrangedSubviews:@[eyebrow, self.welcome]];
+    welcome.axis = UILayoutConstraintAxisVertical;
+    welcome.spacing = 8;
+    [self.rootStack addArrangedSubview:welcome];
+
+    self.hero = [[UIView alloc] init];
+    self.hero.translatesAutoresizingMaskIntoConstraints = NO;
+    UIStackView *hero = [self panel:self.hero];
+    self.selectedHeading = AMEHomeLabel(localize(@"renewed.home.selected", @"SELECTED INSTANCE"), AmeUIFontRoleStatus);
+    self.selectedHeading.textColor = AmeUISecondaryTextColor();
+    UIImageView *identityIcon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"gamecontroller"]];
+    identityIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    identityIcon.contentMode = UIViewContentModeScaleAspectFit;
+    identityIcon.tintColor = AmeUISecondaryTextColor();
+    identityIcon.isAccessibilityElement = NO;
+    [identityIcon.widthAnchor constraintEqualToConstant:32].active = YES;
+    [identityIcon.heightAnchor constraintEqualToConstant:32].active = YES;
+    UIStackView *selected = [[UIStackView alloc] initWithArrangedSubviews:@[identityIcon, self.selectedHeading]];
+    selected.axis = UILayoutConstraintAxisHorizontal;
+    selected.alignment = UIStackViewAlignmentCenter;
+    selected.spacing = 12;
+    self.profileTitle = AMEHomeLabel(@"", AmeUIFontRoleScreenTitle);
+    self.versionText = AMEHomeLabel(@"", AmeUIFontRoleBody);
+    self.versionText.textColor = AmeUISecondaryTextColor();
+    self.accountText = AMEHomeLabel(@"", AmeUIFontRoleDescription);
+    UIButton *account = [self action:3 title:localize(@"renewed.home.account", @"Account") primary:NO];
+    self.playButton = (AmePinkGlassButton *)[self action:0 title:localize(@"renewed.home.unavailable", @"Not reported") primary:YES];
+    self.playButton.enabled = NO;
+    self.playButton.exclusiveTouch = YES;
+    self.discoverButton = (AmePinkGlassButton *)[self action:2 title:localize(@"renewed.home.discover", @"Discover Minecraft") primary:YES];
+    self.chooseButton = [self action:1 title:localize(@"renewed.home.choose", @"Choose another instance") primary:NO];
+    UIStackView *identity = [[UIStackView alloc] initWithArrangedSubviews:@[account, self.accountText]];
+    identity.spacing = 8;
+    identity.alignment = UIStackViewAlignmentCenter;
+    self.launchRow = [[UIStackView alloc] initWithArrangedSubviews:@[identity, self.playButton]];
+    self.launchRow.axis = UILayoutConstraintAxisVertical;
+    self.launchRow.spacing = 12;
+    [self.playButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    for (UIView *view in @[selected, self.profileTitle, self.versionText, self.launchRow, self.discoverButton, self.chooseButton]) {
+        [hero addArrangedSubview:view];
+    }
+
+    self.status = [[UIView alloc] init];
+    self.status.translatesAutoresizingMaskIntoConstraints = NO;
+    UIStackView *status = [self panel:self.status];
+    [status addArrangedSubview:AMEHomeLabel(localize(@"renewed.home.status", @"MY METALLIC"), AmeUIFontRoleStatus)];
+    NSString *launcher = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    [status addArrangedSubview:AMEHomeLabel([launcher isKindOfClass:NSString.class] && launcher.length ? [NSString stringWithFormat:@"Metallic %@", launcher] : @"Metallic", AmeUIFontRoleDescription)];
+    self.minecraftStatus = [self statusRow:@"Minecraft" symbol:@"cube" inStack:status];
+    self.javaStatus = [self statusRow:localize(@"renewed.home.java_preference", @"Java preference") symbol:@"cpu" inStack:status];
+    self.jitStatus = [self statusRow:@"JIT" symbol:@"bolt" inStack:status];
+    self.downloadStatus = [self statusRow:localize(@"tab.download", @"Downloads") symbol:@"arrow.down.circle" inStack:status];
+    [status addArrangedSubview:[self action:5 title:localize(@"i18n_str_136", @"Download Center") primary:NO]];
+    self.mainRow = [[UIStackView alloc] initWithArrangedSubviews:@[self.hero, self.status]];
+    self.mainRow.axis = UILayoutConstraintAxisVertical;
+    self.mainRow.spacing = 20;
+    self.heroRatio = [self.hero.widthAnchor constraintEqualToAnchor:self.status.widthAnchor multiplier:2.4];
+    [self.rootStack addArrangedSubview:self.mainRow];
+
+    UILabel *instances = AMEHomeLabel(localize(@"renewed.home.instances", @"Your Instances"), AmeUIFontRoleSectionHeading);
+    UIButton *seeAll = [self action:4 title:localize(@"renewed.home.see_all", @"See All") primary:NO];
+    [instances setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    UIStackView *section = [[UIStackView alloc] initWithArrangedSubviews:@[instances, seeAll]];
+    section.spacing = 12;
+    section.alignment = UIStackViewAlignmentCenter;
+    [self.rootStack addArrangedSubview:section];
+    self.instanceRow = [[UIStackView alloc] init];
+    self.instanceRow.axis = UILayoutConstraintAxisVertical;
+    self.instanceRow.spacing = 16;
+    [self.rootStack addArrangedSubview:self.instanceRow];
+    self.emptyInstances = AMEHomeLabel(localize(@"renewed.home.empty_instances", @"Your next adventure starts here. Create an instance or install Minecraft from Downloads."), AmeUIFontRoleBody);
+    [self.rootStack addArrangedSubview:self.emptyInstances];
+    [self.rootStack addArrangedSubview:AMEHomeLabel(localize(@"renewed.home.cards", @"Home cards"), AmeUIFontRoleSectionHeading)];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appearanceChanged:)
+                                                 name:@"BackgroundUIEffectChanged" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(contentSizeChanged:)
+                                                 name:UIContentSizeCategoryDidChangeNotification object:nil];
+    [self refreshAppearance];
+    return self;
+}
+
+- (void)showProfiles:(NSDictionary *)versions selected:(NSString *)selected {
+    if ([self.profileVersions isEqualToDictionary:versions] && [self.selectedName isEqualToString:selected]) return;
+    self.profileVersions = [versions copy];
+    self.selectedName = [selected copy];
+    NSArray *sorted = [[versions allKeys] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
+    self.profileNames = [sorted subarrayWithRange:NSMakeRange(0, MIN((NSUInteger)3, sorted.count))];
+    for (UIView *view in self.instanceRow.arrangedSubviews) { [self.instanceRow removeArrangedSubview:view]; [view removeFromSuperview]; }
+    for (NSUInteger i = 0; i < self.profileNames.count; i++) {
+        NSString *name = self.profileNames[i];
+        AmePinkGlassButton *button = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+        button.translatesAutoresizingMaskIntoConstraints = NO;
+        button.ameRole = AmeGlassButtonRoleNavigation;
+        button.selected = [name isEqualToString:selected];
+        button.tag = i;
+        objc_setAssociatedObject(button, "renewedProfileName", name, OBJC_ASSOCIATION_COPY_NONATOMIC);
+        button.titleLabel.numberOfLines = 0;
+        button.titleLabel.textAlignment = NSTextAlignmentCenter;
+        button.contentEdgeInsets = UIEdgeInsetsMake(16, 12, 16, 12);
+        [button setTitle:[NSString stringWithFormat:@"%@%@\nMinecraft %@", button.selected ? @"✓ " : @"", name, [versions[name] length] ? versions[name] : localize(@"renewed.home.not_configured", @"Not configured")] forState:UIControlStateNormal];
+        button.accessibilityLabel = [NSString stringWithFormat:@"%@, Minecraft %@", name, [versions[name] length] ? versions[name] : localize(@"renewed.home.not_configured", @"Not configured")];
+        [button.heightAnchor constraintGreaterThanOrEqualToConstant:100].active = YES;
+        [button addTarget:self action:@selector(profileTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [self.instanceRow addArrangedSubview:button];
+    }
+    self.emptyInstances.hidden = self.profileNames.count != 0;
+    self.instanceRow.hidden = self.profileNames.count == 0;
+}
+
+- (void)configureWidth:(CGFloat)width {
+    BOOL accessibilityText = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    BOOL wide = width >= 820 && !accessibilityText;
+    if (self.mainRow.axis != (wide ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical)) {
+        self.heroRatio.active = NO;
+        self.mainRow.axis = wide ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
+        self.heroRatio.active = wide;
+    }
+    self.launchRow.axis = width >= 520 && !accessibilityText ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
+    self.instanceRow.axis = width >= 700 && !accessibilityText ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
+    self.instanceRow.distribution = width >= 700 && !accessibilityText ? UIStackViewDistributionFillEqually : UIStackViewDistributionFill;
+}
+
+- (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)attributes {
+    UICollectionViewLayoutAttributes *result = [attributes copy];
+    if (attributes.size.width <= 0) return result;
+    [self configureWidth:attributes.size.width];
+    CGSize size = [self systemLayoutSizeFittingSize:CGSizeMake(attributes.size.width, UILayoutFittingCompressedSize.height)
+                    withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    result.size = CGSizeMake(attributes.size.width, MAX(1.0, ceil(size.height)));
+    return result;
+}
+- (void)layoutSubviews { [super layoutSubviews]; [self configureWidth:self.bounds.size.width]; }
+- (void)refreshAppearance {
+    if (!self.hero || !self.status) return;
+    for (UIView *panel in @[self.hero, self.status]) {
+        panel.layer.borderWidth = AmeUIHairlineWidth(panel);
+        panel.layer.borderColor = AmeUIResolvedColor(AmeUIBorderColor(), panel).CGColor;
+    }
+}
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection { [super traitCollectionDidChange:previousTraitCollection]; [self refreshAppearance]; }
+- (void)appearanceChanged:(NSNotification *)note { [self refreshAppearance]; }
+- (void)contentSizeChanged:(NSNotification *)note { if (self.onNeedsSizing) self.onNeedsSizing(); }
+- (void)actionTapped:(UIButton *)button { if (self.onAction) self.onAction(button.tag); }
+- (void)profileTapped:(UIButton *)button {
+    NSString *name = objc_getAssociatedObject(button, "renewedProfileName");
+    if (name.length && self.onProfile) self.onProfile(name);
+}
+- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; }
+@end
+
 @interface LauncherNewsViewController () <UICollectionViewDataSource, UICollectionViewDelegate, UIGestureRecognizerDelegate>   // ★ [EDIT2] 手势代理
+
+@property (nonatomic, strong) AMERenewedHomeHeader *renewedOverview;
+@property (nonatomic, copy) NSDictionary<NSString *, NSString *> *renewedProfileVersions;
+@property (nonatomic, copy) NSString *renewedProfileSelection;
+@property (nonatomic, assign) BOOL renewedLaunchDispatchPending;
+@property (nonatomic, assign) BOOL renewedHasState;
+@property (nonatomic, copy) NSString *renewedLaunchTitle;
+@property (nonatomic, assign) BOOL renewedHeaderInvalidationPending;
+- (void)renewedReloadProfiles;
+- (void)renewedRefreshOverview;
+- (void)renewedInvalidateHeader;
+- (void)renewedForegroundRefresh:(NSNotification *)notification;
+- (void)renewedProfilesChanged:(NSNotification *)notification;
+- (void)renewedOverviewAction:(NSInteger)action;
 
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UIView *headerView;
@@ -1550,6 +1839,8 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
                                              selector:@selector(homeTabReset)
                                                  name:@"AmeHomeTabReset"
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(renewedProfilesChanged:)
+                                                 name:@"ReloadProfileList" object:nil];
     // ★ [NORIGHT] 右栏状态广播 ⇒ 欢迎卡版本号 / 顶栏 JIT pill / 底部启动胶囊文案保持一致
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(norightStateChanged:)
@@ -1574,6 +1865,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 #pragma mark - Account Manager Modal
 
 - (void)showAccountManagerModal {
+    if (self.homeEditing) return;
     if (self.presentedViewController) return;
     AccountListViewController *vc = [[AccountListViewController alloc] initWithStyle:UITableViewStyleInsetGrouped];
     __weak typeof(self) weakSelf = self;
@@ -1620,6 +1912,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     // ★ [NORIGHT] 右栏 viewDidLoad 可能早于本页注册监听 ⇒ 这里主动索取一次,保证首屏就有值。
     [[NSNotificationCenter defaultCenter] postNotificationName:AmeRightPanelRequestStateNotification object:nil];
     [self norightRefreshCapsuleAppearance];
+    [self renewedReloadProfiles];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -1634,9 +1927,12 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     NSDictionary *info = note.userInfo;
     if (![info isKindOfClass:[NSDictionary class]]) return;
     dispatch_async(dispatch_get_main_queue(), ^{
+        self.renewedHasState = YES;
         NSString *ver = info[@"version"];
         if ([ver isKindOfClass:[NSString class]]) {
+            BOOL changed = ![self.norightVersionText isEqualToString:ver];
             self.norightVersionText = ver;
+            if (changed) [self renewedReloadProfiles];
             [self norightApplyVersionToVisibleCells];
         }
         NSString *jit = info[@"jit"];
@@ -1666,6 +1962,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
         NSNumber *dcActive = info[@"dcActive"];
         if ([dcActive isKindOfClass:[NSNumber class]]) self.topbarDownloadActive = dcActive.boolValue;
         [self norightRefreshDownloadCenterPill];
+        [self renewedRefreshOverview];
     });
 }
 
@@ -1686,20 +1983,142 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 }
 
 /// 点击底部启动胶囊 —— 直接触发原启动按钮的动作链路
-- (void)norightLaunchTapped {
-    if (self.rightPanelVC) {
-        if (self.rightPanelVC.launchButton) {
-            self.rightPanelVC.launchButton.enabled = YES;
-            [self.rightPanelVC.launchButton sendActionsForControlEvents:UIControlEventTouchUpInside];
-        } else {
-            [self.rightPanelVC launchButtonTapped];
-        }
-    } else {
-        [LauncherRightPanelViewController norightPostAction:@"launch"];
+// M4: snapshots contain existing saved profiles only; no installation/runtime state is inferred.
+- (void)renewedReloadProfiles {
+    if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self renewedReloadProfiles]; }); return; }
+    NSMutableDictionary<NSString *, NSString *> *versions = [NSMutableDictionary dictionary];
+    NSDictionary *profiles = PLProfiles.current.profiles;
+    for (id name in profiles) {
+        id profile = profiles[name];
+        if (![name isKindOfClass:NSString.class] || ![profile isKindOfClass:NSDictionary.class]) continue;
+        id version = profile[@"lastVersionId"];
+        versions[name] = [version isKindOfClass:NSString.class] ? [version copy] : @"";
+    }
+    id rawSelection = PLProfiles.current.selectedProfileName;
+    NSString *selected = [rawSelection isKindOfClass:NSString.class] ? rawSelection : @"";
+    BOOL changed = ![self.renewedProfileVersions isEqualToDictionary:versions] || ![self.renewedProfileSelection isEqualToString:selected];
+    self.renewedProfileVersions = [versions copy];
+    self.renewedProfileSelection = [selected copy];
+    [self renewedRefreshOverview];
+    if (changed) [self renewedInvalidateHeader];
+}
+
+- (void)renewedRefreshOverview {
+    if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self renewedRefreshOverview]; }); return; }
+    AMERenewedHomeHeader *header = self.renewedOverview;
+    if (!header) return;
+    NSString *selected = self.renewedProfileSelection ?: @"";
+    NSString *version = self.renewedProfileVersions[selected];
+    BOOL hasTarget = selected.length > 0 && version.length > 0;
+    NSString *username = BaseAuthenticator.current.authData[@"username"];
+    if (![username isKindOfClass:NSString.class] || username.length == 0) username = localize(@"renewed.home.signed_out", @"Not signed in");
+    header.accountText.text = username;
+    header.selectedHeading.text = hasTarget ? localize(@"renewed.home.selected", @"SELECTED INSTANCE") : localize(@"renewed.home.start", @"GET STARTED");
+    header.profileTitle.text = hasTarget ? selected : localize(@"renewed.home.next_world", @"Your next world awaits.");
+    header.versionText.text = hasTarget ? [NSString stringWithFormat:@"Minecraft %@", version]
+        : localize(@"renewed.home.install_hint", @"Install Minecraft to get started, or choose a saved profile in Instances.");
+    header.minecraftStatus.text = hasTarget ? version : localize(@"renewed.home.no_target", @"No configured instance");
+    // A configured Java preference is not evidence that a runtime is installed or currently active.
+    id java = [PLProfiles profile:PLProfiles.current.selectedProfile resolveKey:@"javaVersion"];
+    header.javaStatus.text = !hasTarget ? localize(@"renewed.home.unavailable", @"Not reported")
+        : ([java isKindOfClass:NSString.class] && [java length] && ![java isEqualToString:@"0"]
+            ? java : localize(@"renewed.home.auto_configured", @"Automatic (configured)"));
+    NSString *jit = [self.norightJITPill.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
+    header.jitStatus.text = jit.length ? jit : localize(@"renewed.home.unavailable", @"Not reported");
+    header.jitStatus.textColor = self.norightJITPill.textColor ?: AmeUIPrimaryTextColor();
+    if (!self.renewedHasState) header.downloadStatus.text = localize(@"renewed.home.unavailable", @"Not reported");
+    else if (!self.topbarDownloadActive) header.downloadStatus.text = localize(@"renewed.home.no_tasks", @"No active tasks reported");
+    else if (self.topbarDownloadProgressText.length) header.downloadStatus.text = self.topbarDownloadProgressText;
+    else if (self.topbarDownloadBadgeText.length) header.downloadStatus.text = self.topbarDownloadBadgeText;
+    else header.downloadStatus.text = localize(@"renewed.home.open_tasks", @"Open Download Center");
+    UIButton *canonical = self.rightPanelVC.launchButton;
+    NSString *title = [canonical titleForState:UIControlStateNormal];
+    if (![self.renewedLaunchTitle isEqualToString:title ?: @""]) {
+        self.renewedLaunchTitle = title ?: @"";
+        [self renewedInvalidateHeader];
+    }
+    [header.playButton setTitle:title.length ? title : localize(@"renewed.home.launch_unavailable", @"Launch unavailable") forState:UIControlStateNormal];
+    header.playButton.hidden = !hasTarget;
+    header.discoverButton.hidden = hasTarget;
+    header.chooseButton.tag = hasTarget ? 1 : 4;
+    [header.chooseButton setTitle:hasTarget ? localize(@"renewed.home.choose", @"Choose another instance") : localize(@"renewed.home.manage", @"Manage profiles") forState:UIControlStateNormal];
+    header.playButton.enabled = hasTarget && canonical && canonical.enabled && !self.renewedLaunchDispatchPending && !self.homeEditing;
+    header.playButton.ameShowsActivityIndicator = self.renewedLaunchDispatchPending;
+    header.userInteractionEnabled = !self.homeEditing;
+    [header showProfiles:self.renewedProfileVersions ?: @{} selected:selected];
+}
+
+- (void)renewedInvalidateHeader {
+    if (self.renewedHeaderInvalidationPending || !self.collectionView) return;
+    self.renewedHeaderInvalidationPending = YES;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.renewedHeaderInvalidationPending = NO;
+        [self.collectionView.collectionViewLayout invalidateLayout];
+    });
+}
+
+- (void)renewedForegroundRefresh:(NSNotification *)notification {
+    if (!self.view.window) return;
+    [self renewedReloadProfiles];
+    [[NSNotificationCenter defaultCenter] postNotificationName:AmeRightPanelRequestStateNotification object:nil];
+}
+
+- (void)renewedProfilesChanged:(NSNotification *)notification {
+    [self renewedReloadProfiles];
+}
+
+- (void)renewedOverviewAction:(NSInteger)action {
+    if (self.homeEditing) return;
+    switch (action) {
+        case 0: [self norightLaunchTapped]; break;
+        case 1: [self bottomBarChooseVersionTapped]; break;
+        case 2:
+            if (![self fix2PushTab:1 pushes:DownloadViewController.class makeVC:^UIViewController *{ return [[DownloadViewController alloc] init]; }]) {
+                if (!self.presentedViewController) [self presentViewController:[[UINavigationController alloc] initWithRootViewController:[[DownloadViewController alloc] init]] animated:YES completion:nil];
+            }
+            break;
+        case 3: [self showAccountManagerModal]; break;
+        case 4: [self handleShortcutAction:kShortcutActionVersions]; break;
+        case 5: [self openDownloadCenterModal]; break;
+        default: break;
     }
 }
 
+- (UICollectionReusableView *)collectionView:(UICollectionView *)collectionView viewForSupplementaryElementOfKind:(NSString *)kind atIndexPath:(NSIndexPath *)indexPath {
+    AMERenewedHomeHeader *header = [collectionView dequeueReusableSupplementaryViewOfKind:kind withReuseIdentifier:@"RenewedOverview" forIndexPath:indexPath];
+    self.renewedOverview = header;
+    __weak typeof(self) weakSelf = self;
+    header.onAction = ^(NSInteger action) { [weakSelf renewedOverviewAction:action]; };
+    header.onNeedsSizing = ^{ [weakSelf renewedInvalidateHeader]; };
+    header.onProfile = ^(NSString *name) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || strongSelf.homeEditing || ![PLProfiles.current.profiles[name] isKindOfClass:NSDictionary.class]) return;
+        PLProfiles.current.selectedProfileName = name; // Existing setter persists and broadcasts SelectedProfileChanged.
+        [[NSNotificationCenter defaultCenter] postNotificationName:AmeRightPanelRequestStateNotification object:nil];
+    };
+    if (!self.renewedProfileVersions) [self renewedReloadProfiles];
+    else [self renewedRefreshOverview];
+    return header;
+}
+
+- (void)norightLaunchTapped {
+    UIButton *canonical = self.rightPanelVC.launchButton;
+    if (self.homeEditing || self.renewedLaunchDispatchPending || !canonical || !canonical.enabled) return;
+    if (self.renewedProfileVersions[self.renewedProfileSelection ?: @""].length == 0) return;
+    if (self.presentedViewController || self.rightPanelVC.presentedViewController) return;
+    self.renewedLaunchDispatchPending = YES;
+    [self renewedRefreshOverview];
+    // Exactly one canonical action, no enabled override, JIT predicate or direct launch implementation.
+    [canonical sendActionsForControlEvents:UIControlEventTouchUpInside];
+    // UI input-burst debounce only. Ongoing busy/blocked state remains the coordinator's authority.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        self.renewedLaunchDispatchPending = NO;
+        [self renewedRefreshOverview];
+    });
+}
+
 - (void)bottomBarExecuteJarTapped {
+    if (self.homeEditing) return;
     if (self.rightPanelVC) {
         [self.rightPanelVC executeJar];
     } else {
@@ -1708,6 +2127,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 }
 
 - (void)bottomBarChooseVersionTapped {
+    if (self.homeEditing) return;
     if (self.rightPanelVC) {
         [self.rightPanelVC showVersionPicker];
     } else {
@@ -1716,6 +2136,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 }
 
 - (void)openDownloadCenterModal {
+    if (self.homeEditing) return;
     if (self.rightPanelVC && self.rightPanelVC.view.window) {
         [self.rightPanelVC openDownloadCenter];
     } else {
@@ -1765,10 +2186,10 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 
     self.headerTitleLabel = [[UILabel alloc] init];
     self.headerTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.headerTitleLabel.text = localize(@"i18n_str_349", nil);   // ★ [HOME6] 文案 key 不动
+    self.headerTitleLabel.text = @"METALLIC";   // ★ [HOME6] 文案 key 不动
     self.headerTitleLabel.font = [UIFont systemFontOfSize:kHome6HeaderTitleSize weight:UIFontWeightBold];
     self.headerTitleLabel.textColor = [UIColor labelColor];
-    self.headerTitleLabel.hidden = YES;   // the nav bar above already says "Home"
+    self.headerTitleLabel.hidden = NO;   // Existing logo + branding; no duplicate navigation controller
     [self.headerView addSubview:self.headerTitleLabel];
 
     self.customizeButton = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -1866,13 +2287,13 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     //   横屏让开侧边灵动岛 ≈59pt)。两套只钉「标题 leading」「胶囊 trailing」,且分属不同 anchor
     //   ⇒ 不可能被两套同时钉住(规避"同属性双钉"⇒约束冲突/错位)。切换见 applyHomeSafeAreaInsets。
     self.headerPortraitConstraints = @[
-        [self.headerTitleLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kHome6HeaderPadH],
+        [self.headerTitleLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kHome6HeaderPadH + 44],
         [self.customizeButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kHome6HeaderPadH],
         // ★ [EDITMODE] 「✓ 完成」的竖屏 trailing(与 ⚙自定义 完全同一锚点;两朝向各挂一套 ⇒ 无双钉)
         [self.homeEditDoneButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kHome6HeaderPadH],
     ];
     self.headerLandscapeConstraints = @[
-        [self.headerTitleLabel.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:kHome6HeaderPadH],
+        [self.headerTitleLabel.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:kHome6HeaderPadH + 44],
         [self.customizeButton.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-kHome6HeaderPadH],
         // ★ [EDITMODE] 横屏:贴 safeArea 右缘 ⇒ 让开侧边灵动岛(与 ⚙自定义 同一策略)
         [self.homeEditDoneButton.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-kHome6HeaderPadH],
@@ -1896,61 +2317,25 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 // MARK: - Responsive Transparent Emblem Logo
 
 - (void)setupHomeLogo {
-    self.collectionView.hidden = YES;
-    self.collectionView.userInteractionEnabled = NO;
-    self.customizeButton.hidden = YES;
-
+    self.collectionView.hidden = NO;
+    self.collectionView.userInteractionEnabled = YES;
     self.homeLogoImageView = [[UIImageView alloc] init];
     self.homeLogoImageView.userInteractionEnabled = NO;
-    self.homeLogoImageView.backgroundColor = UIColor.clearColor;
     self.homeLogoImageView.contentMode = UIViewContentModeScaleAspectFit;
-
-    UIImage *logo = [AMEAssetCrypto imageForResource:@"HomeLogo" ofType:@"png"];
-    self.homeLogoImageView.image = logo;
-
-    [self.view insertSubview:self.homeLogoImageView aboveSubview:self.collectionView];
-
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(startHomeLogoAnimation)
-                                                 name:UIApplicationDidBecomeActiveNotification
-                                               object:nil];
-    [self startHomeLogoAnimation];
-}
-
-- (void)startHomeLogoAnimation {
-    if (!self.homeLogoImageView.layer) return;
-    if ([self.homeLogoImageView.layer animationForKey:@"logoBob"]) return;
-
-    CABasicAnimation *bob = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-    bob.fromValue = @(-5.0);
-    bob.toValue = @(5.0);
-    bob.duration = 3.6;
-    bob.autoreverses = YES;
-    bob.repeatCount = HUGE_VALF;
-    bob.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.homeLogoImageView.layer addAnimation:bob forKey:@"logoBob"];
+    self.homeLogoImageView.image = [AMEAssetCrypto imageForResource:@"HomeLogo" ofType:@"png"];
+    self.homeLogoImageView.isAccessibilityElement = NO;
+    [self.headerView addSubview:self.homeLogoImageView];
+    // Foreground refresh stays on the original coordinator's notification interface.
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(renewedForegroundRefresh:)
+                                                 name:UIApplicationDidBecomeActiveNotification object:nil];
 }
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    // Keep the card grid hidden (the edit-mode code paths can un-hide the Custom button).
-    self.collectionView.hidden = YES;
-    self.customizeButton.hidden = YES;
-    if (!self.homeLogoImageView) return;
-
-    // The logo fills the area between the header and the bottom buttons, kept square and responsive.
     UIEdgeInsets safe = self.view.safeAreaInsets;
-    CGFloat top = CGRectGetMaxY(self.headerView.frame) + 8.0;
-    CGFloat bottom = self.view.bounds.size.height - safe.bottom - 110.0;
-    CGFloat availH = MAX(100.0, bottom - top);
-    CGFloat availW = MAX(100.0, self.view.bounds.size.width - 48.0);
-
-    BOOL isPad = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad);
-    CGFloat maxSide = isPad ? 380.0 : 260.0;
-    CGFloat side = MIN(MIN(availH, availW), maxSide);
-    CGRect area = CGRectMake((self.view.bounds.size.width - side) * 0.5, top + (availH - side) * 0.5, side, side);
-    self.homeLogoImageView.frame = area;
-    [self startHomeLogoAnimation];
+    self.homeLogoImageView.frame = CGRectMake(MAX(safe.left, kHome6HeaderPadH), 6, 32, 32);
+    self.norightLaunchCapsule.hidden = YES; // One visible launch entry, in the scrolling hero.
+    self.renewedOverview.userInteractionEnabled = !self.homeEditing;
 }
 
 // MARK: - Collection View Setup
@@ -1968,6 +2353,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     self.collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     self.collectionView.contentInset = UIEdgeInsetsMake(0, 0, 20, 0);
     
+    [self.collectionView registerClass:AMERenewedHomeHeader.class forSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@"RenewedOverview"];
     [self.collectionView registerClass:[HomeProfileTileCell class]      forCellWithReuseIdentifier:@"ProfileCell"];
     [self.collectionView registerClass:[HomeInfoTileCell class]         forCellWithReuseIdentifier:@"InfoCell"];
     [self.collectionView registerClass:[HomeAnnouncementTileCell class] forCellWithReuseIdentifier:@"AnnouncementCell"];
@@ -2011,6 +2397,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     //   按实时宽度算:竖屏≈满宽-32、横屏收 320)= 不存在同属性双钉。
     //   行为:点击只发通知 ⇒ 落到右栏原 launchButtonTapped(账号校验/JIT/下载拦截/版本解析全链路不变)。
     self.norightLaunchCapsule = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    self.norightLaunchCapsule.hidden = YES;
     self.norightLaunchCapsule.translatesAutoresizingMaskIntoConstraints = NO;
     [self.norightLaunchCapsule setTitle:localize(@"i18n_str_412", nil) forState:UIControlStateNormal];
     self.norightLaunchCapsule.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
@@ -2336,9 +2723,15 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 - (UICollectionViewLayout *)createLayout {
     __weak typeof(self) weakSelf = self;
 
-    return [[UICollectionViewCompositionalLayout alloc] initWithSectionProvider:^NSCollectionLayoutSection * _Nullable(NSInteger sectionIndex, id<NSCollectionLayoutEnvironment> env) {
+    UICollectionViewCompositionalLayout *layout = [[UICollectionViewCompositionalLayout alloc] initWithSectionProvider:^NSCollectionLayoutSection * _Nullable(NSInteger sectionIndex, id<NSCollectionLayoutEnvironment> env) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return nil;
+        if (strongSelf.displaySections.count == 0) {
+            NSCollectionLayoutSize *size = [NSCollectionLayoutSize sizeWithWidthDimension:[NSCollectionLayoutDimension fractionalWidthDimension:1.0]
+                                                                        heightDimension:[NSCollectionLayoutDimension absoluteDimension:1.0]];
+            NSCollectionLayoutItem *item = [NSCollectionLayoutItem itemWithLayoutSize:size];
+            return [NSCollectionLayoutSection sectionWithGroup:[NSCollectionLayoutGroup horizontalGroupWithLayoutSize:size subitems:@[item]]];
+        }
         if (sectionIndex >= (NSInteger)strongSelf.displaySections.count) return nil;
 
         NSArray<HomeTileConfig *> *tiles = strongSelf.displaySections[sectionIndex];
@@ -2356,16 +2749,23 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 
         return [strongSelf bentoSectionForTiles:tiles cols:cols];
     }];
+    UICollectionViewCompositionalLayoutConfiguration *configuration = layout.configuration;
+    NSCollectionLayoutSize *headerSize = [NSCollectionLayoutSize sizeWithWidthDimension:[NSCollectionLayoutDimension fractionalWidthDimension:1.0]
+                                                                     heightDimension:[NSCollectionLayoutDimension estimatedDimension:640.0]];
+    configuration.boundarySupplementaryItems = @[[NSCollectionLayoutBoundarySupplementaryItem supplementaryItemWithLayoutSize:headerSize
+        elementKind:UICollectionElementKindSectionHeader alignment:NSRectAlignmentTop]];
+    layout.configuration = configuration;
+    return layout;
 }
 
 // MARK: - UICollectionView DataSource
 
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView {
-    return self.displaySections.count;
+    return MAX((NSUInteger)1, self.displaySections.count);
 }
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    return self.displaySections[section].count;
+    return section < (NSInteger)self.displaySections.count ? self.displaySections[section].count : 0;
 }
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
@@ -2690,6 +3090,9 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 ///   即使「✓ 完成」比「⚙自定义」更宽也不可能压到别的 pill 上(零重叠风险,约束一条不改)。
 ///   只切 hidden,不动任何约束/几何 ⇒ 横竖屏都安全。
 - (void)homeEditSetHeaderChromeHidden:(BOOL)hidden {
+    self.renewedOverview.userInteractionEnabled = !hidden;
+    self.bottomBar.userInteractionEnabled = !hidden;
+    self.actionPanel.userInteractionEnabled = !hidden;
     self.norightJITPill.hidden = hidden;
     self.topbarDownloadCenterPill.hidden = hidden;
     self.topbarDownloadBadgeLabel.hidden = (hidden ? YES : (self.topbarDownloadBadgeText.length == 0));
@@ -2844,6 +3247,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
     UICollectionView *cv = self.collectionView;
     if (!cv) return YES;
+    if (gestureRecognizer == self.homeEditLongPress && self.renewedOverview && [touch.view isDescendantOfView:self.renewedOverview]) return NO;
     CGPoint point = [touch locationInView:cv];
 
     // ★ [EDIT3] homeEditLongPress 不再做任何让位判定:直接落到方法末尾的 return YES。
@@ -2959,8 +3363,10 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 // MARK: - Data Loading
 
 - (void)updateHomeActionPanelVersion {
-    [self.actionPanel setLauncherVersion:@"Metallic/ 1.2 alpha"
-                             gameVersion:(PLProfiles.current.selectedProfileName ?: @"-")
+    [self renewedReloadProfiles];
+    NSString *version = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    [self.actionPanel setLauncherVersion:version.length ? [NSString stringWithFormat:@"Metallic %@", version] : @"Metallic"
+                             gameVersion:(self.renewedProfileVersions[self.renewedProfileSelection ?: @""] ?: localize(@"renewed.home.unavailable", @"Not reported"))
                                   device:UIDevice.currentDevice.model];
 }
 
@@ -3047,6 +3453,8 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 }
 
 - (void)reloadProfileSection {
+    [self renewedRefreshOverview];
+    [self renewedInvalidateHeader];
     // 找到 Profile 类型的 section 并刷新
     for (NSInteger s = 0; s < self.displaySections.count; s++) {
         for (HomeTileConfig *tile in self.displaySections[s]) {
@@ -3279,7 +3687,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     // ★ [EDIT2] 不论是否编辑态,都先按当前编辑态**断言一次**外观(把手显隐 / 卡内交互 / 抖动):
     //   复用池里带出来的“残留把手”在这条必经之路上被清掉 —— “退出后把手不再残留”的第二道保险。
     [self homeEditApplyAppearanceToCell:cell animated:NO];
-    if (self.homeEditing) {
+    if (self.homeEditing || UIAccessibilityIsReduceMotionEnabled()) {
         cell.alpha = 1;
         cell.transform = CGAffineTransformIdentity;
         return;
@@ -3433,7 +3841,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
         // 顶部由 headerView 承担;左右交给 section contentInsets(bentoSectionWithGroup:);底部在此兜底。
         // ★ [NORIGHT] 底部再补「启动胶囊高 + 呼吸」⇒ 最后一张卡不会被底部启动胶囊压住。
         // Two stacked rows now: start capsule + Execute Jar / Choose Version row (36 + 8 gap) + breathing room.
-        CGFloat norightBottomRoom = kNoRightCapsuleHeight + 8.0 + 36.0 + 10.0;
+        CGFloat norightBottomRoom = 36.0 + 10.0; // The launch action now scrolls in the overview, no floating launch row.
         cv.contentInset = UIEdgeInsetsMake(0, 0, sa.bottom + kBentoEdgeV + norightBottomRoom, 0);
         cv.verticalScrollIndicatorInsets = UIEdgeInsetsMake(0, 0, sa.bottom, 0);
     }
@@ -3484,9 +3892,8 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    // ★ [PORTRAIT-UNLOCK] 放开竖屏:原来是写死 Landscape ⇒ iPhone 上竖屏进不来
-    //   (主页是该 VC,它锁横屏 ⇒ 整个 App 被钉在横屏)。游戏页仍单独锁横屏。
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskLandscape;   // landscape only }
+    // Preserve existing orientation masks; compact/wide composition does not change game rotation policy.
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskLandscape; }   // landscape only
     return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
@@ -3497,6 +3904,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 - (void)reapplyBackgroundEffect {
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
     self.collectionView.backgroundColor = [UIColor clearColor];
+    [self.renewedOverview refreshAppearance];
 }
 
 @end

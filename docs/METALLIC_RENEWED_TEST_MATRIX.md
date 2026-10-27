@@ -140,3 +140,54 @@ Start: `0940a6d9d9824c10ee5eaad0e07267a7ccea48fc`, feature branch. M3 PARTIAL; M
 | JIT / Java / Metal / gameplay | Build safely, validate historical known configuration on device | Same engine and working Minecraft world | New runtime test not performed; protected source diff zero | PENDING | M1 BLOCKED; original IPA user evidence remains historical |
 
 Next milestone: Polished and fully functional Home screen. Keep every unexecuted acceptance test pending and carry forward legacy-consumer coverage and M1 blockers.
+
+
+## M4 source verification (2026-10-27)
+
+Start: `6d260fb2a11293306d7e0b3543653cc3759152c3`; branch `feat/renewed-uikit-home`. M4 PARTIAL. No native build, screenshot rendering or device execution. Temporary AST/source check: /tmp/m4_verify.py.
+
+| Feature | Procedure | Expected result | Actual result | Status | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Syntax / imports / inclusion | Normalize NS_ENUM/__unused, parse entire Home .m, resolve imports and existing CMake source | Grammar clean; no registration edit | Passed; existing swallowed orientation brace repaired without mask change | PASS | tree-sitter grammar, path/source-list checks; not SDK type checking |
+| Storage/editor compatibility | Compare HomeTileConfig default/load/save, layout read/write, long-press/drag/resize/save/Done core | Preserve saved layouts and editing functions | Compared method bodies unchanged | PASS | AST/source comparison; new overview stays outside tile storage |
+| Action and lifecycle wiring | Compare fix2PushTab/shortcuts/containment/observers; trace new actions | Original owner/routes retained, no duplicate canonical observer | Passed source checks | PASS | No coordinator implementation edits; existing notifications reused |
+| Launch safety source | Inspect guard and dispatch, compare original target bindings | No force-enable or direct fallback; one dispatch | Canonical enabled/existence/edit/modal gate + UI debounce; one sendActions | PASS | Source assertion only; modal/error/busy timing needs device test |
+| Data/reuse/performance | Inspect profile snapshots/name-bound buttons, label updates and layout methods | Actual metadata, no per-layout I/O, no stale index selection | Source paths satisfy checks | PASS | Associated immutable name; no new async image/network pipeline |
+| Protected engine | Compare baseline allowing approved cumulative UI/docs only | Engine/framework/signing/build unchanged | Gate executed before commit | PASS | Exact path allowlist; not runtime compatibility |
+
+## M4 device acceptance — all unexecuted
+
+| Feature | Procedure | Expected result | Actual result | Status | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| One valid instance | Open Home with configured installed profile | Actual hero/version, canonical launch label/state and selected preview | Not run | PENDING | Native build/device environment unavailable |
+| Several instances | Open with more than three saved profiles; select each through preview/See All | Real previews, selection persists; all profiles reachable in Instances | Not run | PENDING | Native build/device environment unavailable |
+| Zero / unconfigured instances | Open with no profiles or selected profile lacking lastVersionId | Honest empty hero, no launch entry; Discover and Manage work | Not run | PENDING | Native build/device environment unavailable |
+| Login/logout/account switching | Change account, return while avatar requests finish | Current username/account UI; no stale profile or false sign-in state | Not run | PENDING | Native build/device environment unavailable |
+| Selecting another profile | Tap preview and native picker, restart | Existing setter saves selection; hero/status/cards refresh | Not run | PENDING | Native build/device environment unavailable |
+| Return from Instances | See All, push/pop management pages, tap Home | Home root retained, latest profile state visible | Not run | PENDING | Native build/device environment unavailable |
+| Return from Downloads | Discover, download profile, return | Original catalogue; ReloadProfileList updates overview, Home remains Home | Not run | PENDING | Native build/device environment unavailable |
+| Return from Mods/Shaders/Modpacks/Multiplayer | Open original shortcut cards and return repeatedly | Unchanged fix2PushTab/native routes, no root replacement | Not run | PENDING | Native build/device environment unavailable |
+| Rapid Home navigation | Alternate tabs, modal dismissals and Home reset | No overlap/duplicate presentation; scroll/editor reset works | Not run | PENDING | Native build/device environment unavailable |
+| Play enabled | Tap once on an enabled canonical action with configured target | One existing coordinator action; original validation/launch chain | Not run | PENDING | Native build/device environment unavailable |
+| Play disabled | While canonical button disabled, tap/programmatically trigger Home control | No forwarded action; original gate never overridden | Not run | PENDING | Native build/device environment unavailable |
+| Repeated launch taps / errors | Rapid taps, taps after .8s, cancel validation alerts and return | Burst debounce works; canonical busy/modal state remains authoritative; no duplicate launch | Not run | PENDING | Native build/device environment unavailable |
+| JIT Checking | Receive actual checking state, navigate and return | Live native text/color, no Home hardcoded readiness | Not run | PENDING | Native build/device environment unavailable |
+| JIT Ready | Receive genuine ready status on known setup | Real owner state displayed; label alone not gameplay proof | Not run | PENDING | Native build/device environment unavailable |
+| Download required | Use saved but not installed target and tap existing launch | Original coordinator interception/download path, no invented install status | Not run | PENDING | Native build/device environment unavailable |
+| Background/foreground | Return from StikDebug/system and app background | Existing coordinator refresh resumes; Home updates without reconstruction | Not run | PENDING | Native build/device environment unavailable |
+| Long-press edit | Enter edit on tile; press hero/account/toolbar while editing | Only tile editor operates; no launch/navigation; Done reachable | Not run | PENDING | Native build/device environment unavailable |
+| Drag/resize/save | Move tiles, use four sizes, change visibility/title/icon, save and reopen | Original keys/layouts retain values; overview does not overwrite them | Not run | PENDING | Native build/device environment unavailable |
+| All tiles hidden | Hide every tile and reopen Home | Overview remains visible; Customize can restore tile grid | Not run | PENDING | Native build/device environment unavailable |
+| Light/Dark/System | Change existing appearance mode and accent | Readable neutral Home and correct selected/disabled states | Not run | PENDING | Native build/device environment unavailable |
+| Wallpaper image/video/default | Switch wallpaper and return/scroll | Existing cached wallpaper/player presentation preserved | Not run | PENDING | Native build/device environment unavailable |
+| UI Blur 0/50/100 | Adjust M3 control while Home is shown/reopened | Managed overview/button materials update; no text fade or touch blockage | Not run | PENDING | Native build/device environment unavailable |
+| Panel opacity min/mid/max | Adjust M3 opacity through allowed range | Only panel tint changes; wallpaper dimming independent | Not run | PENDING | Native build/device environment unavailable |
+| Narrow iPhone / iPad split width | Exercise smallest supported widths and scroll | Hero/status/previews stack; actions fit and remain reachable | Not run | PENDING | Native build/device environment unavailable |
+| Wide iPad | Open landscape Home, inspect full composition | Balanced hero/status columns and profile previews; no giant gaps | Not run | PENDING | Native build/device environment unavailable |
+| Orientation change | Rotate through supported orientations, with editor/modal open | No duplicated constraints or safe-area offsets; original orientation policy retained | Not run | PENDING | Native build/device environment unavailable |
+| Dynamic Type | Use largest/accessibility categories and long names/translations | Overview stacks/self-sizes and scrolls without clipped actions | Not run | PENDING | Native build/device environment unavailable |
+| VoiceOver | Traverse header, status, actions, selected profiles and tiles | Meaningful real labels/selection, no decorative focus traps | Not run | PENDING | Native build/device environment unavailable |
+| Reduce Motion | Enable, scroll tiles, enter/exit editor and navigate | No new decorative motion; tile entry/wiggle disabled, controls still work | Not run | PENDING | Native build/device environment unavailable |
+| Real gameplay | Safely build and launch known Minecraft/Java/JIT/Metallum configuration on device | Same native engine and working world; independent new evidence | Not run | PENDING | Native build/device environment unavailable |
+
+Native build stays BLOCKED under M1. M3 global legacy-bar/search/chip coverage stays PARTIAL. Screenshot interpretation/source checks do not establish rendered fidelity or physical interaction. Next: Instances and navigation customization, retaining these pending acceptance gates.

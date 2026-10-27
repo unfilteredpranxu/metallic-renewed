@@ -84,3 +84,16 @@ Appearance temporarily opens the functional BackgroundSettings sheet over the cu
 No new M5 screenshot or native render was available. Appearance follows the established reference direction, with no claim of pixel-accurate Instances fidelity. M1 build BLOCKED; M3 and M4 remain PARTIAL, M5 runtime acceptance PENDING. Next: Downloads UI customization using existing download state/actions.
 
 M5 public-selector review: both the Instances overview and existing Home global header now call `NSCollectionLayoutBoundarySupplementaryItem boundarySupplementaryItemWithLayoutSize:elementKind:alignment:`. The Home change is exactly one factory-selector correction; native SDK/type checking remains BLOCKED.
+
+
+## M6 implemented Downloads catalogue subset
+
+The attached Downloads reference guides a quiet category rail and a broad search/control/results column over wallpaper, with native materials and understated rounded rows. A modest heading/tasks entry and compact category selector preserve existing global navigation. Wide layouts show a scrollable category/filter rail; compact/accessibility layouts collapse it and expose real categories/providers/filters through native menus/sheets. No fixed 30% phone sidebar. Exact screenshot dimensions/colors are not inferred; rendered fidelity is PENDING.
+
+Display order is Versions, Mods, Shaders, Modpacks, Resource Packs, Data Packs, Worlds, translating to original native IDs 0/1/2/5/3/4/6. The original segmented-control state and switch path remain authoritative. Selected states/accessible names follow the actual ID. All seven category lists, source/compatibility filtering, reset/import and navigation return flows remain original functionality. Instant category visibility avoids full-page crossfades.
+
+Version cards retain actual version/type/date and native installation-options selection. The legacy saved-profile flag is shown as a bookmark, not proof of complete installation. Community cards retain real provider metadata, async cached icons and existing action bindings, with scalable semantic typography and 44-point download/select controls. No fake counts, compatibility or task states. Existing task centre opens from a real Tasks button; its styling/observation/manager implementations remain unchanged.
+
+Downloads-specific M3 integration covers managed category rail, public-customized search field, resource/version card material and M2 buttons. UI Blur/Panel Opacity update background material/tint; no list rebuilding per slider tick or alpha fading of text. Global legacy bars/search/chips elsewhere and task-centre styling remain partial. The reference's Versions Sort is deferred because no native version-sort handler is established; real existing resource sorting is accessible on all resource categories.
+
+Native compile/type checking remains BLOCKED; category/menu selection, self-sizing, contrast, keyboard, VoiceOver/Dynamic Type, downloads/installations and screenshot comparison remain PENDING. Next: Appearance and Settings UI completion.

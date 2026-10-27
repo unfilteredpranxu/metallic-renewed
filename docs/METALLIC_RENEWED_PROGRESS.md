@@ -2,7 +2,7 @@
 
 ## Current continuation checkpoint
 
-M5 is PARTIAL: Instances presentation and safe visible navigation routing are implemented and statically checked; native visual/interaction acceptance remains PENDING. Branch: `feat/renewed-uikit-home`, based on published M4 `59faa8bb812e561b576f7ac755b76890be73738e`. Read M5 below before editing. M1 remains BLOCKED, M3 legacy appearance coverage PARTIAL, M4 Home acceptance PARTIAL. Next: Downloads UI customization. Earlier milestone sections are historical, not instructions to repeat audits.
+M6 is PARTIAL: Downloads catalogue presentation is implemented and statically checked; native compilation, runtime and screenshot acceptance remain PENDING. Active branch: `feat/renewed-uikit-home`, starting checkpoint `0a824b3a30b1029be5a354c85de75609320e1095`. Read M6 below before editing. M1 stays BLOCKED, M3 global legacy coverage PARTIAL, M4 Home and M5 Instances/navigation device acceptance PENDING. Next: Appearance and Settings UI completion. Earlier sections are historical, not instructions to repeat audits.
 
 ## Permanent scope
 
@@ -395,3 +395,73 @@ M5 public-selector review: both the Instances overview and existing Home global 
 ### M5 commit record
 
 Implementation: `cefd07b4bfd60dcb21a0e1d2afaabdc76850e77f` (`feat(ui): polish Instances and native navigation`), parent M4 `59faa8bb812e561b576f7ac755b76890be73738e`. This documentation bookkeeping commit records the implementation SHA; resolve the final checkpoint with `git log -1 --format=%H -- docs/METALLIC_RENEWED_PROGRESS.md`. Publication is restricted to `feat/renewed-uikit-home` using the existing command-scoped Git credential helper and a normal fast-forward push; no saved credentials/configuration. No baseline/main update. M5 PARTIAL, native build BLOCKED, device tests PENDING. Next: Downloads UI customization.
+
+
+## M6 — Downloads catalogue customization (2026-10-27)
+
+Status **PARTIAL**: real UIKit implementation delivered; native/visual/interaction tests unavailable. Verified clean `feat/renewed-uikit-home` at published M5 `0a824b3a30b1029be5a354c85de75609320e1095`, fetched that feature and protected baseline `fe379d4f3723764ec0a8b6a6728368ac3492c4d8`. No main/baseline changes, workflow dispatch, dependency/build repair or source substitutions.
+
+### Scope and source protection
+
+Changed only `ios-app/Natives/DownloadViewController.m`, directly related result presentation `ios-app/Natives/VersionCardCell.m`, and the three continuity docs. VersionCardCell is the existing Versions result cell, so that second UI file is necessary for consistent catalogue cards; no new source files or build registrations. `DownloadTasksViewController.m`, DownloadTaskManager/Item and all installer/engine/framework/build inputs remain untouched.
+
+Before edits, captured all 164 Objective-C method bodies/ranges/hashes from M5 in temporary `/tmp/m6_download_start.m` and `/tmp/m6_download_methods.json`. Explicitly allowed 23 existing presentation methods plus one orientation-brace syntax repair. Independent raw lexical comparison proves **140 protected methods byte-identical**, including comments/whitespace; the single C checksum helper is also unchanged. Protected hash evidence is in temporary `/tmp/m6_protected_hashes.json`; the permanent reproducible comparison source is the M5 Git commit above. These workers' temporary scripts are not app dependencies or permanent test infrastructure.
+
+Critical M5 boundaries below were captured before edits and compared after edits (hash prefixes identify the unchanged normalized parser snapshot; raw comparison also passed):
+
+| Original method | M5 lines | SHA-256 prefix |
+| --- | --- | --- |
+| `ensureVanillaInstalled:` | 3209–3334 | `e957f979450c` |
+| `downloadVanillaVersion:` | 3338–3359 | `b82164132613` |
+| `startVersionDownload:` | 3361–3422 | `dfbf7c541937` |
+| `installFabricLikeLoader:` | 3459–3605 | `4c013aaba949` |
+| `launchModInstallerWithPath:` | 3783–3828 | `2ef0aa39f033` |
+| `invokeAfterJITEnabled:` | 3830–3985 | `fda610ad17f0` |
+| `jit_reattachJIT26ThenLaunch:` | 3988–4040 | `97b05af93722` |
+| `jit_showTimeoutRetryAlert:` | 4043–4057 | `cd07ce1551a0` |
+| `installForge:` | 4122–4284 | `fabf1da11c23` |
+| `installNeoForge:` | 4618–4751 | `8d4b7f7c2809` |
+| `startModpackInstallation:` | 4830–5035 | `0eb4023e5350` |
+
+All provider fetch/search/refresh/pagination, native download/select handlers, resource paths, extraction/write operations, dependency/loader algorithms, target-profile snapshot, KVO/progress coordination and cancellation/dealloc bodies stayed unchanged. `switchToTab:animated:` changes only presentation before the existing provider/query branches and adds UI refresh afterward; its original data/query suffix is compared exactly. `showFilterOptions` only gains real existing Sort access for Modpacks/Worlds when the sidebar is collapsed; original filters/reset operations are retained. No whole-file formatter/search-and-replace was used.
+
+### Implemented catalogue and reference decisions
+
+- Actual supplied Downloads reference reviewed: quiet category rail, search above controls/results, rounded neutral material rows, wallpaper visible, selected navigation and restrained download affordances. No measured pixel fidelity claimed. Added a modest Downloads heading, compact category access and real Tasks button without another navigation bar or root controller.
+- Wide widths (safe width ≥900, non-accessibility text): scrolling 196-point category/filter rail. Compact/accessibility widths: rail consumes zero width; all categories are in a native menu, provider in a real source menu and native Filter sheet. Internal scroll content retains a nonnegative width while the rail is hidden. No 30%-width sidebar forced onto iPhone. Existing root 60/76 geometry and orientation masks unchanged.
+- Display order follows reference **Versions → Mods → Shaders → Modpacks → Resource Packs → Data Packs → Worlds**. One UI-only constant maps it to native IDs **0,1,2,5,3,4,6**. Internal semantics remain **0 Versions / 1 Mods / 2 Shaders / 3 Resource Packs / 4 Data Packs / 5 Modpacks / 6 Worlds**. `tabSegment.selectedSegmentIndex` is the only category state; both rail and menu set it then invoke original `tabChanged:` → `switchToTab:animated:` once. Button tags/menu indices use native IDs; selection/accessibility checks translate the display position. No global launcher-tab indices changed.
+- Category visibility changes immediately, removing whole-view crossfades/snapshots. Original first-open `switchToTab:initialTab animated:NO` remains byte-identical. No new transition animations or timers; Reduce Motion needs no new animation bypass.
+- Existing UISearchBar/delegate/submit/cancel/local version filtering unchanged; search field uses public background-image customization plus M3 material. All six tables keep real refresh/pagination/data sources, use self-sizing ModernAssetCell, dismiss keyboard on drag and follow the same sidebar/search/control anchor chain. Version flow layout remains one column, font/width-aware, 96-point minimum row height. Constraints are created only during setup; width/visibility constants update during layout.
+- ModernAssetCell uses M2 scalable semantic text, M3 native managed material, restrained border, real provider description/tags and numeric download metadata only when supplied (no invented zero). Existing IconLoader identity/cancel/cache flow, tag cleanup and download-target removal on reuse remain exact. Existing category-specific button bindings and row-tap semantics are unchanged; controls have 44-point targets and descriptive accessible names.
+- VersionCardCell uses matching neutral material, version/type/date hierarchy and decorative arrow. Tapping the row still invokes the original loader/install-options action, not an unvalidated direct download. Existing `setInstalled:` caller checks saved profile metadata, not file completeness: the same flag now renders a bookmark and announces “Referenced by a saved profile,” without claiming successful installation. The predicate and installer paths are unchanged. Existing real Vanilla icon and reuse/reset remain.
+
+### Actual controls, state and material integration
+
+| Control | Preserved native route |
+| --- | --- |
+| Version filter | Existing versionFilterChanged: → applyVersionFilter; All/Release/Snapshot/Old options unchanged |
+| Search | Same UISearchBar delegate methods; local version text filtering and explicit remote submit/cancel behavior unchanged |
+| Game version / loader / sort / reset | Original showGameVersionPicker / showModLoaderPicker / showSortOptions / resetFilters and category-specific reset closures. Added only Modpacks/Worlds Sort access in compact sheet |
+| Provider | Existing sidebarSourceSegmentChanged: and native Modrinth/CurseForge handlers. New renewedSourceChanged: dispatches once, then restores displayed selection if native availability gate rejects it; no new backend/provider support |
+| Worlds | Original CurseForge-only API handling; source UI fixed/disabled as CurseForge, native availability/error/settings route unchanged |
+| Download resource / version | Original table/collection handlers, selectors/tags and loader validation unchanged; no fake progress or downloaded states |
+| Import Modpack | Original openImportModpackView, still accessible in Modpacks and existing filter sheet |
+| Task centre | renewedOpenTasks → existing DownloadTasksViewController standalone form sheet (500×600 preferred), same existing close/filter/detail/actions/DownloadTaskManager state. No navigation-bar duplication, task observers or queue changes |
+
+`setupFilterSidebar` still runs BEFORE `setupSearchBar`; search/list leading anchors depend on the already-created rail. Hidden version filter/import controls collapse; optional stack widths/heights/padding use collapsible priorities. Hidden sidebar picker buttons explicitly report hidden in compact mode, so unchanged native picker code anchors to the visible Filter button on iPad. No extra overlays/tap recognizers over cells/buttons. M3 updates registered materials directly: appearance ticks no longer reload seven lists, recursively restyle the screen or reconstruct search/sidebar materials. No new observer, preference store/key/default, network client, task service or progress timer.
+
+Target protection: original `viewDidLoad` is byte-identical, including explicit target preservation and one-time fallback snapshot `targetProfileName = PLProfiles.current.selectedProfileName`. UI changes never overwrite that target. Resource/installation path methods unchanged. Profile-filter preselection semantics also retained; no global profile or engine setting reset.
+
+One pre-existing syntax defect repaired in `supportedInterfaceOrientations`: moved a closing brace out of a line comment. Both returns stay `UIInterfaceOrientationMaskLandscape`; no orientation policy change.
+
+### Tests, unresolved acceptance and next action
+
+Executed `git diff --check`, complete Tree-sitter grammar parsing for both changed .m files (NS_ENUM/__unused parser-only normalization), raw protected-body comparison, checksum helper comparison, duplicate-method/selector/target checks, import/build inclusion/API-floor review, retained icon/reuse/KVO/profile/handler comparisons and constraint/anchor/ownership review. Compiled and ran the actual seven-category display-order constant with gcc `-Wall -Wextra -Werror`: each original native ID appears once in the reference order. This was C mapping validation, **not UIKit compilation**. Temporary verification: `/tmp/m6_verify.py`.
+
+Cumulative Git content comparison outside **13 approved UI files + 3 docs** is zero. Within the mixed Downloads file, protected methods/C helper have zero diff against M5. **ENGINE/INSTALLER/JIT DIFF: ZERO.** All prior M2–M5 work retained; protected baseline untouched.
+
+M1 remains **BLOCKED**: no Xcode/Apple SDK/native compile, existing CI substitutes protected/upstream inputs, unresolved framework/JRE/JIT packaging verification. No workflow triggered, IPA built, network installation/download test, simulator run or physical-device validation. M3 global legacy coverage remains PARTIAL; M4 and M5 visual/interaction acceptance stays pending. Historical Alpha 1.2 gameplay is not new evidence.
+
+M6 unfinished/PENDING: native SDK/type/link check; rendered screenshot fidelity; split widths/large text/keyboard/popover and rapid category/provider changes; actual async loading/error/pagination behavior (protected semantics retained, not revalidated); target-profile installation with disposable data; real progress/pause/resume/retry/cancel; wallpaper/theme/material contrast and persistence on device. Task-centre visual overhaul is deferred: real route/functionality is present, original task-screen styling remains. The reference's Versions Sort pill has no verified existing version-sort handler; no fake control added. Existing native saved-profile predicate is not proof of complete installation. English fallback translations and accessibility focus require device review.
+
+**Next milestone: Appearance and Settings UI completion.** Read this checkpoint, then the existing BackgroundSettingsViewController / LauncherPreferencesViewController UI as needed. Consolidate real theme/wallpaper/glass/reset controls and polish existing Settings without changing engine preference semantics, M5 routing, profile/task storage or build infrastructure. Carry forward M1 BLOCKED and all pending runtime gates; do not repeat M0–M5 audits.

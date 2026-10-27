@@ -1,5 +1,7 @@
 #import "DownloadViewController.h"
 #import "BackgroundManager.h"
+#import "UIKit+GlassSurface.h"
+#import "DownloadTasksViewController.h"
 // IconLoader：统一的项目图标加载器（双层缓存 + 降采样 + 并发控制 + CDN 镜像），
 // 替代 UIImageView+AFNetworking（仅内存缓存，无降采样，无镜像）
 // 参照 FCL Glide + ZL2 Coil 的最佳实践
@@ -72,6 +74,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     ModernAssetTypeModpack            // 整合包：shippingbox.fill + 粉
 };
 
+// Screenshot display order only; native category IDs and the segmented-control state never change.
+static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
+
 @interface ModernAssetCell : UITableViewCell
 @property (nonatomic, strong) UIView *contentContainer;
 @property (nonatomic, strong) UIImageView *iconView;
@@ -89,122 +94,70 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 @implementation ModernAssetCell
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
-    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-    if (self) {
-        self.selectionStyle = UITableViewCellSelectionStyleDefault;
-        self.backgroundColor = [UIColor clearColor];
-        self.contentView.backgroundColor = [UIColor clearColor];
+    if ((self = [super initWithStyle:style reuseIdentifier:reuseIdentifier])) {
+        self.backgroundColor = UIColor.clearColor;
+        self.contentView.backgroundColor = UIColor.clearColor;
         self.assetType = ModernAssetTypeMod;
-
-        // FCL view_installer_item.xml 风格：扁平条目，无卡片容器、无阴影、无边框
-        // 仅依赖 BackgroundManager.applyEffectToView: 提供毛玻璃/半透明背景
-        // 行间分隔通过 rowHeight 内的上下 padding 实现（参照 FCL marginBottom 10dp）
         self.contentContainer = [[UIView alloc] init];
         self.contentContainer.translatesAutoresizingMaskIntoConstraints = NO;
-        // FCL bg_container_white_clickable 的等效：浅色半透明背景 + 圆角
-        self.contentContainer.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.06];
-        self.contentContainer.layer.cornerRadius = 8;
+        self.contentContainer.layer.cornerRadius = 22;
         self.contentContainer.layer.cornerCurve = kCACornerCurveContinuous;
-        // 移除阴影/边框（FCL 扁平风格不需要）
+        self.contentContainer.clipsToBounds = YES;
         [self.contentView addSubview:self.contentContainer];
-
-        // ----- 左侧图标：26x26（FCL 标准 30dp，紧凑模式略小）-----
+        [[BackgroundManager sharedManager] applyEffectToView:self.contentContainer];
         self.iconView = [[UIImageView alloc] init];
         self.iconView.translatesAutoresizingMaskIntoConstraints = NO;
-        self.iconView.layer.cornerRadius = 5;
-        self.iconView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.iconView.layer.cornerRadius = 10;
         self.iconView.clipsToBounds = YES;
-        self.iconView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.06];
         self.iconView.contentMode = UIViewContentModeScaleAspectFit;
-        self.iconView.tintColor = [UIColor systemOrangeColor];
         [self.contentContainer addSubview:self.iconView];
-
-        // ----- 标题：13pt Medium（FCL title 14sp，紧凑模式略小）-----
         self.titleLabel = [[UILabel alloc] init];
-        self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        self.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
-        self.titleLabel.textColor = [UIColor labelColor];
-        self.titleLabel.numberOfLines = 1;
-        self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-        [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-        [self.contentContainer addSubview:self.titleLabel];
-
-        // ----- 第二行：下载次数 + 描述（FCL download_count 12sp + description 12sp）-----
+        self.titleLabel.font = AmeUIFont(AmeUIFontRoleSectionHeading);
+        self.titleLabel.textColor = AmeUIPrimaryTextColor();
+        self.titleLabel.numberOfLines = 2;
         self.descLabel = [[UILabel alloc] init];
-        self.descLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        self.descLabel.font = [UIFont systemFontOfSize:11];
-        self.descLabel.textColor = [UIColor secondaryLabelColor];
-        self.descLabel.numberOfLines = 1;
-        self.descLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-        [self.contentContainer addSubview:self.descLabel];
-
-        // ----- 元信息隐藏（已合并到 descLabel 第二行）-----
+        self.descLabel.font = AmeUIFont(AmeUIFontRoleDescription);
+        self.descLabel.textColor = AmeUISecondaryTextColor();
+        self.descLabel.numberOfLines = 2;
         self.metaLabel = [[UILabel alloc] init];
-        self.metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        self.metaLabel.hidden = YES;
-        [self.contentContainer addSubview:self.metaLabel];
-
-        // ----- 标签 stack：融入第二行右侧（FCL tag 11sp padding 4dp/2dp）-----
+        self.metaLabel.font = AmeUIFont(AmeUIFontRoleStatus);
+        self.metaLabel.textColor = AmeUITertiaryTextColor();
+        self.metaLabel.numberOfLines = 1;
+        for (UILabel *label in @[self.titleLabel, self.descLabel, self.metaLabel]) label.adjustsFontForContentSizeCategory = YES;
         self.tagsStack = [[UIStackView alloc] init];
-        self.tagsStack.translatesAutoresizingMaskIntoConstraints = NO;
         self.tagsStack.axis = UILayoutConstraintAxisHorizontal;
-        self.tagsStack.spacing = 4;
-        self.tagsStack.distribution = UIStackViewDistributionFill;
-        self.tagsStack.alignment = UIStackViewAlignmentCenter;
-        [self.contentContainer addSubview:self.tagsStack];
-
-        // ----- 下载按钮：右侧 24x24（FCL 风格紧凑按钮）-----
-        self.downloadButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.tagsStack.spacing = 6;
+        self.tagsStack.alignment = UIStackViewAlignmentLeading;
+        UIStackView *text = [[UIStackView alloc] initWithArrangedSubviews:@[self.titleLabel, self.descLabel, self.metaLabel, self.tagsStack]];
+        text.axis = UILayoutConstraintAxisVertical;
+        text.spacing = 5;
+        text.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.contentContainer addSubview:text];
+        self.downloadButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+        ((AmePinkGlassButton *)self.downloadButton).ameRole = AmeGlassButtonRoleSubtle;
         self.downloadButton.translatesAutoresizingMaskIntoConstraints = NO;
-        UIImage *downloadSymbol = [UIImage systemImageNamed:@"arrow.down.circle.fill"
-                                          withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIFontWeightRegular]];
-        if (!downloadSymbol) {
-            downloadSymbol = [UIImage systemImageNamed:@"arrow.down.circle.fill"];
-        }
-        [self.downloadButton setImage:downloadSymbol forState:UIControlStateNormal];
-        self.downloadButton.tintColor = [UIColor systemGreenColor];
-        self.downloadButton.showsTouchWhenHighlighted = NO;
-        [self.downloadButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-        [self.downloadButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        [self.downloadButton setImage:[UIImage systemImageNamed:@"arrow.down"] forState:UIControlStateNormal];
         [self.contentContainer addSubview:self.downloadButton];
-
         [NSLayoutConstraint activateConstraints:@[
-            // FCL marginBottom 10dp / padding 8dp,10dp 等效：上下 3pt + 左右 8pt（紧凑）
-            [self.contentContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:3],
-            [self.contentContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:8],
-            [self.contentContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-8],
-            [self.contentContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-3],
-
-            // 图标：左 8，垂直居中，26x26
-            [self.iconView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:8],
-            [self.iconView.centerYAnchor constraintEqualToAnchor:self.contentContainer.centerYAnchor],
-            [self.iconView.widthAnchor constraintEqualToConstant:26],
-            [self.iconView.heightAnchor constraintEqualToConstant:26],
-
-            // 标题：紧跟图标右侧 +8，顶部对齐容器顶部 +6
-            [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconView.trailingAnchor constant:8],
-            [self.titleLabel.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:6],
-            [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.downloadButton.leadingAnchor constant:-4],
-
-            // 第二行 descLabel：紧跟标题下方 +2，左侧对齐标题
-            [self.descLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
-            [self.descLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:2],
-            [self.descLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.tagsStack.leadingAnchor constant:-4],
-            [self.descLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentContainer.bottomAnchor constant:-6],
-
-            // 标签 stack：与 descLabel 同行，右侧紧贴下载按钮
-            [self.tagsStack.centerYAnchor constraintEqualToAnchor:self.descLabel.centerYAnchor],
-            [self.tagsStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.downloadButton.leadingAnchor constant:-4],
-
-            // 下载按钮：右侧 -6，垂直居中，24x24
-            [self.downloadButton.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-6],
+            [self.contentContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:5],
+            [self.contentContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-5],
+            [self.contentContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:4],
+            [self.contentContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-4],
+            [self.iconView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:16],
+            [self.iconView.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:18],
+            [self.iconView.widthAnchor constraintEqualToConstant:32],
+            [self.iconView.heightAnchor constraintEqualToConstant:32],
+            [text.leadingAnchor constraintEqualToAnchor:self.iconView.trailingAnchor constant:12],
+            [text.trailingAnchor constraintEqualToAnchor:self.downloadButton.leadingAnchor constant:-8],
+            [text.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:16],
+            [text.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor constant:-16],
+            [self.downloadButton.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-8],
             [self.downloadButton.centerYAnchor constraintEqualToAnchor:self.contentContainer.centerYAnchor],
-            [self.downloadButton.widthAnchor constraintEqualToConstant:24],
-            [self.downloadButton.heightAnchor constraintEqualToConstant:24]
+            [self.downloadButton.widthAnchor constraintEqualToConstant:44],
+            [self.downloadButton.heightAnchor constraintEqualToConstant:44]
         ]];
-
-        // 应用毛玻璃背景效果（BackgroundManager 统一管理深浅色与模糊度）
-        [[BackgroundManager sharedManager] applyEffectToView:self.contentContainer];
+        self.contentContainer.layer.borderWidth = AmeUIHairlineWidth(self);
+        self.contentContainer.layer.borderColor = AmeUIResolvedColor(AmeUIBorderColor(), self).CGColor;
     }
     return self;
 }
@@ -370,24 +323,14 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 - (UILabel *)createTagLabel:(NSString *)text {
     UILabel *label = [[UILabel alloc] init];
     label.text = text;
-    // FCL tag 11sp Medium（紧凑模式 10pt）
-    label.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
-    label.textColor = [UIColor whiteColor];
-    label.backgroundColor = [self colorForCategory:text];
-    label.layer.cornerRadius = 4;
-    label.layer.cornerCurve = kCACornerCurveContinuous;
-    label.layer.masksToBounds = YES;
-    label.textAlignment = NSTextAlignmentCenter;
-    [label setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [label setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    // 内边距：左右 5，上下 1（FCL padding 4dp/2dp 等效，紧凑模式略小）
-    label.translatesAutoresizingMaskIntoConstraints = NO;
-    [NSLayoutConstraint activateConstraints:@[
-        [label.heightAnchor constraintEqualToConstant:14]
-    ]];
-    [label sizeToFit];
-    CGFloat textWidth = label.frame.size.width;
-    [label.widthAnchor constraintEqualToConstant:textWidth + 8].active = YES;
+    label.font = AmeUIFont(AmeUIFontRoleStatus);
+    label.adjustsFontForContentSizeCategory = YES;
+    label.textColor = AmeUISecondaryTextColor();
+    label.backgroundColor = AmeUISelectedFillColor();
+    label.layer.cornerRadius = 5;
+    label.clipsToBounds = YES;
+    label.lineBreakMode = NSLineBreakByTruncatingTail;
+    [label setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     return label;
 }
 
@@ -426,27 +369,28 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 /// 6 类资源共用的配置逻辑：标题/描述/元信息/图标/标签
 /// FCL 风格：标题 14sp + 第二行（下载次数 + 描述），元信息（作者/日期）合并到 descLabel
 - (void)configureCommonWithData:(NSDictionary *)data type:(ModernAssetType)type {
-    self.titleLabel.text = data[@"title"] ?: data[@"slug"] ?: @"Unknown";
-
-    // 第二行：下载次数 + 描述（FCL download_count + description 同行）
-    NSString *downloadsStr = [self formatDownloadCount:data[@"downloads"]];
-    NSString *description = data[@"description"] ?: @"";
-    // 截断描述，避免太长挤压下载次数显示
-    NSString *truncatedDesc = description;
-    if (truncatedDesc.length > 40) {
-        truncatedDesc = [[description substringToIndex:40] stringByAppendingString:@"…"];
-    }
-    self.descLabel.text = [NSString stringWithFormat:localize(@"i18n_str_146", nil), downloadsStr, truncatedDesc];
-
-    // metaLabel 已隐藏（保留属性兼容旧代码），不再设置
-    self.metaLabel.text = @"";
-
-    // 图标：先占位，再异步加载项目图标
+    self.titleLabel.text = data[@"title"] ?: data[@"slug"] ?: localize(@"renewed.downloads.unknown", @"Untitled resource");
+    self.descLabel.text = data[@"description"] ?: @"";
+    self.descLabel.hidden = self.descLabel.text.length == 0;
+    // Show provider metadata only when supplied, without inventing a zero count.
+    NSNumber *downloads = [data[@"downloads"] isKindOfClass:NSNumber.class] ? data[@"downloads"] : nil;
+    self.metaLabel.text = downloads ? [NSString stringWithFormat:localize(@"renewed.downloads.count", @"%@ downloads"), [self formatDownloadCount:downloads]] : @"";
+    self.metaLabel.hidden = !downloads;
     NSString *iconUrl = data[@"imageUrl"] ?: data[@"icon_url"];
     [self loadIconFromURL:iconUrl placeholderType:type];
-
-    // 标签
     [self configureTagsWithCategories:data[@"categories"]];
+    self.tagsStack.hidden = self.tagsStack.arrangedSubviews.count == 0;
+    self.downloadButton.accessibilityLabel = [NSString stringWithFormat:@"%@: %@", localize(@"renewed.downloads.select_version", @"Select download version"), self.titleLabel.text];
+    self.titleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
+}
+
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    self.contentContainer.layer.borderWidth = AmeUIHairlineWidth(self);
+    self.contentContainer.layer.borderColor = AmeUIResolvedColor(AmeUIBorderColor(), self).CGColor;
+    self.tagsStack.axis = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory)
+        ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
 }
 
 @end
@@ -462,6 +406,22 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 #pragma mark - DownloadViewController
 
 @interface DownloadViewController () <UICollectionViewDataSource, UICollectionViewDelegate, UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate, ModVersionViewControllerDelegate, ShaderVersionViewControllerDelegate, AssetVersionViewControllerDelegate>
+
+@property (nonatomic, strong) UIStackView *catalogueHeader;
+@property (nonatomic, strong) UIStackView *catalogueControls;
+@property (nonatomic, strong) UIStackView *sidebarFilters;
+@property (nonatomic, strong) UIButton *categoryMenuButton;
+@property (nonatomic, strong) UIButton *providerMenuButton;
+@property (nonatomic, copy) NSArray<UIButton *> *categoryButtons;
+@property (nonatomic, copy) NSArray<UIAction *> *categoryActions;
+@property (nonatomic, copy) NSArray<NSString *> *categoryTitles;
+@property (nonatomic, assign) BOOL catalogueWide;
+@property (nonatomic, assign) BOOL catalogueLayoutConfigured;
+- (void)renewedUpdateCataloguePresentation;
+- (void)renewedRefreshCategoryControls;
+- (void)renewedOpenTasks;
+- (void)renewedSourceChanged:(UISegmentedControl *)sender;
+- (void)renewedCategoryTapped:(UIButton *)sender;
 
 @property (nonatomic, strong) UISegmentedControl *tabSegment;
 @property (nonatomic, strong) UISegmentedControl *versionFilterSegment;
@@ -767,21 +727,61 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 }
 
 - (void)setupTabSegment {
-    // 精简标签文字为单字+图标，避免在窄屏上拥挤截断（参照 FCL 紧凑 tab）
-    self.tabSegment = [[UISegmentedControl alloc] initWithItems:@[localize(@"i18n_str_39", nil), localize(@"i18n_str_1283", nil), localize(@"i18n_str_1284", nil), localize(@"i18n_str_1285", nil), localize(@"i18n_str_1286", nil), localize(@"i18n_str_1287", nil), localize(@"i18n_str_119", nil)]];
-    self.tabSegment.translatesAutoresizingMaskIntoConstraints = NO;
+    self.categoryTitles = @[
+        localize(@"renewed.downloads.versions", @"Versions"), localize(@"i18n_str_1283", @"Mods"),
+        localize(@"i18n_str_1284", @"Shaders"), localize(@"i18n_str_1285", @"Resource Packs"),
+        localize(@"i18n_str_1286", @"Data Packs"), localize(@"i18n_str_1287", @"Modpacks"), localize(@"i18n_str_119", @"Worlds")
+    ];
+    // Keep this native control as the sole category state/dispatch source.
+    self.tabSegment = [[UISegmentedControl alloc] initWithItems:self.categoryTitles];
     self.tabSegment.selectedSegmentIndex = 0;
-    // 调小字体，确保 7 个 tab 在 iPhone 竖屏也能完整显示
-    NSDictionary *textAttrs = @{NSFontAttributeName: [UIFont systemFontOfSize:12 weight:UIFontWeightMedium]};
-    [self.tabSegment setTitleTextAttributes:textAttrs forState:UIControlStateNormal];
     [self.tabSegment addTarget:self action:@selector(tabChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.view addSubview:self.tabSegment];
-
+    UILabel *title = [[UILabel alloc] init];
+    title.text = localize(@"tab.download", @"Downloads");
+    title.font = AmeUINavigationFont();
+    title.adjustsFontForContentSizeCategory = YES;
+    title.textColor = AmeUIPrimaryTextColor();
+    title.accessibilityTraits = UIAccessibilityTraitHeader;
+    UIView *spacer = [[UIView alloc] init];
+    self.categoryMenuButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    ((AmePinkGlassButton *)self.categoryMenuButton).ameRole = AmeGlassButtonRoleSecondary;
+    [self.categoryMenuButton setImage:[UIImage systemImageNamed:@"square.grid.2x2"] forState:UIControlStateNormal];
+    self.categoryMenuButton.showsMenuAsPrimaryAction = YES;
+    NSMutableArray<UIAction *> *actions = [NSMutableArray array];
+    __weak typeof(self) weakSelf = self;
+    for (NSInteger ordinal = 0; ordinal < 7; ordinal++) {
+        NSInteger index = kRenewedDownloadCategoryOrder[ordinal];
+        NSString *name = self.categoryTitles[index];
+        UIAction *action = [UIAction actionWithTitle:name image:nil identifier:nil handler:^(__kindof UIAction *item) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || strongSelf.tabSegment.selectedSegmentIndex == (NSInteger)index) return;
+            strongSelf.tabSegment.selectedSegmentIndex = index;
+            [strongSelf tabChanged:strongSelf.tabSegment];
+        }];
+        [actions addObject:action];
+    }
+    self.categoryActions = actions;
+    self.categoryMenuButton.menu = [UIMenu menuWithTitle:localize(@"renewed.downloads.categories", @"Categories") children:actions];
+    AmePinkGlassButton *tasks = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    tasks.ameRole = AmeGlassButtonRoleSubtle;
+    [tasks setImage:[UIImage systemImageNamed:@"arrow.down.circle"] forState:UIControlStateNormal];
+    tasks.accessibilityLabel = localize(@"renewed.downloads.tasks", @"Download tasks and progress");
+    [tasks addTarget:self action:@selector(renewedOpenTasks) forControlEvents:UIControlEventTouchUpInside];
+    self.catalogueHeader = [[UIStackView alloc] initWithArrangedSubviews:@[title, spacer, self.categoryMenuButton, tasks]];
+    self.catalogueHeader.spacing = 8;
+    self.catalogueHeader.alignment = UIStackViewAlignmentCenter;
+    self.catalogueHeader.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.catalogueHeader];
+    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
+    NSLayoutConstraint *categoryWidth = [self.categoryMenuButton.widthAnchor constraintEqualToConstant:44];
+    categoryWidth.priority = 999;
     [NSLayoutConstraint activateConstraints:@[
-        [self.tabSegment.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8],
-        [self.tabSegment.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12],
-        [self.tabSegment.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12],
-        [self.tabSegment.heightAnchor constraintEqualToConstant:32]
+        [self.catalogueHeader.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8],
+        [self.catalogueHeader.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:16],
+        [self.catalogueHeader.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-16],
+        categoryWidth,
+        [self.categoryMenuButton.heightAnchor constraintEqualToConstant:44],
+        [tasks.widthAnchor constraintEqualToConstant:44], [tasks.heightAnchor constraintEqualToConstant:44]
     ]];
 }
 
@@ -790,91 +790,77 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     self.versionFilterSegment.translatesAutoresizingMaskIntoConstraints = NO;
     self.versionFilterSegment.selectedSegmentIndex = 0;
     [self.versionFilterSegment addTarget:self action:@selector(versionFilterChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.view addSubview:self.versionFilterSegment];
-
-    // 高度约束：版本 tab 时设为 32（系统默认 UISegmentedControl 高度），其他 tab 设为 0
-    // 避免 hidden=YES 仍占空间导致 tabSegment 与 searchBar 之间出现"大白条"
     self.versionFilterHeightConstraint = [self.versionFilterSegment.heightAnchor constraintEqualToConstant:32];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [self.versionFilterSegment.topAnchor constraintEqualToAnchor:self.tabSegment.bottomAnchor constant:8],
-        [self.versionFilterSegment.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
-        [self.versionFilterSegment.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-        self.versionFilterHeightConstraint
-    ]];
+    self.versionFilterHeightConstraint.active = YES;
 }
 
 - (void)setupSearchBar {
     self.searchBar = [[UISearchBar alloc] init];
     self.searchBar.translatesAutoresizingMaskIntoConstraints = NO;
-    self.searchBar.placeholder = localize(@"i18n_str_155", nil);
     self.searchBar.delegate = self;
     self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
-    // 搜索框对所有 tab 都显示（版本 tab 用于按版本号前缀过滤）
-    self.searchBar.hidden = NO;
+    self.searchBar.backgroundImage = [[UIImage alloc] init];
+    [self.searchBar setSearchFieldBackgroundImage:[[UIImage alloc] init] forState:UIControlStateNormal];
+    UITextField *field = self.searchBar.searchTextField;
+    field.borderStyle = UITextBorderStyleNone;
+    field.font = AmeUIFont(AmeUIFontRoleBody);
+    field.adjustsFontForContentSizeCategory = YES;
+    field.textColor = AmeUIPrimaryTextColor();
+    field.layer.cornerRadius = 20;
+    field.clipsToBounds = YES;
+    field.backgroundColor = UIColor.clearColor;
+    [[BackgroundManager sharedManager] applyEffectToView:field];
     [self.view addSubview:self.searchBar];
-
-    self.filterButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.filterButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.filterButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    ((AmePinkGlassButton *)self.filterButton).ameRole = AmeGlassButtonRoleSecondary;
     [self.filterButton setImage:[UIImage systemImageNamed:@"slider.horizontal.3"] forState:UIControlStateNormal];
+    self.filterButton.accessibilityLabel = localize(@"i18n_str_187", @"Filters");
     [self.filterButton addTarget:self action:@selector(showFilterOptions) forControlEvents:UIControlEventTouchUpInside];
-    self.filterButton.hidden = YES;
-    [self.view addSubview:self.filterButton];
-
-    // 整合包 tab 专用"导入本地整合包"按钮（参照 FCL 安卓在整合包列表上方提供显眼导入入口）
-    self.importModpackButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.importModpackButton.translatesAutoresizingMaskIntoConstraints = NO;
-    // square.and.arrow.down.on.square 是 iOS 14+ 符号，加 fallback 避免显示成方块
-    UIImage *importIcon = [UIImage systemImageNamed:@"square.and.arrow.down.on.square"]
-                          ?: [UIImage systemImageNamed:@"square.and.arrow.down"]
-                          ?: [UIImage systemImageNamed:@"tray.and.arrow.down"];
-    [self.importModpackButton setImage:importIcon forState:UIControlStateNormal];
-    [self.importModpackButton setTitle:localize(@"i18n_str_156", nil) forState:UIControlStateNormal];
-    self.importModpackButton.tintColor = [UIColor whiteColor];
-    self.importModpackButton.backgroundColor = [UIColor systemPurpleColor];
-    self.importModpackButton.layer.cornerRadius = 10;
-    self.importModpackButton.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
-    self.importModpackButton.titleLabel.font = [UIFont boldSystemFontOfSize:14];
-    self.importModpackButton.contentEdgeInsets = UIEdgeInsetsMake(0, 10, 0, 10);
-    self.importModpackButton.imageEdgeInsets = UIEdgeInsetsMake(0, -4, 0, 4);
-    self.importModpackButton.hidden = YES;
+    self.importModpackButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    ((AmePinkGlassButton *)self.importModpackButton).ameRole = AmeGlassButtonRoleSecondary;
+    [self.importModpackButton setImage:[UIImage systemImageNamed:@"square.and.arrow.down"] forState:UIControlStateNormal];
+    self.importModpackButton.accessibilityLabel = localize(@"i18n_str_156", @"Import modpack");
     [self.importModpackButton addTarget:self action:@selector(openImportModpackView) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:self.importModpackButton];
-
-    [NSLayoutConstraint activateConstraints:@[
-        // 搜索框放在版本筛选框下方，避免与 versionFilterSegment 重合。
-        // 关键修复：searchBar.leading 跟随 filterSidebarContainer.trailing（与各 tab 表格一致），
-        // 这样侧边筛选栏展开时搜索框会自动右移避让，不再被筛选栏遮挡。
-        // 之前 searchBar.leading = view.leading+8，侧栏展开（140/180pt）时水平重叠遮挡搜索框左半部分。
-        [self.searchBar.topAnchor constraintEqualToAnchor:self.versionFilterSegment.bottomAnchor constant:8],
-        [self.searchBar.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
-        [self.searchBar.trailingAnchor constraintEqualToAnchor:self.importModpackButton.leadingAnchor constant:-8],
-
-        [self.importModpackButton.centerYAnchor constraintEqualToAnchor:self.searchBar.centerYAnchor],
-        [self.importModpackButton.trailingAnchor constraintEqualToAnchor:self.filterButton.leadingAnchor constant:-4],
-        [self.importModpackButton.heightAnchor constraintEqualToConstant:36],
-
-        [self.filterButton.centerYAnchor constraintEqualToAnchor:self.searchBar.centerYAnchor],
-        [self.filterButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-        [self.filterButton.widthAnchor constraintEqualToConstant:44],
-        [self.filterButton.heightAnchor constraintEqualToConstant:44]
-    ]];
-
-    // 默认宽度 0（隐藏时不占空间），整合包 tab 切换时设为 80
-    self.importModpackButtonWidthConstraint = [self.importModpackButton.widthAnchor constraintEqualToConstant:0];
+    self.importModpackButtonWidthConstraint = [self.importModpackButton.widthAnchor constraintEqualToConstant:44];
     self.importModpackButtonWidthConstraint.active = YES;
+    self.providerMenuButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    ((AmePinkGlassButton *)self.providerMenuButton).ameRole = AmeGlassButtonRoleSecondary;
+    self.providerMenuButton.showsMenuAsPrimaryAction = YES;
+    [self.providerMenuButton.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
+    self.providerMenuButton.contentEdgeInsets = UIEdgeInsetsMake(8, 10, 8, 10);
+    UIView *spacer = [[UIView alloc] init];
+    self.catalogueControls = [[UIStackView alloc] initWithArrangedSubviews:@[self.versionFilterSegment, self.providerMenuButton, spacer, self.importModpackButton, self.filterButton]];
+    self.catalogueControls.spacing = 8;
+    self.catalogueControls.alignment = UIStackViewAlignmentCenter;
+    self.catalogueControls.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.catalogueControls];
+    self.filterButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.importModpackButton.translatesAutoresizingMaskIntoConstraints = NO;
+    NSLayoutConstraint *filterWidth = [self.filterButton.widthAnchor constraintEqualToConstant:44];
+    filterWidth.priority = 999;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.searchBar.topAnchor constraintEqualToAnchor:self.catalogueHeader.bottomAnchor constant:8],
+        [self.searchBar.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
+        [self.searchBar.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-8],
+        [self.searchBar.heightAnchor constraintGreaterThanOrEqualToConstant:52],
+        [self.catalogueControls.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:4],
+        [self.catalogueControls.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:12],
+        [self.catalogueControls.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16],
+        [self.catalogueControls.heightAnchor constraintGreaterThanOrEqualToConstant:44],
+        filterWidth,
+        [self.filterButton.heightAnchor constraintEqualToConstant:44],
+        [self.importModpackButton.heightAnchor constraintEqualToConstant:44]
+    ]];
 }
 
 - (void)setupVersionCollectionView {
-    // 参照 FCL (item_remote_version.xml 单列列表) 与 ZL2 (LazyColumn VersionItemLayout)：
-    // 改为单列横向列表行布局，每行一个全宽卡片，行高 64pt（cell 内部再留 4pt 上下边距，实际卡片 56pt）。
-    // itemSize.width 在 viewDidLayoutSubviews 里按 collectionView 实际宽度动态更新，避免横竖屏切换错位。
+    // Native single-column version results; viewDidLayoutSubviews sizes rows using current fonts/width.
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
     layout.scrollDirection = UICollectionViewScrollDirectionVertical;
     layout.minimumInteritemSpacing = 0;  // 单列，无横向间距
     layout.minimumLineSpacing = 4;       // 行间小间距，卡片自带阴影做视觉分隔
-    layout.itemSize = CGSizeMake(360, 64); // 默认宽度，viewDidLayoutSubviews 会覆盖
-    layout.sectionInset = UIEdgeInsetsMake(8, 16, 8, 16);
+    layout.itemSize = CGSizeMake(360, 96); // 默认宽度，viewDidLayoutSubviews 会覆盖
+    layout.sectionInset = UIEdgeInsetsMake(4, 4, 12, 4);
 
     self.versionCollectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     self.versionCollectionView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -884,14 +870,15 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     // 选中态反馈：点击单元格时短暂高亮（FCL/ZL2 都有按压视觉反馈）
     self.versionCollectionView.allowsSelection = YES;
     self.versionCollectionView.alwaysBounceVertical = YES;
+    self.versionCollectionView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     [self.versionCollectionView registerClass:[VersionCardCell class] forCellWithReuseIdentifier:@"VersionCard"];
     [self.view addSubview:self.versionCollectionView];
 
     [NSLayoutConstraint activateConstraints:@[
         // 版本列表放在搜索框下方，避免与搜索框重合
-        [self.versionCollectionView.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:4],
-        [self.versionCollectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.versionCollectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.versionCollectionView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
+        [self.versionCollectionView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
+        [self.versionCollectionView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-8],
         [self.versionCollectionView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
@@ -900,29 +887,14 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 // 横屏切换或分屏尺寸变化时由系统自动调用，无需手动注册通知。
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    if (!self.versionCollectionView) return;
+    [self renewedUpdateCataloguePresentation];
     UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.versionCollectionView.collectionViewLayout;
-    if (![layout isKindOfClass:[UICollectionViewFlowLayout class]]) return;
-    CGFloat horizInset = layout.sectionInset.left + layout.sectionInset.right;
-    CGFloat availableWidth = MAX(0, self.versionCollectionView.bounds.size.width - horizInset);
-    CGSize target = CGSizeMake(availableWidth, 64);
-    if (!CGSizeEqualToSize(layout.itemSize, target)) {
-        layout.itemSize = target;
-        // invalidateLayout 触发重新排版，避免 cell 复用时宽度滞后
-        [layout invalidateLayout];
-    }
-
-    // 动态调整侧边栏宽度（横竖屏切换时）
-    if (self.filterSidebarContainer && !self.filterSidebarContainer.hidden) {
-        // FCL page_download.xml：search_layout 用 layout_constraintWidth_percent="0.3"
-        // 这里按 view 宽度 30% 计算，并加上下限避免极端尺寸（iPhone SE 最小 120pt，iPad 最大 280pt）
-        CGFloat screenWidth = self.view.bounds.size.width;
-        CGFloat newWidth = screenWidth * 0.3;
-        newWidth = MAX(120.0, MIN(280.0, newWidth));
-        if (ABS(self.sidebarWidthConstraint.constant - newWidth) > 0.5) {
-            self.sidebarWidthConstraint.constant = newWidth;
-        }
-    }
+    if (![layout isKindOfClass:UICollectionViewFlowLayout.class]) return;
+    CGFloat width = MAX(0, self.versionCollectionView.bounds.size.width - layout.sectionInset.left - layout.sectionInset.right);
+    CGFloat lines = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory) ? 2 : 1;
+    CGFloat height = MAX(96, lines * AmeUIFont(AmeUIFontRoleSectionHeading).lineHeight + lines * AmeUIFont(AmeUIFontRoleDescription).lineHeight + AmeUIFont(AmeUIFontRoleStatus).lineHeight + 32);
+    CGSize size = CGSizeMake(width, height);
+    if (!CGSizeEqualToSize(layout.itemSize, size)) { layout.itemSize = size; [layout invalidateLayout]; }
 }
 
 - (void)setupModTableView {
@@ -931,9 +903,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     self.modTableView.backgroundColor = [UIColor clearColor];
     self.modTableView.dataSource = self;
     self.modTableView.delegate = self;
-    // FCL view_installer_item.xml：item 高度 ~46dp + marginBottom 10dp
-    // 这里 54pt（图标 26pt + 双行文字 + 上下 padding 4pt），每屏显示更多
-    self.modTableView.rowHeight = 54;
+    self.modTableView.rowHeight = UITableViewAutomaticDimension;
+    self.modTableView.estimatedRowHeight = 120;
+    self.modTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     self.modTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     [self.modTableView registerClass:[ModernAssetCell class] forCellReuseIdentifier:@"ModCell"];
     self.modTableView.hidden = YES;
@@ -947,9 +919,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     // 侧边栏隐藏时宽度为 0，trailingAnchor 等于 view.leadingAnchor，列表自动铺满
     // leading 加 8pt 间距，避免与左侧筛选栏紧贴（视觉呼吸感，阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.modTableView.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:4],
+        [self.modTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
         [self.modTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
-        [self.modTableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.modTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
         [self.modTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
@@ -960,8 +932,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     self.shaderTableView.backgroundColor = [UIColor clearColor];
     self.shaderTableView.dataSource = self;
     self.shaderTableView.delegate = self;
-    // FCL 风格扁平条目：行高 54pt
-    self.shaderTableView.rowHeight = 54;
+    self.shaderTableView.rowHeight = UITableViewAutomaticDimension;
+    self.shaderTableView.estimatedRowHeight = 120;
+    self.shaderTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     self.shaderTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     [self.shaderTableView registerClass:[ModernAssetCell class] forCellReuseIdentifier:@"ShaderCell"];
     self.shaderTableView.hidden = YES;
@@ -973,9 +946,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 
     // leading 加 8pt 间距，避免与左侧筛选栏紧贴（视觉呼吸感，阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.shaderTableView.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:4],
+        [self.shaderTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
         [self.shaderTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
-        [self.shaderTableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.shaderTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
         [self.shaderTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
@@ -986,8 +959,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     self.modpackTableView.backgroundColor = [UIColor clearColor];
     self.modpackTableView.dataSource = self;
     self.modpackTableView.delegate = self;
-    // FCL 风格扁平条目：行高 54pt
-    self.modpackTableView.rowHeight = 54;
+    self.modpackTableView.rowHeight = UITableViewAutomaticDimension;
+    self.modpackTableView.estimatedRowHeight = 120;
+    self.modpackTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     self.modpackTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     [self.modpackTableView registerClass:[ModernAssetCell class] forCellReuseIdentifier:@"ModpackCell"];
     self.modpackTableView.hidden = YES;
@@ -999,9 +973,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 
     // leading 加 8pt 间距，避免与左侧筛选栏紧贴（视觉呼吸感，阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.modpackTableView.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:4],
+        [self.modpackTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
         [self.modpackTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
-        [self.modpackTableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.modpackTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
         [self.modpackTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
@@ -1012,8 +986,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     self.resourcepackTableView.backgroundColor = [UIColor clearColor];
     self.resourcepackTableView.dataSource = self;
     self.resourcepackTableView.delegate = self;
-    // FCL 风格扁平条目：行高 54pt
-    self.resourcepackTableView.rowHeight = 54;
+    self.resourcepackTableView.rowHeight = UITableViewAutomaticDimension;
+    self.resourcepackTableView.estimatedRowHeight = 120;
+    self.resourcepackTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     self.resourcepackTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     [self.resourcepackTableView registerClass:[ModernAssetCell class] forCellReuseIdentifier:@"ResourcepackCell"];
     self.resourcepackTableView.hidden = YES;
@@ -1025,9 +1000,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 
     // leading 加 8pt 间距，避免与左侧筛选栏紧贴（视觉呼吸感，阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.resourcepackTableView.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:4],
+        [self.resourcepackTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
         [self.resourcepackTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
-        [self.resourcepackTableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.resourcepackTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
         [self.resourcepackTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
@@ -1038,8 +1013,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     self.datapackTableView.backgroundColor = [UIColor clearColor];
     self.datapackTableView.dataSource = self;
     self.datapackTableView.delegate = self;
-    // FCL 风格扁平条目：行高 54pt
-    self.datapackTableView.rowHeight = 54;
+    self.datapackTableView.rowHeight = UITableViewAutomaticDimension;
+    self.datapackTableView.estimatedRowHeight = 120;
+    self.datapackTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     self.datapackTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     [self.datapackTableView registerClass:[ModernAssetCell class] forCellReuseIdentifier:@"DatapackCell"];
     self.datapackTableView.hidden = YES;
@@ -1051,9 +1027,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 
     // leading 加 8pt 间距，避免与左侧筛选栏紧贴（视觉呼吸感，阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.datapackTableView.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:4],
+        [self.datapackTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
         [self.datapackTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
-        [self.datapackTableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.datapackTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
         [self.datapackTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
@@ -1064,8 +1040,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     self.worldTableView.backgroundColor = [UIColor clearColor];
     self.worldTableView.dataSource = self;
     self.worldTableView.delegate = self;
-    // FCL 风格扁平条目：行高 54pt
-    self.worldTableView.rowHeight = 54;
+    self.worldTableView.rowHeight = UITableViewAutomaticDimension;
+    self.worldTableView.estimatedRowHeight = 120;
+    self.worldTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     self.worldTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     [self.worldTableView registerClass:[ModernAssetCell class] forCellReuseIdentifier:@"WorldCell"];
     self.worldTableView.hidden = YES;
@@ -1078,9 +1055,9 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     // 世界 tab 不显示侧边栏（强制 CurseForge），列表 leading 直接跟随 view
     // leading 加 8pt 间距，保持与其他 tab 一致的视觉呼吸感（阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.worldTableView.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:4],
+        [self.worldTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
         [self.worldTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
-        [self.worldTableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.worldTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
         [self.worldTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
@@ -1191,279 +1168,123 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 - (void)setupFilterSidebar {
     self.filterSidebarContainer = [[UIView alloc] init];
     self.filterSidebarContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    // 适配自定义启动器背景：使用 BackgroundManager 的 applyEffectToView: 而非不透明的
-    // secondarySystemBackgroundColor。之前用 secondarySystemBackgroundColor（完全不透明）
-    // 会遮挡自定义背景，导致模组/光影下载界面不适配自定义启动器背景。
-    // applyEffectToView: 会根据 BackgroundUIEffect 设置（毛玻璃/半透明）正确处理，
-    // 参照 LauncherRootViewController.m 中对 sidebarContainer 的处理方式。
-    self.filterSidebarContainer.backgroundColor = [UIColor clearColor];
-    self.filterSidebarContainer.layer.cornerRadius = 12;
-    self.filterSidebarContainer.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
-    self.filterSidebarContainer.layer.masksToBounds = YES;
+    self.filterSidebarContainer.layer.cornerRadius = 22;
+    self.filterSidebarContainer.clipsToBounds = YES;
     [[BackgroundManager sharedManager] applyEffectToView:self.filterSidebarContainer];
-    self.filterSidebarContainer.hidden = YES;
     [self.view addSubview:self.filterSidebarContainer];
-
-    // 侧边栏宽度约束：隐藏时为 0，显示时为 180（宽屏）或 140（窄屏）
-    // 在 viewDidLayoutSubviews 中根据屏幕宽度动态调整
     self.sidebarWidthConstraint = [self.filterSidebarContainer.widthAnchor constraintEqualToConstant:0];
-
+    self.sidebarLeadingConstraint = [self.filterSidebarContainer.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor];
     [NSLayoutConstraint activateConstraints:@[
-        [self.filterSidebarContainer.topAnchor constraintEqualToAnchor:self.tabSegment.bottomAnchor constant:8],
-        // 关键修复：leading 留 8pt 间距，避免与左侧菜单栏（LauncherMenuViewController）视觉接触。
-        // 之前 leading = view.leading+0，filterSidebarContainer 紧贴 contentContainer 左边缘，
-        // 而 contentContainer 左边缘就是菜单栏右边缘，视觉上筛选栏与菜单栏"贴在一起"。
-        // 加 8pt 间距后两者之间有清晰分隔，与右侧 tableView 的 8pt 间距对称。
-        [self.filterSidebarContainer.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:8],
-        [self.filterSidebarContainer.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
-        self.sidebarWidthConstraint
+        [self.filterSidebarContainer.topAnchor constraintEqualToAnchor:self.catalogueHeader.bottomAnchor constant:12],
+        self.sidebarLeadingConstraint, self.sidebarWidthConstraint,
+        [self.filterSidebarContainer.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12]
     ]];
-
-    // ===== 1. 下载源选择器（从顶部移到侧边栏）=====
-    self.sidebarSourceContainer = [[UIView alloc] init];
-    self.sidebarSourceContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.filterSidebarContainer addSubview:self.sidebarSourceContainer];
-
-    // 下载源标题
-    UILabel *sourceTitleLabel = [[UILabel alloc] init];
-    sourceTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    sourceTitleLabel.text = localize(@"i18n_str_157", nil);
-    sourceTitleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
-    sourceTitleLabel.textColor = [UIColor secondaryLabelColor];
-    [self.filterSidebarContainer addSubview:sourceTitleLabel];
-
-    // ★ [HIG] 用系统 UISegmentedControl 取代"自绘轨道+绿/橙滑块+双按钮"(最直白的安卓观感):
-    //   自动获得系统外观/材质、深浅色、Dynamic Type、无障碍语义。(换底漏件补回)
-    self.sidebarSourceSegment = [[UISegmentedControl alloc] initWithItems:@[@"Mod", @"CF"]];
-    self.sidebarSourceSegment.translatesAutoresizingMaskIntoConstraints = NO;
-    self.sidebarSourceSegment.selectedSegmentIndex = 0;
-    [self.sidebarSourceSegment addTarget:self action:@selector(sidebarSourceSegmentChanged:)
-                        forControlEvents:UIControlEventValueChanged];
-    [self.sidebarSourceContainer addSubview:self.sidebarSourceSegment];
-
-    if (NO) {   // ★ [HIG] 旧自绘控件不再创建(保留代码便于回退)
-    // 下载源轨道
-    self.sidebarSourceTrack = [[UIView alloc] init];
-    self.sidebarSourceTrack.translatesAutoresizingMaskIntoConstraints = NO;
-    self.sidebarSourceTrack.backgroundColor = [UIColor tertiarySystemFillColor];
-    self.sidebarSourceTrack.layer.cornerRadius = 14;
-    self.sidebarSourceTrack.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
-    self.sidebarSourceTrack.layer.masksToBounds = YES;
-    [self.sidebarSourceContainer addSubview:self.sidebarSourceTrack];
-
-    // 下载源滑块
-    self.sidebarSourceSlider = [[UIView alloc] init];
-    self.sidebarSourceSlider.translatesAutoresizingMaskIntoConstraints = NO;
-    self.sidebarSourceSlider.backgroundColor = [UIColor systemGreenColor];
-    self.sidebarSourceSlider.layer.cornerRadius = 12;
-    self.sidebarSourceSlider.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
-    self.sidebarSourceSlider.layer.shadowColor = [UIColor blackColor].CGColor;
-    self.sidebarSourceSlider.layer.shadowOpacity = 0.15;
-    self.sidebarSourceSlider.layer.shadowOffset = CGSizeMake(0, 1);
-    self.sidebarSourceSlider.layer.shadowRadius = 3;
-    [self.sidebarSourceTrack addSubview:self.sidebarSourceSlider];
-
-    // Modrinth 按钮
-    self.sidebarModrinthButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.sidebarModrinthButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.sidebarModrinthButton setTitle:@"Mod" forState:UIControlStateNormal];
-    self.sidebarModrinthButton.titleLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
-    [self.sidebarModrinthButton addTarget:self action:@selector(sidebarModrinthClicked:) forControlEvents:UIControlEventTouchUpInside];
-    [self.sidebarSourceTrack addSubview:self.sidebarModrinthButton];
-
-    // CurseForge 按钮
-    self.sidebarCurseforgeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.sidebarCurseforgeButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.sidebarCurseforgeButton setTitle:@"CF" forState:UIControlStateNormal];
-    self.sidebarCurseforgeButton.titleLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
-    [self.sidebarCurseforgeButton addTarget:self action:@selector(sidebarCurseforgeClicked:) forControlEvents:UIControlEventTouchUpInside];
-    [self.sidebarSourceTrack addSubview:self.sidebarCurseforgeButton];
-
-    // 下载源滑块位置约束
-    self.sidebarSliderLeftConstraint = [self.sidebarSourceSlider.leadingAnchor constraintEqualToAnchor:self.sidebarSourceTrack.leadingAnchor constant:2];
-    self.sidebarSliderRightConstraint = [self.sidebarSourceSlider.trailingAnchor constraintEqualToAnchor:self.sidebarSourceTrack.trailingAnchor constant:-2];
-    self.sidebarSliderRightConstraint.active = NO;
-    }   // ★ [HIG] 旧自绘轨道/滑块/按钮 到此为止
-
-    [NSLayoutConstraint activateConstraints:@[
-        // ★ [HIG] 分段控件铺满侧栏来源容器
-        [self.sidebarSourceSegment.topAnchor constraintEqualToAnchor:self.sidebarSourceContainer.topAnchor],
-        [self.sidebarSourceSegment.leadingAnchor constraintEqualToAnchor:self.sidebarSourceContainer.leadingAnchor],
-        [self.sidebarSourceSegment.trailingAnchor constraintEqualToAnchor:self.sidebarSourceContainer.trailingAnchor],
-        [self.sidebarSourceSegment.bottomAnchor constraintEqualToAnchor:self.sidebarSourceContainer.bottomAnchor],
-
-        // 下载源标题
-        [sourceTitleLabel.topAnchor constraintEqualToAnchor:self.filterSidebarContainer.topAnchor constant:12],
-        [sourceTitleLabel.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.leadingAnchor constant:12],
-        [sourceTitleLabel.trailingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:-12],
-
-        // 下载源容器
-        [self.sidebarSourceContainer.topAnchor constraintEqualToAnchor:sourceTitleLabel.bottomAnchor constant:4],
-        [self.sidebarSourceContainer.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.leadingAnchor constant:8],
-        [self.sidebarSourceContainer.trailingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:-8],
-        [self.sidebarSourceContainer.heightAnchor constraintEqualToConstant:32],
-
-        // ★ [HIG] 旧自绘约束整体跳过(视图已不创建⇒激活会崩)
-    ]];
-    if (NO) {
-        [NSLayoutConstraint activateConstraints:@[
-        // 轨道铺满容器
-        [self.sidebarSourceTrack.topAnchor constraintEqualToAnchor:self.sidebarSourceContainer.topAnchor],
-        [self.sidebarSourceTrack.leadingAnchor constraintEqualToAnchor:self.sidebarSourceContainer.leadingAnchor],
-        [self.sidebarSourceTrack.trailingAnchor constraintEqualToAnchor:self.sidebarSourceContainer.trailingAnchor],
-        [self.sidebarSourceTrack.bottomAnchor constraintEqualToAnchor:self.sidebarSourceContainer.bottomAnchor],
-
-        // 滑块
-        [self.sidebarSourceSlider.topAnchor constraintEqualToAnchor:self.sidebarSourceTrack.topAnchor constant:2],
-        [self.sidebarSourceSlider.bottomAnchor constraintEqualToAnchor:self.sidebarSourceTrack.bottomAnchor constant:-2],
-        [self.sidebarSourceSlider.widthAnchor constraintEqualToAnchor:self.sidebarSourceTrack.widthAnchor multiplier:0.5 constant:-2],
-        self.sidebarSliderLeftConstraint,
-
-        // 两个按钮各占一半
-        [self.sidebarModrinthButton.topAnchor constraintEqualToAnchor:self.sidebarSourceTrack.topAnchor],
-        [self.sidebarModrinthButton.bottomAnchor constraintEqualToAnchor:self.sidebarSourceTrack.bottomAnchor],
-        [self.sidebarModrinthButton.leadingAnchor constraintEqualToAnchor:self.sidebarSourceTrack.leadingAnchor],
-        [self.sidebarModrinthButton.widthAnchor constraintEqualToAnchor:self.sidebarSourceTrack.widthAnchor multiplier:0.5],
-
-        [self.sidebarCurseforgeButton.topAnchor constraintEqualToAnchor:self.sidebarSourceTrack.topAnchor],
-        [self.sidebarCurseforgeButton.bottomAnchor constraintEqualToAnchor:self.sidebarSourceTrack.bottomAnchor],
-        [self.sidebarCurseforgeButton.trailingAnchor constraintEqualToAnchor:self.sidebarSourceTrack.trailingAnchor],
-        [self.sidebarCurseforgeButton.widthAnchor constraintEqualToAnchor:self.sidebarSourceTrack.widthAnchor multiplier:0.5]
-        ]];
-    }   // ★ [HIG] 旧自绘约束结束
-
-    // ===== 2. 游戏版本选择按钮 =====
-    self.sidebarVersionButton = [self createSidebarSelectButtonWithTitle:localize(@"i18n_str_2031", nil)
-                                                                    value:@"All Versions"
-                                                                  selector:@selector(sidebarVersionButtonClicked:)];
-    [self.filterSidebarContainer addSubview:self.sidebarVersionButton];
+    UIScrollView *scroll = [[UIScrollView alloc] init];
+    scroll.translatesAutoresizingMaskIntoConstraints = NO;
+    scroll.alwaysBounceVertical = YES;
+    [self.filterSidebarContainer addSubview:scroll];
+    UIStackView *rail = [[UIStackView alloc] init];
+    rail.axis = UILayoutConstraintAxisVertical;
+    rail.spacing = 8;
+    rail.translatesAutoresizingMaskIntoConstraints = NO;
+    [scroll addSubview:rail];
+    NSArray<NSString *> *icons = @[@"cube", @"puzzlepiece.extension", @"sun.max", @"photo.stack", @"doc.text", @"shippingbox", @"globe"];
+    NSMutableArray<UIButton *> *categories = [NSMutableArray array];
+    for (NSInteger ordinal = 0; ordinal < 7; ordinal++) {
+        NSInteger index = kRenewedDownloadCategoryOrder[ordinal];
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+        button.tag = index;
+        [button setTitle:self.categoryTitles[index] forState:UIControlStateNormal];
+        [button setImage:[UIImage systemImageNamed:icons[index]] forState:UIControlStateNormal];
+        button.titleLabel.font = AmeUIFont(AmeUIFontRoleButton);
+        button.titleLabel.adjustsFontForContentSizeCategory = YES;
+        button.titleLabel.numberOfLines = 2;
+        button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+        button.contentEdgeInsets = UIEdgeInsetsMake(10, 10, 10, 10);
+        button.layer.cornerRadius = 14;
+        button.accessibilityLabel = self.categoryTitles[index];
+        [button.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
+        [button addTarget:self action:@selector(renewedCategoryTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [categories addObject:button];
+        [rail addArrangedSubview:button];
+    }
+    self.categoryButtons = categories;
+    self.sidebarSourceSegment = [[UISegmentedControl alloc] initWithItems:@[@"Modrinth", @"CurseForge"]];
+    [self.sidebarSourceSegment addTarget:self action:@selector(renewedSourceChanged:) forControlEvents:UIControlEventValueChanged];
+    self.sidebarSourceContainer = [[UIStackView alloc] initWithArrangedSubviews:@[self.sidebarSourceSegment]];
+    NSLayoutConstraint *sourceHeight = [self.sidebarSourceSegment.heightAnchor constraintGreaterThanOrEqualToConstant:32];
+    sourceHeight.priority = 999;
+    sourceHeight.active = YES;
+    self.sidebarVersionButton = [self createSidebarSelectButtonWithTitle:localize(@"i18n_str_2031", nil) value:@"" selector:@selector(sidebarVersionButtonClicked:)];
+    self.sidebarLoaderButton = [self createSidebarSelectButtonWithTitle:localize(@"i18n_str_160", nil) value:@"" selector:@selector(sidebarLoaderButtonClicked:)];
+    self.sidebarSortButton = [self createSidebarSelectButtonWithTitle:localize(@"i18n_str_161", nil) value:@"" selector:@selector(sidebarSortButtonClicked:)];
     self.sidebarVersionTitleLabel = [self findSubviewInButton:self.sidebarVersionButton withTag:100];
     self.sidebarVersionValueLabel = [self findSubviewInButton:self.sidebarVersionButton withTag:101];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.sidebarVersionButton.topAnchor constraintEqualToAnchor:self.sidebarSourceContainer.bottomAnchor constant:8],
-        [self.sidebarVersionButton.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.leadingAnchor constant:8],
-        [self.sidebarVersionButton.trailingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:-8],
-        [self.sidebarVersionButton.heightAnchor constraintEqualToConstant:44]
-    ]];
-
-    // ===== 3. 模组加载器选择按钮 =====
-    self.sidebarLoaderButton = [self createSidebarSelectButtonWithTitle:localize(@"i18n_str_160", nil)
-                                                                   value:@"All"
-                                                                 selector:@selector(sidebarLoaderButtonClicked:)];
-    [self.filterSidebarContainer addSubview:self.sidebarLoaderButton];
     self.sidebarLoaderTitleLabel = [self findSubviewInButton:self.sidebarLoaderButton withTag:100];
     self.sidebarLoaderValueLabel = [self findSubviewInButton:self.sidebarLoaderButton withTag:101];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.sidebarLoaderButton.topAnchor constraintEqualToAnchor:self.sidebarVersionButton.bottomAnchor constant:8],
-        [self.sidebarLoaderButton.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.leadingAnchor constant:8],
-        [self.sidebarLoaderButton.trailingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:-8],
-        [self.sidebarLoaderButton.heightAnchor constraintEqualToConstant:44]
-    ]];
-
-    // ===== 4. 排序方式选择按钮 =====
-    self.sidebarSortButton = [self createSidebarSelectButtonWithTitle:localize(@"i18n_str_161", nil)
-                                                                 value:localize(@"i18n_str_162", nil)
-                                                               selector:@selector(sidebarSortButtonClicked:)];
-    [self.filterSidebarContainer addSubview:self.sidebarSortButton];
     self.sidebarSortTitleLabel = [self findSubviewInButton:self.sidebarSortButton withTag:100];
     self.sidebarSortValueLabel = [self findSubviewInButton:self.sidebarSortButton withTag:101];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.sidebarSortButton.topAnchor constraintEqualToAnchor:self.sidebarLoaderButton.bottomAnchor constant:8],
-        [self.sidebarSortButton.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.leadingAnchor constant:8],
-        [self.sidebarSortButton.trailingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:-8],
-        [self.sidebarSortButton.heightAnchor constraintEqualToConstant:44]
-    ]];
-
-    // ===== 5. 重置筛选按钮 =====
-    self.sidebarResetButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.sidebarResetButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.sidebarResetButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    ((AmePinkGlassButton *)self.sidebarResetButton).ameRole = AmeGlassButtonRoleSecondary;
     [self.sidebarResetButton setTitle:localize(@"i18n_str_163", nil) forState:UIControlStateNormal];
-    self.sidebarResetButton.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
-    [self.sidebarResetButton setImage:[UIImage systemImageNamed:@"arrow.counterclockwise"] forState:UIControlStateNormal];
-    self.sidebarResetButton.tintColor = [UIColor systemRedColor];
-    self.sidebarResetButton.backgroundColor = [UIColor tertiarySystemFillColor];
-    self.sidebarResetButton.layer.cornerRadius = 8;
-    self.sidebarResetButton.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
-    self.sidebarResetButton.imageEdgeInsets = UIEdgeInsetsMake(0, -2, 0, 2);
-    self.sidebarResetButton.titleEdgeInsets = UIEdgeInsetsMake(0, 2, 0, -2);
     [self.sidebarResetButton addTarget:self action:@selector(sidebarResetButtonClicked:) forControlEvents:UIControlEventTouchUpInside];
-    [self.filterSidebarContainer addSubview:self.sidebarResetButton];
-
+    NSLayoutConstraint *resetHeight = [self.sidebarResetButton.heightAnchor constraintGreaterThanOrEqualToConstant:44];
+    resetHeight.priority = 999;
+    resetHeight.active = YES;
+    self.sidebarFilters = [[UIStackView alloc] initWithArrangedSubviews:@[self.sidebarSourceContainer, self.sidebarVersionButton, self.sidebarLoaderButton, self.sidebarSortButton, self.sidebarResetButton]];
+    self.sidebarFilters.axis = UILayoutConstraintAxisVertical;
+    self.sidebarFilters.spacing = 10;
+    [rail addArrangedSubview:self.sidebarFilters];
     [NSLayoutConstraint activateConstraints:@[
-        [self.sidebarResetButton.topAnchor constraintEqualToAnchor:self.sidebarSortButton.bottomAnchor constant:12],
-        [self.sidebarResetButton.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.leadingAnchor constant:12],
-        [self.sidebarResetButton.trailingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:-12],
-        [self.sidebarResetButton.heightAnchor constraintEqualToConstant:32]
-    ]];
-
-    // 底部分隔线
-    UIView *sidebarSeparator = [[UIView alloc] init];
-    sidebarSeparator.translatesAutoresizingMaskIntoConstraints = NO;
-    sidebarSeparator.backgroundColor = [UIColor separatorColor];
-    [self.filterSidebarContainer addSubview:sidebarSeparator];
-    [NSLayoutConstraint activateConstraints:@[
-        [sidebarSeparator.trailingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor],
-        [sidebarSeparator.topAnchor constraintEqualToAnchor:self.filterSidebarContainer.topAnchor],
-        [sidebarSeparator.bottomAnchor constraintEqualToAnchor:self.filterSidebarContainer.bottomAnchor],
-        [sidebarSeparator.widthAnchor constraintEqualToConstant:0.5]
+        [scroll.topAnchor constraintEqualToAnchor:self.filterSidebarContainer.topAnchor],
+        [scroll.bottomAnchor constraintEqualToAnchor:self.filterSidebarContainer.bottomAnchor],
+        [scroll.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.leadingAnchor],
+        [scroll.trailingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor],
+        [rail.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor constant:10],
+        [rail.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-10],
+        [rail.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor constant:10],
+        [rail.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor constant:-10],
+        [rail.widthAnchor constraintEqualToConstant:176]
     ]];
 }
 
 /// 创建侧边栏的选择按钮（标题 + 当前值 + 箭头）
 /// 按钮内子视图通过 tag 标记：titleTag=100, valueTag=101, arrowTag=102
 /// 创建后可通过 findSubviewInButton:withTag: 取出对应的 label
-- (UIButton *)createSidebarSelectButtonWithTitle:(NSString *)title
-                                           value:(NSString *)value
-                                         selector:(SEL)selector {
+- (UIButton *)createSidebarSelectButtonWithTitle:(NSString *)title value:(NSString *)value selector:(SEL)selector {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.backgroundColor = [UIColor tertiarySystemFillColor];
-    button.layer.cornerRadius = 8;
-    button.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
+    button.backgroundColor = AmeUISelectedFillColor();
+    button.layer.cornerRadius = 14;
     [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
-    button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-    button.contentEdgeInsets = UIEdgeInsetsMake(0, 12, 0, 12);
-
-    UILabel *titleLabel = [[UILabel alloc] init];
-    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.text = title;
-    titleLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
-    titleLabel.textColor = [UIColor secondaryLabelColor];
-    titleLabel.tag = 100;
-    [button addSubview:titleLabel];
-
-    UILabel *valueLabel = [[UILabel alloc] init];
-    valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    valueLabel.text = value;
-    valueLabel.font = [UIFont systemFontOfSize:12];
-    valueLabel.textColor = [UIColor labelColor];
-    valueLabel.adjustsFontSizeToFitWidth = YES;
-    valueLabel.minimumScaleFactor = 0.7;
-    valueLabel.textAlignment = NSTextAlignmentRight;
-    valueLabel.tag = 101;
-    [button addSubview:valueLabel];
-
-    UIImageView *arrow = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right"]];
-    arrow.translatesAutoresizingMaskIntoConstraints = NO;
-    arrow.tintColor = [UIColor tertiaryLabelColor];
-    arrow.contentMode = UIViewContentModeScaleAspectFit;
-    arrow.tag = 102;
-    [button addSubview:arrow];
-
+    UILabel *heading = [[UILabel alloc] init];
+    heading.text = title;
+    heading.tag = 100;
+    heading.font = AmeUIFont(AmeUIFontRoleStatus);
+    heading.textColor = AmeUISecondaryTextColor();
+    UILabel *selected = [[UILabel alloc] init];
+    selected.text = value;
+    selected.tag = 101;
+    selected.font = AmeUIFont(AmeUIFontRoleButton);
+    selected.textColor = AmeUIPrimaryTextColor();
+    for (UILabel *label in @[heading, selected]) { label.numberOfLines = 0; label.adjustsFontForContentSizeCategory = YES; label.translatesAutoresizingMaskIntoConstraints = NO; [button addSubview:label]; }
+    heading.userInteractionEnabled = NO;
+    selected.userInteractionEnabled = NO;
+    button.accessibilityLabel = title;
+    NSLayoutConstraint *bottom = [selected.bottomAnchor constraintEqualToAnchor:button.bottomAnchor constant:-10];
+    bottom.priority = 999;
+    NSLayoutConstraint *height = [button.heightAnchor constraintGreaterThanOrEqualToConstant:44];
+    height.priority = 999;
     [NSLayoutConstraint activateConstraints:@[
-        [titleLabel.leadingAnchor constraintEqualToAnchor:button.leadingAnchor constant:12],
-        [titleLabel.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-
-        [valueLabel.trailingAnchor constraintEqualToAnchor:arrow.leadingAnchor constant:-4],
-        [valueLabel.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-        [valueLabel.widthAnchor constraintLessThanOrEqualToConstant:80],
-
-        [arrow.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:-12],
-        [arrow.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-        [arrow.widthAnchor constraintEqualToConstant:12],
-        [arrow.heightAnchor constraintEqualToConstant:12]
+        [heading.topAnchor constraintEqualToAnchor:button.topAnchor constant:10],
+        [heading.leadingAnchor constraintEqualToAnchor:button.leadingAnchor constant:10],
+        [heading.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:-10],
+        [selected.topAnchor constraintEqualToAnchor:heading.bottomAnchor constant:3],
+        [selected.leadingAnchor constraintEqualToAnchor:heading.leadingAnchor],
+        [selected.trailingAnchor constraintEqualToAnchor:heading.trailingAnchor],
+        bottom,
+        height
     ]];
-
     return button;
 }
 
@@ -1485,8 +1306,8 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     [self.view addSubview:self.loadingIndicator];
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.loadingIndicator.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.loadingIndicator.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor]
+        [self.loadingIndicator.centerXAnchor constraintEqualToAnchor:self.versionCollectionView.centerXAnchor],
+        [self.loadingIndicator.centerYAnchor constraintEqualToAnchor:self.versionCollectionView.centerYAnchor]
     ]];
 }
 
@@ -1498,11 +1319,14 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     self.emptyLabel.textColor = [UIColor secondaryLabelColor];
     self.emptyLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     self.emptyLabel.hidden = YES;
+    self.emptyLabel.numberOfLines = 0;
+    self.emptyLabel.adjustsFontForContentSizeCategory = YES;
     [self.view addSubview:self.emptyLabel];
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.emptyLabel.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.emptyLabel.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor]
+        [self.emptyLabel.widthAnchor constraintLessThanOrEqualToAnchor:self.versionCollectionView.widthAnchor constant:-24],
+        [self.emptyLabel.centerXAnchor constraintEqualToAnchor:self.versionCollectionView.centerXAnchor],
+        [self.emptyLabel.centerYAnchor constraintEqualToAnchor:self.versionCollectionView.centerYAnchor]
     ]];
 }
 
@@ -1517,75 +1341,17 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 //   与其它四个标签页(无进场动效)保持一致。原实现 viewDidLoad 也走这里 ⇒ 整页 cross-dissolve
 //   进场,用户报「打开下载页面时的动效与其他四个页面不一致」。
 - (void)switchToTab:(NSInteger)index animated:(BOOL)animated {
-    void (^applyVisibility)(void) = ^{
-        self.versionFilterSegment.hidden = (index != 0);
-        self.versionCollectionView.hidden = (index != 0);
-        // 搜索框对所有 tab 都显示（版本 tab 用于按版本号前缀过滤本地+远程版本列表）
-        self.searchBar.hidden = NO;
-        // 过滤按钮仅在版本 tab 显示（用于调出版本类型筛选/排序选项）
-        self.filterButton.hidden = (index != 0);
-        self.modTableView.hidden = (index != 1);
-        self.shaderTableView.hidden = (index != 2);
-        self.resourcepackTableView.hidden = (index != 3);
-        self.datapackTableView.hidden = (index != 4);
-        self.modpackTableView.hidden = (index != 5);
-        self.worldTableView.hidden = (index != 6);
-    };
-    // 列表切换使用淡入淡出，避免生硬的瞬间 hidden 切换（仅用户点击时；首次进入无动效）
-    if (animated) {
-        [UIView transitionWithView:self.view duration:0.2 options:UIViewAnimationOptionTransitionCrossDissolve animations:applyVisibility completion:nil];
-    } else {
-        applyVisibility();
-    }
-
-    // 源切换仅在非版本 tab 显示；世界 tab 强制 CurseForge，无需切换
-    // 注意：顶部 sourceSwitchContainer 现在已弃用（下载源已移到侧边栏），始终隐藏
-    // 保留属性避免其他方法引用时崩溃，但高度始终为 0
-    BOOL showSourceSwitch = (index != 0 && index != 6);
+    // Immediate visibility avoids competing page snapshots. Initial setup still requests animated:NO.
+    self.versionCollectionView.hidden = index != 0;
+    self.modTableView.hidden = index != 1;
+    self.shaderTableView.hidden = index != 2;
+    self.resourcepackTableView.hidden = index != 3;
+    self.datapackTableView.hidden = index != 4;
+    self.modpackTableView.hidden = index != 5;
+    self.worldTableView.hidden = index != 6;
+    self.searchBar.hidden = NO;
     self.sourceSwitchContainer.hidden = YES;
     self.sourceSwitchHeightConstraint.constant = 0;
-
-    // ===== FCL/ZL2 风格侧边栏显示/隐藏 =====
-    // FCL page_download.xml：5 个资产 tab（mod/modpack/resourcepack/world/shaderpack）共用
-    // 左侧 30% 筛选栏。版本 tab 是独立布局（versionFilterSegment + collectionView），无 sidebar。
-    // 这里 100% 对齐 FCL：所有非版本 tab 都显示 sidebar（含世界 tab）。
-    BOOL showSidebar = (index != 0);
-    self.filterSidebarContainer.hidden = !showSidebar;
-    // 根据屏幕宽度按 30% 比例计算侧边栏宽度（FCL constraintWidth_percent=0.3）
-    CGFloat screenWidth = self.view.bounds.size.width;
-    CGFloat sidebarWidth = 0;
-    if (showSidebar) {
-        sidebarWidth = screenWidth * 0.3;
-        sidebarWidth = MAX(120.0, MIN(280.0, sidebarWidth));
-    }
-    self.sidebarWidthConstraint.constant = sidebarWidth;
-
-    // 模组加载器选择按钮仅在模组 tab 显示（其他 tab 无加载器概念）
-    self.sidebarLoaderButton.hidden = (index != 1);
-    self.sidebarLoaderTitleLabel.hidden = (index != 1);
-    self.sidebarLoaderValueLabel.hidden = (index != 1);
-
-    // 下载源切换：世界 tab 强制 CurseForge，隐藏源切换；其他非版本 tab 显示
-    // FCL page_download.xml：仅当有多个来源时才显示 source Spinner
-    self.sidebarSourceContainer.hidden = (index == 0 || index == 6);
-
-    // versionFilterSegment 高度同步切换：版本 tab 显示 32pt，其他 tab 设为 0 不占空间，
-    // 避免 hidden=YES 仍占空间导致 tabSegment 与 searchBar 之间出现"大白条"
-    self.versionFilterHeightConstraint.constant = (index == 0) ? 32 : 0;
-
-    // 整合包 tab 显示"导入本地整合包"按钮（参照 FCL 安卓），其他 tab 隐藏且宽度归零不占空间
-    BOOL showImportButton = (index == 5);
-    self.importModpackButton.hidden = !showImportButton;
-    self.importModpackButtonWidthConstraint.constant = showImportButton ? 80 : 0;
-
-    if (animated) {
-        [UIView animateWithDuration:0.2 animations:^{
-            [self.view layoutIfNeeded];
-        }];
-    } else {
-        [self.view layoutIfNeeded];   // ★ [HOST-BUG-B] 首次进入:直接落位,不播动效
-    }
-
     if (index == 0) {
         // 版本 tab：按版本号前缀过滤版本列表
         self.searchBar.placeholder = localize(@"i18n_str_155", nil);
@@ -1637,6 +1403,8 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 
     // 更新侧边栏各筛选项的当前值显示
     [self updateSidebarFilterValues];
+    [self renewedRefreshCategoryControls];
+    [self renewedUpdateCataloguePresentation];
 }
 
 #pragma mark - Source Switch
@@ -1670,6 +1438,7 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     // 记录当前类型到侧边栏按钮的 tag，用于点击事件中获取类型
     self.sidebarModrinthButton.tag = [self tagForType:type];
     self.sidebarCurseforgeButton.tag = [self tagForType:type];
+    [self renewedRefreshCategoryControls];
 }
 
 /// ★ [HIG] 侧栏分段控件 → 复用原有下载源点击逻辑
@@ -1856,6 +1625,7 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
     } else {
         self.sidebarSortValueLabel.text = localize(@"i18n_str_162", nil);
     }
+    [self renewedRefreshCategoryControls];
 }
 
 - (id)currentAPIForTabType:(NSString *)type {
@@ -2539,6 +2309,12 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
         }]];
     }
     
+    // The original sidebar exposed sort for every resource category; retain it when that rail collapses.
+    if (tabIndex == 5 || tabIndex == 6) {
+        [alert addAction:[UIAlertAction actionWithTitle:localize(@"i18n_str_161", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            [self showSortOptions];
+        }]];
+    }
     [alert addAction:[UIAlertAction actionWithTitle:localize(@"resman.common.cancel", nil)
                                               style:UIAlertActionStyleCancel
                                             handler:nil]];
@@ -5932,7 +5708,7 @@ static NSString *PLSha1FromPrimaryFile(NSDictionary *primaryFile) {
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
     // ★ [PORTRAIT-UNLOCK] 放开竖屏:原来是写死 Landscape ⇒ iPhone 上竖屏进不来
     //   (主页是该 VC,它锁横屏 ⇒ 整个 App 被钉在横屏)。游戏页仍单独锁横屏。
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskLandscape;   // landscape only }
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskLandscape; }   // landscape only
     return UIInterfaceOrientationMaskLandscape;   // landscape only
 }
 
@@ -6051,28 +5827,109 @@ static NSString *PLSha1FromPrimaryFile(NSDictionary *primaryFile) {
 }
 
 - (void)handleBackgroundUIEffectChanged:(NSNotification *)notification {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        // 重新应用背景透明效果（参照 LauncherRightPanelViewController.reapplyBackgroundEffect）
-        [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
-        // 重新应用侧边栏效果（filterSidebarContainer 的毛玻璃/半透明效果需要随设置更新）
-        if (self.filterSidebarContainer) {
-            [[BackgroundManager sharedManager] applyEffectToView:self.filterSidebarContainer];
-        }
-        // 对导航栏应用效果
-        UINavigationController *nav = self.navigationController;
-        if (nav) {
-            nav.view.backgroundColor = [UIColor clearColor];
-            [[BackgroundManager sharedManager] applyEffectToNavigationBar:nav.navigationBar];
-        }
-        // 刷新所有列表以更新 cell 的背景效果
-        [self.versionCollectionView reloadData];
-        [self.modTableView reloadData];
-        [self.shaderTableView reloadData];
-        [self.modpackTableView reloadData];
-        [self.resourcepackTableView reloadData];
-        [self.datapackTableView reloadData];
-        [self.worldTableView reloadData];
-    });
+    // Registered M3 hosts update material/tint directly. No reload, recursive styling or menu allocation.
+    [self.searchBar setNeedsDisplay];
+}
+
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    self.catalogueLayoutConfigured = NO;
+    [self.view setNeedsLayout];
+}
+
+#pragma mark - Renewed catalogue presentation (no provider/installer ownership)
+
+- (void)renewedOpenTasks {
+    if (self.presentedViewController || self.navigationController.transitionCoordinator) return;
+    DownloadTasksViewController *tasks = [[DownloadTasksViewController alloc] init];
+    tasks.modalPresentationStyle = UIModalPresentationFormSheet;
+    tasks.preferredContentSize = CGSizeMake(500, 600);
+    [self presentViewController:tasks animated:YES completion:nil];
+}
+
+- (void)renewedSourceChanged:(UISegmentedControl *)sender {
+    [self sidebarSourceSegmentChanged:sender]; // Exactly one existing provider dispatch.
+    // A rejected/unavailable source must not leave the control claiming a switch succeeded.
+    NSString *actual = [PLPreferences currentDownloadSourceForType:[self currentTabType]];
+    NSInteger selected = [actual isEqualToString:@"curseforge"] ? 1 : 0;
+    if (sender.selectedSegmentIndex != selected) [self updateSourceSwitchButtonsForType:[self currentTabType]];
+}
+
+- (void)renewedCategoryTapped:(UIButton *)sender {
+    if (sender.tag < 0 || sender.tag > 6 || sender.tag == self.tabSegment.selectedSegmentIndex) return;
+    self.tabSegment.selectedSegmentIndex = sender.tag;
+    [self tabChanged:self.tabSegment];
+}
+
+- (void)renewedRefreshCategoryControls {
+    if (!self.catalogueControls || !self.sidebarVersionButton || self.categoryButtons.count != 7) return;
+    NSInteger index = self.tabSegment.selectedSegmentIndex;
+    if (index < 0 || index >= (NSInteger)self.categoryTitles.count) return;
+    for (NSInteger i = 0; i < (NSInteger)self.categoryButtons.count; i++) {
+        UIButton *button = self.categoryButtons[i];
+        NSInteger category = kRenewedDownloadCategoryOrder[i];
+        button.selected = category == index;
+        button.tintColor = AmeUIPrimaryTextColor();
+        button.backgroundColor = button.selected ? AmeUISelectedFillColor() : UIColor.clearColor;
+        button.accessibilityTraits = UIAccessibilityTraitButton | (button.selected ? UIAccessibilityTraitSelected : 0);
+        self.categoryActions[i].state = category == index ? UIMenuElementStateOn : UIMenuElementStateOff;
+    }
+    self.categoryMenuButton.accessibilityLabel = [NSString stringWithFormat:@"%@: %@", localize(@"renewed.downloads.categories", @"Categories"), self.categoryTitles[index]];
+    NSString *source = index == 6 ? @"curseforge" : [PLPreferences currentDownloadSourceForType:[self currentTabType]];
+    [self.providerMenuButton setTitle:[source isEqualToString:@"curseforge"] ? @"CurseForge" : @"Modrinth" forState:UIControlStateNormal];
+    self.providerMenuButton.accessibilityLabel = [NSString stringWithFormat:@"%@: %@", localize(@"i18n_str_157", @"Source"), self.providerMenuButton.currentTitle];
+    self.providerMenuButton.enabled = index != 6;
+    // Rebuild this tiny native menu only on category/source state refresh, never while scrolling.
+    __weak typeof(self) weakSelf = self;
+    NSMutableArray<UIAction *> *sources = [NSMutableArray array];
+    for (NSInteger i = 0; i < 2; i++) {
+        UIAction *action = [UIAction actionWithTitle:i == 0 ? @"Modrinth" : @"CurseForge" image:nil identifier:nil handler:^(__kindof UIAction *item) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || strongSelf.tabSegment.selectedSegmentIndex == 0 || strongSelf.tabSegment.selectedSegmentIndex == 6) return;
+            strongSelf.sidebarSourceSegment.selectedSegmentIndex = i;
+            [strongSelf renewedSourceChanged:strongSelf.sidebarSourceSegment];
+        }];
+        action.state = ([source isEqualToString:@"curseforge"] ? i == 1 : i == 0) ? UIMenuElementStateOn : UIMenuElementStateOff;
+        [sources addObject:action];
+    }
+    self.providerMenuButton.menu = [UIMenu menuWithTitle:@"" children:sources];
+    for (UIButton *button in @[self.sidebarVersionButton, self.sidebarLoaderButton, self.sidebarSortButton]) {
+        button.accessibilityValue = [self findSubviewInButton:button withTag:101].text;
+    }
+}
+
+- (void)renewedUpdateCataloguePresentation {
+    if (!self.searchBar || !self.catalogueControls) return;
+    CGFloat width = self.view.safeAreaLayoutGuide.layoutFrame.size.width;
+    BOOL wide = width >= 900 && !UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    NSInteger index = self.tabSegment.selectedSegmentIndex;
+    BOOL changed = !self.catalogueLayoutConfigured || wide != self.catalogueWide;
+    self.catalogueLayoutConfigured = YES;
+    self.catalogueWide = wide;
+    self.filterSidebarContainer.hidden = !wide;
+    CGFloat sidebarWidth = wide ? 196 : 0;
+    CGFloat sidebarLeading = wide ? 16 : 0;
+    if (self.sidebarWidthConstraint.constant != sidebarWidth) self.sidebarWidthConstraint.constant = sidebarWidth;
+    if (self.sidebarLeadingConstraint.constant != sidebarLeading) self.sidebarLeadingConstraint.constant = sidebarLeading;
+    self.categoryMenuButton.hidden = wide;
+    self.sidebarVersionButton.hidden = !wide || index == 0;
+    self.sidebarSortButton.hidden = !wide || index == 0;
+    self.sidebarResetButton.hidden = !wide || index == 0;
+    self.sidebarFilters.hidden = !wide || index == 0;
+    self.sidebarLoaderButton.hidden = !wide || index != 1;
+    self.sidebarLoaderTitleLabel.hidden = index != 1;
+    self.sidebarLoaderValueLabel.hidden = index != 1;
+    self.sidebarSourceContainer.hidden = !wide || index == 0 || index == 6;
+    self.versionFilterSegment.hidden = index != 0;
+    CGFloat filterHeight = index == 0 ? 32 : 0;
+    if (self.versionFilterHeightConstraint.constant != filterHeight) self.versionFilterHeightConstraint.constant = filterHeight;
+    self.filterButton.hidden = index == 0 || wide;
+    self.providerMenuButton.hidden = index == 0 || wide;
+    self.importModpackButton.hidden = index != 5;
+    CGFloat importWidth = index == 5 ? 44 : 0;
+    if (self.importModpackButtonWidthConstraint.constant != importWidth) self.importModpackButtonWidthConstraint.constant = importWidth;
+    if (changed) [self renewedRefreshCategoryControls];
 }
 
 @end

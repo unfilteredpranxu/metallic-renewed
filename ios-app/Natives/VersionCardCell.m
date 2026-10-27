@@ -1,14 +1,11 @@
 #import "utils.h"
-// VersionCardCell.m
-// 参照 FCL (item_remote_version.xml) 与 ZL2 (VersionItemLayout) 的单列横向列表行设计：
-// - 左侧：类型图标容器（40x40 圆角方块，类型色背景 + 白色 SF Symbol）
-// - 中间：版本号（16pt semibold）+ 类型小标签（pill） 在同一行 / 发布日期（12pt secondary）在下一行
-// - 右侧：chevron 指示可点击
-// - 已安装标记：图标容器右上角的绿色小圆点徽章（ZL2 风格，不遮挡右侧 chevron）
-// 替代原 100x120 纵向网格卡片，信息密度更高、更接近 FCL/ZL2 视觉。
+// Downloads' existing native result cell: neutral managed material, real version/type/date,
+// and a row-selection affordance for the original installation-options flow.
+// The legacy installedBadge argument comes from saved-profile metadata; present it as a bookmark.
 
 #import "VersionCardCell.h"
 #import "BackgroundManager.h"
+#import "UIKit+GlassSurface.h"
 
 // 修复问题3：带内边距的 UILabel 子类，让"正式版/测试版"等类型标签文字
 // 在背景块内完美居中，不再与背景边缘重叠。
@@ -51,193 +48,97 @@
 @property (nonatomic, strong) UIStackView *topRowStack;
 // 右侧 chevron 指示
 @property (nonatomic, strong) UIImageView *chevronView;
+- (void)renewedApplyPresentation;
 @end
 
 @implementation VersionCardCell
 
 - (instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:frame];
-    if (self) {
-        // 外层 cell 透明，由 cardContainer 提供视觉
-        self.backgroundColor = [UIColor clearColor];
-        self.contentView.backgroundColor = [UIColor clearColor];
-        self.layer.masksToBounds = NO;
-
-        // ----- 卡片容器：圆角 + 背景 + 浅阴影（与 VMTileBaseCell 阴影标准一致）-----
-        //
-        // 关键修复（卡片过于透明）：
-        // 之前使用硬编码的白色 8% alpha 半透明背景，在更换某些自定义背景壁纸后
-        // 卡片几乎不可见，文字与背景对比度极低，严重影响可读性。
-        // 现在通过 BackgroundManager.applyEffectToView: 应用与启动器其他卡片
-        // （如 Mod/光影资源卡片、版本管理磁贴）一致的效果：
-        //   - 毛玻璃模式：插入 UIBlurEffect（SystemThinMaterial），自适应深浅色
-        //   - 半透明模式：使用 secondarySystemBackgroundColor + 用户自定义透明度
-        // 这样卡片背景会随用户的背景设置自适应，不再过于透明。
+    if ((self = [super initWithFrame:frame])) {
+        self.backgroundColor = UIColor.clearColor;
+        self.contentView.backgroundColor = UIColor.clearColor;
         self.cardContainer = [[UIView alloc] init];
         self.cardContainer.translatesAutoresizingMaskIntoConstraints = NO;
-        self.cardContainer.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08];
-        self.cardContainer.layer.cornerRadius = 12;
+        self.cardContainer.layer.cornerRadius = 22;
         self.cardContainer.layer.cornerCurve = kCACornerCurveContinuous;
-        self.cardContainer.layer.borderWidth = 0.5;
-        self.cardContainer.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10].CGColor;
-        self.cardContainer.layer.shadowColor = [UIColor blackColor].CGColor;
-        self.cardContainer.layer.shadowOffset = CGSizeMake(0, 2);
-        self.cardContainer.layer.shadowOpacity = 0.10;
-        self.cardContainer.layer.shadowRadius = 4;
+        self.cardContainer.clipsToBounds = YES;
         [self.contentView addSubview:self.cardContainer];
-
-        // 应用 BackgroundManager 效果（毛玻璃/半透明自适应），解决过于透明的问题
         [[BackgroundManager sharedManager] applyEffectToView:self.cardContainer];
-
-        // ----- 左侧图标容器：40x40 圆角方块，类型色背景 -----
         self.iconContainer = [[UIView alloc] init];
         self.iconContainer.translatesAutoresizingMaskIntoConstraints = NO;
-        self.iconContainer.layer.cornerRadius = 10;
-        self.iconContainer.layer.cornerCurve = kCACornerCurveContinuous;
-        self.iconContainer.layer.masksToBounds = YES;
-        self.iconContainer.backgroundColor = [UIColor systemGreenColor];
+        self.iconContainer.layer.cornerRadius = 8;
+        self.iconContainer.clipsToBounds = YES;
         [self.cardContainer addSubview:self.iconContainer];
-
-        // 图标本体：白色 SF Symbol，居中
         self.iconImageView = [[UIImageView alloc] init];
         self.iconImageView.translatesAutoresizingMaskIntoConstraints = NO;
         self.iconImageView.contentMode = UIViewContentModeScaleAspectFit;
-        self.iconImageView.tintColor = [UIColor whiteColor];
-        self.iconImageView.image = [UIImage systemImageNamed:@"cube.fill"];
         [self.iconContainer addSubview:self.iconImageView];
-
-        // ----- 版本号 -----
         self.versionLabel = [[UILabel alloc] init];
-        self.versionLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        self.versionLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
-        self.versionLabel.textColor = [UIColor labelColor];
-        self.versionLabel.adjustsFontSizeToFitWidth = YES;
-        self.versionLabel.minimumScaleFactor = 0.7;
-        self.versionLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-        // 版本号 hugging 高（不主动拉伸），compression 低（空间不足时优先被压缩→触发字号缩小）
-        [self.versionLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
-        [self.versionLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-
-        // ----- 类型标签（pill 样式，修复"正式版/测试版"文字变"……"的问题） -----
-        // 字号从 13pt 减小到 11pt，内边距从 (3,10,3,10) 减小到 (2,6,2,6)，
-        // cornerRadius 从 10 减小到 8，让 pill 更紧凑。
-        // 设置 adjustsFontSizeToFitWidth + minimumScaleFactor=0.8 作为兜底，
-        // 确保任何情况下文字都不会被截断成"……"。
+        self.versionLabel.font = AmeUIFont(AmeUIFontRoleSectionHeading);
+        self.versionLabel.textColor = AmeUIPrimaryTextColor();
+        self.versionLabel.numberOfLines = 2;
         self.typeLabel = [[InsetTypeLabel alloc] init];
-        self.typeLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        self.typeLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightBold];
-        self.typeLabel.textColor = [UIColor whiteColor];
-        self.typeLabel.textAlignment = NSTextAlignmentCenter;
-        self.typeLabel.adjustsFontSizeToFitWidth = YES;
-        self.typeLabel.minimumScaleFactor = 0.8;
-        self.typeLabel.lineBreakMode = NSLineBreakByClipping;
-        self.typeLabel.layer.cornerRadius = 8;
-        self.typeLabel.layer.cornerCurve = kCACornerCurveContinuous;
-        self.typeLabel.layer.masksToBounds = YES;
-        // 类型标签 hugging 高、compression 也高（保持完整 pill 形状，不被压缩）
-        [self.typeLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-        [self.typeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-
-        // ----- 顶行 stack：版本号 + 类型标签 水平排列 -----
-        // 修复"位置不对"问题：alignment 从 FirstBaseline 改为 Center，
-        // 避免 InsetTypeLabel 上下内边距导致 typeLabel 视觉偏移。
-        // distribution 改为 Fill 使 versionLabel 优先被压缩，typeLabel 保持完整。
-        self.topRowStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.versionLabel, self.typeLabel]];
-        self.topRowStack.translatesAutoresizingMaskIntoConstraints = NO;
-        self.topRowStack.axis = UILayoutConstraintAxisHorizontal;
-        self.topRowStack.alignment = UIStackViewAlignmentCenter;
-        self.topRowStack.distribution = UIStackViewDistributionFill;
-        self.topRowStack.spacing = 8;
-        [self.cardContainer addSubview:self.topRowStack];
-
-        // ----- 日期 -----
+        self.typeLabel.font = AmeUIFont(AmeUIFontRoleDescription);
+        self.typeLabel.numberOfLines = 2;
         self.dateLabel = [[UILabel alloc] init];
-        self.dateLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        self.dateLabel.font = [UIFont systemFontOfSize:12];
-        self.dateLabel.textColor = [UIColor secondaryLabelColor];
-        self.dateLabel.adjustsFontSizeToFitWidth = YES;
-        self.dateLabel.minimumScaleFactor = 0.7;
-        self.dateLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-        [self.cardContainer addSubview:self.dateLabel];
-
-        // ----- 右侧 chevron：提示可点击进入加载器选择 -----
-        self.chevronView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right"]];
+        self.dateLabel.font = AmeUIFont(AmeUIFontRoleStatus);
+        self.dateLabel.textColor = AmeUITertiaryTextColor();
+        self.dateLabel.numberOfLines = 1;
+        for (UILabel *label in @[self.versionLabel, self.typeLabel, self.dateLabel]) label.adjustsFontForContentSizeCategory = YES;
+        self.topRowStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.versionLabel, self.typeLabel, self.dateLabel]];
+        self.topRowStack.axis = UILayoutConstraintAxisVertical;
+        self.topRowStack.spacing = 4;
+        self.topRowStack.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.cardContainer addSubview:self.topRowStack];
+        self.chevronView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"arrow.down"]];
         self.chevronView.translatesAutoresizingMaskIntoConstraints = NO;
-        self.chevronView.tintColor = [UIColor tertiaryLabelColor];
         self.chevronView.contentMode = UIViewContentModeScaleAspectFit;
-        // chevron 固定尺寸，不被拉伸
-        [self.chevronView setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-        [self.chevronView setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        self.chevronView.tintColor = AmeUISecondaryTextColor();
+        self.chevronView.userInteractionEnabled = NO; // Decoration; the existing row selection owns the action.
         [self.cardContainer addSubview:self.chevronView];
-
-        // ----- 已安装徽章：图标容器右上角的绿色小圆点（ZL2 风格）-----
-        // 不再用大块绿色 ✓ 占据卡片右上角，改用 14pt 小圆点贴在 iconContainer 右上角，
-        // 既保留"已安装"指示，又不遮挡右侧 chevron 与版本号。
         self.installedBadge = [[UIView alloc] init];
         self.installedBadge.translatesAutoresizingMaskIntoConstraints = NO;
-        self.installedBadge.backgroundColor = [UIColor systemGreenColor];
+        self.installedBadge.backgroundColor = AmeUIAccentColor();
         self.installedBadge.layer.cornerRadius = 7;
-        self.installedBadge.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
-        self.installedBadge.layer.masksToBounds = YES;
-        self.installedBadge.layer.borderColor = [UIColor systemBackgroundColor].CGColor;
-        self.installedBadge.layer.borderWidth = 1.5;
         self.installedBadge.hidden = YES;
         [self.cardContainer addSubview:self.installedBadge];
-
-        // 内部小 ✓（白色，居中）
-        UIImageView *checkmark = [[UIImageView alloc] init];
-        checkmark.translatesAutoresizingMaskIntoConstraints = NO;
-        checkmark.image = [UIImage systemImageNamed:@"checkmark"
-                                  withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:7 weight:UIFontWeightBold]];
-        checkmark.tintColor = [UIColor whiteColor];
-        [self.installedBadge addSubview:checkmark];
-
-        // ----- 布局约束 -----
+        UIImageView *mark = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"bookmark.fill"]];
+        mark.translatesAutoresizingMaskIntoConstraints = NO;
+        mark.tintColor = UIColor.whiteColor;
+        [self.installedBadge addSubview:mark];
         [NSLayoutConstraint activateConstraints:@[
-            // cardContainer 充满 contentView（留 0 外边距，间距由 collection layout 的 sectionInset 控制）
             [self.cardContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:4],
-            [self.cardContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:0],
-            [self.cardContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:0],
             [self.cardContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-4],
-
-            // 图标容器：左 14，垂直居中，40x40
-            [self.iconContainer.leadingAnchor constraintEqualToAnchor:self.cardContainer.leadingAnchor constant:14],
+            [self.cardContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+            [self.cardContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+            [self.iconContainer.leadingAnchor constraintEqualToAnchor:self.cardContainer.leadingAnchor constant:16],
             [self.iconContainer.centerYAnchor constraintEqualToAnchor:self.cardContainer.centerYAnchor],
-            [self.iconContainer.widthAnchor constraintEqualToConstant:40],
-            [self.iconContainer.heightAnchor constraintEqualToConstant:40],
-
-            // 图标在容器内居中，22x22
-            [self.iconImageView.centerXAnchor constraintEqualToAnchor:self.iconContainer.centerXAnchor],
-            [self.iconImageView.centerYAnchor constraintEqualToAnchor:self.iconContainer.centerYAnchor],
-            [self.iconImageView.widthAnchor constraintEqualToConstant:22],
-            [self.iconImageView.heightAnchor constraintEqualToConstant:22],
-
-            // 顶行 stack：紧跟图标容器右侧 +14，顶部对齐 cardContainer 顶部 +14
-            // 右侧到 chevron 之间留 8pt，stack 内部自动分配 versionLabel/typeLabel 宽度
-            [self.topRowStack.leadingAnchor constraintEqualToAnchor:self.iconContainer.trailingAnchor constant:14],
-            [self.topRowStack.topAnchor constraintEqualToAnchor:self.cardContainer.topAnchor constant:14],
-            [self.topRowStack.trailingAnchor constraintEqualToAnchor:self.chevronView.leadingAnchor constant:-8],
-
-            // 日期：与顶行 stack 左对齐，紧跟顶行下方 +3
-            [self.dateLabel.leadingAnchor constraintEqualToAnchor:self.topRowStack.leadingAnchor],
-            [self.dateLabel.topAnchor constraintEqualToAnchor:self.topRowStack.bottomAnchor constant:3],
-            [self.dateLabel.trailingAnchor constraintEqualToAnchor:self.topRowStack.trailingAnchor],
-            [self.dateLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.cardContainer.bottomAnchor constant:-12],
-
-            // chevron：右侧 -14，垂直居中，14x14
-            [self.chevronView.trailingAnchor constraintEqualToAnchor:self.cardContainer.trailingAnchor constant:-14],
+            [self.iconContainer.widthAnchor constraintEqualToConstant:32],
+            [self.iconContainer.heightAnchor constraintEqualToConstant:32],
+            [self.iconImageView.topAnchor constraintEqualToAnchor:self.iconContainer.topAnchor],
+            [self.iconImageView.bottomAnchor constraintEqualToAnchor:self.iconContainer.bottomAnchor],
+            [self.iconImageView.leadingAnchor constraintEqualToAnchor:self.iconContainer.leadingAnchor],
+            [self.iconImageView.trailingAnchor constraintEqualToAnchor:self.iconContainer.trailingAnchor],
+            [self.topRowStack.leadingAnchor constraintEqualToAnchor:self.iconContainer.trailingAnchor constant:16],
+            [self.topRowStack.trailingAnchor constraintEqualToAnchor:self.chevronView.leadingAnchor constant:-16],
+            [self.topRowStack.topAnchor constraintEqualToAnchor:self.cardContainer.topAnchor constant:12],
+            [self.topRowStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.cardContainer.bottomAnchor constant:-12],
+            [self.chevronView.trailingAnchor constraintEqualToAnchor:self.cardContainer.trailingAnchor constant:-16],
             [self.chevronView.centerYAnchor constraintEqualToAnchor:self.cardContainer.centerYAnchor],
-            [self.chevronView.widthAnchor constraintEqualToConstant:14],
-            [self.chevronView.heightAnchor constraintEqualToConstant:14],
-
-            // 已安装徽章：贴在 iconContainer 右上角，14x14
-            [self.installedBadge.topAnchor constraintEqualToAnchor:self.iconContainer.topAnchor constant:-4],
+            [self.chevronView.widthAnchor constraintEqualToConstant:20],
+            [self.chevronView.heightAnchor constraintEqualToConstant:20],
             [self.installedBadge.trailingAnchor constraintEqualToAnchor:self.iconContainer.trailingAnchor constant:4],
+            [self.installedBadge.topAnchor constraintEqualToAnchor:self.iconContainer.topAnchor constant:-4],
             [self.installedBadge.widthAnchor constraintEqualToConstant:14],
             [self.installedBadge.heightAnchor constraintEqualToConstant:14],
-            [checkmark.centerXAnchor constraintEqualToAnchor:self.installedBadge.centerXAnchor],
-            [checkmark.centerYAnchor constraintEqualToAnchor:self.installedBadge.centerYAnchor]
+            [mark.centerXAnchor constraintEqualToAnchor:self.installedBadge.centerXAnchor],
+            [mark.centerYAnchor constraintEqualToAnchor:self.installedBadge.centerYAnchor],
+            [mark.widthAnchor constraintEqualToConstant:8], [mark.heightAnchor constraintEqualToConstant:8]
         ]];
+        self.isAccessibilityElement = YES;
+        self.accessibilityTraits = UIAccessibilityTraitButton;
+        self.accessibilityHint = localize(@"renewed.downloads.install_options", @"Choose installation options");
+        [self renewedApplyPresentation];
     }
     return self;
 }
@@ -306,10 +207,13 @@
     // 类型标签：类型色背景 + 白字
     self.typeLabel.text = typeText;
     self.typeLabel.backgroundColor = typeColor;
+    [self renewedApplyPresentation];
 }
 
 - (void)setInstalled:(BOOL)installed {
     self.installedBadge.hidden = !installed;
+    // Existing caller checks saved profiles, not game-file completeness. Never claim installation success.
+    self.accessibilityValue = installed ? localize(@"renewed.downloads.saved_profile", @"Referenced by a saved profile") : nil;
 }
 
 - (void)prepareForReuse {
@@ -325,6 +229,25 @@
     self.typeLabel.backgroundColor = [UIColor systemBlueColor];
     self.installedBadge.hidden = YES;
     self.chevronView.tintColor = [UIColor tertiaryLabelColor];
+}
+
+
+- (void)renewedApplyPresentation {
+    NSInteger lines = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory) ? 2 : 1;
+    self.versionLabel.numberOfLines = lines;
+    self.typeLabel.numberOfLines = lines;
+    self.installedBadge.backgroundColor = AmeUIAccentColor();
+    self.typeLabel.backgroundColor = UIColor.clearColor;
+    self.typeLabel.textColor = AmeUISecondaryTextColor();
+    self.typeLabel.textAlignment = NSTextAlignmentNatural;
+    self.cardContainer.layer.borderWidth = AmeUIHairlineWidth(self);
+    self.cardContainer.layer.borderColor = AmeUIResolvedColor(AmeUIBorderColor(), self).CGColor;
+    self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@, %@", self.versionLabel.text ?: @"", self.typeLabel.text ?: @"", self.dateLabel.text ?: @""];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self renewedApplyPresentation];
 }
 
 @end

@@ -244,3 +244,65 @@ Every row below is unexecuted. Use disposable profiles/directories for destructi
 M1 remains BLOCKED; M3 legacy bars/search/chips PARTIAL and M4 Home acceptance PARTIAL. Source equality does not validate new-build JIT/Java/Metal/Minecraft gameplay. Next: Downloads UI customization, retaining all pending tests.
 
 M5 public-selector review: both the Instances overview and existing Home global header now call `NSCollectionLayoutBoundarySupplementaryItem boundarySupplementaryItemWithLayoutSize:elementKind:alignment:`. The Home change is exactly one factory-selector correction; native SDK/type checking remains BLOCKED.
+
+
+## M6 executed source validation (2026-10-27)
+
+| Feature | Test procedure | Expected result | Actual result | Status | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Whitespace | git diff --check | Clean patch | No errors | PASS | Executed on M6 diff |
+| Grammar/declarations | Parse full changed .m files; review selectors/new imports | Valid grammar/imports, no duplicate methods/actions | Two files parsed, new imports exist, callback declarations/bindings traced | PASS | Tree-sitter, NS_ENUM/__unused normalized for parsing; NOT Apple SDK compilation |
+| Installer/JIT/download protection | Compare raw method bodies with M5 snapshot | All protected implementations identical | 140 protected bodies byte-identical; 23 presentation edits and 1 brace-only orientation repair explicitly scoped | PASS | /tmp/m6_verify.py; raw comments/whitespace checked, /tmp/m6_protected_hashes.json |
+| Checksum helper | Compare all existing C function definitions | No checksum changes | Single helper unchanged | PASS | Exact source comparison against starting M5 |
+| Native category mapping | Compile/run actual display-order constant; trace tags/selection | 0/1/2/5/3/4/6 translates to original 0–6, no duplicates | Mapping assertions passed; handlers use native IDs, not display positions | PASS | gcc -std=c11 -Wall -Wextra -Werror; not UIKit execution |
+| State/handlers | Compare lifecycle/search/query switch suffix/filter/resource handlers/KVO | Same semantics, targets and target-profile snapshot | Preserved; only UI suffix/visibility and Modpacks/Worlds Sort exposure added | PASS | Source comparison, explicit-target setter count unchanged |
+| Reuse/performance | Compare icon/reuse/target cleanup; inspect appearance/layout paths | No duplicate downloads/stale icon work/list reload loops | Existing bindings/cleanup retained; no new per-layout I/O/materials/actions | PASS | Method comparison and source review, NOT physical taps |
+| Layout/API/inclusion | Review setup order, hidden control constraints, picker anchors, existing CMake entries | No nil anchors/new build registration; valid API floor | Sidebar before search, compact picker anchors visible; iOS 14 public menus, both sources already included | PASS | Source review only; Auto Layout execution PENDING |
+| Engine/baseline | Full diff outside 13 approved UI files + 3 docs and protected method comparison | Zero protected changes | Zero | PASS | Baseline fe379d4… vs current contents, M5 method snapshot; task/manager files untouched |
+
+## M6 Downloads runtime acceptance
+
+Every runtime row is unexecuted. Native build remains BLOCKED. Use disposable content/profile/directories; never real user worlds/accounts.
+
+| Feature | Test procedure | Expected result | Actual result | Status | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| 1. Global Downloads | Tap global Downloads | Original internal tab 1, correct global selection and reserved geometry | Not run | PENDING | Native build/device unavailable |
+| 2. New Instance route | Use Instances New | Same Downloads root, no hidden Home replacement | Not run | PENDING | Native build/device unavailable |
+| 3. Home empty route | Use Home Discover Minecraft | Existing downloader stack; Home remains intact | Not run | PENDING | Native build/device unavailable |
+| 4. Seven categories | Open each rail/menu category | Native 0 Versions / 1 Mods / 2 Shaders / 3 Resources / 4 Data / 5 Modpacks / 6 Worlds; all accessible | Not run | PENDING | Native build/device unavailable |
+| 5. Rapid categories | Alternate categories quickly during loading | One visible list, correct selection, no stale/overlapping page | Not run | PENDING | Native build/device unavailable |
+| 6. Version search | Type version prefixes and cancel | Original local filtering, correct results/no-result state | Not run | PENDING | Native build/device unavailable |
+| 7. Mod search | Submit a real mod query | Existing provider search/results and compatibility filters | Not run | PENDING | Native build/device unavailable |
+| 8. Shader search | Submit a shader query | Existing shader results, correct selection flow | Not run | PENDING | Native build/device unavailable |
+| 9. Resource Pack search | Submit resource query | Native resource list/provider filtering | Not run | PENDING | Native build/device unavailable |
+| 10. Data Pack search | Submit data-pack query | Native data-pack results and target handling | Not run | PENDING | Native build/device unavailable |
+| 11. Modpack search | Submit modpack query | Native results/pagination and existing install selection | Not run | PENDING | Native build/device unavailable |
+| 12. Worlds search | Search Worlds | Original CurseForge-only handling and accurate errors | Not run | PENDING | Native build/device unavailable |
+| 13. Cancel search | Cancel/reopen keyboard across categories | Original cancel/query behavior; no lost editing text/layout jumps | Not run | PENDING | Native build/device unavailable |
+| 14. Version filters | Use All/Release/Snapshot/Old; choose game version for resources | Original versionFilterChanged/applyVersionFilter and game-version query semantics | Not run | PENDING | Native build/device unavailable |
+| 15. Modloader filter | Choose supported loader in Mods | Original picker/filter behavior; hidden elsewhere | Not run | PENDING | Native build/device unavailable |
+| 16. Sorting | Change each supported resource sort, including Modpacks/Worlds compact sheet | Native showSortOptions updates actual query; no fake version sorting | Not run | PENDING | Native build/device unavailable |
+| 17. Reset Filters | Set filters then reset in each resource category | Only native intended download filters reset; profile/renderer/appearance unchanged | Not run | PENDING | Native build/device unavailable |
+| 18. Provider selection | Switch supported sources in wide/compact controls | Original source persistence/query; rejected switch restores displayed state | Not run | PENDING | Native build/device unavailable |
+| 19. CurseForge unavailable/key | Exercise existing unavailable/missing-key/backend-error case | Accurate native gate/message/settings route, no invented provider support | Not run | PENDING | Native build/device unavailable |
+| 20. Task centre | Tap Tasks, open detail/filter/history, close | Actual native task screen and valid return/close semantics | Not run | PENDING | Native build/device unavailable |
+| 21. Progress | Observe a real disposable task, including indeterminate/error states | Actual manager progress/state; no simulated success/speed | Not run | PENDING | Native build/device unavailable |
+| 22. Task actions | Pause/resume/cancel/retry disposable tasks; remove eligible entries | Original task callbacks/lifecycle operate, no duplicate action | Not run | PENDING | Native build/device unavailable |
+| 23. Minecraft install | Install a disposable version through original options | Same Vanilla/loader validation/install/JIT workflow; original target paths | Not run | PENDING | Native build/device unavailable |
+| 24. Mod download | Select supported mod/version for disposable target | Native version/compatibility/download flow, one intended action | Not run | PENDING | Native build/device unavailable |
+| 25. Shader download | Select supported shader/version | Original native download and target logic | Not run | PENDING | Native build/device unavailable |
+| 26. Modpack import | Import disposable supported local pack; cancel picker as well | Original import/extraction/validation; cancel changes nothing | Not run | PENDING | Native build/device unavailable |
+| 27. Target snapshot | Open with explicit target A, globally select B, download disposable resource | Original targetProfileName A retained; no redirected install | Not run | PENDING | Native build/device unavailable |
+| 28. Home return | Return Home after browsing/import/task sheet | Original Home root/content and launch/status lifecycle remain | Not run | PENDING | Native build/device unavailable |
+| 29. Nested returns | Open version/resource details and Back/Done/Close | Original navigation stack/action semantics, no missing back button | Not run | PENDING | Native build/device unavailable |
+| 30. Narrow iPhone | Use narrow supported width with keyboard, every category/filter/import | No fixed sidebar; all controls reachable, readable rows and safe tap targets | Not run | PENDING | Native build/device unavailable |
+| 31. Wide/split iPad | Resize through rail threshold; scroll categories/filters/results | Balanced rail, correct selection, no clipping/negative widths or hidden popover anchor | Not run | PENDING | Native build/device unavailable |
+| 32. Rotation | Rotate through supported orientations while editing/filtering | Same landscape policy, consistent constraints and 60/76 reservation | Not run | PENDING | Native build/device unavailable |
+| 33. Theme | Switch Light/Dark/System and return | Semantic readable text, selected/disabled/provider states | Not run | PENDING | Native build/device unavailable |
+| 34. Wallpaper/material | Use image/video/default; UI Blur 0/50/100, Panel Opacity min/mid/max | Intended material/tint only, text intact, wallpaper dimming independent | Not run | PENDING | Native build/device unavailable |
+| 35. Accessibility | Largest Dynamic Type; VoiceOver row/button/menu focus; Reduce Motion | Readable self-sizing results, correct names/selection, real callbacks, no decorative motion | Not run | PENDING | Native build/device unavailable |
+| 36. Engine/install parity | Safely build and validate known JIT/Java/Metal/gameplay setup | Same protected source AND independently verified original installation/game behavior | Not run | PENDING | Native build/device unavailable |
+| Loading/empty/errors | Test initial/loading-more/no-results/network/provider errors for each category | Existing real messages stay distinct; no invented Retry or false empty result | Not run | PENDING | Native build/device unavailable |
+| Pagination/reuse | Scroll rapidly while changing filters/sources; reuse icon/button cells repeatedly | Existing dedup/cancellation and button tags target intended current item once | Not run | PENDING | Native build/device unavailable |
+
+M1 stays BLOCKED; M3 global consumers PARTIAL; M4 Home and M5 Instances/navigation device acceptance PENDING. M6 task-centre visual styling and unsupported Versions Sort remain deferred. Historical Alpha 1.2 gameplay does not establish new-build compatibility. Next: Appearance and Settings UI completion.

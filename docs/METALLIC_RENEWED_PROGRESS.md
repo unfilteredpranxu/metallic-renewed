@@ -111,3 +111,65 @@ At the start of every future task: read this progress document, check repository
 ### M0 commit record
 
 M0 documentation commit: `a1b9d8f89b64b746861afe9181fafd3ceea41284` (`docs(ui): lock M0 scope and architecture`). This final bookkeeping update records that completed milestone commit; its own commit can be resolved with `git log -1 --format=%H -- docs/METALLIC_RENEWED_PROGRESS.md` (a commit cannot contain its own hash). M0 is complete. Next action remains M1 baseline build verification, with build/device results PENDING.
+
+
+## M1: native IPA build verification (2026-10-27)
+
+**Status: BLOCKED.** Focused inspection complete; no suitable unchanged-source native workflow was found. No workflow dispatched, native build attempted, artifact generated, or physical-device test executed. No compiler failure exists to diagnose because compilation was not started. This does not mean the historical IPA failed or that the application cannot be built elsewhere.
+
+### Source and protection evidence
+
+Repository `unfilteredpranxu/metallic-renewed`, branch `feat/renewed-uikit-home`, inspected source HEAD `26d114919d7ab8f7426352598783f2e82d36a232` (published M0). Remote UI ref matched that SHA; remote protected branch `baseline/alpha-1.2-fe379d4` matched `fe379d4f3723764ec0a8b6a6728368ac3492c4d8`. Before M1 changes, `git diff --exit-code origin/baseline/alpha-1.2-fe379d4 HEAD -- . ':(exclude)docs'` passed, as did staged/unstaged clean checks. All non-document content, including JIT, JavaLauncher/utils, runtimes, renderer/native libraries, signing, entitlements, functional preferences, UI and CI/build files, is unchanged. Final precommit gate repeats exact non-document equality and permits only the progress/test-matrix edits for M1.
+
+M0 publication was independently confirmed in the previous task: remote commit `26d114919d7ab8f7426352598783f2e82d36a232`, with all three documents available. That GitHub publication is distinct from publishing the cloud environment snapshot.
+
+### Existing build entry points (read-only inspection)
+
+- `.github/workflows/build.yml` (`Build iOS`) is manual `workflow_dispatch`, `macos-latest`; checkout enables LFS and recursive submodules. It declares no custom dispatch inputs. It would need ref `feat/renewed-uikit-home`; no dispatch was sent. It installs Zulu JDK 8 and `ldid`/`wget`, reads Xcode versions, then runs from `ios-app`: `set -o pipefail; make all BOOTJDK=$JAVA_HOME/bin SDKPATH=$(xcrun --sdk iphoneos --show-sdk-path) 2>&1 | tee build.log`. This is a full native build intent, not a UI preview, but actual Minecraft capability is unverified.
+- `ios-app/Makefile:330`: `all: clean native java jre assets payload package dsym`. Native CMake cross-compiles arm64 for iOS with the Apple SDK and compiles the existing SwiftUI bar. Defaults: `PLATFORM=2`, `SLIMMED=0`, `SLIMMED_ONLY=0`, `RUNNER=0`, `RELEASE=0`; no build settings were changed.
+- `BUILDING.md` mentions Xcode/`make`, but calls its final artifact Alpha 1.1, while the Makefile declares 1.2.0. It is not evidence of reproducibility. Opening the Xcode project alone does not verify full payload assembly.
+- `codemagic.yaml` defines `ios-build` on `mac_mini_m2`, Xcode latest and JDK 8 installation in script; uses the same `make all` command and includes a separate Minecraft 26.2 pre-bundle step. It is not a safe fallback (see below) and was not run.
+- `.github/workflows/what-was-done.yml` is report-only on Ubuntu, explicitly builds nothing and also clones upstream. It cannot verify an IPA and was not run. These are the only two workflows in `.github/workflows` at the inspected revision.
+
+### Exact dispatch blockers
+
+1. `build.yml:31–87` clones moving upstream repositories (`herbrine8403/Amethyst-iOS-MyRemastered`, fallback `AngelAuraMC/Amethyst-iOS`) and copies missing submodule/native files into the runner checkout. Those are unapproved source substitutions, not a build of only the copied baseline. No other repository was accessed by this task.
+2. `build.yml:97–106` conditionally replaces/fetches the ZeroTier dependency from another moving repository. `:115–168` can edit CMake source lists and Home source imports. `:170–191` explicitly patches AI and UI source in the runner checkout. Runner-only edits are still changes to build inputs and violate this verification milestone's restrictions.
+3. The Makefile's `dep_mg` dependency (`:485` onward) replaces vendored glslang/SPIRV-Cross trees with downloaded snapshots by default. Payload dependencies include binary-patching targets (`dep_angle_freeze`, `dep_sdl3_guard`) and NG-GL4ES patch application. Do not execute these or disable guards to work around M1 restrictions.
+4. Codemagic repeats upstream filling and runner patches and can promote/remove renderer libraries (`codemagic.yaml:94–96`). It is unsuitable for verifying unchanged source/framework inputs.
+5. The selected worker is Linux. `xcodebuild`, `xcrun`, `codesign`, and `ldid` are unavailable. No Apple SDK/macOS executor is attached. Do not run a Linux IPA build or change CI to evade this blocker.
+
+These are suitability blockers, not a permissions/token diagnosis. No dispatch/API authorization test was necessary once the available workflows were disqualified. Do not request new credentials as a substitute for a safe build path. Next external prerequisite for native verification: an approved macOS/Xcode route with known original dependencies and explicitly established handling of the existing runner substitutions/patches, or a separate user decision about those build-input changes. M1 authorizes no workflow or code changes.
+
+### Immediate dependency and packaging checks
+
+Overall dependencies: **Missing locally; remote resolution and final payload completeness Unverified.** No dependencies were installed, replaced or fetched from other repositories.
+
+| Item | Observed result / evidence | Limitation |
+| --- | --- | --- |
+| Frameworks directory | Only `libmetallum.dylib` and `libmetallic_native.dylib` are present; `file` identifies both as arm64 Mach-O shared libraries | Presence/type do not prove linkability, correct signing, runtime compatibility or source/binary equivalence |
+| Required linked frameworks | `libEGL.framework`, `libGLESv2.framework`, `AltKit.framework`, `CAltKit.framework`, `UnzipKit.framework` absent from `ios-app/Natives/resources/Frameworks`; named by native CMake link configuration | Full untouched checkout is not dependency-complete |
+| Other referenced libraries | `libMoltenVK.dylib` and `libspirv-cross-c-shared.0.dylib` absent at Makefile resource paths | Some dependencies can be generated/fetched; no successful build or compatible resolution verified |
+| ZeroTier | `ios-app/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt` absent; CMakeLists.txt:75 has an explicit fatal missing-framework condition | Predicted configure prerequisite failure, not an executed CMake failure |
+| Native/resource prerequisites | `ios-app/Natives/input/ControllerInput.m` and `ios-app/Natives/resources/en.lproj/LaunchScreen.storyboardc` absent; TouchController directory absent (optional paths exist in CMake/Makefile) | CI explicitly checks ControllerInput and copies from upstream; no replacements made |
+| NG-GL4ES | `.gitmodules` points to BZLZHH/NG-GL4ES; `git submodule status` reports uninitialized `6e153a1622a8d9ef903f7975aafbef2453571bab`; no local CMakeLists.txt | Not initialized. Pinned commit's remote fetchability not tested, to preserve target-repository-only scope. No claim that submodule resolution passed |
+| LFS | `git lfs version` = 3.6.1; `git lfs ls-files` empty; `git ls-files -- '*.tgz'` empty. `.gitattributes` applies LFS to `*.tgz` | No indexed LFS assets to materialize in this revision; does not establish remote LFS availability or restore missing dependencies |
+| Java runtimes | `ios-app/depends` and JRE 8/17/21/25 `lib/server/libjvm.dylib` absent | Makefile jre target downloads from `assets.angelauramc.dev/openjdk/ios-arm64/jreN-ios-aarch64.zip`, validates/extracts and assembles `artifacts/java_runtimes`. URLs/content not fetched/verified |
+| Java payload | Existing JavaApp Makefile compiles launcher/agent JARs; parent payload copies JavaApp build outputs plus existing dependency JAR directories | No Java build run. Java 25 runtime in generated IPA unverified |
+| JIT scripts | `JIT26Script.js`, `UniversalJIT26.js`, `UniversalJIT26Extension.js` exist in root `bundle-templates`, absent from `ios-app/Natives/resources` | No copy step referring to those names or `bundle-templates` found in build.yml, codemagic.yaml or ios-app/Makefile. Native payload copies Natives/resources, not root templates. Script inclusion in final app NOT established; no packaging fix made |
+| Metal payload | Makefile payload copies Natives/resources (including Frameworks) and generated dylibs to app bundle | Intended path includes existing Metallum/native libraries; no IPA inspected, binary/signing validation pending |
+| Full vs slimmed | Non-slimmed payload copies Java runtimes into app; slimmed packaging explicitly excludes runtimes | Default full-IPA intent only; neither full nor preview artifact created |
+
+### Signing, artifacts and diagnostics
+
+Signing/entitlement files and settings remain byte-identical to baseline. Existing payload code uses `ldid` and sideload/TrollStore/platform-specific entitlements; package conditionally uses Apple codesign/provisioning only when its original team/profile conditions are met, otherwise prints that codesigning was skipped. Framework `ldid` step suppresses failures (`|| true`). This is not proof every embedded binary is correctly signed; no signature was verified and no entitlement setting changed.
+
+Expected full output by Makefile defaults: `ios-app/artifacts/com.tokyxkai.metallic-1.2.0-ios.ipa` (TrollStore changes suffix to `.tipa`). Workflow checks for an IPA and uploads artifact `metallic-ipa` from `ios-app/artifacts/*.ipa`. Build captures `ios-app/build.log`; failure steps print/annotate compiler/linker errors. Makefile has `dsym`, but workflow does not upload build.log, dSYM, or java_runtimes.zip as diagnostic artifacts; diagnostic persistence is therefore limited to Actions logs and the success-only IPA artifact. No run URL or artifact URL exists for M1.
+
+Known working configuration is preserved as historical user evidence: Minecraft 26.2, Java 25, StikDebug, Universal Script JIT, Always Attached JIT, dyld library-validation bypass and native Metallum. No values/defaults changed. New IPA reproduction of this configuration is unverified; missing local runtimes and unestablished JIT script packaging are concrete gaps. All physical-device JIT/Java/Metal/gameplay and restart tests remain PENDING. Source equality is verified separately from runtime compatibility.
+
+### Results and continuation
+
+Changed files: only `docs/METALLIC_RENEWED_PROGRESS.md` and `docs/METALLIC_RENEWED_TEST_MATRIX.md`. UI spec unchanged. Tests: repository/ref and baseline equality checks PASS; dependency/path inspection completed with missing results; workflow suitability fails M1 constraints; native build, artifact inspection, signature and physical-device tests PENDING. No build fixes attempted. See matrix for individual evidence.
+
+**Next milestone: Unified UIKit design foundation.** Read saved progress first; use the M0 action map without repeating it. Native build verification remains BLOCKED and must not be represented as PASS before subsequent UI work. Obtain the six design references, confirm tokens/material/typography/spacing against existing helpers, and define a small UIKit-only design foundation with preserved controls, storage and lifecycle. Keep baseline build/artifact/device gates open; proceed to implementation only within the user's next milestone instructions.

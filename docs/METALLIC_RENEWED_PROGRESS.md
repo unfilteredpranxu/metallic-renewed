@@ -390,3 +390,8 @@ M5 risks/PENDING: native type/link validation; self-sizing global/empty suppleme
 **Next milestone: Downloads UI customization.** Start with progress, then existing `DownloadViewController` and only its directly relevant UI consumers; reuse stable navigation constants, M2 styles and M3 material settings. Preserve real downloader/install logic, task/error state, AI route, profile storage and all pending native acceptance gates. Do not re-audit M0–M4 or repair the build system without separate authorization.
 
 M5 public-selector review: both the Instances overview and existing Home global header now call `NSCollectionLayoutBoundarySupplementaryItem boundarySupplementaryItemWithLayoutSize:elementKind:alignment:`. The Home change is exactly one factory-selector correction; native SDK/type checking remains BLOCKED.
+
+
+### M5 commit record
+
+Implementation: `cefd07b4bfd60dcb21a0e1d2afaabdc76850e77f` (`feat(ui): polish Instances and native navigation`), parent M4 `59faa8bb812e561b576f7ac755b76890be73738e`. This documentation bookkeeping commit records the implementation SHA; resolve the final checkpoint with `git log -1 --format=%H -- docs/METALLIC_RENEWED_PROGRESS.md`. Publication is restricted to `feat/renewed-uikit-home` using the existing command-scoped Git credential helper and a normal fast-forward push; no saved credentials/configuration. No baseline/main update. M5 PARTIAL, native build BLOCKED, device tests PENDING. Next: Downloads UI customization.

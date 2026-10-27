@@ -1,0 +1,15 @@
+{
+  "name": "Metallic Renewed - source transfer",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "customizations": {
+    "codespaces": {
+      "repositories": {
+        "unfilteredpranxu/metallic-launcher": {
+          "permissions": {
+            "contents": "read"
+          }
+        }
+      }
+    }
+  }
+}

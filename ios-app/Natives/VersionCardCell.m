@@ -59,7 +59,7 @@
         self.contentView.backgroundColor = UIColor.clearColor;
         self.cardContainer = [[UIView alloc] init];
         self.cardContainer.translatesAutoresizingMaskIntoConstraints = NO;
-        self.cardContainer.layer.cornerRadius = 22;
+        self.cardContainer.layer.cornerRadius = 18;
         self.cardContainer.layer.cornerCurve = kCACornerCurveContinuous;
         self.cardContainer.clipsToBounds = YES;
         [self.contentView addSubview:self.cardContainer];
@@ -83,7 +83,7 @@
         self.dateLabel = [[UILabel alloc] init];
         self.dateLabel.font = AmeUIFont(AmeUIFontRoleStatus);
         self.dateLabel.textColor = AmeUITertiaryTextColor();
-        self.dateLabel.numberOfLines = 1;
+        self.dateLabel.numberOfLines = 0;
         for (UILabel *label in @[self.versionLabel, self.typeLabel, self.dateLabel]) label.adjustsFontForContentSizeCategory = YES;
         self.topRowStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.versionLabel, self.typeLabel, self.dateLabel]];
         self.topRowStack.axis = UILayoutConstraintAxisVertical;
@@ -233,7 +233,7 @@
 
 
 - (void)renewedApplyPresentation {
-    NSInteger lines = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory) ? 2 : 1;
+    NSInteger lines = 0; // Self-sizing rows preserve full version/type text at every font size.
     self.versionLabel.numberOfLines = lines;
     self.typeLabel.numberOfLines = lines;
     self.installedBadge.backgroundColor = AmeUIAccentColor();
@@ -243,6 +243,21 @@
     self.cardContainer.layer.borderWidth = AmeUIHairlineWidth(self);
     self.cardContainer.layer.borderColor = AmeUIResolvedColor(AmeUIBorderColor(), self).CGColor;
     self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@, %@", self.versionLabel.text ?: @"", self.typeLabel.text ?: @"", self.dateLabel.text ?: @""];
+}
+
+- (void)setHighlighted:(BOOL)highlighted {
+    [super setHighlighted:highlighted];
+    self.chevronView.tintColor = highlighted ? AmeUIAccentColor() : AmeUISecondaryTextColor();
+    self.cardContainer.layer.borderColor = AmeUIResolvedColor(highlighted ? AmeUIAccentColor() : AmeUIBorderColor(), self).CGColor;
+}
+
+- (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)attributes {
+    UICollectionViewLayoutAttributes *fitted = [attributes copy];
+    if (attributes.size.width <= 0) return fitted;
+    CGSize size = [self.contentView systemLayoutSizeFittingSize:CGSizeMake(attributes.size.width, UILayoutFittingCompressedSize.height)
+        withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    fitted.size = CGSizeMake(attributes.size.width, MAX(88, ceil(size.height)));
+    return fitted;
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {

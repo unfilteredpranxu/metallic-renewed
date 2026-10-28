@@ -214,6 +214,70 @@ jobs:
         PYCODE
         git -C "$SCRATCH" diff --exit-code HEAD --
         printf 'Application SHA: %s\nWorkflow SHA: %s\n' "$SOURCE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/metallic-native-build/staging-summary.txt"
+    - name: Stage verified Terracotta and Khronos headers into disposable scratch only
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import hashlib, json, os, shutil
+        run=Path(os.environ['RUNNER_TEMP'])
+        repo=Path(os.environ['GITHUB_WORKSPACE'])/'original'
+        scratch=Path(os.environ['SCRATCH_DIR'])
+        air=run/'air'
+        diag=run/'metallic-native-build'
+        expected='3f438c8cc07d86cf27d7c0db94cbffb1ef7ce1af65beaf314783d541908d60f9'
+        src=air/'Natives/terracotta/libterracotta.xcframework/ios-arm64/libterracotta.a'
+        dst=scratch/'ios-app/Natives/terracotta/libterracotta.xcframework/ios-arm64/libterracotta.a'
+        assert src.is_file(),f'Pinned Air Terracotta archive missing: {src}'
+        def sha256(p):
+            h=hashlib.sha256()
+            with p.open('rb') as stream:
+                for data in iter(lambda:stream.read(1024*1024),b''):
+                    h.update(data)
+            return h.hexdigest()
+        actual=sha256(src)
+        assert actual==expected,f'Terracotta SHA-256 mismatch: {actual}'
+        for parent in dst.parents:
+            if parent==scratch: break
+            assert not parent.is_symlink() and (not parent.exists() or parent.is_dir()),f'Unsafe Terracotta parent: {parent}'
+        if os.path.lexists(dst):
+            assert dst.is_file() and sha256(dst)==expected,'Refusing to replace existing Terracotta input'
+        else:
+            dst.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copy2(src,dst)
+        assert sha256(dst)==expected
+        # Genuine existing M08 Khronos headers. Repair only the missing LTW include search path.
+        existing=scratch/'ios-app/Natives/external/MobileGlues/MobileGlues-cpp/include'
+        src_header=repo/'ios-app/Natives/external/MobileGlues/MobileGlues-cpp/include/GLES3/gl32.h'
+        assert existing.is_dir() and (existing/'GLES3/gl32.h').is_file(),'Original Khronos GLES3 header not found'
+        assert src_header.is_file() and sha256(src_header)==sha256(existing/'GLES3/gl32.h'),'Source header provenance mismatch'
+        search=scratch/'ios-app/Natives/external/MobileGlues/src/main/cpp/include'
+        if os.path.lexists(search):
+            assert (search/'GLES3/gl32.h').is_file() and sha256(search/'GLES3/gl32.h')==sha256(src_header),'Existing LTW include path is incompatible; refusing overwrite'
+        else:
+            for parent in search.parents:
+                if parent==scratch: break
+                assert not parent.is_symlink() and (not parent.exists() or parent.is_dir()),f'Unsafe LTW parent: {parent}'
+            search.parent.mkdir(parents=True,exist_ok=True)
+            search.symlink_to(os.path.relpath(existing,search.parent),target_is_directory=True)
+        assert sha256(search/'GLES3/gl32.h')==sha256(src_header)
+        info={
+            'source_sha':os.environ['SOURCE_SHA'],
+            'air_sha':os.environ['AIR_SHA'],
+            'terracotta_sha256':actual,
+            'terracotta_archive_bytes':src.stat().st_size,
+            'terracotta_stage':'scratch-only; no replacement',
+            'gles3_gl32_sha256':sha256(src_header),
+            'ltw_include_path':'scratch-only symlink or matching existing directory',
+            'deployment_target':'UNCHANGED (iOS 14 source target; Terracotta contains iOS 18.5 objects)',
+            'older_os_compatibility':'UNVERIFIED; test IPA only',
+        }
+        (diag/'m08-recovered-inputs.json').write_text(json.dumps(info,indent=2)+'\n')
+        print(json.dumps(info,indent=2))
+        PYCODE
+        git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
+        git -C "$SCRATCH_DIR" diff --exit-code HEAD --
     - name: ONE full original make all build of exact M08 in scratch
       shell: bash
       run: |-

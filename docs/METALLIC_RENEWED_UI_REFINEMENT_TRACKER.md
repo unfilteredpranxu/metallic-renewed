@@ -1,5 +1,7 @@
 # Metallic Renewed — UI refinement tracker
 
+Current refinement state: local branch `feat/renewed-ui-polish`; M02 checkpoint `796511a0f191da1124a931d488823f432d3158d7`. M03 source implementation complete as recorded below; native/device acceptance pending. No remote publication.
+
 Single source of truth for this eight-milestone refinement program. Read this first in future refinement sessions; earlier M0–M6 evidence remains in the three existing continuity documents. Do not repeat those audits. Only this document is changed in Milestone 01. No automatic commit, push or PR.
 
 ## Baseline and evidence
@@ -69,7 +71,7 @@ All paths below are relative to `ios-app/Natives/` unless specified. These are s
 | --- | --- | --- |
 | 01 — Baseline protection, UI mapping and progress tracking. | DONE | Read-only baseline/UI binding inspection; only this tracker added; final source/HEAD/whitespace checks recorded below. |
 | 02 — Shared compact navigation and adjacent profile control. | DONE | Source implementation and local checks complete; native/device acceptance PENDING. See Milestone 02 record below. |
-| 03 — Home layout redesign and action preservation. | TODO | Needs exact marked lower-section identities; no destructive layout preference changes. |
+| 03 — Home layout redesign and action preservation. | DONE | Two-card source implementation and local checks complete; native/device acceptance PENDING. User identified the two unwanted sections explicitly. |
 | 04 — Downloads adaptive redesign and white-overlay investigation. | TODO | Diagnose actual white overlay first; protect mixed-file installer bodies. |
 | 05 — Complete Settings presentation redesign and binding preservation. | TODO | Inventory every existing option/control binding before visual grouping; keep all offscreen options. |
 | 06 — Interaction, navigation and settings persistence integrity checks. | TODO | Trace retained callbacks; device persistence checks remain pending until executed. |
@@ -113,3 +115,40 @@ Tracker preservation: `.gitignore:17:/docs` ignores this file. Only this exact t
 Last completed milestone: **02 source implementation**. Exact next milestone: **03 — Home layout redesign and action preservation**, only after explicit authorization and identification of the two marked lower sections. Before visual acceptance, compile these UI changes with the native SDK and test the shared header at narrow/wide widths, context menu/VoiceOver AI access, profile expansion from each tab, account return, safe areas, themes/material settings and rapid navigation. Resolve any header regression before broadening the UI work. Portrait-policy change still requires separate approval. Previous Milestone 01 handoff is historical; this paragraph is the current handoff.
 
 M03 preflight checkpoint review: corrected an accidental comma expression in M02's HomeTopNavView content-size notification condition before committing. The observer list still includes Increase Contrast; only content-size changes refresh the hidden navigation label fonts. Six-file M02 scope retained. Local checkpoint authorized by M03; no remote publication.
+
+
+## Milestone 03 — two-card Home (2026-10-28)
+
+Status: **DONE for source implementation and local checks; native/device/screenshot acceptance PENDING.** No Downloads or later-milestone redesign performed.
+
+Checkpoint safety: verified starting detached HEAD `1ef8f21ffe7faff5e3d1ea42a50087d0bf088ec1`, staged tracker plus exactly six M02 UI files, with no unrelated changes. Created previously absent local branch `feat/renewed-ui-polish` without resetting/stashing/rebasing. Reviewed and saved all M02 work in local commit `796511a0f191da1124a931d488823f432d3158d7`. One notification-condition comma expression corrected before that checkpoint as noted above. No protected baseline or stale local feature pointer moved. Tracker is now tracked in local history, not merely staged. Nothing pushed.
+
+M03 changed only:
+- `ios-app/Natives/LauncherNewsViewController.m`
+- `docs/METALLIC_RENEWED_UI_REFINEMENT_TRACKER.md`
+
+Design/source result:
+- Existing scrolling overview now contains two primary material panels: selected-instance/launch and live status. Centered content has a 1120-point maximum width; ≥820 points of usable content permits a 1.65:1 hero/status row, otherwise the same cards stack. Accessibility text sizes always stack. Cards size to content rather than fixed heights; short viewports scroll normally in the retained collection view. Control row direction derives from actual estimated hero width (480-point threshold), not the entire iPad width.
+- Removed the oversized lower Your Instances/See All preview area and its empty preview block. Direct profile selection remains in Card A's native menu, showing all saved profile identities and the real selected check state. Management/See All capability remains through the existing Instances shortcut callback and shared Instances destination. Empty target still uses the original discovery/manage behavior; redundant management button is hidden when the chooser already offers that same route.
+- Removed construction of the floating lower Execute JAR / Choose Version bar and its obsolete bottom-scroll clearance. Those actions now live inside Card A. Existing bottom-action methods remain untouched, as do hidden legacy launch/action-panel entry points. No new profile/avatar control or Home toolbar added. Original branding/customization header and all saved customizable tiles/features remain reachable; no saved visibility/order/size or layout preferences changed.
+- Reuses existing managed panel materials, semantic colors and role buttons. Smaller card-title hierarchy, closer spacing, minimum 44-point buttons, scalable button fonts and wrapped status text. Border refresh responds to Increase Contrast using the existing observer/cleanup pattern; no material allocation on scroll/layout. Coalesced header sizing invalidation occurs only when displayed account/Java/JIT/download text changes; existing model/status reads and launch gating are unchanged.
+
+Bindings retained:
+- Play: original header action 0 → `norightLaunchTapped` → exactly one canonical launch-button action. Enabled/busy/edit/target/modal gates and debounce body byte-identical to M02.
+- Account: original action 3 → `showAccountManagerModal`; M02 shared avatar/expansion/auth callbacks unchanged.
+- Choose version: original action 1 → `bottomBarChooseVersionTapped` → original right-panel `showVersionPicker` or established notification fallback. Empty-target chooser retains existing action 4 behavior.
+- Execute JAR: Card A action 6 → unchanged `bottomBarExecuteJarTapped` → right-panel `executeJar` / existing fallback. No Java launch logic added.
+- Profile menu: immutable name captured by UIAction → original `onProfile` closure, including edit/existence guard, PLProfiles selectedProfileName setter and existing request-state notification. Menu removes its factory touch-up target and uses only native menu activation; no double dispatch or row-index identity.
+- Manage profiles: action 4 → original version/Instances shortcut path. Downloads/discovery action 2 retains `fix2PushTab` navigation; task-center action 5 unchanged in Card B. Existing cases 0–5 are byte-identical; only case 6 forwarding was appended.
+- All existing lifecycle, account/profile/status observers, hidden right-panel containment, Home reset, shortcuts, customization/drag/resize/save, profile reload/state bridge and orientation implementations remain unchanged. HomeCustomizeViewController and HomeActionPanelView were inspected but not modified in M03.
+
+Executed validation:
+- `git diff --check` PASS. Full changed .m grammar/import/duplicate-method checks PASS with existing Tree-sitter Objective-C parser and parser-only NS_ENUM/__unused normalization; not SDK type checking.
+- Raw method comparison with M02 PASS: all LauncherNews controller methods byte-identical except viewDidLoad (floating-bar removal), renewedOverviewAction (single new forwarding case), renewedRefreshOverview (visibility/text-size invalidation only), applyHomeSafeAreaInsets (bottom clearance removal). Explicit normalized comparison confirms original status/property reads and canonical launch enable gating unchanged. Native launch/account/JAR/version/profile/state/lifecycle/editor methods unchanged.
+- Structural checks PASS: no lower instanceRow/empty preview construction; no BottomActionBarView allocation; one hero launch action, one Execute JAR action, retained task-center action; no duplicate methods. Menu target removed before enabling its native primary-menu behavior; parent callback retains profile validity/edit checks. Existing UI iOS 14 menu API used; no new imports/build registration.
+- Geometry arithmetic PASS at widths 320/375/568/768/852/1024/1366 with normal/accessibility text modes. Sum of wide card widths/gap fits available content; root width bounded by margins and maximum width; no fixed card height. Source/constraint reasoning only, not executing UIKit Auto Layout. Dynamic Type, long translations, short-height scrolling, VoiceOver order/menu, live resizing and actual status-text fitting need device testing.
+- Changed-path boundary PASS: only Home presentation source and tracker differ from M02; shared M02 navigation/profile files and HomeCustomize are byte-identical. No engine/JIT/Java/Metal/install/auth/settings persistence/signing/dependency/build/workflow changes. No network calls, builds or installs.
+
+Known limits: local translation resources remain absent (`Natives/resources` contains encrypted artwork and frameworks, no language bundles). Missing renewed.home.* translations and English-only Execute JAR caption are explicitly deferred to M07 pending verified resource ownership; global `localize` untouched. Native compilation NOT RUN on this Linux worker. Real-device visual fidelity, action activation, launch disabled/busy states, menu/account/AI regression, theme/glass settings and restart behavior PENDING. Portrait-capable constraints do not change landscape-only runtime policy; portrait execution remains blocked separately.
+
+Checkpoint: M03 is committed locally after passing local checks; resolve exact SHA with `git log -1 --format=%H -- ios-app/Natives/LauncherNewsViewController.m`. No push or PR. Last completed milestone: **03 source implementation**. Next: **04 — Downloads adaptive redesign and white-overlay investigation**, only after explicit authorization. Before device acceptance, compile M02/M03 with the native SDK and test Home/header at compact/wide/short viewports, profile menus/management, Execute JAR/version picker, account and canonical launch gating, Dynamic Type/VoiceOver/Reduce Motion, long live status and wallpapers. Carry forward M01/M02 limits and orientation/translation blockers. Do not start M04 automatically.

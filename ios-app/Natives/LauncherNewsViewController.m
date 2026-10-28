@@ -1301,7 +1301,10 @@ static NSString *festivalGreeting(void) {
 @interface AMERenewedHomeHeader : UICollectionReusableView
 @property (nonatomic, strong) UIStackView *rootStack;
 @property (nonatomic, strong) UIStackView *mainRow;
-@property (nonatomic, strong) UIStackView *instanceRow;
+@property (nonatomic, strong) UIStackView *selectionRow;
+@property (nonatomic, strong) UIStackView *utilityRow;
+@property (nonatomic, strong) UIButton *profileMenuButton;
+@property (nonatomic, strong) UIButton *manageButton;
 @property (nonatomic, strong) UIStackView *launchRow;
 @property (nonatomic, strong) UIView *hero;
 @property (nonatomic, strong) UIView *status;
@@ -1317,9 +1320,7 @@ static NSString *festivalGreeting(void) {
 @property (nonatomic, strong) AmePinkGlassButton *playButton;
 @property (nonatomic, strong) AmePinkGlassButton *discoverButton;
 @property (nonatomic, strong) UIButton *chooseButton;
-@property (nonatomic, strong) UILabel *emptyInstances;
 @property (nonatomic, strong) NSLayoutConstraint *heroRatio;
-@property (nonatomic, copy) NSArray<NSString *> *profileNames;
 @property (nonatomic, copy) NSDictionary *profileVersions;
 @property (nonatomic, copy) NSString *selectedName;
 @property (nonatomic, copy) void (^onAction)(NSInteger action);
@@ -1347,6 +1348,8 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.ameRole = primary ? AmeGlassButtonRolePrimary : AmeGlassButtonRoleSecondary;
     [button setTitle:title forState:UIControlStateNormal];
+    button.titleLabel.font = AmeUIFont(AmeUIFontRoleButton);
+    button.titleLabel.adjustsFontForContentSizeCategory = YES;
     button.titleLabel.numberOfLines = 0;
     button.titleLabel.textAlignment = NSTextAlignmentCenter;
     button.contentEdgeInsets = UIEdgeInsetsMake(10, 16, 10, 16);
@@ -1361,7 +1364,7 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     panel.layer.cornerCurve = kCACornerCurveContinuous;
     UIStackView *stack = [[UIStackView alloc] init];
     stack.axis = UILayoutConstraintAxisVertical;
-    stack.spacing = 16;
+    stack.spacing = 14;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [panel addSubview:stack];
     [NSLayoutConstraint activateConstraints:@[
@@ -1381,12 +1384,12 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     icon.tintColor = AmeUISecondaryTextColor();
     icon.isAccessibilityElement = NO;
     [icon.widthAnchor constraintEqualToConstant:22].active = YES;
+    [icon.heightAnchor constraintEqualToConstant:22].active = YES;
     UILabel *heading = AMEHomeLabel(title, AmeUIFontRoleStatus);
     heading.textColor = AmeUISecondaryTextColor();
     UILabel *value = AMEHomeLabel(localize(@"renewed.home.unavailable", @"Not reported"), AmeUIFontRoleDescription);
-    value.numberOfLines = 1;
-    value.adjustsFontSizeToFitWidth = YES;
-    value.minimumScaleFactor = 0.85;
+    // Status is truthful text, including long native error/state captions; never truncate it.
+    value.numberOfLines = 0;
     UIStackView *labels = [[UIStackView alloc] initWithArrangedSubviews:@[heading, value]];
     labels.axis = UILayoutConstraintAxisVertical;
     labels.spacing = 4;
@@ -1401,16 +1404,21 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     self = [super initWithFrame:frame];
     if (!self) return nil;
     self.backgroundColor = UIColor.clearColor;
-    self.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(16, 20, 20, 20);
+    self.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(16, 16, 24, 16);
     self.rootStack = [[UIStackView alloc] init];
     self.rootStack.axis = UILayoutConstraintAxisVertical;
-    self.rootStack.spacing = 24;
+    self.rootStack.spacing = 20;
     self.rootStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:self.rootStack];
     UILayoutGuide *guide = self.layoutMarginsGuide;
+    NSLayoutConstraint *preferredWidth = [self.rootStack.widthAnchor constraintEqualToAnchor:guide.widthAnchor];
+    preferredWidth.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
-        [self.rootStack.leadingAnchor constraintEqualToAnchor:guide.leadingAnchor],
-        [self.rootStack.trailingAnchor constraintEqualToAnchor:guide.trailingAnchor],
+        [self.rootStack.centerXAnchor constraintEqualToAnchor:guide.centerXAnchor],
+        [self.rootStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:guide.leadingAnchor],
+        [self.rootStack.trailingAnchor constraintLessThanOrEqualToAnchor:guide.trailingAnchor],
+        [self.rootStack.widthAnchor constraintLessThanOrEqualToConstant:1120],
+        preferredWidth,
         [self.rootStack.topAnchor constraintEqualToAnchor:guide.topAnchor],
         [self.rootStack.bottomAnchor constraintEqualToAnchor:guide.bottomAnchor]
     ]];
@@ -1438,7 +1446,7 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     selected.axis = UILayoutConstraintAxisHorizontal;
     selected.alignment = UIStackViewAlignmentCenter;
     selected.spacing = 12;
-    self.profileTitle = AMEHomeLabel(@"", AmeUIFontRoleScreenTitle);
+    self.profileTitle = AMEHomeLabel(@"", AmeUIFontRoleCardTitle);
     self.versionText = AMEHomeLabel(@"", AmeUIFontRoleBody);
     self.versionText.textColor = AmeUISecondaryTextColor();
     self.accountText = AMEHomeLabel(@"", AmeUIFontRoleDescription);
@@ -1455,7 +1463,19 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     self.launchRow.axis = UILayoutConstraintAxisVertical;
     self.launchRow.spacing = 12;
     [self.playButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    for (UIView *view in @[selected, self.profileTitle, self.versionText, self.launchRow, self.discoverButton, self.chooseButton]) {
+    self.profileMenuButton = [self action:4 title:localize(@"tab.instances", @"Instances") primary:NO];
+    // This control uses a real menu instead of dispatching a second touch-up action.
+    [self.profileMenuButton removeTarget:self action:@selector(actionTapped:) forControlEvents:UIControlEventTouchUpInside];
+    self.profileMenuButton.showsMenuAsPrimaryAction = YES;
+    self.selectionRow = [[UIStackView alloc] initWithArrangedSubviews:@[self.chooseButton, self.profileMenuButton]];
+    self.selectionRow.axis = UILayoutConstraintAxisVertical;
+    self.selectionRow.spacing = 8;
+    self.manageButton = [self action:4 title:localize(@"renewed.home.manage", @"Manage profiles") primary:NO];
+    UIButton *jar = [self action:6 title:@"Execute JAR" primary:NO];
+    self.utilityRow = [[UIStackView alloc] initWithArrangedSubviews:@[self.manageButton, jar]];
+    self.utilityRow.axis = UILayoutConstraintAxisVertical;
+    self.utilityRow.spacing = 8;
+    for (UIView *view in @[selected, self.profileTitle, self.versionText, self.launchRow, self.discoverButton, self.selectionRow, self.utilityRow]) {
         [hero addArrangedSubview:view];
     }
 
@@ -1473,27 +1493,16 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     self.mainRow = [[UIStackView alloc] initWithArrangedSubviews:@[self.hero, self.status]];
     self.mainRow.axis = UILayoutConstraintAxisVertical;
     self.mainRow.spacing = 20;
-    self.heroRatio = [self.hero.widthAnchor constraintEqualToAnchor:self.status.widthAnchor multiplier:2.4];
+    self.heroRatio = [self.hero.widthAnchor constraintEqualToAnchor:self.status.widthAnchor multiplier:1.65];
     [self.rootStack addArrangedSubview:self.mainRow];
 
-    UILabel *instances = AMEHomeLabel(localize(@"renewed.home.instances", @"Your Instances"), AmeUIFontRoleSectionHeading);
-    UIButton *seeAll = [self action:4 title:localize(@"renewed.home.see_all", @"See All") primary:NO];
-    [instances setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-    UIStackView *section = [[UIStackView alloc] initWithArrangedSubviews:@[instances, seeAll]];
-    section.spacing = 12;
-    section.alignment = UIStackViewAlignmentCenter;
-    [self.rootStack addArrangedSubview:section];
-    self.instanceRow = [[UIStackView alloc] init];
-    self.instanceRow.axis = UILayoutConstraintAxisVertical;
-    self.instanceRow.spacing = 16;
-    [self.rootStack addArrangedSubview:self.instanceRow];
-    self.emptyInstances = AMEHomeLabel(localize(@"renewed.home.empty_instances", @"Your next adventure starts here. Create an instance or install Minecraft from Downloads."), AmeUIFontRoleBody);
-    [self.rootStack addArrangedSubview:self.emptyInstances];
-    [self.rootStack addArrangedSubview:AMEHomeLabel(localize(@"renewed.home.cards", @"Home cards"), AmeUIFontRoleSectionHeading)];
+    // The overview has exactly two primary panels. Saved customizable tiles remain below it.
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appearanceChanged:)
                                                  name:@"BackgroundUIEffectChanged" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(contentSizeChanged:)
                                                  name:UIContentSizeCategoryDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appearanceChanged:)
+                                                 name:UIAccessibilityDarkerSystemColorsStatusDidChangeNotification object:nil];
     [self refreshAppearance];
     return self;
 }
@@ -1502,41 +1511,43 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     if ([self.profileVersions isEqualToDictionary:versions] && [self.selectedName isEqualToString:selected]) return;
     self.profileVersions = [versions copy];
     self.selectedName = [selected copy];
-    NSArray *sorted = [[versions allKeys] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
-    self.profileNames = [sorted subarrayWithRange:NSMakeRange(0, MIN((NSUInteger)3, sorted.count))];
-    for (UIView *view in self.instanceRow.arrangedSubviews) { [self.instanceRow removeArrangedSubview:view]; [view removeFromSuperview]; }
-    for (NSUInteger i = 0; i < self.profileNames.count; i++) {
-        NSString *name = self.profileNames[i];
-        AmePinkGlassButton *button = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
-        button.translatesAutoresizingMaskIntoConstraints = NO;
-        button.ameRole = AmeGlassButtonRoleNavigation;
-        button.selected = [name isEqualToString:selected];
-        button.tag = i;
-        objc_setAssociatedObject(button, "renewedProfileName", name, OBJC_ASSOCIATION_COPY_NONATOMIC);
-        button.titleLabel.numberOfLines = 0;
-        button.titleLabel.textAlignment = NSTextAlignmentCenter;
-        button.contentEdgeInsets = UIEdgeInsetsMake(16, 12, 16, 12);
-        [button setTitle:[NSString stringWithFormat:@"%@%@\nMinecraft %@", button.selected ? @"✓ " : @"", name, [versions[name] length] ? versions[name] : localize(@"renewed.home.not_configured", @"Not configured")] forState:UIControlStateNormal];
-        button.accessibilityLabel = [NSString stringWithFormat:@"%@, Minecraft %@", name, [versions[name] length] ? versions[name] : localize(@"renewed.home.not_configured", @"Not configured")];
-        [button.heightAnchor constraintGreaterThanOrEqualToConstant:100].active = YES;
-        [button addTarget:self action:@selector(profileTapped:) forControlEvents:UIControlEventTouchUpInside];
-        [self.instanceRow addArrangedSubview:button];
+    NSArray<NSString *> *names = [[versions allKeys] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
+    NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
+    __weak typeof(self) weakSelf = self;
+    for (NSString *name in names) {
+        NSString *version = versions[name];
+        NSString *title = version.length ? [NSString stringWithFormat:@"%@ — Minecraft %@", name, version] : name;
+        UIAction *action = [UIAction actionWithTitle:title image:nil identifier:nil handler:^(__kindof UIAction *action) {
+            AMERenewedHomeHeader *header = weakSelf;
+            if (header.onProfile) header.onProfile(name); // Existing identity-based profile selection callback.
+        }];
+        action.state = [name isEqualToString:selected] ? UIMenuElementStateOn : UIMenuElementStateOff;
+        [actions addObject:action];
     }
-    self.emptyInstances.hidden = self.profileNames.count != 0;
-    self.instanceRow.hidden = self.profileNames.count == 0;
+    self.profileMenuButton.menu = [UIMenu menuWithTitle:localize(@"tab.instances", @"Instances") children:actions];
+    self.profileMenuButton.enabled = names.count != 0;
 }
 
 - (void)configureWidth:(CGFloat)width {
     BOOL accessibilityText = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
-    BOOL wide = width >= 820 && !accessibilityText;
-    if (self.mainRow.axis != (wide ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical)) {
+    CGFloat contentWidth = MIN(1120, MAX(0, width - self.layoutMargins.left - self.layoutMargins.right));
+    BOOL wide = contentWidth >= 820 && !accessibilityText;
+    UILayoutConstraintAxis axis = wide ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
+    if (self.mainRow.axis != axis) {
         self.heroRatio.active = NO;
-        self.mainRow.axis = wide ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
+        self.mainRow.axis = axis;
+        self.mainRow.alignment = wide ? UIStackViewAlignmentTop : UIStackViewAlignmentFill;
         self.heroRatio.active = wide;
     }
-    self.launchRow.axis = width >= 520 && !accessibilityText ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
-    self.instanceRow.axis = width >= 700 && !accessibilityText ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
-    self.instanceRow.distribution = width >= 700 && !accessibilityText ? UIStackViewDistributionFillEqually : UIStackViewDistributionFill;
+    CGFloat heroWidth = wide ? (contentWidth - self.mainRow.spacing) * 1.65 / 2.65 : contentWidth;
+    // Use the card's width, not the entire iPad width, when arranging its controls.
+    UILayoutConstraintAxis actionAxis = heroWidth >= 480 && !accessibilityText
+        ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
+    self.launchRow.axis = actionAxis;
+    self.selectionRow.axis = actionAxis;
+    self.utilityRow.axis = actionAxis;
+    self.selectionRow.distribution = actionAxis == UILayoutConstraintAxisHorizontal ? UIStackViewDistributionFillEqually : UIStackViewDistributionFill;
+    self.utilityRow.distribution = self.selectionRow.distribution;
 }
 
 - (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)attributes {
@@ -1560,10 +1571,6 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
 - (void)appearanceChanged:(NSNotification *)note { [self refreshAppearance]; }
 - (void)contentSizeChanged:(NSNotification *)note { if (self.onNeedsSizing) self.onNeedsSizing(); }
 - (void)actionTapped:(UIButton *)button { if (self.onAction) self.onAction(button.tag); }
-- (void)profileTapped:(UIButton *)button {
-    NSString *name = objc_getAssociatedObject(button, "renewedProfileName");
-    if (name.length && self.onProfile) self.onProfile(name);
-}
 - (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; }
 @end
 
@@ -1767,26 +1774,7 @@ self.actionPanel.onLoginTap = ^{
     [self.topbarDownloadBadgeLabel.heightAnchor constraintEqualToConstant:15],
     [self.topbarDownloadBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:15],
 ]];
-BottomActionBarView *bottomBar = [[BottomActionBarView alloc] init];
-bottomBar.translatesAutoresizingMaskIntoConstraints = NO;
-[self.view addSubview:bottomBar];
-self.bottomBar = bottomBar;
-[self.view bringSubviewToFront:bottomBar];
-
-// Same width rule as the start capsule (min(view width - 32, kNoRightCapsuleMaxW), centered),
-// so the two rows line up. This row sits UNDER the start capsule: the capsule is raised by
-// (bar height + gap) in setup below, and this row takes the bottom slot.
-NSLayoutConstraint *preferredBarWidth =
-    [bottomBar.widthAnchor constraintEqualToAnchor:self.view.widthAnchor constant:-32];
-preferredBarWidth.priority = UILayoutPriorityDefaultHigh;
-[NSLayoutConstraint activateConstraints:@[
-    [bottomBar.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-    preferredBarWidth,
-    [bottomBar.widthAnchor constraintLessThanOrEqualToConstant:kNoRightCapsuleMaxW],
-    [bottomBar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8]
-]];
-[bottomBar.executeJarButton addTarget:self action:@selector(bottomBarExecuteJarTapped) forControlEvents:UIControlEventTouchUpInside];
-[bottomBar.chooseVersionButton addTarget:self action:@selector(bottomBarChooseVersionTapped) forControlEvents:UIControlEventTouchUpInside];
+// Execute JAR and version selection now live in the scrolling hero, not a floating lower bar.
 self.actionPanel.launchButton.hidden = YES;
 self.actionPanel.executeJarButton.hidden = YES;
 self.actionPanel.chooseVersionButton.hidden = YES;
@@ -2011,6 +1999,8 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self renewedRefreshOverview]; }); return; }
     AMERenewedHomeHeader *header = self.renewedOverview;
     if (!header) return;
+    NSArray *previousText = @[header.accountText.text ?: @"", header.javaStatus.text ?: @"",
+        header.jitStatus.text ?: @"", header.downloadStatus.text ?: @""];
     NSString *selected = self.renewedProfileSelection ?: @"";
     NSString *version = self.renewedProfileVersions[selected];
     BOOL hasTarget = selected.length > 0 && version.length > 0;
@@ -2047,9 +2037,13 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     header.discoverButton.hidden = hasTarget;
     header.chooseButton.tag = hasTarget ? 1 : 4;
     [header.chooseButton setTitle:hasTarget ? localize(@"renewed.home.choose", @"Choose another instance") : localize(@"renewed.home.manage", @"Manage profiles") forState:UIControlStateNormal];
+    header.manageButton.hidden = !hasTarget; // Empty state already offers the same management route.
     header.playButton.enabled = hasTarget && canonical && canonical.enabled && !self.renewedLaunchDispatchPending && !self.homeEditing;
     header.playButton.ameShowsActivityIndicator = self.renewedLaunchDispatchPending;
     header.userInteractionEnabled = !self.homeEditing;
+    NSArray *currentText = @[header.accountText.text ?: @"", header.javaStatus.text ?: @"",
+        header.jitStatus.text ?: @"", header.downloadStatus.text ?: @""];
+    if (![previousText isEqualToArray:currentText]) [self renewedInvalidateHeader];
     [header showProfiles:self.renewedProfileVersions ?: @{} selected:selected];
 }
 
@@ -2085,6 +2079,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
         case 3: [self showAccountManagerModal]; break;
         case 4: [self handleShortcutAction:kShortcutActionVersions]; break;
         case 5: [self openDownloadCenterModal]; break;
+        case 6: [self bottomBarExecuteJarTapped]; break;
         default: break;
     }
 }
@@ -3844,10 +3839,8 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     UICollectionView *cv = self.collectionView;
     if (cv) {
         // 顶部由 headerView 承担;左右交给 section contentInsets(bentoSectionWithGroup:);底部在此兜底。
-        // ★ [NORIGHT] 底部再补「启动胶囊高 + 呼吸」⇒ 最后一张卡不会被底部启动胶囊压住。
-        // Two stacked rows now: start capsule + Execute Jar / Choose Version row (36 + 8 gap) + breathing room.
-        CGFloat norightBottomRoom = 36.0 + 10.0; // The launch action now scrolls in the overview, no floating launch row.
-        cv.contentInset = UIEdgeInsetsMake(0, 0, sa.bottom + kBentoEdgeV + norightBottomRoom, 0);
+        // Both primary cards and their actions scroll; no floating bottom row needs clearance.
+        cv.contentInset = UIEdgeInsetsMake(0, 0, sa.bottom + kBentoEdgeV, 0);
         cv.verticalScrollIndicatorInsets = UIEdgeInsetsMake(0, 0, sa.bottom, 0);
     }
 

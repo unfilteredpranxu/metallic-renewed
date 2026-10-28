@@ -101,8 +101,51 @@ jobs:
           BEFORE="$RUNNER_TEMP/metallic-native-build/pre-staging-tracked.txt"
           git -C "$SCRATCH" status --porcelain > "$BEFORE"
           test ! -s "$BEFORE" || { cat "$BEFORE"; exit 1; }
-          # Only add paths that do NOT exist already; never overwrite original UIKit, JIT, Java, Metal or binaries.
-          rsync -a --ignore-existing --exclude='.git' --exclude='build' "$RUNNER_TEMP/air/Natives/" "$SCRATCH/ios-app/Natives/"
+          # Stage absent paths only. Unlike rsync --ignore-existing, this never replaces
+          # an existing MobileGlues symlink with an upstream directory, or vice versa.
+          python3 - "$RUNNER_TEMP/air/Natives" "$SCRATCH/ios-app/Natives" <<'PY'
+          import os, shutil, sys
+          src_root, dst_root = sys.argv[1:]
+          staged, kept, skipped_links = 0, 0, 0
+          for root, directories, filenames in os.walk(src_root, followlinks=False):
+              rel = os.path.relpath(root, src_root)
+              dst_dir = dst_root if rel == "." else os.path.join(dst_root, rel)
+              if os.path.islink(dst_dir) or (os.path.lexists(dst_dir) and not os.path.isdir(dst_dir)):
+                  directories[:] = []
+                  skipped_links += 1
+                  continue
+              os.makedirs(dst_dir, exist_ok=True)
+              for directory in list(directories):
+                  if directory in (".git", "build"):
+                      directories.remove(directory)
+                      continue
+                  src_path = os.path.join(root, directory)
+                  dst_path = os.path.join(dst_dir, directory)
+                  if os.path.islink(src_path):
+                      directories.remove(directory)
+                      if not os.path.lexists(dst_path):
+                          os.symlink(os.readlink(src_path), dst_path)
+                          staged += 1
+                      else:
+                          kept += 1
+                  elif os.path.lexists(dst_path) and not os.path.isdir(dst_path):
+                      directories.remove(directory)
+                      kept += 1
+              for filename in filenames:
+                  if filename == ".git":
+                      continue
+                  src_path = os.path.join(root, filename)
+                  dst_path = os.path.join(dst_dir, filename)
+                  if os.path.lexists(dst_path):
+                      kept += 1
+                      continue
+                  if os.path.islink(src_path):
+                      os.symlink(os.readlink(src_path), dst_path)
+                  else:
+                      shutil.copy2(src_path, dst_path)
+                  staged += 1
+          print(f"Staged missing items={staged}; preserved existing={kept}; skipped symlink/file directory conflicts={skipped_links}")
+          PY
           for p in installer/modpack/ModrinthAPI.h input/ControllerInput.m external/ZeroTierFramework/ios-example-app/zt.framework/zt resources/Frameworks/libEGL.framework/libEGL resources/Frameworks/libGLESv2.framework/libGLESv2; do
             test -f "$SCRATCH/ios-app/Natives/$p" || { echo "Missing staged input: $p"; exit 1; }
           done

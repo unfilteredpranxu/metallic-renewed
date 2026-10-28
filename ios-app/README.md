@@ -1,9 +1,11 @@
 <div align="center">
-  <img src="Natives/Assets.xcassets/AppIcon-Light.appiconset/1024x1024.png" alt="Air Icon" width="120" style="border-radius: 24px;">
+  <img src="Natives/Assets.xcassets/AppIcon-Light.appiconset/1024x1024.png" alt="Metallic Icon" width="120" style="border-radius: 24px;">
 </div>
 
-<h1 align="center">Air</h1>
-<p align="center"><sub>Amethyst iOS Remastered</sub></p>
+<h1 align="center">Metallic</h1>
+<p align="center"><sub>Metallic Launcher</sub></p>
+
+> Metallic retains the Amethyst/Air and PojavLauncher foundation. The inherited upstream documentation, badges and links below describe those source projects, not a verified Metallic release. Contributor credits and third-party licenses remain applicable. Current status: [UI refinement tracker](../docs/METALLIC_RENEWED_UI_REFINEMENT_TRACKER.md).
 
 <div align="center">
   <img alt="Build Status" src="https://github.com/herbrine8403/Amethyst-iOS-MyRemastered/actions/workflows/development.yml/badge.svg?branch=main">
@@ -18,7 +20,7 @@
 </p>
 
 > [!IMPORTANT]
-> **This is the one and only official Air repository:** [herbrine8403/Amethyst-iOS-MyRemastered](https://github.com/herbrine8403/Amethyst-iOS-MyRemastered).
+> **Original upstream Air repository:** [herbrine8403/Amethyst-iOS-MyRemastered](https://github.com/herbrine8403/Amethyst-iOS-MyRemastered).
 > Beware of unofficial forks or mirror repositories using the "Air" name — always verify that the repository owner is [@herbrine8403](https://github.com/herbrine8403) and that the URL matches the link above.
 
 ---

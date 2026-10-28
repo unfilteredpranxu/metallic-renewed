@@ -25,6 +25,7 @@
 //  ★ 外观(玻璃/圆角/版式)一个字节都不自绘,也不设 UITabBarAppearance —— 全部
 //    交给系统,与 LiveContainer 底栏同一思路。本文件仅保留"未选中项 tint"能力。
 // ===========================================================================
+#import "ios_uikit_bridge.h" // Existing launch/game orientation lock query only.
 #import "LauncherMenuViewController.h"
 #import "LauncherPreferencesViewController.h"
 #import "LauncherPreferences.h"
@@ -386,10 +387,14 @@
 
 /// ★ [PORTRAIT] 放开方向:原来写死 Landscape ⇒ 竖屏根本进不去。
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        return UIInterfaceOrientationMaskLandscape;   // landscape only
+    if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
     }
-    return UIInterfaceOrientationMaskLandscape;   // landscape only
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 #pragma mark - ★ [SWIFT-BAR] 标签图标自愈

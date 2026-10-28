@@ -5897,10 +5897,14 @@ static NSString *PLSha1FromPrimaryFile(NSDictionary *primaryFile) {
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    // ★ [PORTRAIT-UNLOCK] 放开竖屏:原来是写死 Landscape ⇒ iPhone 上竖屏进不来
-    //   (主页是该 VC,它锁横屏 ⇒ 整个 App 被钉在横屏)。游戏页仍单独锁横屏。
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskLandscape; }   // landscape only
-    return UIInterfaceOrientationMaskLandscape;   // landscape only
+    if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
+    }
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 #pragma mark - Helper Methods

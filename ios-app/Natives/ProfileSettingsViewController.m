@@ -2797,14 +2797,14 @@ static NSString * localizeProfileTitle(NSString *title) {
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    // ★ [PAGE-ADAPT] 与全 App 一致放开竖屏(同 LauncherRootViewController / LauncherCardLayout /
-    //   VersionManager 的 [PORTRAIT] 口径)。本页 layoutDualTableViews 本就写了「竖屏单列 /
-    //   横屏双列」两套布局 ⇒ 竖屏是设计内形态;原先写死 Landscape 会让本页以模态/根形式出现时
-    //   把 App 钉在横屏(与已修的同族页面同型)。
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        return UIInterfaceOrientationMaskLandscape;   // landscape only
+    if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
     }
-    return UIInterfaceOrientationMaskLandscape;   // landscape only
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 - (void)handleBackgroundUIEffectChanged:(NSNotification *)notification {

@@ -1436,15 +1436,14 @@ static const void *kE1InstanceNameKey = &kE1InstanceNameKey;
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    // ★ [GAME-LANDSCAPE] 启动中本页仍是根内容 ⇒ 跟着锁横屏（与 LauncherRootViewController 同一处理）。
     if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
-    // ★ [PORTRAIT] 放开竖屏:原来是写死 Landscape ⇒ 竖屏进不去。
-    // 竖屏排布由 LauncherCardLayoutViewController 切换(三卡竖摞 + 菜单横排);
-    // 游戏(SurfaceViewController)单独锁横屏,保证游戏内不会竖过来。
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        return UIInterfaceOrientationMaskLandscape;   // landscape only
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
     }
-    return UIInterfaceOrientationMaskLandscape;   // landscape only
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 #pragma mark - UINavigationControllerDelegate

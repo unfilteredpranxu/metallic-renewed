@@ -37,7 +37,10 @@ extern UIWindow *mainWindow;
             Class prefsCls = NSClassFromString(@"UIWindowSceneGeometryPreferencesIOS");   // ★ 运行期类查找
             if (prefsCls != Nil) {
                 UIWindowSceneGeometryPreferencesIOS *geometryPreferences = [[prefsCls alloc] init];
-                geometryPreferences.interfaceOrientations = UIInterfaceOrientationMaskLandscape;   // landscape only
+                geometryPreferences.interfaceOrientations = AmeGameLandscapeLockActive()
+                    ? UIInterfaceOrientationMaskLandscape
+                    : (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+                        ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown);
                 [windowScene requestGeometryUpdateWithPreferences:geometryPreferences errorHandler:^(NSError *error) {
                     NSLog(@"[SceneDelegate] Failed to update geometry: %@", error);
                 }];
@@ -300,9 +303,15 @@ extern UIWindow *mainWindow;
 //   所以它本身不会产生 unrecognized selector。若后续要真正控制窗口场景方向，请用 iOS16+
 //   requestGeometryUpdateWithPreferences:（已按 [API-GUARD] 做存在性守门）+ 根 VC mask。
 - (UIInterfaceOrientationMask)scene:(UIScene *)scene supportedInterfaceOrientationsForWindowScene:(UIWindowScene *)windowScene API_AVAILABLE(ios(16.0)) {
-    // ★ [GAME-LANDSCAPE] 启动中/游戏中收窄为仅横屏（与根 VC 层一致；未锁时与改动前逐字一致）
+    // Legacy fallback only; the actual UIKit hooks above use the same existing game lock.
     if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
-    return UIInterfaceOrientationMaskLandscape;   // landscape only   // ★ [PORTRAIT] 窗口层放开
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
+    }
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 @end

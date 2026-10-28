@@ -1,3 +1,4 @@
+#import "ios_uikit_bridge.h" // Existing launch/game orientation lock query only.
 #import "VersionManagerViewController.h"
 // ★ [GLASS-LIQUID] 材质统一走风格层(AmeGlassEffect):iOS≥26 ⇒ 系统 UIGlassEffect
 #import "UIKit+GlassSurface.h"
@@ -1646,10 +1647,14 @@ static NSString * const VMOverviewKind = @"VMInstancesOverview";
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    if ([ScreenUtils isPad]) {
-        return UIInterfaceOrientationMaskLandscape;   // landscape only
+    if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
     }
-    return UIInterfaceOrientationMaskLandscape;   // landscape only
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 @end

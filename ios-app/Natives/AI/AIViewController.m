@@ -512,7 +512,7 @@ static const NSTimeInterval kUIThrottleInterval = 0.2;
         self.emptyStateView.hidden = NO;
         self.emptyIcon.image = [UIImage systemImageNamed:@"sparkles" withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:56 weight:UIImageSymbolWeightRegular]];
         self.emptyTitle.text = @"Say hello to the AI assistant";
-        self.emptySubtitle.text = @"Ask Air about the launcher or Minecraft";
+        self.emptySubtitle.text = @"Ask Metallic about the launcher or Minecraft";
         self.configureButton.hidden = YES;
     } else {
         self.emptyStateView.hidden = YES;

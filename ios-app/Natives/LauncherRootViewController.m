@@ -1229,10 +1229,13 @@ ptTopBarHeight = [self.sidebarContainer.heightAnchor constraintEqualToConstant:9
         return UIInterfaceOrientationMaskLandscape;
     }
 
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        return UIInterfaceOrientationMaskLandscape;   // landscape only
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
     }
-    return UIInterfaceOrientationMaskLandscape;   // landscape only
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 #pragma mark - UINavigationControllerDelegate

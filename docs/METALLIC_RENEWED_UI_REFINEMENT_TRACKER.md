@@ -1,6 +1,6 @@
 # Metallic Renewed — UI refinement tracker
 
-Current refinement state: `feat/renewed-ui-polish`; M02–M06 local history retained. M07 presentation fixes and source validation saved below; overall **PARTIAL / BLOCKED** on missing complete localization catalogs, separately authorized portrait policy, native compilation and device acceptance. Starting M07 HEAD: `e301b8e8f9a6fbd48e5a889b4e7ef2c29245884f`. No remote publication. Historical milestone records below remain evidence for their checkpoints, not current runtime acceptance.
+Current refinement state: `feat/renewed-ui-polish`; M02–M07 history retained. M08 authorized branding and launcher-only orientation source work is recorded below; overall **BLOCKED / PARTIAL**, not release-ready. Remaining gates: complete authoritative localization catalogs; inherited copy inside protected/default-value implementations and restricted plist metadata; iOS14/15 portrait compatibility; native compilation, correct-source build workflow and physical tests. Starting M08 HEAD: `110a4e0b6200e60a4b029d2f0df86b6fd17e2b58`. All checkpoints remain local; no push/build/release.
 
 Single source of truth for this eight-milestone refinement program. Read this first in future refinement sessions; earlier M0–M6 evidence remains in the three existing continuity documents. Do not repeat those audits. Only this document is changed in Milestone 01. No automatic commit, push or PR.
 
@@ -76,7 +76,7 @@ All paths below are relative to `ios-app/Natives/` unless specified. These are s
 | 05 — Complete Settings presentation redesign and binding preservation. | DONE | Opt-in grouped Settings source/local checks complete; all 90 active options + existing disabled source retained. Native/device acceptance PENDING. |
 | 06 — Interaction, navigation and settings persistence integrity checks. | BLOCKED | Source audit/corrections saved; profile containment addressed in M07 source. Overall PARTIAL pending native/device evidence and portrait release gate. |
 | 07 — Localization, Liquid Glass refinement and responsive layout validation. | BLOCKED | PARTIAL: profile scrolling/material/accessibility refinements implemented; static checks pass. Complete localization catalogs absent, portrait policy unchanged, native/device validation pending. |
-| 08 — Final source audit, native build verification and real-device regression testing. | TODO | Separate approved build task/toolchain prerequisites and physical test evidence required. No build authorization inferred from this roadmap. |
+| 08 — Final source audit, native build verification and real-device regression testing. | BLOCKED | Authorized product-copy and guarded launcher-policy changes implemented; static checks pass. Branding/catalog gaps, older-OS portrait, publication/workflow approval and native/device evidence still required. |
 
 ## Milestone 01 validation and exact continuation
 
@@ -353,3 +353,107 @@ Required iPhone/iPad tests after that separate source checkpoint: cold/warm laun
 Native compilation **NOT RUN** (Linux, xcodebuild unavailable); no native-input recovery/build/workflow attempt. Physical layout, themes/wallpapers/blur/opacity, Increase Contrast / Reduce Transparency / Reduce Motion, VoiceOver traversal and changed touch areas **PENDING**. Test repeated/interrupted profile expand/collapse, scrolling all metadata/actions, download badge scrolling, Tools via touch/long-press/VoiceOver, account return from every tab, short/resizable views and large text. Existing M06 all90 settings restart/value, downloads and game/JIT/Java25/Metallum acceptance remains pending; historical A16 iPadOS27.2 main-menu evidence is not verification of this checkpoint.
 
 Checkpoint: focused local M07 commit includes only the four authorized UI source paths and this tracker after passing available static checks; find exact SHA with `git log -1 --format=%H -- ios-app/Natives/HomeActionPanelView.m`. No amend/push/PR; local history is not remote backup. Last fully source-complete implementation milestone remains M05; M06 audit and M07 presentation fixes are preserved with their remaining acceptance gates. Next: resolve the complete localization-input blocker and obtain separate orientation-policy authorization; do not claim M07 complete. **M08 is not started.** Before a separately authorized final build, approve publication of local checkpoints to isolated `feat/renewed-ui-polish`; then verify native prerequisites and build exact published source without overwriting UI/engine inputs. Never merge main or modify protected baseline.
+
+
+## Milestone 08 — Metallic identity and controlled launcher geometry (2026-10-28)
+
+**Release readiness: BLOCKED. M08 source work PARTIAL, not a finished or device-validated product.** Verified clean start at `110a4e0b6200e60a4b029d2f0df86b6fd17e2b58` on `feat/renewed-ui-polish`; M02–M07 ancestry intact. The M08 instruction explicitly authorizes a narrow launcher-only orientation policy change; this supersedes the earlier policy-edit prohibition for this scope only. No Surface/bridge/runtime change is authorized or performed.
+
+### Actual changes / source review
+
+Product copy only:
+- `ios-app/Natives/LauncherPreferencesViewController.m`: missing-metadata app-name fallback Air→Metallic; first-party information footer Amethyst iOS Remastered→Metallic Launcher. All original version/OS/model/installation/PID values and footer wrapping retained. No setting definitions/defaults/bindings changed.
+- `ios-app/Natives/AI/AIViewController.m`, `AI/AIInputBarView.m`, `AI/AISystemPromptEditorViewController.m`: exact empty-state, input placeholder and explanatory-label substitutions from Air to Metallic. Messages, models, requests, stored/system prompt, Send/Stop and every callback unchanged.
+- `README.md`, `ios-app/README.md`, `ios-app/README_CN.md`: current product headings/identity and explicit context that inherited upstream instructions/badges/links are provenance, not a verified Metallic release. No generated logo; existing artwork unchanged. Contributor/dependency/license sections and external URLs preserved byte-for-byte. No invented language translations; Chinese body left intact.
+
+Orientation-only implementation owners (remaining changed source paths):
+- `ios-app/Natives/Info.plist`: add Portrait to phone and iPad arrays, plus PortraitUpsideDown for iPad. Parsed old/new dictionaries are identical after removing **only those two orientation arrays**. CFBundleDisplayName and CFBundleName already Metallic; identifier `com.tokyxkai.metallic`, executable AngelAuraAmethyst, privacy metadata, signing-related values and `UIRequiresFullScreen=true` unchanged.
+- `ios-app/Natives/AppDelegate.m`, `AmeRootTabController.m`, `LauncherRootViewController.m`: broaden only unlocked launcher masks on iOS16+; existing game-lock branches retained. LauncherRoot's additional game-class/navigation-stack detection remains exact. Existing shouldAutorotate methods unchanged.
+- `ios-app/Natives/SceneDelegate.m`: existing iOS16 initial geometry request uses the permitted launcher mask when unlocked and landscape when locked; all availability/selector/class guards preserved. Existing non-UIKit legacy scene-mask method made consistent; it is not treated as an effective delegate hook.
+- `ios-app/Natives/LauncherNewsViewController.m`, `DownloadViewController.m`, `VersionManagerViewController.m`, `HomeCustomizeViewController.m`, `ProfileSettingsViewController.m`, `LauncherMenuViewController.m`, `LauncherSplitViewController.m`, `LauncherCardLayoutViewController.m`: **only** supportedInterfaceOrientations changed, plus existing bridge-header imports where needed. Add/preserve the read-only lock query and guarded launcher fallback so child/modal/legacy launcher containers do not reimpose the old restriction. No launch/game/profile/settings implementation changed. Existing bridge header resolves; the original native recipe's `-fcommon` remains unchanged (the header contains a pre-existing tentative global definition).
+- This tracker is the final changed file. No other source/configuration/dependency/workflow path changed.
+
+No speculative restyling: approved shared navigation, two-card Home, Downloads presentation, Settings groups, profile scrolling, semantic materials and M07 accessibility implementations remain intact. No new UI architecture, package registration, continuous animation or material allocation path.
+
+### Orientation safety evidence and exact limitations
+
+Read-only trace: original `LauncherRightPanelViewController` calls `AmeGameLandscapeLockEnter()` after account/profile/version validation and before real launch/download work; its error/cancel exits are retained. Original `ios_uikit_bridge` applies the landscape mask on Enter; iOS16+ uses existing guarded requestGeometryUpdateWithPreferences and root-mask invalidation. `SurfaceViewController` independently returns landscape and retains its game-lock lifecycle. These files are byte-identical to1ef8; they are not rewritten to enable launcher portrait.
+
+Implemented source policy truth table:
+
+| Platform/state | Launcher mask | Evidence/limit |
+| --- | --- | --- |
+| iOS16+ phone, unlocked | Portrait + both landscapes | AllButUpsideDown; manifest intersection aligned |
+| iOS16+ iPad, unlocked | All four orientations | All; manifest includes both portraits and landscapes |
+| Launch/game lock active, any supported OS | Landscape | Original root/window guards plus read-only page guards |
+| iOS14/15, unlocked | Original landscape-only | Explicit availability fallback; safe automatic game transition from portrait cannot be established with existing legacy bridge |
+
+**No claim of native portrait success.** Older bridge uses attemptRotationToDeviceOrientation and cannot force landscape from a physically portrait device reliably; AmeRoot's existing locked shouldAutorotate returns NO. Broadening older-OS masks without changing that transition would risk gameplay. Thus iOS14/15 portrait remains a release blocker requiring a separately controlled compatibility solution/authorization and physical evidence. Surface/game/bridge changes are forbidden in this checkpoint.
+
+The original bridge's LockExit still explicitly requests landscape, even though launcher masks may permit portrait afterward on iOS16+. Return may therefore initially be landscape; automatic portrait restoration was **not** implemented. Verify rotation after return/failure/cancel on devices. Full-screen requirement still protects the documented renderer/window-resize failure, so iPad multitasking/resizable support is **not enabled or claimed**. Shared header safe widths below298/308 and very short safe heights retain M07's documented physical limits.
+
+### Branding audit: corrected vs deliberately retained / blocked
+
+Metallic display name and product info are source-correct. Full packaged branding **not verified**: recovered InfoPlist.strings/LaunchScreen/localization tables are absent locally.
+
+Remaining incorrect first-party copy that cannot be changed under the current boundaries:
+- `Info.plist` NSLocalNetworkUsageDescription and NSMicrophoneUsageDescription still start with Air. M08's strict plist allowance permits orientation declarations (display name already correct), so those two other metadata values were not edited. Small proposed separate copy-only correction: replace the initial `Air uses` with `Metallic uses`, retaining every permission explanation and all technical service names.
+- `JavaLauncher.m` legacy-script dialogs at1386/1392 and3042/3047 identify the app as Amethyst. These are inside protected JIT/launch implementations; left exact. An independently approved dialog-copy-only extraction/change would need explicit permission. Actual script filenames such as Amethyst-MeloNX.js must remain accurate.
+- `AI/AiSettings.m` default system prompt still identifies Air/Amethyst. Changing it would change a protected setting default/assistant behavior. Only surrounding UI labels were rebranded; stored/user prompts and their semantics were not altered.
+- `ModpackExportViewController.m` / `ModpackExportService.m` retain original author defaults/exported notes/metadata. Changing defaults or generated game-data content is outside visual-only scope. The technical AMETHYST_INFO.txt archive path must not be renamed.
+
+Retained **correct technical/heritage identity**, not mistaken product captions: Objective-C classes/selectors, executable/framework/library names, Java packages, preference/data paths, `POJAV_*`/`AMETHYST_*` variables, URL schemes/identifiers, original network User-Agent values/endpoints/update/support URLs, logs and original attribution/licenses. No blind replacement. Project URLs may lead to upstream; their endpoint behavior was not changed to market Metallic.
+
+### Localization status
+
+No complete authoritative language catalogs exist at the local resource paths; targeted `git log --all -- Natives/resources/en.lproj` (using the full `ios-app/` path) found no recovery history. M07's44-key inventory remains unchanged and unresolved at resource level. `localize` and language selection are byte-identical; no partial English table or guessed foreign-language strings added. Existing Versions-only UI fallback still preserves valid translations. New branding substitutions use existing English UI literals; their locale coverage remains pending with the absent catalogs.
+
+Restore complete, provenance-checked catalogs from pinned Air `c4797387ca9a81f31fdcdd2723ec1050ca35fdb3` / verified original build inputs before additive translation work. Do not insert a fragment file that shadows the missing-path recovery of the full catalog. No network/source fetch or unsafe recovery attempted during M08. Raw-key-free UI cannot be certified until full resource coverage and a packaged-device test pass.
+
+### Final static and functional verification actually performed
+
+- `git diff --check` PASS; Objective-C grammar, duplicate-method and new local-import checks across23 cumulative refinement .m/.h files PASS. Parser-only enum/nullability/availability/#if0 normalization; no native SDK or stub compilation. Temporary `/tmp/refinement_m08_audit.py`, `/tmp/refinement_m08_results.txt`, `/tmp/refinement_m08_inventory.json` record repeatable local evidence.
+- Source-action comparisons PASS. Five shared navigation destinations/order/design and mappings (Home0, Instances3, Downloads1, Appearance existing sheet, Settings4) unchanged. Tools/AI2 menu/long-press/VoiceOver and profile/account callbacks unchanged. Shared nav/profile source byte-identical to M07. Existing lifecycle, containment, instant transitions, reset/back/Done and header reservation untouched.
+- **ALL Home methods except orientation** byte-identical to M07: canonical disabled/busy/valid-target/edit/modal/pending gates, single coordinator dispatch, version chooser/JAR/tasks/account/customization/status and observers retained.
+- **175 Downloads methods except orientation frozen** against M07: seven categories0 Versions/1 Mods/2 Shaders/3 Resource Packs/4 Data Packs/5 Modpacks/6 Worlds; search/filter/sort/provider handlers, explicit/snapshotted target profile, import, loading/errors/pagination, installer/JIT/download bodies, task/KVO and reuse unchanged. Task center/version cell source unchanged.
+- Settings rederived independently against1ef8: seven sections and90 active options =43 Switch,16 PickField,5 ChildPane,14 Button,10 Slider,2 TextField; one original inactive #if0 option retained. Complete definition/setup prefix, identifiers/defaults/ranges/availability/get-set/action blocks and original persistence paths unchanged. PLPref factories/storage/accessibility implementation byte-identical to M07; ProfileSettings only its orientation method changed.
+- Scoped old/new raw-method allowlist PASS for all M08 files. Only declared UI-copy/mask methods changed; target/action and gesture mappings equal. Parsed plist comparison PASS (orientation arrays only). Original game-lock implementation, JavaLauncher, Surface, launch coordinator, utils/resolver, stores, AI defaults and exporter files byte-identical to baseline. Cumulative path boundary vs1ef8 PASS: approved refinement UI, explicitly authorized orientation declarations/UI policies, and product docs/tracker only. No engine/JIT/Java/render/install/auth/settings semantics/signing/dependency/CI/build changes.
+- Unchanged geometry feasibility rechecked at available widths320/375/430/768/1024; M07 short-height216/240/300/400/768 arithmetic retained. These checks are not native constraints solving, rendered screenshots, hit testing or proof of all-device compatibility. Dynamic Type/VoiceOver/contrast/motion/scrolling still need actual native/device execution.
+
+### Native build gate and non-destructive publication plan
+
+Native compilation **NOT RUN**: Linux, no xcodebuild. **M08 IPA: NONE produced.** Signing state / payload / Java25 / JIT / Metallum runtime: not revalidated by this source task. Historical working A16 iPadOS27.2 main-menu evidence does not validate these UI/orientation changes. No workflow or remote run was accessed/edited/dispatched; no API calls, dependency installs or unapproved build attempt.
+
+Local workflow source-selection evidence:
+- `.github/workflows/renewed-pinned-test-ipa.yml` triggers only on the old feat/renewed-uikit-home workflow-path push, job guard requires that ref, SOURCE_SHA and checkout ref both pin `df86eb029223d557d4396a909f576bddba202d4d`. This pin contains earlier compiler corrections but not M02–M08. Existing pinned inputs remain Air c4797387ca9a81f31fdcdd2723ec1050ca35fdb3 / ZeroTier b8e672f54286be8500bc875e153826af7b01d6e6. Publishing polish alone will **not** make this workflow validate M08.
+- `renewed-ui-sdk-typecheck.yml` / `verified-inputs-stage.yml` similarly reference older source32e3d8b. They are diagnostics, not proof of a final IPA.
+- `.github/workflows/build.yml` is manually dispatchable but fetches unpinned upstream and contains source-editing sed steps. It is not an approved unchanged-source final route; do not use it as a shortcut.
+
+**Approval gates before any remote action:** (1) approve non-force publication to isolated `feat/renewed-ui-polish`; first read/fetch the remote branch when permitted and require absent branch or fast-forward ancestry, stopping if divergent; then `git push origin HEAD:refs/heads/feat/renewed-ui-polish`. Never target main/baseline or overwrite a remote ref. (2) separately approve the smallest CI-only source/ref/trigger selection correction to the existing pinned recipe, tied to the exact final checkpoint; no application patches or changed dependency revisions. No workflow correction is included here. (3) inspect available existing runs and verify mandatory native/JRE/JIT/framework/renderer/signing inputs before authorizing one actual macOS full build. Upload full IPA/logs only if a genuine build produces them, inspect archive/binaries/resources/signing/checksums, then test devices. A successful package is not proof of installability or gameplay.
+
+### Practical native/device acceptance matrix
+
+Every row below is **NOT TESTED** for M08; none is a device PASS. Use disposable profiles/tasks where destructive actions are involved; preserve real accounts/worlds.
+
+| Configuration / path | Required acceptance | Result |
+| --- | --- | --- |
+| Actual Xcode/iPhoneOS SDK, exact published source | Compile/link all UIKit and existing full app, retain complete runtimes/engine/resources, inspect IPA/signing | NOT TESTED |
+| Compact iPhone, portrait + landscape, iOS16+ | Same44-point five-icon/profile header; all content/keyboard/short-height actions reachable | NOT TESTED |
+| Large iPhone, portrait + landscape | Safe areas, native menu/popover anchoring, live rotation, text/scrolling | NOT TESTED |
+| iPad portrait + both landscapes | Header/profile fit, two-card Home, Downloads/sidebar, restrained Settings widths | NOT TESTED |
+| iPad narrow/resizable where platform/app permits | Actual eligibility first; existing full-screen safeguard retained, do not assume multitasking support | NOT TESTED |
+| iOS14/15 devices | Preserve original landscape UI/launch; portrait requirement BLOCKED, no unsafe enablement claimed | NOT TESTED |
+| Navigation/profile/Tools/accounts | Five destinations, selected states, touch/context-menu/VoiceOver AI, expand/scroll/collapse/account return, no overlap | NOT TESTED |
+| Home/actions/customization | Disabled/busy Play gate and one dispatch; account/profile/version/JAR/task routes; drag/resize/save retained | NOT TESTED |
+| Downloads | All categories/search/filters/providers, explicit target after global profile change, import/install, real progress/pause/cancel/retry/errors | NOT TESTED |
+| Settings | Every90 option/availability/default/current value/child/reset/back/Done, persistence across restart | NOT TESTED |
+| Localization/branding | All44 renewed keys, selected languages, permission/legacy dialogs/About/InfoPlist/launch resources and credits | NOT TESTED |
+| Accessibility/appearance | VoiceOver focus and actions, AX text, Reduce Motion/Transparency, Increase Contrast, themes/wallpapers/blur/opacity | NOT TESTED |
+| Orientation transitions | Cold/foreground; sheets/keyboards/nested pages; portrait→launch/JIT/loading→landscape game; fail/cancel/exit→launcher rotation | NOT TESTED |
+| Minecraft regression on A16 iPadOS27.2 | Real signing/install, JIT, Java25, Minecraft26.2, Metallum rendering, controls/audio/gameplay; no missing libraries | NOT TESTED |
+
+### Checkpoint / release decision
+
+Final M08 source checkpoint is the focused local commit containing this record; resolve its exact SHA with `git log -1 --format=%H -- ios-app/Natives/AppDelegate.m` (self-containing records cannot embed their own Git hash). The final response reports the exact generated SHA. All M02–M07 checkpoints preserved; no amend/reset/rebase/push/PR/release. No claim of remote backup.
+
+**RELEASE READINESS: BLOCKED.** Product-copy fixes and iOS16+ guarded launcher-policy implementation are saved, but complete branding/resource coverage, iOS14/15 portrait support, automatic portrait return, correctly targeted native build/IPA validation and physical tests remain unresolved. Next required action: review this concrete source checkpoint and approve only the intended publication/CI-selector steps; supply/verify complete localization inputs and authorize any remaining copy exceptions separately. Do not call Metallic finished, release publicly, remove safeguards or broaden protected runtime scope to make a build pass.

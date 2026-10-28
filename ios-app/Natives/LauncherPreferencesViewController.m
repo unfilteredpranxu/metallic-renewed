@@ -1515,13 +1515,13 @@
 #pragma mark - Hero Header（顶部 App 信息卡片）
 
 - (NSString *)appName {
-    // 优先使用 CFBundleDisplayName（用户可见名称），其次 CFBundleName，兜底 "Air"
+    // Preserve the visible product name, with the Metallic fallback if metadata is absent.
     NSDictionary *info = NSBundle.mainBundle.infoDictionary;
     NSString *name = info[@"CFBundleDisplayName"];
     if (name.length == 0) {
         name = info[@"CFBundleName"];
     }
-    return name.length ? name : @"Air";
+    return name.length ? name : @"Metallic";
 }
 
 - (void)setupHeroHeader {
@@ -1944,7 +1944,7 @@
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     if (section == 0) { // Add to general section
-        NSString *versionString = [NSString stringWithFormat:@"Amethyst iOS Remastered %@\n%@ on %@ (%s)\nPID: %d",
+        NSString *versionString = [NSString stringWithFormat:@"Metallic Launcher %@\n%@ on %@ (%s)\nPID: %d",
             NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"],
             UIDevice.currentDevice.completeOSVersion, [HostManager GetModelName], getenv("POJAV_DETECTEDINST"), getpid()];
         

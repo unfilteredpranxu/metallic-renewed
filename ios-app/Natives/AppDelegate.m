@@ -64,12 +64,16 @@ extern dispatch_group_t fatalExitGroup;
 #pragma mark - Orientation Support
 
 - (UIInterfaceOrientationMask)application:(UIApplication *)application supportedInterfaceOrientationsForWindow:(UIWindow *)window {
-    // ★ [GAME-LANDSCAPE] Also restrict this layer to landscape during launch/in-game (intersection with
-    //   the root VC layer provides a second safeguard; when not locked, the returned value is byte-for-byte
-    //   identical to the pre-change value).
+    // The existing lock restricts the app/window policy throughout launch and gameplay.
+    // Only the unlocked launcher fallback is broadened here.
     if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
-    // Force landscape only
-    return UIInterfaceOrientationMaskLandscape;   // landscape only   // ★ [PORTRAIT] Allow all orientations at the window level (the game page locks landscape separately).
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
+    }
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 @end

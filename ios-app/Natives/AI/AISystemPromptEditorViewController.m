@@ -81,7 +81,7 @@
     // Help text
     UILabel *hintLabel = [[UILabel alloc] init];
     hintLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    hintLabel.text = @"This is prepended to every conversation to define how the Air assistant should behave.";
+    hintLabel.text = @"This is prepended to every conversation to define how the Metallic assistant should behave.";
     hintLabel.font = [UIFont systemFontOfSize:12];
     hintLabel.textColor = [UIColor secondaryLabelColor];
     hintLabel.numberOfLines = 0;

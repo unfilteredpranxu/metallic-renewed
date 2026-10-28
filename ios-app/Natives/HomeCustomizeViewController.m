@@ -1,3 +1,4 @@
+#import "ios_uikit_bridge.h" // Existing launch/game orientation lock query only.
 #import "utils.h"
 #import "HomeCustomizeViewController.h"
 #import "LauncherNewsViewController.h"
@@ -602,11 +603,14 @@ static NSInteger AmeSegmentIndexForTileSize(HomeTileSize size) {
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    // ★ [PORTRAIT-UNLOCK] Allow portrait: this was hard-coded to Landscape, preventing access in
-    //   portrait on iPhone (Home is this VC, so it locked the entire app to landscape). The game page
-    //   still locks itself to landscape separately.
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskLandscape; } // landscape only
-    return UIInterfaceOrientationMaskLandscape;   // landscape only
+    if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
+    }
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 - (void)handleBackgroundUIEffectChanged:(NSNotification *)notification {

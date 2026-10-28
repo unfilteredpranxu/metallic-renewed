@@ -561,16 +561,21 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 // This is the app's window.rootViewController (installed by SceneDelegate); all launcher pages live below it.
 // Window-scene orientation = intersection of the root-controller chain ⇒ narrowing here is the
 // **decisive** layer for locking landscape during launch.
-// When unlocked, return [super ...] (byte-for-byte the same as before: iPhone=allButUpsideDown /
-// iPad=all), preserving existing behavior.
+// Keep the existing autorotation guard; unlocked launcher masks support portrait and landscape.
 - (BOOL)shouldAutorotate {
     if (AmeGameLandscapeLockActive()) return NO;   // ★ [GAME-LANDSCAPE]
     return [super shouldAutorotate];
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;   // ★ [GAME-LANDSCAPE]
-    return UIInterfaceOrientationMaskLandscape;   // landscape only
+    if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
+    }
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 #pragma mark - UITabBarControllerDelegate

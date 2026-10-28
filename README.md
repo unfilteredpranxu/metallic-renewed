@@ -1,6 +1,6 @@
-# Metallic Alpha 1.1 Source Code
+# Metallic Launcher
 
-Complete source code export for **Metallic Alpha 1.1** (the native Apple Metal 3 Minecraft Launcher for iOS).
+**Metallic Launcher** is the Metallic iOS/iPadOS launcher. The component map below describes the original Alpha 1.1 source export; current UI checkpoints, build limitations and device-validation status are recorded in [the refinement tracker](docs/METALLIC_RENEWED_UI_REFINEMENT_TRACKER.md).
 
 ---
 

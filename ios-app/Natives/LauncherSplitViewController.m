@@ -1,3 +1,4 @@
+#import "ios_uikit_bridge.h" // Existing launch/game orientation lock query only.
 #import "LauncherSplitViewController.h"
 #import "LauncherMenuViewController.h"
 #import "LauncherNewsViewController.h"
@@ -168,13 +169,14 @@ extern NSMutableDictionary *prefDict;
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    // ★ [PORTRAIT] Allow portrait orientation: it was previously hardcoded to Landscape, preventing portrait mode.
-    // LauncherCardLayoutViewController switches to a portrait layout (three stacked cards + horizontal menu);
-    // the game (SurfaceViewController) remains separately locked to landscape.
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        return UIInterfaceOrientationMaskLandscape;   // landscape only
+    if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
     }
-    return UIInterfaceOrientationMaskLandscape;   // landscape only
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 @end

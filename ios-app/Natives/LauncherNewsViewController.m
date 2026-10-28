@@ -3893,9 +3893,14 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    // Preserve existing orientation masks; compact/wide composition does not change game rotation policy.
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) { return UIInterfaceOrientationMaskLandscape; }   // landscape only
-    return UIInterfaceOrientationMaskLandscape;   // landscape only
+    if (AmeGameLandscapeLockActive()) return UIInterfaceOrientationMaskLandscape;
+    // The existing bridge can request a landscape game transition on iOS 16+.
+    // Keep older systems on the original policy; do not change their launch/rotation bridge.
+    if (@available(iOS 16.0, *)) {
+        return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad
+            ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
+    }
+    return UIInterfaceOrientationMaskLandscape;
 }
 
 /// 重新应用背景效果：当 BackgroundUIEffectChanged 通知到达时调用，

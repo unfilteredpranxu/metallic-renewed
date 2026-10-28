@@ -20,6 +20,7 @@
 // ★ [SETTINGS-VISIBLE] 界面风格(玻璃)单一真相源:主设置页直接读写 background_glass_* 键
 #import "AMEGlassStyle.h"
 #import "BackgroundManager.h"
+#import "UIKit+GlassSurface.h"
 #import "UpdateChecker.h"
 #import "CurseForgeAPIKeyViewController.h"
 #import "CustomControlsViewController.h"
@@ -29,6 +30,48 @@
 #import "AI/AISystemPromptEditorViewController.h"
 #import "AI/AiSettings.h"
 
+// Footer text remains owned by the existing titleForFooter callback; only its layout changes.
+@interface AMEPreferenceFooterView : UITableViewHeaderFooterView
+@property(nonatomic, strong) UILabel *informationLabel;
+@end
+@implementation AMEPreferenceFooterView
+- (instancetype)initWithReuseIdentifier:(NSString *)identifier {
+    self = [super initWithReuseIdentifier:identifier];
+    if (!self) return nil;
+    self.backgroundView = [[UIView alloc] init];
+    self.backgroundView.backgroundColor = UIColor.clearColor;
+    UIView *surface = [[UIView alloc] init];
+    surface.translatesAutoresizingMaskIntoConstraints = NO;
+    surface.layer.cornerRadius = 12;
+    surface.clipsToBounds = YES;
+    [self.contentView addSubview:surface];
+    [[BackgroundManager sharedManager] applyEffectToView:surface];
+    self.informationLabel = [[UILabel alloc] init];
+    self.informationLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.informationLabel.font = AmeUIFont(AmeUIFontRoleDescription);
+    self.informationLabel.adjustsFontForContentSizeCategory = YES;
+    self.informationLabel.textColor = AmeUISecondaryTextColor();
+    self.informationLabel.numberOfLines = 0;
+    [surface addSubview:self.informationLabel];
+    UILayoutGuide *guide = self.contentView.layoutMarginsGuide;
+    NSLayoutConstraint *width = [surface.widthAnchor constraintEqualToAnchor:guide.widthAnchor];
+    width.priority = UILayoutPriorityDefaultHigh;
+    [NSLayoutConstraint activateConstraints:@[
+        [surface.leadingAnchor constraintGreaterThanOrEqualToAnchor:guide.leadingAnchor],
+        [surface.trailingAnchor constraintLessThanOrEqualToAnchor:guide.trailingAnchor],
+        [surface.centerXAnchor constraintEqualToAnchor:guide.centerXAnchor],
+        [surface.widthAnchor constraintLessThanOrEqualToConstant:840], width,
+        [surface.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6],
+        [surface.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-12],
+        [self.informationLabel.topAnchor constraintEqualToAnchor:surface.topAnchor constant:10],
+        [self.informationLabel.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-10],
+        [self.informationLabel.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:14],
+        [self.informationLabel.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-14]
+    ]];
+    return self;
+}
+@end
+
 @interface LauncherPreferencesViewController()
 @property(nonatomic) NSArray<NSString*> *rendererKeys, *rendererList;
 @property(nonatomic) BOOL pickingMousePointer;
@@ -36,9 +79,14 @@
 @property(nonatomic, copy, nullable) NSString *pickingColorPrefKey;
 // 顶部 Hero 卡片视图（App 名 + 版本 + 设备信息），作为 tableHeaderView 的一部分
 @property(nonatomic, strong, nullable) UIView *heroCard;
+@property(nonatomic, strong) UIView *refinedHeader;
+@property(nonatomic, strong) UISearchBar *refinedSearchBar;
+- (void)layoutRefinedHeader;
 @end
 
 @implementation LauncherPreferencesViewController
+
+- (BOOL)usesRefinedSettingsPresentation { return YES; }
 
 - (id)init {
     self = [super init];
@@ -1417,26 +1465,13 @@
     // 适配自定义启动器背景：通过 BackgroundManager 将当前视图控制器透明化，
     // 让全局背景容器（图片/视频）能够透出显示。必须在 super viewDidLoad 之后调用，
     // 以确保 view 与 tableView 均已就绪。
-    [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
+    [self refreshRefinedSettingsPresentation];
 
     // 顶部 Hero 卡片：App 名 + 版本 + 设备信息（参照 Air-Design v1.2 L3 大卡片规范）
     // 与搜索栏一起包装为 tableHeaderView，搜索栏在上、Hero 卡片在下
     [self setupHeroHeader];
 
-    // Apply transparent background if global background is active
-    if ([[BackgroundManager sharedManager] hasBackground]) {
-        self.view.backgroundColor = [UIColor clearColor];
-        self.tableView.backgroundColor = [UIColor clearColor];
-        self.tableView.backgroundView = nil;
-        
-        // Make separator visible on background
-        self.tableView.separatorEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleDark];
-        self.tableView.separatorColor = [UIColor colorWithWhite:1.0 alpha:0.2];
-    }
-    
-    if (self.navigationController == nil) {
-        self.tableView.alpha = 0.9;
-    }
+    [self refreshRefinedSettingsPresentation];
     if (NSProcessInfo.processInfo.isMacCatalystApp) {
         UIButton *closeButton = [UIButton buttonWithType:UIButtonTypeClose];
         closeButton.frame = CGRectOffset(closeButton.frame, 10, 10);
@@ -1490,155 +1525,113 @@
 }
 
 - (void)setupHeroHeader {
-    // 父类 viewDidLoad 已将 searchController.searchBar 设置为 tableHeaderView
-    // 这里取出 searchBar，与 Hero 卡片一起重新包装为新的 tableHeaderView
-    // 注意：searchController 是父类 PLPrefTableViewController 的私有属性，子类无法直接访问，
-    // 但父类已将 searchBar 设置为 tableView.tableHeaderView，可直接取出。
-    UISearchBar *searchBar = nil;
-    UIView *currentHeader = self.tableView.tableHeaderView;
-    if ([currentHeader isKindOfClass:[UISearchBar class]]) {
-        searchBar = (UISearchBar *)currentHeader;
-    }
+    UISearchBar *searchBar = [self.tableView.tableHeaderView isKindOfClass:UISearchBar.class]
+        ? (UISearchBar *)self.tableView.tableHeaderView : self.refinedSearchBar;
     [searchBar removeFromSuperview];
+    self.refinedSearchBar = searchBar;
+    searchBar.searchBarStyle = UISearchBarStyleMinimal;
+    searchBar.backgroundImage = [[UIImage alloc] init];
+    searchBar.searchTextField.font = AmeUIFont(AmeUIFontRoleBody);
+    searchBar.searchTextField.adjustsFontForContentSizeCategory = YES;
+    searchBar.searchTextField.textColor = AmeUIPrimaryTextColor();
 
-    // 让 searchBar 适配自定义背景（透明、文字色跟随系统）
-    searchBar.barTintColor = [UIColor clearColor];
-    searchBar.tintColor = accentColor();
-    searchBar.backgroundImage = [UIImage new]; // 去掉默认背景
-    if (@available(iOS 13.0, *)) {
-        searchBar.searchTextField.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08];
-    }
-
-    // ===== Hero 卡片（L3 大卡片：16pt 圆角 + 半透明背景 + 毛玻璃 + 浅边框 + 中阴影）=====
-    UIView *heroCard = [[UIView alloc] init];
-    heroCard.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.14]; // surface-bright
-    heroCard.layer.cornerRadius = 16;
-    heroCard.layer.cornerCurve = kCACornerCurveContinuous;
-    heroCard.layer.borderWidth = 0.5;
-    heroCard.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10].CGColor;
-    heroCard.layer.shadowColor = [UIColor blackColor].CGColor;
-    heroCard.layer.shadowOpacity = 0.12;
-    heroCard.layer.shadowRadius = 8;
-    heroCard.layer.shadowOffset = CGSizeMake(0, 3);
-    [[BackgroundManager sharedManager] applyEffectToView:heroCard];
-
-    // Hero 图标（56x56，14pt 圆角，accentColor 纯色背景，白色 SF Symbol）
-    UIImageView *iconView = [[UIImageView alloc] init];
-    // ★ [ABOUT-ICON] 「关于」栏 = 当前启动器图标(与主屏一致),不回落占位/老版。
-    //   主屏图标由 Natives/Assets.xcassets/AppIcon-Light.appiconset 决定
-    //   (Makefile `actool --app-icon AppIcon-Light` + Info.plist CFBundleIconName=AppIcon-Light),
-    //   即构建产物里那颗浅蓝六边形。上一版用的是 AppLogo-Vector(老版彩色方块) ⇒ 用户报「变回老版」。
-    //   取值链:AppLogo-Current(新建 imageset,与 AppIcon-Light 同一张 1024 图) →
-    //          AppIcon-Light60x60(actool 生成的包内 loose 真图标,与主屏逐字节同源) →
-    //          AppLogo-Vector(老版兜底) → 系统 app 符号兜底。★ 绝不再回落 cube.fill 占位。
-    UIImage *appLogoImage = [UIImage imageNamed:@"AppLogo-Current"]
-                         ?: [UIImage imageNamed:@"AppIcon-Light60x60"]
-                         ?: [UIImage imageNamed:@"AppLogo-Vector"];
-    iconView.image = appLogoImage;
-    if (appLogoImage == nil) {
-        iconView.image = [UIImage systemImageNamed:@"app.fill"] ?: [UIImage systemImageNamed:@"square.grid.2x2.fill"];
-    }
-    iconView.tintColor = [UIColor whiteColor];
-    iconView.contentMode = UIViewContentModeScaleAspectFit;   // ★ [HOST-BUG-A] 图标按比例铺满(原 Center 只画原尺寸)
-    iconView.backgroundColor = [UIColor clearColor];   // the real icon fills the tile (no accent bleed)
-    iconView.layer.cornerRadius = 14;
-    iconView.layer.cornerCurve = kCACornerCurveContinuous;
-    iconView.layer.masksToBounds = YES;
-    [heroCard addSubview:iconView];
-
-    // 标题（App 名，17pt bold，labelColor）
-    UILabel *titleLabel = [[UILabel alloc] init];
-    titleLabel.text = [self appName];
-    titleLabel.font = [UIFont systemFontOfSize:17 weight:UIFontWeightBold];
-    titleLabel.textColor = [UIColor labelColor];
-    titleLabel.adjustsFontSizeToFitWidth = YES;
-    titleLabel.minimumScaleFactor = 0.8;
-    [heroCard addSubview:titleLabel];
-
-    // 副标题（第一行 App 版本，第二行 设备名 · iOS 系统版本）
-    UILabel *subtitleLabel = [[UILabel alloc] init];
-    NSString *appVersion = NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"] ?: @"1.0";
-    NSString *deviceName = [HostManager GetModelName] ?: UIDevice.currentDevice.name ?: @"iPhone";
-    NSString *systemVersion = UIDevice.currentDevice.systemVersion ?: @"";
-    NSString *subtitle = [NSString stringWithFormat:@"v%@\n%@ · iOS %@", appVersion, deviceName, systemVersion];
-    subtitleLabel.text = subtitle;
-    subtitleLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightRegular];
-    subtitleLabel.textColor = [UIColor secondaryLabelColor];
-    subtitleLabel.numberOfLines = 0;
-    [heroCard addSubview:subtitleLabel];
-
-    // 右侧 chevron（12x12，tertiary-labelColor）
-    UIImageView *chevronView = [[UIImageView alloc] init];
-    chevronView.image = [UIImage systemImageNamed:@"chevron.right"];
-    chevronView.tintColor = [UIColor tertiaryLabelColor];
-    chevronView.contentMode = UIViewContentModeScaleAspectFit;
-    [heroCard addSubview:chevronView];
-
-    self.heroCard = heroCard;
-
-    // ===== 容器视图：searchBar（上）+ heroCard（下）=====
     UIView *container = [[UIView alloc] init];
+    container.insetsLayoutMarginsFromSafeArea = NO; // The table owns vertical safe-area adjustment.
+    UIView *card = [[UIView alloc] init];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.layer.cornerRadius = 18;
+    card.layer.cornerCurve = kCACornerCurveContinuous;
+    card.clipsToBounds = YES;
+    [[BackgroundManager sharedManager] applyEffectToView:card];
+    self.heroCard = card;
+    [container addSubview:card];
     [container addSubview:searchBar];
-    [container addSubview:heroCard];
-
-    // 启用 AutoLayout
     searchBar.translatesAutoresizingMaskIntoConstraints = NO;
-    heroCard.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    chevronView.translatesAutoresizingMaskIntoConstraints = NO;
-
+    UIImageView *icon = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"AppLogo-Current"]
+        ?: [UIImage imageNamed:@"AppIcon-Light60x60"] ?: [UIImage imageNamed:@"AppLogo-Vector"]
+        ?: [UIImage systemImageNamed:@"app.fill"] ?: [UIImage systemImageNamed:@"square.grid.2x2.fill"]];
+    icon.translatesAutoresizingMaskIntoConstraints = NO;
+    icon.contentMode = UIViewContentModeScaleAspectFit;
+    icon.layer.cornerRadius = 11;
+    icon.clipsToBounds = YES;
+    icon.isAccessibilityElement = NO;
+    UILabel *name = [[UILabel alloc] init];
+    name.text = [self appName];
+    name.font = AmeUIFont(AmeUIFontRoleSectionHeading);
+    name.textColor = AmeUIPrimaryTextColor();
+    name.adjustsFontForContentSizeCategory = YES;
+    name.numberOfLines = 0;
+    UILabel *info = [[UILabel alloc] init];
+    NSString *version = NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"];
+    NSString *device = [HostManager GetModelName] ?: UIDevice.currentDevice.name ?: @"";
+    info.text = [NSString stringWithFormat:@"%@\n%@ · iOS %@", version.length ? [@"v" stringByAppendingString:version] : @"Version not reported",
+        device, UIDevice.currentDevice.systemVersion ?: @""];
+    info.font = AmeUIFont(AmeUIFontRoleDescription);
+    info.textColor = AmeUISecondaryTextColor();
+    info.numberOfLines = 0;
+    info.adjustsFontForContentSizeCategory = YES;
+    UIStackView *identity = [[UIStackView alloc] initWithArrangedSubviews:@[name, info]];
+    identity.axis = UILayoutConstraintAxisVertical;
+    identity.spacing = 4;
+    UIButton *help = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    ((AmePinkGlassButton *)help).ameRole = AmeGlassButtonRoleSubtle;
+    [help setImage:[UIImage systemImageNamed:@"questionmark.circle"] forState:UIControlStateNormal];
+    help.accessibilityLabel = @"Show or hide setting descriptions";
+    UIBarButtonItem *originalHelp = [self drawHelpButton];
+    [help addTarget:originalHelp.target action:originalHelp.action forControlEvents:UIControlEventTouchUpInside];
+    help.translatesAutoresizingMaskIntoConstraints = NO;
+    UIStackView *row = [[UIStackView alloc] initWithArrangedSubviews:@[icon, identity, help]];
+    row.translatesAutoresizingMaskIntoConstraints = NO;
+    row.alignment = UIStackViewAlignmentCenter;
+    row.spacing = 12;
+    [card addSubview:row];
+    UILayoutGuide *guide = container.layoutMarginsGuide;
+    container.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(8, 16, 12, 16);
+    NSLayoutConstraint *cardWidth = [card.widthAnchor constraintEqualToAnchor:guide.widthAnchor];
+    cardWidth.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
-        // searchBar：贴顶部、左右贴边
-        [searchBar.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [searchBar.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [searchBar.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-
-        // heroCard：左右 16pt 外边距，顶部距 searchBar 8pt，底部距容器 8pt
-        [heroCard.topAnchor constraintEqualToAnchor:searchBar.bottomAnchor constant:8],
-        [heroCard.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16],
-        [heroCard.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-16],
-        [heroCard.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-8],
-
-        // iconView：56x56，左侧 16pt、上下 16pt
-        [iconView.leadingAnchor constraintEqualToAnchor:heroCard.leadingAnchor constant:16],
-        [iconView.topAnchor constraintEqualToAnchor:heroCard.topAnchor constant:16],
-        [iconView.bottomAnchor constraintEqualToAnchor:heroCard.bottomAnchor constant:-16],
-        [iconView.widthAnchor constraintEqualToConstant:56],
-        [iconView.heightAnchor constraintEqualToConstant:56],
-
-        // titleLabel：位于 iconView 右侧 14pt，顶部 18pt
-        [titleLabel.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:14],
-        [titleLabel.topAnchor constraintEqualToAnchor:heroCard.topAnchor constant:18],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:chevronView.leadingAnchor constant:-8],
-
-        // subtitleLabel：紧跟 titleLabel 下方 2pt
-        [subtitleLabel.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:14],
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:2],
-        [subtitleLabel.trailingAnchor constraintEqualToAnchor:chevronView.leadingAnchor constant:-8],
-        [subtitleLabel.bottomAnchor constraintEqualToAnchor:heroCard.bottomAnchor constant:-16],
-
-        // chevronView：12x12，右侧 16pt，垂直居中
-        [chevronView.trailingAnchor constraintEqualToAnchor:heroCard.trailingAnchor constant:-16],
-        [chevronView.centerYAnchor constraintEqualToAnchor:heroCard.centerYAnchor],
-        [chevronView.widthAnchor constraintEqualToConstant:12],
-        [chevronView.heightAnchor constraintEqualToConstant:12],
+        [card.topAnchor constraintEqualToAnchor:guide.topAnchor],
+        [card.centerXAnchor constraintEqualToAnchor:guide.centerXAnchor],
+        [card.leadingAnchor constraintGreaterThanOrEqualToAnchor:guide.leadingAnchor],
+        [card.trailingAnchor constraintLessThanOrEqualToAnchor:guide.trailingAnchor],
+        [card.widthAnchor constraintLessThanOrEqualToConstant:840], cardWidth,
+        [row.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:14],
+        [row.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-14],
+        [row.topAnchor constraintEqualToAnchor:card.topAnchor constant:12],
+        [row.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-12],
+        [icon.widthAnchor constraintEqualToConstant:44], [icon.heightAnchor constraintEqualToConstant:44],
+        [help.widthAnchor constraintEqualToConstant:44], [help.heightAnchor constraintEqualToConstant:44],
+        [searchBar.topAnchor constraintEqualToAnchor:card.bottomAnchor constant:8],
+        [searchBar.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
+        [searchBar.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
+        [searchBar.heightAnchor constraintGreaterThanOrEqualToConstant:52],
+        [searchBar.bottomAnchor constraintEqualToAnchor:guide.bottomAnchor]
     ]];
-
-    // UITableView 不会根据 AutoLayout 自动计算 tableHeaderView 高度，
-    // 需要手动布局并设置 frame。使用 systemLayoutSizeFitting 计算合适高度。
-    CGFloat width = self.tableView.bounds.size.width;
-    if (width == 0) width = [UIScreen mainScreen].bounds.size.width;
-    container.frame = CGRectMake(0, 0, width, 0);
-    [container setNeedsLayout];
-    [container layoutIfNeeded];
-    CGFloat fittingHeight = [container systemLayoutSizeFittingSize:CGSizeMake(width, 0)
-                                               withHorizontalFittingPriority:UILayoutPriorityRequired
-                                                     verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
-    container.frame = CGRectMake(0, 0, width, fittingHeight);
-
+    self.refinedHeader = container;
     self.tableView.tableHeaderView = container;
+    [self layoutRefinedHeader];
+}
+
+- (void)layoutRefinedHeader {
+    CGFloat width = self.tableView.bounds.size.width;
+    if (!self.refinedHeader || width <= 0) return;
+    UIEdgeInsets safe = self.tableView.safeAreaInsets;
+    NSDirectionalEdgeInsets margins = NSDirectionalEdgeInsetsMake(8, 16 + safe.left, 12, 16 + safe.right);
+    if (!NSDirectionalEdgeInsetsEqualToDirectionalEdgeInsets(self.refinedHeader.directionalLayoutMargins, margins)) {
+        self.refinedHeader.directionalLayoutMargins = margins;
+    }
+    CGSize size = [self.refinedHeader systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
+        withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    CGRect frame = CGRectMake(0, 0, width, ceil(size.height));
+    if (!CGRectEqualToRect(self.refinedHeader.frame, frame)) {
+        self.refinedHeader.frame = frame;
+        self.tableView.tableHeaderView = self.refinedHeader;
+    }
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [self layoutRefinedHeader];
 }
 
 - (void)dealloc {
@@ -1697,7 +1690,7 @@
 /// 通过 BackgroundManager 重新设置当前视图控制器的透明度/毛玻璃效果，
 /// 并将 tableView 背景置为透明、移除默认 backgroundView，确保全局背景能够正常透出。
 - (void)reapplyBackgroundEffect {
-    [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
+    [self refreshRefinedSettingsPresentation];
     self.tableView.backgroundColor = [UIColor clearColor];
     self.tableView.backgroundView = nil;
 }
@@ -1830,85 +1823,8 @@
 #pragma mark - UITableView Data Source Override
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
-
-    // ===== iOS 设置 App 风格：彩色圆角图标背景 =====
-    // 参照 iOS 设置应用：每个设置项左侧图标用带颜色的圆角方块背景包裹，
-    // 图标本身渲染为白色 SF Symbol。不同 section 用不同颜色区分：
-    //   general=蓝 / video=紫 / control=绿 / java=橙 / debug=红
-    // destructive（危险操作）项统一用红色背景。
-    // 搜索结果模式下用蓝灰色背景。
-    [self applySettingsAppStyleToCell:cell indexPath:indexPath];
-
-    // Apply background styling if global background is active
-    if ([[BackgroundManager sharedManager] hasBackground]) {
-        // Set semi-transparent dark background for cells
-        [[BackgroundManager sharedManager] applyEffectToCell:cell];
-
-        // Set white text for better visibility on dark background
-        cell.textLabel.textColor = [UIColor whiteColor];
-        cell.textLabel.shadowColor = [UIColor blackColor];
-        cell.textLabel.shadowOffset = CGSizeMake(0, 1);
-
-        // Detail text light gray
-        cell.detailTextLabel.textColor = [UIColor colorWithWhite:0.8 alpha:1.0];
-        cell.detailTextLabel.shadowColor = [UIColor blackColor];
-        cell.detailTextLabel.shadowOffset = CGSizeMake(0, 1);
-
-        // Tint color for icons and accessories：使用主题强调色（accentColor）
-        cell.tintColor = accentColor();
-
-        // Handle specific cell types
-        NSArray *subviews = cell.contentView.subviews;
-        for (UIView *subview in subviews) {
-            // Style sliders
-            if ([subview isKindOfClass:[UISlider class]]) {
-                UISlider *slider = (UISlider *)subview;
-                slider.tintColor = accentColor();
-                slider.thumbTintColor = [UIColor whiteColor];
-            }
-
-            // Style switches
-            if ([subview isKindOfClass:[UISwitch class]]) {
-                UISwitch *switchControl = (UISwitch *)subview;
-                switchControl.onTintColor = accentColor();
-            }
-
-            // Style text fields
-            if ([subview isKindOfClass:[UITextField class]]) {
-                UITextField *textField = (UITextField *)subview;
-                textField.textColor = [UIColor whiteColor];
-                textField.backgroundColor = [UIColor colorWithWhite:0.2 alpha:0.6];
-                textField.layer.cornerRadius = 8;
-                textField.layer.cornerCurve = kCACornerCurveContinuous;   // ★ [CORNER-FIX] 连续圆角(与系统卡片一致)
-            }
-
-            // Style labels
-            if ([subview isKindOfClass:[UILabel class]]) {
-                UILabel *label = (UILabel *)subview;
-                label.textColor = [UIColor whiteColor];
-                label.shadowColor = [UIColor blackColor];
-                label.shadowOffset = CGSizeMake(0, 1);
-            }
-        }
-
-        // Style the picker label if exists
-        if (cell.accessoryView && [cell.accessoryView isKindOfClass:[UILabel class]]) {
-            UILabel *pickerLabel = (UILabel *)cell.accessoryView;
-            pickerLabel.textColor = [UIColor colorWithWhite:0.8 alpha:1.0];
-        }
-    } else {
-        // Reset to default when no background
-        cell.backgroundColor = [UIColor secondarySystemBackgroundColor];
-        cell.textLabel.textColor = [UIColor labelColor];
-        cell.textLabel.shadowColor = nil;
-        cell.textLabel.shadowOffset = CGSizeZero;
-        cell.detailTextLabel.textColor = [UIColor secondaryLabelColor];
-        cell.detailTextLabel.shadowColor = nil;
-        cell.detailTextLabel.shadowOffset = CGSizeZero;
-    }
-
-    return cell;
+    // Bind and validate through the unchanged base factories before applying opt-in presentation.
+    return [super tableView:tableView cellForRowAtIndexPath:indexPath];
 }
 
 /// iOS 设置 App 风格图标背景：给 cell.imageView 加圆角彩色背景 + 白色图标
@@ -2052,17 +1968,34 @@
     return footer;
 }
 
+- (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section {
+    NSString *text = [self tableView:tableView titleForFooterInSection:section];
+    if (!text.length) return nil;
+    AMEPreferenceFooterView *footer = [tableView dequeueReusableHeaderFooterViewWithIdentifier:@"RefinedPreferenceFooter"];
+    if (!footer) footer = [[AMEPreferenceFooterView alloc] initWithReuseIdentifier:@"RefinedPreferenceFooter"];
+    footer.informationLabel.text = text;
+    return footer;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
+    NSString *text = [self tableView:tableView titleForFooterInSection:section];
+    if (!text.length) return 8;
+    CGFloat available = tableView.safeAreaLayoutGuide.layoutFrame.size.width;
+    if (available <= 0) return UITableViewAutomaticDimension;
+    CGFloat width = MAX(1, MIN(840, available - 64) - 28);
+    CGRect bounds = [text boundingRectWithSize:CGSizeMake(width, CGFLOAT_MAX)
+        options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+        attributes:@{NSFontAttributeName: AmeUIFont(AmeUIFontRoleDescription)} context:nil];
+    return ceil(bounds.size.height) + 38;
+}
+
 - (void)tableView:(UITableView *)tableView willDisplayHeaderView:(UIView *)view forSection:(NSInteger)section {
-    // Style section headers for background visibility
-    if ([[BackgroundManager sharedManager] hasBackground]) {
-        if ([view isKindOfClass:[UITableViewHeaderFooterView class]]) {
-            UITableViewHeaderFooterView *header = (UITableViewHeaderFooterView *)view;
-            header.textLabel.textColor = [UIColor whiteColor];
-            header.textLabel.shadowColor = [UIColor blackColor];
-            header.textLabel.shadowOffset = CGSizeMake(0, 1);
-            header.backgroundView = [[UIView alloc] init];
-            header.backgroundView.backgroundColor = [UIColor clearColor];
-        }
+    if ([view isKindOfClass:UITableViewHeaderFooterView.class]) {
+        UITableViewHeaderFooterView *textView = (UITableViewHeaderFooterView *)view;
+        textView.textLabel.textColor = AmeUISecondaryTextColor();
+        textView.textLabel.shadowColor = nil;
+        textView.textLabel.font = AmeUIFont(AmeUIFontRoleDescription);
+        textView.textLabel.numberOfLines = 0;
     }
 }
 
@@ -2097,16 +2030,12 @@
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayFooterView:(UIView *)view forSection:(NSInteger)section {
-    // Style section footers for background visibility
-    if ([[BackgroundManager sharedManager] hasBackground]) {
-        if ([view isKindOfClass:[UITableViewHeaderFooterView class]]) {
-            UITableViewHeaderFooterView *footer = (UITableViewHeaderFooterView *)view;
-            footer.textLabel.textColor = [UIColor colorWithWhite:0.8 alpha:1.0];
-            footer.textLabel.shadowColor = [UIColor blackColor];
-            footer.textLabel.shadowOffset = CGSizeMake(0, 1);
-            footer.backgroundView = [[UIView alloc] init];
-            footer.backgroundView.backgroundColor = [UIColor clearColor];
-        }
+    if ([view isKindOfClass:UITableViewHeaderFooterView.class]) {
+        UITableViewHeaderFooterView *textView = (UITableViewHeaderFooterView *)view;
+        textView.textLabel.textColor = AmeUISecondaryTextColor();
+        textView.textLabel.shadowColor = nil;
+        textView.textLabel.font = AmeUIFont(AmeUIFontRoleDescription);
+        textView.textLabel.numberOfLines = 0;
     }
 }
 

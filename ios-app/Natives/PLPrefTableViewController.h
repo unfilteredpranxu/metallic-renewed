@@ -26,6 +26,9 @@ typedef void (^SetPreferenceBlock)(NSString *, NSString *, id);
 /// （每项含 __origSection / __origRow / __localizedTitle 等内部字段）
 @property(nonatomic, readonly, nullable) NSArray *filteredItems;
 
+/// Presentation opt-in only; no persisted preference. Other subclasses retain their existing cells.
+@property(nonatomic, readonly) BOOL usesRefinedSettingsPresentation;
+- (void)refreshRefinedSettingsPresentation;
 - (UIBarButtonItem *)drawHelpButton;
 - (void)initViewCreation;
 

@@ -7,15 +7,226 @@
 #import "LauncherPreferences.h"
 #import "PLPrefTableViewController.h"
 #import "BackgroundManager.h"
+#import "UIKit+GlassSurface.h"
 #import "UIKit+hook.h"
 
 #import "ios_uikit_bridge.h"
 #import "utils.h"
 
+// Opt-in presentation only. Legacy preference controllers keep stock cells and layout.
+// The public label/accessory getters still expose the SAME values/controls used by the binding code.
+@interface AMERefinedPreferenceCell : UITableViewCell
+@property(nonatomic, strong) UILabel *nameLabel;
+@property(nonatomic, strong) UILabel *valueLabel;
+@property(nonatomic, strong) UILabel *explanationLabel;
+@property(nonatomic, strong) UIImageView *symbolView;
+@property(nonatomic, strong) UIImageView *disclosure;
+@property(nonatomic, strong) UIView *surface;
+@property(nonatomic, strong) UIView *accessoryHost;
+@property(nonatomic, strong) UIView *boundAccessory;
+@property(nonatomic, strong) UIStackView *textStack;
+@property(nonatomic, strong) UIStackView *headingRow;
+@property(nonatomic, strong) UIStackView *bodyStack;
+@property(nonatomic, strong) NSArray<NSLayoutConstraint *> *accessoryConstraints;
+@property(nonatomic) UITableViewCellAccessoryType presentedAccessoryType;
+@property(nonatomic) BOOL sectionHeading;
+@property(nonatomic) BOOL sectionExpanded;
+@property(nonatomic) BOOL destructive;
+- (void)configureHeading:(BOOL)heading expanded:(BOOL)expanded first:(BOOL)first last:(BOOL)last explanation:(NSString *)explanation destructive:(BOOL)destructive;
+- (void)refreshPresentation;
+@end
+
+@implementation AMERefinedPreferenceCell
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)identifier {
+    self = [super initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
+    if (!self) return nil;
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.nameLabel = [[UILabel alloc] init];
+    self.valueLabel = [[UILabel alloc] init];
+    self.explanationLabel = [[UILabel alloc] init];
+    for (UILabel *label in @[self.nameLabel, self.valueLabel, self.explanationLabel]) {
+        label.numberOfLines = 0;
+        label.adjustsFontForContentSizeCategory = YES;
+        label.lineBreakMode = NSLineBreakByWordWrapping;
+    }
+    self.symbolView = [[UIImageView alloc] init];
+    self.symbolView.contentMode = UIViewContentModeScaleAspectFit;
+    self.symbolView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.symbolView.isAccessibilityElement = NO;
+    self.disclosure = [[UIImageView alloc] init];
+    self.disclosure.contentMode = UIViewContentModeScaleAspectFit;
+    self.disclosure.translatesAutoresizingMaskIntoConstraints = NO;
+    self.disclosure.isAccessibilityElement = NO;
+    self.surface = [[UIView alloc] init];
+    self.surface.translatesAutoresizingMaskIntoConstraints = NO;
+    self.surface.layer.cornerRadius = 16;
+    self.surface.layer.cornerCurve = kCACornerCurveContinuous;
+    self.surface.clipsToBounds = YES;
+    [self.contentView addSubview:self.surface];
+    [[BackgroundManager sharedManager] applyEffectToView:self.surface];
+    self.textStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.nameLabel, self.valueLabel, self.explanationLabel]];
+    self.textStack.axis = UILayoutConstraintAxisVertical;
+    self.textStack.spacing = 4;
+    self.accessoryHost = [[UIView alloc] init];
+    self.accessoryHost.translatesAutoresizingMaskIntoConstraints = NO;
+    self.headingRow = [[UIStackView alloc] initWithArrangedSubviews:@[self.symbolView, self.textStack, self.disclosure]];
+    self.headingRow.alignment = UIStackViewAlignmentCenter;
+    self.headingRow.spacing = 12;
+    self.bodyStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.headingRow, self.accessoryHost]];
+    self.bodyStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.bodyStack.axis = UILayoutConstraintAxisVertical;
+    self.bodyStack.spacing = 10;
+    [self.surface addSubview:self.bodyStack];
+    UILayoutGuide *guide = self.contentView.layoutMarginsGuide;
+    self.contentView.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(0, 8, 0, 8);
+    NSLayoutConstraint *width = [self.surface.widthAnchor constraintEqualToAnchor:guide.widthAnchor];
+    width.priority = UILayoutPriorityDefaultHigh;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.surface.leadingAnchor constraintGreaterThanOrEqualToAnchor:guide.leadingAnchor],
+        [self.surface.trailingAnchor constraintLessThanOrEqualToAnchor:guide.trailingAnchor],
+        [self.surface.centerXAnchor constraintEqualToAnchor:guide.centerXAnchor],
+        [self.surface.widthAnchor constraintLessThanOrEqualToConstant:840], width,
+        [self.surface.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+        [self.surface.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+        [self.surface.heightAnchor constraintGreaterThanOrEqualToConstant:56],
+        [self.bodyStack.leadingAnchor constraintEqualToAnchor:self.surface.leadingAnchor constant:14],
+        [self.bodyStack.trailingAnchor constraintEqualToAnchor:self.surface.trailingAnchor constant:-14],
+        [self.bodyStack.topAnchor constraintEqualToAnchor:self.surface.topAnchor constant:12],
+        [self.bodyStack.bottomAnchor constraintEqualToAnchor:self.surface.bottomAnchor constant:-12],
+        [self.symbolView.widthAnchor constraintEqualToConstant:22], [self.symbolView.heightAnchor constraintEqualToConstant:22],
+        [self.disclosure.widthAnchor constraintEqualToConstant:12], [self.disclosure.heightAnchor constraintEqualToConstant:16]
+    ]];
+    // No second material in the selected state; native cell selection remains the original input path.
+    UIView *selected = [[UIView alloc] init];
+    selected.backgroundColor = UIColor.clearColor;
+    self.selectedBackgroundView = selected;
+    [self refreshPresentation];
+    return self;
+}
+// A global transparency pass may propose a full-row backdrop. Keep glass inside the bounded surface.
+- (void)setBackgroundView:(UIView *)view { [super setBackgroundView:nil]; }
+- (UILabel *)textLabel { return self.nameLabel; }
+- (UILabel *)detailTextLabel { return self.valueLabel; }
+- (UIImageView *)imageView { return self.symbolView; }
+- (UIView *)accessoryView { return self.boundAccessory; }
+- (UITableViewCellAccessoryType)accessoryType { return self.presentedAccessoryType; }
+- (void)setAccessoryType:(UITableViewCellAccessoryType)type { self.presentedAccessoryType = type; }
+- (void)setAccessoryView:(UIView *)view {
+    if (self.boundAccessory == view) return;
+    [NSLayoutConstraint deactivateConstraints:self.accessoryConstraints ?: @[]];
+    [self.headingRow removeArrangedSubview:self.accessoryHost];
+    [self.bodyStack removeArrangedSubview:self.accessoryHost];
+    [self.accessoryHost removeFromSuperview];
+    [self.boundAccessory removeFromSuperview];
+    self.boundAccessory = view;
+    self.accessoryConstraints = nil;
+    if (!self.accessoryHost) return; // UIKit may invoke setters during superclass initialization.
+    [self.bodyStack addArrangedSubview:self.accessoryHost];
+    self.accessoryHost.hidden = (view == nil);
+    if (!view) return;
+    [self.accessoryHost addSubview:view];
+    view.translatesAutoresizingMaskIntoConstraints = NO;
+    BOOL nativeSwitch = [view isKindOfClass:UISwitch.class];
+    if (nativeSwitch) {
+        [self.bodyStack removeArrangedSubview:self.accessoryHost];
+        [self.accessoryHost removeFromSuperview];
+        [self.headingRow insertArrangedSubview:self.accessoryHost atIndex:2];
+        self.accessoryConstraints = @[
+            [view.leadingAnchor constraintEqualToAnchor:self.accessoryHost.leadingAnchor],
+            [view.trailingAnchor constraintEqualToAnchor:self.accessoryHost.trailingAnchor],
+            [view.centerYAnchor constraintEqualToAnchor:self.accessoryHost.centerYAnchor],
+            [self.accessoryHost.heightAnchor constraintGreaterThanOrEqualToConstant:44]
+        ];
+    } else {
+        self.accessoryConstraints = @[
+            [view.leadingAnchor constraintEqualToAnchor:self.accessoryHost.leadingAnchor],
+            [view.trailingAnchor constraintEqualToAnchor:self.accessoryHost.trailingAnchor],
+            [view.topAnchor constraintEqualToAnchor:self.accessoryHost.topAnchor],
+            [view.bottomAnchor constraintEqualToAnchor:self.accessoryHost.bottomAnchor],
+            [view.heightAnchor constraintGreaterThanOrEqualToConstant:44]
+        ];
+    }
+    [NSLayoutConstraint activateConstraints:self.accessoryConstraints];
+}
+- (void)configureHeading:(BOOL)heading expanded:(BOOL)expanded first:(BOOL)first last:(BOOL)last explanation:(NSString *)explanation destructive:(BOOL)destructive {
+    self.sectionHeading = heading;
+    self.sectionExpanded = expanded;
+    self.destructive = destructive;
+    self.explanationLabel.text = explanation;
+    self.explanationLabel.hidden = !explanation.length;
+    self.surface.layer.maskedCorners = (first ? kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner : 0)
+        | (last ? kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner : 0);
+    // Keep the material's own clipping consistent with the connected group corners.
+    for (UIView *backdrop in self.surface.subviews) {
+        if ([backdrop isKindOfClass:UIVisualEffectView.class]) backdrop.layer.maskedCorners = self.surface.layer.maskedCorners;
+    }
+    self.nameLabel.adjustsFontSizeToFitWidth = NO;
+    self.nameLabel.font = AmeUIFont(heading ? AmeUIFontRoleSectionHeading : AmeUIFontRoleBody);
+    self.valueLabel.font = AmeUIFont(AmeUIFontRoleDescription);
+    self.explanationLabel.font = AmeUIFont(AmeUIFontRoleDescription);
+    self.accessoryHost.hidden = !self.boundAccessory;
+    self.disclosure.hidden = !heading && self.presentedAccessoryType == UITableViewCellAccessoryNone;
+    self.disclosure.image = [UIImage systemImageNamed:heading && expanded ? @"chevron.down" : @"chevron.right"];
+    self.symbolView.hidden = !self.symbolView.image;
+    if (self.boundAccessory) {
+        self.isAccessibilityElement = NO;
+        self.boundAccessory.accessibilityLabel = self.nameLabel.text;
+        self.accessibilityElements = @[self.nameLabel, self.valueLabel, self.explanationLabel, self.boundAccessory];
+    } else {
+        self.accessibilityElements = nil;
+        self.isAccessibilityElement = YES;
+        self.accessibilityLabel = [@[self.nameLabel.text ?: @"", self.valueLabel.text ?: @"", explanation ?: @""] componentsJoinedByString:@". "];
+        self.accessibilityTraits = heading ? UIAccessibilityTraitButton | UIAccessibilityTraitHeader : UIAccessibilityTraitButton;
+        self.accessibilityValue = heading ? (expanded ? @"Expanded" : @"Collapsed") : nil;
+        if (!self.userInteractionEnabled) self.accessibilityTraits |= UIAccessibilityTraitNotEnabled;
+    }
+    [self refreshPresentation];
+}
+- (NSString *)accessibilityLabel {
+    if (!self.nameLabel || !self.isAccessibilityElement) return [super accessibilityLabel];
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    for (UILabel *label in @[self.nameLabel, self.valueLabel, self.explanationLabel]) {
+        if (!label.hidden && label.text.length) [parts addObject:label.text];
+    }
+    return [parts componentsJoinedByString:@". "]; // Picker callbacks update the actual value label immediately.
+}
+- (void)refreshPresentation {
+    self.backgroundView = nil; // Only the bounded managed surface owns material.
+    self.backgroundColor = UIColor.clearColor;
+    self.nameLabel.textColor = !self.userInteractionEnabled ? AmeUIDisabledColor()
+        : self.destructive ? UIColor.systemRedColor : AmeUIPrimaryTextColor();
+    self.valueLabel.textColor = self.userInteractionEnabled ? AmeUISecondaryTextColor() : AmeUIDisabledColor();
+    self.explanationLabel.textColor = AmeUISecondaryTextColor();
+    self.nameLabel.shadowColor = self.valueLabel.shadowColor = nil;
+    self.symbolView.tintColor = self.destructive ? UIColor.systemRedColor : AmeUIAccentColor();
+    self.disclosure.tintColor = AmeUISecondaryTextColor();
+    self.surface.layer.borderWidth = AmeUIHairlineWidth(self);
+    self.surface.layer.borderColor = AmeUIResolvedColor(AmeUIBorderColor(), self).CGColor;
+    self.boundAccessory.tintColor = AmeUIAccentColor();
+    if ([self.boundAccessory isKindOfClass:UITextField.class]) {
+        UITextField *field = (UITextField *)self.boundAccessory;
+        field.font = AmeUIFont(AmeUIFontRoleBody);
+        field.adjustsFontForContentSizeCategory = YES;
+        field.textColor = AmeUIPrimaryTextColor();
+        field.backgroundColor = UIColor.clearColor;
+    }
+}
+- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
+    [super setHighlighted:highlighted animated:animated];
+    self.surface.layer.borderColor = AmeUIResolvedColor(highlighted ? AmeUIAccentColor() : AmeUIBorderColor(), self).CGColor;
+}
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self refreshPresentation];
+}
+@end
+
 @interface PLPrefTableViewController()<UIContextMenuInteractionDelegate>{
     NSString *_currentSearchText;
 }
 @property(nonatomic) UIMenu* currentMenu;
+- (void)configureRefinedCell:(UITableViewCell *)cell item:(NSDictionary *)item indexPath:(NSIndexPath *)indexPath;
 @property(nonatomic) UIBarButtonItem *helpBtn;
 @property(nonatomic, strong) UISearchController *searchController;
 /// 搜索结果：filteredSections[0] 为扁平化的所有匹配项（忽略 section 归属）
@@ -24,6 +235,52 @@
 @end
 
 @implementation PLPrefTableViewController
+
+- (BOOL)usesRefinedSettingsPresentation { return NO; }
+
+- (void)refreshRefinedSettingsPresentation {
+    if (!self.usesRefinedSettingsPresentation) return;
+    self.tableView.backgroundColor = UIColor.clearColor;
+    self.tableView.backgroundView = nil;
+    self.tableView.alpha = 1;
+    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 64;
+    self.tableView.sectionHeaderHeight = 8;
+    self.tableView.estimatedSectionHeaderHeight = 8;
+    self.tableView.sectionFooterHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedSectionFooterHeight = 60;
+    for (UITableViewCell *cell in self.tableView.visibleCells) {
+        if ([cell isKindOfClass:AMERefinedPreferenceCell.class]) [(AMERefinedPreferenceCell *)cell refreshPresentation];
+    }
+}
+
+- (void)configureRefinedCell:(UITableViewCell *)cell item:(NSDictionary *)item indexPath:(NSIndexPath *)indexPath {
+    if (![cell isKindOfClass:AMERefinedPreferenceCell.class]) return;
+    BOOL heading = !self.filteredItems && self.prefSections && indexPath.row == 0;
+    BOOL first = indexPath.row == 0;
+    BOOL last = indexPath.row == [self.tableView numberOfRowsInSection:indexPath.section] - 1;
+    BOOL expanded = !self.filteredItems && self.prefSectionsVisibility[indexPath.section].boolValue;
+    NSString *explanation = nil;
+    if (!self.filteredItems && !heading && self.prefDetailVisible && [item[@"hasDetail"] boolValue]
+        && (item[@"type"] == self.typePickField || item[@"type"] == self.typeChildPane)) {
+        explanation = localize([NSString stringWithFormat:@"preference.detail.%@", item[@"key"]], nil);
+    }
+    [(AMERefinedPreferenceCell *)cell configureHeading:heading expanded:expanded first:first last:last
+        explanation:explanation destructive:[item[@"destructive"] boolValue]];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (self.usesRefinedSettingsPresentation && self.isViewLoaded) {
+        [self refreshRefinedSettingsPresentation];
+        if (previousTraitCollection && ![previousTraitCollection.preferredContentSizeCategory isEqual:self.traitCollection.preferredContentSizeCategory]) {
+            // Refit existing rows without replacing controls or interrupting slider tracking with reloadData.
+            [self.tableView beginUpdates];
+            [self.tableView endUpdates];
+        }
+    }
+}
 
 - (id)init {
     self = [super init];
@@ -62,7 +319,8 @@
 
     // 适配自定义启动器背景：将当前视图控制器透明化，让全局背景（图片/视频）能够透出显示。
     // 放在 tableView 重新创建之后调用，确保 makeViewControllerTransparent 处理的是最终的 tableView。
-    [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
+    if (self.usesRefinedSettingsPresentation) [self refreshRefinedSettingsPresentation];
+    else [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
     // 监听背景 UI 效果变化通知：当用户在背景设置中切换毛玻璃/半透明或调整透明度时，
     // 重新调用 makeViewControllerTransparent 以应用最新的视觉效果，保证背景始终正确透出。
@@ -180,10 +438,11 @@
     // 搜索结果模式：使用扁平化的 filteredItems
     if (self.filteredItems) {
         NSDictionary *item = self.filteredItems[indexPath.row];
-        NSString *cellID = @"searchResultCell";
+        NSString *cellID = self.usesRefinedSettingsPresentation ? @"refinedSearchResultCell" : @"searchResultCell";
         UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellID];
         if (cell == nil) {
-            cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:cellID];
+            Class cellClass = self.usesRefinedSettingsPresentation ? AMERefinedPreferenceCell.class : UITableViewCell.class;
+            cell = [[cellClass alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:cellID];
             cell.textLabel.adjustsFontSizeToFitWidth = YES;
             cell.textLabel.numberOfLines = 0;
             cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
@@ -201,6 +460,7 @@
         cell.imageView.image = [UIImage systemImageNamed:item[@"icon"]];
         cell.imageView.tintColor = [item[@"destructive"] boolValue] ? UIColor.systemRedColor : nil;
         cell.userInteractionEnabled = YES;
+        if (self.usesRefinedSettingsPresentation) [self configureRefinedCell:cell item:item indexPath:indexPath];
         return cell;
     }
 
@@ -216,9 +476,11 @@
         cellStyle = UITableViewCellStyleSubtitle;
     }
 
+    if (self.usesRefinedSettingsPresentation) cellID = [@"refined." stringByAppendingString:cellID];
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellID];
     if (cell == nil) {
-        cell = [[UITableViewCell alloc] initWithStyle:cellStyle reuseIdentifier:cellID];
+        Class cellClass = self.usesRefinedSettingsPresentation ? AMERefinedPreferenceCell.class : UITableViewCell.class;
+        cell = [[cellClass alloc] initWithStyle:cellStyle reuseIdentifier:cellID];
         cell.textLabel.adjustsFontSizeToFitWidth = YES;
         cell.textLabel.numberOfLines = 0;
         cell.textLabel.lineBreakMode = NSLineBreakByWordWrapping;
@@ -267,6 +529,7 @@
     cell.textLabel.enabled = cell.detailTextLabel.enabled = cell.userInteractionEnabled;
     [(id)cell.accessoryView setEnabled:cell.userInteractionEnabled];
 
+    if (self.usesRefinedSettingsPresentation) [self configureRefinedCell:cell item:item indexPath:indexPath];
     return cell;
 }
 
@@ -438,7 +701,7 @@
 
         // 跳转到该项并触发原始点击行为
         NSIndexPath *origIndexPath = [NSIndexPath indexPathForRow:origRow.intValue inSection:origSection.intValue];
-        [self.tableView scrollToRowAtIndexPath:origIndexPath atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
+        [self.tableView scrollToRowAtIndexPath:origIndexPath atScrollPosition:UITableViewScrollPositionMiddle animated:!(self.usesRefinedSettingsPresentation && UIAccessibilityIsReduceMotionEnabled())];
         // 延迟触发，等滚动完成
         dispatch_async(dispatch_get_main_queue(), ^{
             [self tableView:tableView didSelectRowAtIndexPath:origIndexPath];
@@ -448,7 +711,7 @@
 
     if (indexPath.row == 0 && self.prefSections) {
         self.prefSectionsVisibility[indexPath.section] = @(![self.prefSectionsVisibility[indexPath.section] boolValue]);
-        [tableView reloadSections:[NSIndexSet indexSetWithIndex:indexPath.section] withRowAnimation:UITableViewRowAnimationFade];
+        [tableView reloadSections:[NSIndexSet indexSetWithIndex:indexPath.section] withRowAnimation:(self.usesRefinedSettingsPresentation && UIAccessibilityIsReduceMotionEnabled() ? UITableViewRowAnimationNone : UITableViewRowAnimationFade)];
         return;
     }
 
@@ -580,7 +843,8 @@
     UIContextMenuInteraction *interaction = [[UIContextMenuInteraction alloc] initWithDelegate:self];
     // 挂载到 cell 本身而不是 detailTextLabel，避免 detailTextLabel 尚未进入 window 时触发 UITargetedPreview 断言崩溃
     [cell addInteraction:interaction];
-    CGRect detailFrame = cell.detailTextLabel.frame;
+    CGRect detailFrame = self.usesRefinedSettingsPresentation
+        ? [cell convertRect:cell.detailTextLabel.bounds fromView:cell.detailTextLabel] : cell.detailTextLabel.frame;
     CGPoint location = CGPointMake(CGRectGetMidX(detailFrame), CGRectGetMidY(detailFrame));
     [interaction _presentMenuAtLocation:location];
 }
@@ -640,7 +904,8 @@
 /// 通过 BackgroundManager 重新设置当前视图控制器的透明度/毛玻璃效果，
 /// 确保 tableView 背景透明、全局背景能够正常透出。
 - (void)reapplyBackgroundEffect {
-    [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
+    if (self.usesRefinedSettingsPresentation) [self refreshRefinedSettingsPresentation];
+    else [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 }
 
 - (void)dealloc {

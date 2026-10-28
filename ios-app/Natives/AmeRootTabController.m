@@ -261,7 +261,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     [NSLayoutConstraint activateConstraints:@[
         [self.floatingDoneButton.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-16],
         [self.floatingDoneButton.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-12],
-        [self.floatingDoneButton.heightAnchor constraintEqualToConstant:40],
+        [self.floatingDoneButton.heightAnchor constraintGreaterThanOrEqualToConstant:44],
         [self.floatingDoneButton.widthAnchor constraintGreaterThanOrEqualToConstant:104],
     ]];
 
@@ -314,6 +314,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     [NSLayoutConstraint activateConstraints:@[
         top, [panel.trailingAnchor constraintEqualToAnchor:self.profileSlot.trailingAnchor]
     ]];
+    [panel constrainExpandedPresentationToSafeArea:self.view.safeAreaLayoutGuide];
     __weak typeof(self) weakSelf = self;
     panel.onWillExpand = ^{
         // Existing panel controls present through Home; keep that owner visible, even from another tab.

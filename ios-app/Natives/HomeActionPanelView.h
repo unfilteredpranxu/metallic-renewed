@@ -24,6 +24,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Overlay host for small badges that should float over the chips (e.g. the download count).
 @property (nonatomic, strong, readonly) UIView *badgeLayer;
 
+/// Presentation owner installs this once after adding the panel to a common ancestor.
+/// Expanded contents scroll within these live bounds; the collapsed header stays unchanged.
+- (void)constrainExpandedPresentationToSafeArea:(UILayoutGuide *)safeArea;
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated;
 - (void)setProfileName:(nullable NSString *)name avatar:(nullable UIImage *)avatar;
 - (void)setLauncherVersion:(nullable NSString *)launcher

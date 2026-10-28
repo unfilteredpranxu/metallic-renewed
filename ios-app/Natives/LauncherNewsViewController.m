@@ -2277,12 +2277,12 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
         [self.headerTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.customizeButton.leadingAnchor constant:-8],
 
         [self.customizeButton.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
-        [self.customizeButton.heightAnchor constraintEqualToConstant:kHome6PillHeight],
+        [self.customizeButton.heightAnchor constraintEqualToConstant:44.0],
 
         // ★ [EDITMODE] 「✓ 完成」与「⚙自定义」同槽位:centerY/高一致,trailing 也挂在同一套两向约束里
         //   (竖屏贴 view 边、横屏贴 safeArea 边)⇒ 两朝向自动跟随,不存在同属性双钉。
         [self.homeEditDoneButton.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
-        [self.homeEditDoneButton.heightAnchor constraintEqualToConstant:kHome6PillHeight],
+        [self.homeEditDoneButton.heightAnchor constraintEqualToConstant:44.0],
 
     ]];
 

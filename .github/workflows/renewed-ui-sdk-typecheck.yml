@@ -1,5 +1,5 @@
 name: Metallic Renewed UI SDK typecheck
-run-name: iOS 26 SDK check for UI checkpoint 1813bb51
+run-name: iOS 26 SDK check for UI checkpoint 32e3d8b3
 
 on:
   push:
@@ -19,13 +19,13 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 20
     env:
-      SOURCE_SHA: 1813bb51ac2b6cc0faec72b38f27c448f1d34dac
+      SOURCE_SHA: 32e3d8b391d267432316bb871f33e7d971cf655f
     steps:
       - name: Checkout immutable UI checkpoint (no upstream replacement)
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: unfilteredpranxu/metallic-renewed
-          ref: 1813bb51ac2b6cc0faec72b38f27c448f1d34dac
+          ref: 32e3d8b391d267432316bb871f33e7d971cf655f
           path: source
           persist-credentials: false
           submodules: false

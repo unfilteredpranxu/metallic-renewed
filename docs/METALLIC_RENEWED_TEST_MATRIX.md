@@ -333,3 +333,15 @@ UI work paused. First source prerequisite: original Alpha 1.2 ZeroTier framework
 | Downloads UIKit SDK typecheck | Re-run 40626900045 | Original dependencies present and Downloads typechecks | `DownloadViewController.m:13:9` fatal missing original `installer/modpack/ModrinthAPI.h` | BLOCKED | Entire installer directory missing; no stub or upstream substitution |
 | Complete IPA build | Build/link/package original M6 source with verified dependencies | Installable full IPA | Not attempted; mandatory native/source prerequisites unavailable | PENDING | No IPA artifact |
 | Device/JIT/Minecraft runtime | Install a verifiably complete built IPA on iPad | Native app launch, JIT, Java 25, Metal, Minecraft | Not executed | PENDING | Historical Alpha 1.2 gameplay is not this build |
+
+## M6.5 pinned external dependency recovery (2026-10-28)
+
+| Test | Evidence | Actual result | Status | Limitations |
+| --- | --- | --- | --- | --- |
+| Original Air and ZeroTier provenance | Pinned Air `c4797387ca9a81f31fdcdd2723ec1050ca35fdb3`, ZeroTier `b8e672f54286be8500bc875e153826af7b01d6e6`; run 40627905657 | Both exact revisions fetched and verified | PASS | Not proof of historic Alpha 1.2 dependency compatibility |
+| Staging missing native files | Run 40627905657; `rsync --ignore-existing` in temporary scratch; expected Modrinth API, input, ZeroTier and five framework binaries | Required sample inputs found, plus UnzipKit/NRFileManager/header dependencies from pinned upstream | PASS | Not committed to source or packaged |
+| Original source preservation | Same run's source-invariance job; compare M6 vs feature | Original checkout unchanged; protected engine/Java/Metal/JIT/signing files unchanged | PASS | Build scratch was augmented with previously missing upstream files |
+| DownloadViewController iOS SDK typecheck | Xcode 26.3/iPhoneOS26.2; real clang -fsyntax-only; run 40627905657 | PASS after recovered original headers staged | PASS | No linking, installer execution, or device testing |
+| All nine targeted UI .m typechecks | Eight in run 40626900045 plus Downloads in run 40627905657 | Nine targeted files passed compiler in their stated source environments | PASS | Individual source typechecks only, not entire app compile |
+| Full native IPA from recovered inputs | Execute genuine build/link/package on isolated macOS runner, verify JRE/JIT/engine/entitlements | Not executed | PENDING | Original binary identity and runtime compatibility still unverified |
+| JIT → Java 25 → Metal → Minecraft on iPad | Test installed completed IPA with disposable data | Not executed | PENDING | Do not release from staging/typecheck success |

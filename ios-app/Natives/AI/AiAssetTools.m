@@ -737,7 +737,7 @@ static BOOL aiIsLatestAlias(NSString *s) {
 
     // wait=false: install in the background and return immediately; swallow later completion callbacks (progress is available in the download center/check_downloads)
     if (!aiWaitRequested(params)) {
-        completion([NSString stringWithFormat:@"Started installing the %@ loader (MC %@) in the background: the vanilla game will be installed first if missing, then the loader version JSON will be written and the instance registered%@. Check task progress in the download center or with check_downloads.", displayName, mcVersion, isQuilt ? @"" : ", and Fabric API will be installed automatically"], nil);
+        completion([NSString stringWithFormat:@"Started installing the %@ loader (MC %@) in the background: the vanilla game will be installed first if missing, then the loader version JSON will be written and the instance registered%@. Check task progress in the download center or with check_downloads.", displayName, mcVersion, isQuilt ? @"" : @", and Fabric API will be installed automatically"], nil);
         completion = ^(NSString * _Nullable r, NSError * _Nullable e) {
             // Background execution: do not return the terminal result (progress and result are visible in the download center)
         };

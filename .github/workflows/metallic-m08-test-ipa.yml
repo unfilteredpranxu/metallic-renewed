@@ -278,6 +278,52 @@ jobs:
         PYCODE
         git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
         git -C "$SCRATCH_DIR" diff --exit-code HEAD --
+    - name: Stage pinned Blaze3D shader mirror group with byte verification
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 - <<'PYCODE'
+        import hashlib, os, shutil, json
+        from pathlib import Path
+        root=Path(os.environ['SCRATCH_DIR'])
+        original=Path(os.environ['GITHUB_WORKSPACE'])/'original'
+        air=Path(os.environ['RUNNER_TEMP'])/'air'/'Natives'/'shader_glslang'
+        target=root/'ios-app'/'Natives'/'shader_glslang'
+        diag=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'
+        manifest=air/'blaze3d_group.txt'
+        assert manifest.is_file(),f'Pinned Air group manifest absent: {manifest}'
+        assert not os.path.lexists(original/'ios-app/Natives/shader_glslang'),'Source already contains shader group: refuse replacing application assets'
+        assert not os.path.lexists(target),'Scratch already contains shader group: refuse replacing assets'
+        entries=[];total=0
+        for raw in manifest.read_text(encoding='utf-8').splitlines():
+            line=raw.strip()
+            if not line or line.startswith('#'):continue
+            digest, size, name=line.split(None,2)
+            assert name.startswith('com/mojang/blaze3d/') and all(x not in ('.','..','') for x in name.split('/')),f'Unsafe class path: {name}'
+            assert len(digest)==32 and all(x in '0123456789abcdef' for x in digest),name
+            rel=Path(name+'.class')
+            src=air/'blaze3d'/rel
+            assert src.is_file() and not src.is_symlink(),f'Missing pinned class: {name}'
+            data=src.read_bytes()
+            assert len(data)==int(size) and hashlib.md5(data).hexdigest()==digest,f'Pinned group source mismatch: {name}'
+            entries.append((rel,src,data))
+            total+=len(data)
+        assert len(entries)==129 and total==557034,f'Unexpected pinned Blaze3D mirror group count/size: {len(entries)}/{total}'
+        assert len({str(rel) for rel,_,_ in entries})==len(entries),'Duplicate class paths'
+        target.mkdir(parents=True,exist_ok=False)
+        shutil.copy2(manifest,target/'blaze3d_group.txt')
+        for rel,src,data in entries:
+            dst=target/'blaze3d'/rel
+            dst.parent.mkdir(parents=True,exist_ok=True)
+            assert not os.path.lexists(dst)
+            shutil.copy2(src,dst)
+            assert dst.read_bytes()==data
+        info={'application_sha':os.environ['SOURCE_SHA'],'source_revision':os.environ['AIR_SHA'],'classes':len(entries),'class_bytes':total,'manifest_sha256':hashlib.sha256(manifest.read_bytes()).hexdigest(),'archive_role':'Scratch-only shader packaging input; original M08 pack_shader_glslang.py unchanged'}
+        (diag/'blaze3d-group-recovery.json').write_text(json.dumps(info,indent=2)+'\n')
+        print(json.dumps(info,indent=2))
+        PYCODE
+        git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
+        git -C "$SCRATCH_DIR" diff --exit-code HEAD --
     - name: ONE full original make all build of exact M08 in scratch
       shell: bash
       run: |-

@@ -22,7 +22,6 @@ jobs:
       SOURCE_SHA: 32e3d8b391d267432316bb871f33e7d971cf655f
       AIR_SHA: c4797387ca9a81f31fdcdd2723ec1050ca35fdb3
       ZEROTIER_SHA: b8e672f54286be8500bc875e153826af7b01d6e6
-      GIT_LFS_SKIP_SMUDGE: '1'
     steps:
       - name: Check out immutable original M6 UI sources
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -69,6 +68,8 @@ jobs:
 
       - name: Retrieve fixed-revision Air and ZeroTier inputs
         shell: bash
+        env:
+          GIT_LFS_SKIP_SMUDGE: '1' # Only upstream Air contains unrelated unavailable LFS fixture
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP"

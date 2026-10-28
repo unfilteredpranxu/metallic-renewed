@@ -570,8 +570,6 @@ jobs:
       id: upload_diagnostics
     permissions:
       contents: read
-    needs:
-    - run-receipt
   prior-diagnostics:
     if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/renewed-ui-polish'
       && contains(github.event.head_commit.message, '[m08-diagnostics]')
@@ -641,7 +639,7 @@ jobs:
         python3 - <<'PYCODE'
         from pathlib import Path
         import os,json,gzip,shutil,subprocess
-        root=Path.cwd();out=root/'.github/metallic-m08-reports'/os.environ['GITHUB_RUN_ID'];out.mkdir(parents=True)
+        root=Path.cwd();out=root/'.github/metallic-m08-reports'/os.environ['GITHUB_RUN_ID'];out.mkdir(parents=True,exist_ok=True)
         src=root/'diagnostics';files=[]
         if src.exists():
             for p in src.rglob('*'):

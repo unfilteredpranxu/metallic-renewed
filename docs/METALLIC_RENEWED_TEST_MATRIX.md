@@ -322,3 +322,14 @@ M1 stays BLOCKED; M3 global consumers PARTIAL; M4 Home and M5 Instances/navigati
 | iPad installation/UI/gameplay | Install verified FULL IPA and test on iPad | Actual UI works with original engine | Not run | PENDING | No installable artifact |
 
 UI work paused. First source prerequisite: original Alpha 1.2 ZeroTier framework plus immutable provenance/checksum. Restoring it does not resolve all remaining M1 build-input gaps. Existing UI/runtime acceptance records remain pending.
+
+## M6.5 macOS/iOS 26 SDK validation (2026-10-28)
+
+| Test | Procedure | Expected | Actual evidence | Status | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Exact-source macOS prerequisite run | Actions run 40493188397, Xcode 16.4, source 1813bb51 | All original inputs available before build | Checkout/toolchain/invariance PASS; first mandatory file absent `ZeroTierFramework/ios-example-app/zt.framework/zt` | BLOCKED | No native compile or IPA; diagnostic artifact uploaded |
+| UIKit SDK typecheck original M6 | Actions run 40626760600, Xcode 26.3/iPhoneOS26.2, same source | Nine UI implementation files typecheck | Seven PASS; Home compiler error on `BaseAuthenticator.current.authData`; Downloads missing `installer/modpack/ModrinthAPI.h` | PARTIAL | True SDK compiler execution, not full link |
+| Home UI compiler correction | Checkpoint 32e3d8b, Actions run 40626900045, same Xcode 26.3/SDK26.2 | Home UIKit code typechecks without changing authentication implementation | Home PASS; eight of nine targeted UI implementation files PASS; source-invariance PASS | PASS | Two-line UI-only static typing fix |
+| Downloads UIKit SDK typecheck | Re-run 40626900045 | Original dependencies present and Downloads typechecks | `DownloadViewController.m:13:9` fatal missing original `installer/modpack/ModrinthAPI.h` | BLOCKED | Entire installer directory missing; no stub or upstream substitution |
+| Complete IPA build | Build/link/package original M6 source with verified dependencies | Installable full IPA | Not attempted; mandatory native/source prerequisites unavailable | PENDING | No IPA artifact |
+| Device/JIT/Minecraft runtime | Install a verifiably complete built IPA on iPad | Native app launch, JIT, Java 25, Metal, Minecraft | Not executed | PENDING | Historical Alpha 1.2 gameplay is not this build |

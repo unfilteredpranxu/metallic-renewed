@@ -1,0 +1,145 @@
+name: Metallic Renewed UI SDK typecheck
+run-name: iOS 26 SDK check for UI checkpoint 1813bb51
+
+on:
+  push:
+    branches: [feat/renewed-uikit-home]
+    paths: [.github/workflows/renewed-ui-sdk-typecheck.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renewed-ui-sdk-typecheck
+  cancel-in-progress: false
+
+jobs:
+  uikit-typecheck:
+    if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/renewed-uikit-home'
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      SOURCE_SHA: 1813bb51ac2b6cc0faec72b38f27c448f1d34dac
+    steps:
+      - name: Checkout immutable UI checkpoint (no upstream replacement)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: unfilteredpranxu/metallic-renewed
+          ref: 1813bb51ac2b6cc0faec72b38f27c448f1d34dac
+          path: source
+          persist-credentials: false
+          submodules: false
+          lfs: true
+
+      - name: Select original-target Xcode 26 toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/renewed-ui-typecheck"
+          if [ -d /Applications/Xcode_26.3.app/Contents/Developer ]; then
+            echo "DEVELOPER_DIR=/Applications/Xcode_26.3.app/Contents/Developer" >> "$GITHUB_ENV"
+          elif [ -d /Applications/Xcode_26.2.app/Contents/Developer ]; then
+            echo "DEVELOPER_DIR=/Applications/Xcode_26.2.app/Contents/Developer" >> "$GITHUB_ENV"
+          else
+            echo "Xcode 26.2/26.3 unavailable; do not substitute an unverified SDK." | tee "$RUNNER_TEMP/renewed-ui-typecheck/toolchain.txt"
+            exit 1
+          fi
+
+      - name: Read-only Objective-C UIKit SDK typecheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUTPUT="$RUNNER_TEMP/renewed-ui-typecheck"
+          mkdir -p "$OUTPUT/modules"
+          {
+            echo "Source SHA: $(git -C source rev-parse HEAD)"
+            test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+            xcodebuild -version
+            xcrun --sdk iphoneos --show-sdk-version
+            xcrun --sdk iphoneos --show-sdk-path
+          } | tee "$OUTPUT/toolchain.txt"
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          cd source/ios-app/Natives
+          FLAGS=(
+            -target arm64-apple-ios14.0
+            -fobjc-arc
+            -fblocks
+            -fmodules
+            "-fmodules-cache-path=$OUTPUT/modules"
+            -isysroot "$SDK"
+            -fsyntax-only
+            -I.
+            -Iexternal/AFNetworking/AFNetworking
+            -Iexternal/AFNetworking/UIKit+AFNetworking
+            -Iexternal/DBNumberedSlider/Classes
+            -Iexternal/NRFileManager
+            -Iexternal/UnzipKit
+            -Iexternal/fishhook
+            -Iexternal/lzma
+            -Iexternal/mesa
+            -Iexternal/AltKit
+            -Iexternal/Apple
+            -Iexternal/ballpa1n
+            -Iexternal/ballpa1n/wrapped
+            -Iexternal/mach
+          )
+          FILES=(
+            BottomActionBarView.m
+            HomeTopNavView.m
+            BackgroundManager.m
+            BackgroundSettingsViewController.m
+            VersionCardCell.m
+            VersionManagerViewController.m
+            LauncherNewsViewController.m
+            AmeRootTabController.m
+            DownloadViewController.m
+          )
+          failures=0
+          {
+            echo "# UIKit SDK typecheck (not an IPA build)"
+            echo
+            echo "Source: \`$SOURCE_SHA\`. Uses original source and Apple SDK, no stub headers or dependency substitutions."
+            echo
+            echo "| Source | Clang result |"
+            echo "|---|---|"
+          } > "$OUTPUT/summary.md"
+          for file in "${FILES[@]}"; do
+            if xcrun clang "${FLAGS[@]}" "$file" > "$OUTPUT/$file.log" 2>&1; then
+              echo "$file: TYPECHECK PASS"
+              echo "| $file | PASS |" >> "$OUTPUT/summary.md"
+            else
+              failures=$((failures + 1))
+              echo "$file: TYPECHECK FAILED / possibly missing original headers"
+              echo "| $file | FAILED (inspect artifact for first compiler error) |" >> "$OUTPUT/summary.md"
+              grep -m 4 -E "fatal error:|error:" "$OUTPUT/$file.log" || tail -n 6 "$OUTPUT/$file.log" || true
+            fi
+          done
+          {
+            echo
+            echo "Files attempted: ${#FILES[@]}; failures: $failures"
+            echo "A failure may be caused by absent original dependency headers. A PASS is syntax/type checking only, not linking, packaging, signing or JIT validation."
+          } >> "$OUTPUT/summary.md"
+          cat "$OUTPUT/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "$failures" > "$OUTPUT/failures.txt"
+          if [ "$failures" -gt 0 ]; then exit 1; fi
+
+      - name: Verify checkout source remained unchanged
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/renewed-ui-typecheck"
+          if [ -d source/.git ]; then
+            git -C source diff --exit-code HEAD -- > "$RUNNER_TEMP/renewed-ui-typecheck/source-invariance.log" 2>&1
+            git -C source status --short >> "$RUNNER_TEMP/renewed-ui-typecheck/source-invariance.log"
+          else
+            echo "Source checkout unavailable" > "$RUNNER_TEMP/renewed-ui-typecheck/source-invariance.log"
+          fi
+
+      - name: Upload SDK diagnostics even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: renewed-ui-sdk-diagnostics-${{ github.run_id }}
+          path: ${{ runner.temp }}/renewed-ui-typecheck/
+          if-no-files-found: warn
+          retention-days: 7

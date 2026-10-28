@@ -345,3 +345,26 @@ UI work paused. First source prerequisite: original Alpha 1.2 ZeroTier framework
 | All nine targeted UI .m typechecks | Eight in run 40626900045 plus Downloads in run 40627905657 | Nine targeted files passed compiler in their stated source environments | PASS | Individual source typechecks only, not entire app compile |
 | Full native IPA from recovered inputs | Execute genuine build/link/package on isolated macOS runner, verify JRE/JIT/engine/entitlements | Not executed | PENDING | Original binary identity and runtime compatibility still unverified |
 | JIT → Java 25 → Metal → Minecraft on iPad | Test installed completed IPA with disposable data | Not executed | PENDING | Do not release from staging/typecheck success |
+
+
+## Master verification gate — 2026-10-28
+
+Source `f944b11c373223ab762fa7785e8d35b3846e5c38`; no new compilation or dispatch. Existing run 40630076661 status/artifacts UNKNOWN because Actions API request returned transport Forbidden; api.github.com excluded by runtime policy. Historical SDK passes remain historical.
+
+| Component | Result | Evidence | Blocker |
+| --- | --- | --- | --- |
+| Git/source integrity | PASS | Latest fetched feature f944b11c373223ab762fa7785e8d35b3846e5c38; clean detached verification checkout; original local c711855 retained; app tree e93a14cce4c3327d5563bd4d58f8c2e8efa5d116 equals workflow df86eb02 tree | Submodule execution completeness separately unverified |
+| Xcode/iOS SDK | UNVERIFIED | Saved M6.5 evidence: Xcode26.3/iPhoneOS26.2; existing workflow selects macos-26 and Xcode26.3 | Current run/toolchain/Clang/Swift/CMake/Make/JDK8/ldid/wget logs inaccessible |
+| CMake/source inputs | UNVERIFIED | Source list and existing scratch staging reviewed; ControllerInput and installer tree absent locally; prior staged typecheck recorded | No current complete evaluated CMake source/header/resource/asset/LaunchScreen inventory |
+| Frameworks | UNVERIFIED | Air pin c4797387ca9a81f31fdcdd2723ec1050ca35fdb3 declared in existing workflows; earlier sample recovery recorded | Full staged manifest/checksums/architectures and link closure unavailable |
+| ZeroTier | UNVERIFIED | Pinned b8e672f54286be8500bc875e153826af7b01d6e6 declared; prior recovery documented | Absent in source checkout; current scratch binary/hash evidence unavailable |
+| Download installers | UNVERIFIED | Original Downloads equals 1813bb51; pinned installer staging and earlier SDK check recorded | Full installer include/source inventory and current build result unavailable |
+| JIT resources and wiring | UNVERIFIED | Native coordinator/JavaLauncher/utils/scripts/entitlements baseline-equal; Home canonical.enabled guard and one native dispatch retained; native lookup expects app-root UniversalJIT26.js | Template exists but source resources copy lacks it; current scratch/packaged path evidence unavailable |
+| Java 8/17/21/25 | UNVERIFIED | Unchanged Makefile original assets.angelauramc.dev/openjdk/ios-arm64/jreN-ios-aarch64.zip sources and lib/server/libjvm.dylib hierarchy checks | No runtime archives/payload available locally; immutable runtime versions/checksums, launcher/patch-agent JAR payload unverified |
+| Metal/Metallum | UNVERIFIED | Original bundled Metallum/native binaries and renderer settings/build sources baseline-equal | Effective staged libraries, arm64/link closure and payload unavailable |
+| Shader dependencies | UNVERIFIED | Existing Makefile pins SPIRV-Cross a0fba56c34a6700f1724bf9b751da5b488a3775c and glslang f5f664dee8146676b04a332a7233959fc3ce9681; scratch-only transformations permitted by this request | Effective inputs/output checksums and applied guard-patch/source-diff evidence inaccessible |
+| UIKit/Swift integration | UNVERIFIED | Nine earlier SDK checks documented; three published compiler corrections retained; M5 routing/Home callbacks reviewed; source registrations unchanged | No current full compiler/link result; individual historical checks do not prove Swift/UIKit linkage |
+| Entitlements/signing | UNVERIFIED | Info.plist com.tokyxkai.metallic, executable AngelAuraAmethyst, minOS14; signing files/recipe baseline-equal | Actual binary entitlements/signatures/architectures and chosen device installation method unverified |
+| IPA payload recipe | UNVERIFIED | Existing full make all recipe retained; non-slim payload copies runtimes/resources/frameworks | Current IPA existence/integrity/JAR/JIT/Java25 payload and signing unavailable; post-build validation required |
+
+Gate BLOCKED. Post-build ZIP/architecture/dependency/JRE/JIT/JAR/signature/SHA256 inspections PENDING until an actual artifact is obtained. All A16 iPad/iPadOS27.x installation, app/UI/profile/disabled-Play/JIT/Java25/Minecraft26.2/Metallum/controls/audio/gameplay/missing-library tests PENDING. No source corrections or workflow changes performed. Next: allow Actions API access and inspect the existing run before scheduling anything.

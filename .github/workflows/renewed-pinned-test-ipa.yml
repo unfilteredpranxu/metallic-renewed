@@ -1,0 +1,214 @@
+name: Build Metallic Renewed pinned-input test IPA
+run-name: Native test IPA of 32e3d8b with pinned upstream inputs
+
+on:
+  push:
+    branches: [feat/renewed-uikit-home]
+    paths: [.github/workflows/renewed-pinned-test-ipa.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: metallic-renewed-pinned-test-ipa
+  cancel-in-progress: false
+
+jobs:
+  native-test:
+    if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/renewed-uikit-home'
+    runs-on: macos-26
+    timeout-minutes: 75
+    env:
+      SOURCE_SHA: 32e3d8b391d267432316bb871f33e7d971cf655f
+      AIR_SHA: c4797387ca9a81f31fdcdd2723ec1050ca35fdb3
+      ZEROTIER_SHA: b8e672f54286be8500bc875e153826af7b01d6e6
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - name: Check out immutable original M6 UI sources
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: unfilteredpranxu/metallic-renewed
+          ref: 32e3d8b391d267432316bb871f33e7d971cf655f
+          path: original
+          persist-credentials: false
+          submodules: false
+          lfs: true
+
+      - name: Install and identify original build toolchain
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v4.7.1
+        with:
+          distribution: zulu
+          java-version: '8'
+
+      - name: Toolchain and prerequisite setup
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/metallic-native-build"
+          test -d /Applications/Xcode_26.3.app/Contents/Developer
+          echo "DEVELOPER_DIR=/Applications/Xcode_26.3.app/Contents/Developer" >> "$GITHUB_ENV"
+          brew list --versions ldid >/dev/null 2>&1 || brew install ldid
+          brew list --versions wget >/dev/null 2>&1 || brew install wget
+          brew list --versions cmake >/dev/null 2>&1 || brew install cmake
+          {
+            xcodebuild -version
+            xcrun --sdk iphoneos --show-sdk-version
+            java -version
+            javac -version
+            cmake --version
+            ldid -h || true
+          } > "$RUNNER_TEMP/metallic-native-build/toolchain.log" 2>&1
+
+      - name: Initialize original pinned NG-GL4ES Git submodule
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C original rev-parse HEAD)" = "$SOURCE_SHA"
+          git -C original submodule update --init --depth=1 ios-app/ThirdParty/NG-GL4ES
+          git -C original submodule status | tee "$RUNNER_TEMP/metallic-native-build/source-submodules.txt"
+
+      - name: Retrieve fixed-revision Air and ZeroTier inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          git clone --filter=blob:none --no-checkout https://github.com/herbrine8403/Amethyst-iOS-MyRemastered.git air
+          git -C air fetch --depth=1 origin "$AIR_SHA"
+          git -C air -c advice.detachedHead=false checkout --detach "$AIR_SHA"
+          test "$(git -C air rev-parse HEAD)" = "$AIR_SHA"
+          git -C air submodule update --init --depth=1 Natives/external/ZeroTierFramework Natives/external/AFNetworking Natives/external/DBNumberedSlider Natives/external/fishhook
+          test "$(git -C air/Natives/external/ZeroTierFramework rev-parse HEAD)" = "$ZEROTIER_SHA"
+          for p in Natives/installer/modpack/ModrinthAPI.h Natives/input/ControllerInput.m Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt; do
+            test -f "air/$p" || { echo "Missing pinned dependency: $p"; exit 1; }
+          done
+          {
+            echo "Original source: $SOURCE_SHA"
+            echo "Air commit: $(git -C air rev-parse HEAD)"
+            echo "ZeroTier commit: $(git -C air/Natives/external/ZeroTierFramework rev-parse HEAD)"
+            shasum -a 256 air/Natives/installer/modpack/ModrinthAPI.h air/Natives/input/ControllerInput.m air/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt
+          } | tee "$RUNNER_TEMP/metallic-native-build/pinned-inputs.txt"
+
+      - name: Construct independent scratch build without overwriting any original file
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="$GITHUB_WORKSPACE/original"
+          SCRATCH="$RUNNER_TEMP/metallic-scratch"
+          mkdir -p "$SCRATCH"
+          rsync -a "$SRC/" "$SCRATCH/"
+          test "$(git -C "$SCRATCH" rev-parse HEAD)" = "$SOURCE_SHA"
+          BEFORE="$RUNNER_TEMP/metallic-native-build/pre-staging-tracked.txt"
+          git -C "$SCRATCH" status --porcelain > "$BEFORE"
+          test ! -s "$BEFORE" || { cat "$BEFORE"; exit 1; }
+          # Only add paths that do NOT exist already; never overwrite original UIKit, JIT, Java, Metal or binaries.
+          rsync -a --ignore-existing --exclude='.git' --exclude='build' "$RUNNER_TEMP/air/Natives/" "$SCRATCH/ios-app/Natives/"
+          for p in installer/modpack/ModrinthAPI.h input/ControllerInput.m external/ZeroTierFramework/ios-example-app/zt.framework/zt resources/Frameworks/libEGL.framework/libEGL resources/Frameworks/libGLESv2.framework/libGLESv2; do
+            test -f "$SCRATCH/ios-app/Natives/$p" || { echo "Missing staged input: $p"; exit 1; }
+          done
+          git -C "$SCRATCH" diff --exit-code HEAD --
+          {
+            echo "Original SHA: $SOURCE_SHA"
+            echo "Scratch checkout commit: $(git -C "$SCRATCH" rev-parse HEAD)"
+            echo "All absent Air/Natives inputs staged via rsync --ignore-existing; no original files replaced."
+            echo "Source working copy built only under RUNNER_TEMP."
+            echo "Previously missing untracked source count: $(git -C "$SCRATCH" ls-files --others --exclude-standard | wc -l)"
+            echo "Full build may perform existing Makefile shader dependency alignment and packaging patches in scratch."
+          } | tee "$RUNNER_TEMP/metallic-native-build/staging-summary.txt"
+          echo "SCRATCH_DIR=$SCRATCH" >> "$GITHUB_ENV"
+
+      - name: Attempt full original native make all on disposable scratch checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$SCRATCH_DIR/ios-app"
+          export PATH="/opt/homebrew/bin:$PATH"
+          export SDKPATH="$(xcrun --sdk iphoneos --show-sdk-path)"
+          echo "Build source revision: $(git -C "$SCRATCH_DIR" rev-parse HEAD)"
+          echo "Running original make all; no source patches or Makefile modifications by CI workflow."
+          set +e
+          make all BOOTJDK="$JAVA_HOME/bin" SDKPATH="$SDKPATH" JOBS=3 > "$RUNNER_TEMP/metallic-native-build/build.log" 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > "$RUNNER_TEMP/metallic-native-build/build-exit-code.txt"
+          if [ "$rc" -ne 0 ]; then
+            echo "Build failed, first original error messages:"
+            grep -nE "fatal error:|error: |CMake Error|No rule to make target|Undefined symbols|ld: |\*\*\*" "$RUNNER_TEMP/metallic-native-build/build.log" | head -n 24 || true
+            tail -n 65 "$RUNNER_TEMP/metallic-native-build/build.log" || true
+            exit "$rc"
+          fi
+          echo 'Full native build command exited successfully.'
+          find artifacts -maxdepth 1 -name '*.ipa' -type f -print
+
+      - name: Validate actual IPA contents and signing evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$SCRATCH_DIR/ios-app"
+          test -d artifacts/Payload/AngelAuraAmethyst.app
+          APP=artifacts/Payload/AngelAuraAmethyst.app
+          IPA="$(find artifacts -maxdepth 1 -type f -name 'com.tokyxkai.metallic-*-ios.ipa' -print -quit)"
+          test -n "$IPA" && test -s "$IPA"
+          test -f "$APP/AngelAuraAmethyst"
+          test -f "$APP/java_runtimes/java-25-openjdk/lib/server/libjvm.dylib"
+          {
+            echo "IPA: $IPA"
+            shasum -a 256 "$IPA"
+            ls -lh "$IPA"
+            file "$APP/AngelAuraAmethyst"
+            plutil -p "$APP/Info.plist" | grep -E 'CFBundleIdentifier|MinimumOSVersion|CFBundleExecutable' || true
+            for f in libmetallum.dylib libEGL.framework/libEGL libGLESv2.framework/libGLESv2; do
+              if test -f "$APP/Frameworks/$f"; then echo "FOUND Frameworks/$f"; else echo "MISSING Frameworks/$f"; fi
+            done
+            for v in 8 17 21 25; do
+              test -f "$APP/java_runtimes/java-$v-openjdk/lib/server/libjvm.dylib" && echo "Java $v present" || echo "Java $v missing"
+            done
+            ldid -e "$APP/AngelAuraAmethyst" || true
+            codesign -dv --verbose=2 "$APP/AngelAuraAmethyst" || true
+          } > "$RUNNER_TEMP/metallic-native-build/ipa-manifest.txt" 2>&1
+          shasum -a 256 "$IPA" > "$RUNNER_TEMP/metallic-native-build/ipa-sha256.txt"
+
+      - name: Save original checkout and scratch mutation diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/metallic-native-build"
+          if [ -d original/.git ]; then
+            {
+              git -C original rev-parse HEAD
+              git -C original diff --stat HEAD --
+              git -C original status --short
+              git -C original submodule status || true
+            } > "$RUNNER_TEMP/metallic-native-build/original-integrity.txt" 2>&1
+          fi
+          if [ -n "${SCRATCH_DIR:-}" ] && [ -d "$SCRATCH_DIR/.git" ]; then
+            {
+              git -C "$SCRATCH_DIR" diff --name-status HEAD --
+              git -C "$SCRATCH_DIR" status --short | head -n 100
+            } > "$RUNNER_TEMP/metallic-native-build/scratch-mutations.txt" 2>&1
+          fi
+          {
+            echo '## Test-only build gate'
+            echo 'Full native IPA and JIT gameplay are NOT proven by a green compile alone.'
+            echo 'Any candidate IPA uses pinned recovered upstream input files that may differ from original Alpha 1.2 dependencies.'
+            echo 'Do not release without signing, framework/JRE/JIT payload inspection and physical-device gameplay.'
+          } > "$RUNNER_TEMP/metallic-native-build/notice.txt"
+
+      - name: Upload real native IPA only if compiled and packaged
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: metallic-renewed-pinned-test-ipa-${{ github.run_id }}
+          path: ${{ runner.temp }}/metallic-scratch/ios-app/artifacts/*.ipa
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+      - name: Upload full diagnostic logs even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: metallic-renewed-build-diagnostics-${{ github.run_id }}
+          path: ${{ runner.temp }}/metallic-native-build/
+          if-no-files-found: warn
+          compression-level: 6
+          retention-days: 7

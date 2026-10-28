@@ -5,7 +5,7 @@ permissions:
   contents: read
 concurrency:
   group: metallic-m08-692fff39-test-ipa
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   native-test:
     if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/renewed-ui-polish'
@@ -349,31 +349,18 @@ jobs:
             records.append({'path':name,'mode':mode,'blob':oid,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
         assert len(records)==74 and sum(x['bytes'] for x in records)==3227287,'Incomplete SFPEW tree'
         assert hashlib.sha256(json.dumps(records,sort_keys=True,separators=(',',':')).encode()).hexdigest()=='7d0e22978fa3b7b007c2d0189697ba69b4cd4a88e53e61c7280d24e992006a09'
-        # The native target links this pinned framework; existing payload copies resources/Frameworks.
-        # Stage the complete framework at the missing packaging-input path, never replacing originals.
-        zt=air/'Natives/external/ZeroTierFramework/ios-example-app/zt.framework';target=root/'ios-app/Natives/resources/Frameworks/zt.framework'
+        # ZeroTier is a pinned STATIC archive; it is linked into the executable, not a runtime framework.
+        zt=air/'Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt'
         assert subprocess.check_output(['git','-C',str(air/'Natives/external/ZeroTierFramework'),'rev-parse','HEAD'],text=True).strip()==os.environ['ZEROTIER_SHA']
-        assert zt.is_dir() and (zt/'zt').is_file()
-        zt_manifest={}
-        for src in zt.rglob('*'):
-            relpath=src.relative_to(zt);dst=target/relpath
-            if src.is_dir() and not src.is_symlink():continue
-            for parent in dst.parents:
-                if parent==root:break
-                assert not parent.is_symlink() and (not parent.exists() or parent.is_dir()),f'Unsafe framework parent {parent}'
-            if src.is_symlink():
-                value=os.readlink(src)
-                if os.path.lexists(dst):assert dst.is_symlink() and os.readlink(dst)==value,dst
-                else:dst.parent.mkdir(parents=True,exist_ok=True);dst.symlink_to(value)
-                zt_manifest[str(relpath)]={'symlink':value}
-            else:
-                digest=hashlib.sha256(src.read_bytes()).hexdigest()
-                if os.path.lexists(dst):assert dst.is_file() and not dst.is_symlink() and hashlib.sha256(dst.read_bytes()).hexdigest()==digest,dst
-                else:dst.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(src,dst)
-                zt_manifest[str(relpath)]={'sha256':digest}
+        assert zt.is_file() and zt.read_bytes().startswith(b'!<arch>\n'),'Pinned ZeroTier no longer matches static framework layout'
+        zt_digest=hashlib.sha256(zt.read_bytes()).hexdigest()
+        assert zt_digest=='1249ae3106a0522777360c297a0d7c1f0826f993663aef89e9555c64e69c34b1'
+        zt_manifest={'sha256':zt_digest,'kind':'static archive linked by existing CMake framework option','runtime_framework_required':False}
         # Enumerate mandatory default make graph and all static script/source inputs, not generated outputs.
         app=root/'ios-app';native=app/'Natives';make=(app/'Makefile').read_text();required=[]
-        for name in sorted(set(re.findall(r'\$\(SOURCEDIR\)/([A-Za-z0-9_./+-]+\.(?:py|c|m|mm|cpp|h))',make))):
+        for name in sorted(set(re.findall(r'\$\(SOURCEDIR\)/([A-Za-z0-9_./+-]+\.(?:py|c|m|mm|cpp|h)(?![A-Za-z0-9_.]))',make))):
+            if name in ['scripts/patch_angle_surface_freeze.py','scripts/patch_sdl3_eventfilter_guard.py'] and not (app/name).exists():
+                continue # Original Makefile explicitly treats these as optional; do not change that engine behavior.
             assert (app/name).is_file(),f'Missing original Makefile input: {name}';required.append(name)
         cmake='\n'.join(line.split('#',1)[0] for line in (native/'CMakeLists.txt').read_text().splitlines())
         for name in sorted(set(re.findall(r'(?m)^\s*([\w./+-]+\.(?:m|mm|c|cc|cpp|swift))\s*$',cmake))):
@@ -382,7 +369,7 @@ jobs:
             assert (native/'external/MobileGlues'/name).is_file(),f'Missing SFPEW nested prerequisite: {name}'
         for name in ['3rdparty/xxhash/xxhash32.h','3rdparty/xxhash/xxhash64.h','include/GLES/gl32.h','CMakeLists.txt']:
             assert (native/'external/SimpleFPEWrapper'/name).is_file(),name
-        for name in ['JavaApp/Makefile','JavaApp/patchjna_agent.txt','JavaApp/patchsvc.txt','Natives/Assets.xcassets/Contents.json','Natives/resources/en.lproj/LaunchScreen.storyboardc','Natives/shader_glslang/blaze3d_group.txt','entitlements.sideload.xml']:
+        for name in ['JavaApp/Makefile','JavaApp/src/patchjna_agent.txt','JavaApp/src/patchsvc.txt','Natives/Assets.xcassets/Contents.json','Natives/resources/en.lproj/LaunchScreen.storyboardc','Natives/shader_glslang/blaze3d_group.txt','entitlements.sideload.xml']:
             assert (app/name).exists(),f'Missing Java/assets/shader/packaging input: {name}'
         jars=list((app/'JavaApp/libs').rglob('*.jar'));assert jars
         for jar in jars:assert jar.stat().st_size>0 and zipfile.is_zipfile(jar),f'Invalid original prebuilt JAR: {jar}'
@@ -392,7 +379,7 @@ jobs:
             for _ in range(2):subprocess.run(['python3',str(native/'patch_sfpew_ios.py'),str(probe)],stdout=log,stderr=subprocess.STDOUT,check=True)
         info={'application_sha':os.environ['SOURCE_SHA'],'air_sha':os.environ['AIR_SHA'],'sfpew_tree':'828811789978e4bbdfb1feff19bacc6f793986f7','sfpew_files':records,'zerotier_packaging':zt_manifest,'mandatory_default_targets':['all','native','dep_mg','swift','java','jre','assets','payload','dep_shader_shims','dep_openal_shim','dep_angle_freeze','dep_sdl3_guard','dep_nggl4es','dep_sfpew','shader-glslang-pack','package','dsym'],'static_make_inputs':required,'prebuilt_jar_count':len(jars),'runtime_archive_validation':'Existing make jre and post-build archive checks retained; URLs and deployment14 unchanged','optional_targets':'Original MobileGL/Mithril/render-gap conditions unchanged'}
         (diag/'complete-prerequisite-preflight.json').write_text(json.dumps(info,indent=2)+'\n')
-        print('PASS full pinned SFPEW tree/nested dependencies/original patch, ZeroTier packaging input, mandatory native/Java/assets/shader/packaging source preflight')
+        print('PASS full pinned SFPEW tree/nested dependencies/original patch, ZeroTier static link input, mandatory native/Java/assets/shader/packaging source preflight')
         PYCODE
         git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
         git -C "$SCRATCH_DIR" diff --exit-code HEAD --
@@ -448,7 +435,7 @@ jobs:
             assert prefix+'Assets.car' in names,'Missing compiled catalogue'
             icon_paths=sorted(n for n in names if n.startswith(prefix) and n.endswith('.png') and n.rsplit('/',1)[-1].startswith('AppIcon-Light'))
             assert icon_paths,'Missing primary compiled app icon PNGs'
-            required=['Frameworks/zt.framework/zt','Frameworks/libMoltenVK.dylib','Frameworks/libopenal.dylib','Frameworks/libopenal_impl.dylib','AngelAuraAmethyst','Frameworks/libmetallum.dylib','Frameworks/libEGL.framework/libEGL','Frameworks/libGLESv2.framework/libGLESv2','Frameworks/AltKit.framework/AltKit','Frameworks/CAltKit.framework/CAltKit','Frameworks/UnzipKit.framework/UnzipKit','Frameworks/libspirv-cross-c-shared.0.dylib','libs/launcher.jar','libs/patchjna_agent.jar','libs/patchsvc.jar','libs/mojang-stubs.jar','libs/lwjgl-333/lwjgl.jar','libs/lwjgl-341/lwjgl.jar','UniversalJIT26.js','UniversalJIT26Extension.js','JIT26Script.js']
+            required=['Frameworks/libnggl4es.dylib','Frameworks/libSimpleFPEWrapper.dylib','Frameworks/libMoltenVK.dylib','Frameworks/libopenal.dylib','Frameworks/libopenal_impl.dylib','AngelAuraAmethyst','Frameworks/libmetallum.dylib','Frameworks/libEGL.framework/libEGL','Frameworks/libGLESv2.framework/libGLESv2','Frameworks/AltKit.framework/AltKit','Frameworks/CAltKit.framework/CAltKit','Frameworks/UnzipKit.framework/UnzipKit','Frameworks/libspirv-cross-c-shared.0.dylib','libs/launcher.jar','libs/patchjna_agent.jar','libs/patchsvc.jar','libs/mojang-stubs.jar','libs/lwjgl-333/lwjgl.jar','libs/lwjgl-341/lwjgl.jar','UniversalJIT26.js','UniversalJIT26Extension.js','JIT26Script.js']
             required += [f'java_runtimes/java-{v}-openjdk/lib/server/libjvm.dylib' for v in [8,17,21,25]]
             def archived_bytes(name):
                 for _ in range(16):
@@ -472,6 +459,10 @@ jobs:
                     subprocess.run(['otool','-L',str(p)],stdout=log,stderr=subprocess.STDOUT,check=True)
                     if rel!='AngelAuraAmethyst': p.unlink()
             exe=inspection/'AngelAuraAmethyst'
+            defined=subprocess.check_output(['nm','-U',str(exe)],text=True)
+            (diag/'executable-defined-symbols.txt').write_text(defined)
+            for symbol in ['_zts_node_start','_zts_init_from_storage','_zts_bsd_socket']:
+                assert symbol in defined,f'Missing statically linked ZeroTier API: {symbol}'
             signed=subprocess.run(['ldid','-e',str(exe)],capture_output=True,check=True)
             (diag/'ipa-entitlements.plist').write_bytes(signed.stdout)
             assert plistlib.loads(signed.stdout)==plistlib.loads((root/'ios-app/entitlements.sideload.xml').read_bytes()),'Packaged entitlements differ from original signing recipe'
@@ -579,6 +570,8 @@ jobs:
       id: upload_diagnostics
     permissions:
       contents: read
+    needs:
+    - run-receipt
   prior-diagnostics:
     if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/renewed-ui-polish'
       && contains(github.event.head_commit.message, '[m08-diagnostics]')
@@ -608,6 +601,9 @@ jobs:
         path: diagnostics/
         if-no-files-found: error
         retention-days: 7
+    needs:
+    - run-receipt
+    timeout-minutes: 10
   publish-diagnostics:
     needs:
     - native-test
@@ -626,6 +622,9 @@ jobs:
         persist-credentials: true
         lfs: false
         submodules: false
+        filter: blob:none
+        sparse-checkout: /.github/metallic-m08-reports/
+        sparse-checkout-cone-mode: false
     - name: Read this run diagnostic artifact
       uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
       continue-on-error: true
@@ -665,6 +664,45 @@ jobs:
         git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
         git commit -m "ci: record M08 run $GITHUB_RUN_ID diagnostics"
         git push origin HEAD:refs/heads/feat/renewed-ui-polish
+    timeout-minutes: 10
+  run-receipt:
+    if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/renewed-ui-polish'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Check out only CI report destination
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        ref: feat/renewed-ui-polish
+        fetch-depth: 0
+        filter: blob:none
+        sparse-checkout: /.github/metallic-m08-reports/
+        sparse-checkout-cone-mode: false
+        lfs: false
+        submodules: false
+        persist-credentials: true
+    - name: Publish exact run receipt; no source changes
+      shell: bash
+      env:
+        RUN_MODE: ${{ contains(github.event.head_commit.message, '[m08-diagnostics]') && 'diagnostics' || 'native-build'
+          }}
+      run: |-
+        set -euo pipefail
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import json,os,subprocess
+        p=Path('.github/metallic-m08-reports')/os.environ['GITHUB_RUN_ID'];p.mkdir(parents=True,exist_ok=True)
+        data={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'workflow_sha':os.environ['GITHUB_SHA'],'application_sha':'692fff39835a0651bef09f6fe33a9598a0f9cd53','state':'run-started','mode':os.environ['RUN_MODE']}
+        (p/'started.json').write_text(json.dumps(data,indent=2)+'\n')
+        subprocess.run(['git','diff','--exit-code','692fff39835a0651bef09f6fe33a9598a0f9cd53','HEAD','--','ios-app'],check=True)
+        subprocess.run(['git','add','--',str(p)],check=True)
+        PYCODE
+        git config user.name 'github-actions[bot]'
+        git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+        git commit -m "ci: record M08 run $GITHUB_RUN_ID start"
+        git push origin HEAD:refs/heads/feat/renewed-ui-polish
+    timeout-minutes: 10
 'on':
   push:
     branches:

@@ -2010,7 +2010,8 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     NSString *selected = self.renewedProfileSelection ?: @"";
     NSString *version = self.renewedProfileVersions[selected];
     BOOL hasTarget = selected.length > 0 && version.length > 0;
-    NSString *username = BaseAuthenticator.current.authData[@"username"];
+    BaseAuthenticator *account = [BaseAuthenticator current];
+    NSString *username = account.authData[@"username"];
     if (![username isKindOfClass:NSString.class] || username.length == 0) username = localize(@"renewed.home.signed_out", @"Not signed in");
     header.accountText.text = username;
     header.selectedHeading.text = hasTarget ? localize(@"renewed.home.selected", @"SELECTED INSTANCE") : localize(@"renewed.home.start", @"GET STARTED");

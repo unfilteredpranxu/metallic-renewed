@@ -1354,7 +1354,9 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     button.titleLabel.textAlignment = NSTextAlignmentCenter;
     button.contentEdgeInsets = UIEdgeInsetsMake(10, 16, 10, 16);
     button.tag = action;
-    [button.heightAnchor constraintGreaterThanOrEqualToConstant:AmeUIMinimumTouchSize].active = YES;
+    NSLayoutConstraint *touchHeight = [button.heightAnchor constraintGreaterThanOrEqualToConstant:AmeUIMinimumTouchSize];
+    touchHeight.priority = 999; // A hidden arranged view must be allowed to collapse to zero.
+    touchHeight.active = YES;
     [button addTarget:self action:@selector(actionTapped:) forControlEvents:UIControlEventTouchUpInside];
     return button;
 }
@@ -1765,8 +1767,9 @@ self.actionPanel.onLoginTap = ^{
 [self.actionPanel.chipRow addArrangedSubview:self.norightJITPill];
 [self.actionPanel.chipRow addArrangedSubview:self.topbarDownloadCenterPill];
 [self.norightJITPill setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-[self.topbarDownloadCenterPill setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-[self.topbarDownloadCenterPill setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+[self.topbarDownloadCenterPill setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
+[self.topbarDownloadCenterPill setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
+[self.topbarDownloadCenterPill.widthAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
 [self.actionPanel.badgeLayer addSubview:self.topbarDownloadBadgeLabel];
 [NSLayoutConstraint activateConstraints:@[
     [self.topbarDownloadBadgeLabel.trailingAnchor constraintEqualToAnchor:self.topbarDownloadCenterPill.trailingAnchor constant:2],

@@ -26,6 +26,7 @@
 #import "HomeTopNavView.h"
 #import "HomeActionPanelView.h"
 #import "BackgroundSettingsViewController.h"
+#import "UIKit+GlassSurface.h"
 #import "BottomActionBarView.h"   // AmePinkGlassButton
 #import <objc/message.h>
 
@@ -39,6 +40,7 @@ NSString * const AmeTabTappedNotification = @"AmeTabTapped";   // ★ [ROOTTAB]
 @property (nonatomic, strong) NSLayoutConstraint *profileSlotWidth;
 @property (nonatomic, strong) NSLayoutConstraint *profileSlotHeight;
 @property (nonatomic, strong) UIMenu *toolsMenu;
+@property (nonatomic, strong) UIButton *profileToolsButton;
 @property (nonatomic, strong) UIAction *aiAction;
 @property (nonatomic, strong) AmePinkGlassButton *floatingDoneButton;   // bottom-right "Done" shown on pushed pages
 @end
@@ -321,6 +323,19 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         if (root && !root.presentedViewController &&
             (root.selectedIndex != AMELauncherTabHome || home.viewControllers.count > 1)) [root ameResetToHome];
     };
+    // Keep the existing gesture and VoiceOver routes, and expose the same menu to ordinary touch.
+    self.profileToolsButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    self.profileToolsButton.translatesAutoresizingMaskIntoConstraints = NO;
+    ((AmePinkGlassButton *)self.profileToolsButton).ameRole = AmeGlassButtonRoleSubtle;
+    [self.profileToolsButton setTitle:@"Tools" forState:UIControlStateNormal];
+    self.profileToolsButton.titleLabel.font = AmeUIFont(AmeUIFontRoleStatus);
+    self.profileToolsButton.titleLabel.adjustsFontSizeToFitWidth = YES;
+    self.profileToolsButton.accessibilityLabel = @"Tools, including AI";
+    self.profileToolsButton.showsMenuAsPrimaryAction = YES;
+    self.profileToolsButton.menu = self.toolsMenu; // Same UIAction and native tab 2, no duplicate dispatch.
+    [self.profileToolsButton.widthAnchor constraintEqualToConstant:56].active = YES;
+    [self.profileToolsButton.heightAnchor constraintEqualToConstant:44].active = YES;
+    [panel.chipRow addArrangedSubview:self.profileToolsButton];
     [panel.avatarView addInteraction:[[UIContextMenuInteraction alloc] initWithDelegate:self]];
     panel.avatarView.accessibilityHint = @"Opens the profile panel. Tools are available in the actions menu.";
     panel.avatarView.accessibilityCustomActions = @[
@@ -534,6 +549,8 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 - (void)setSelectedIndex:(NSUInteger)selectedIndex {
     [super setSelectedIndex:selectedIndex];
     self.topNav.selectedIndex = selectedIndex;
+    // Home's editor disables its local chrome. That must not lock the shared profile on other tabs.
+    if (selectedIndex != AMELauncherTabHome) self.navigationProfilePanel.userInteractionEnabled = YES;
     self.aiAction.state = selectedIndex == AMELauncherTabAI ? UIMenuElementStateOn : UIMenuElementStateOff;
     [self ameUpdateFloatingDoneButton];
 }

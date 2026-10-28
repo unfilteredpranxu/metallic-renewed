@@ -82,6 +82,9 @@
     self.contentView.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(0, 8, 0, 8);
     NSLayoutConstraint *width = [self.surface.widthAnchor constraintEqualToAnchor:guide.widthAnchor];
     width.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *symbolWidth = [self.symbolView.widthAnchor constraintEqualToConstant:22];
+    NSLayoutConstraint *disclosureWidth = [self.disclosure.widthAnchor constraintEqualToConstant:12];
+    symbolWidth.priority = disclosureWidth.priority = 999; // UISV-hiding owns zero width when absent.
     [NSLayoutConstraint activateConstraints:@[
         [self.surface.leadingAnchor constraintGreaterThanOrEqualToAnchor:guide.leadingAnchor],
         [self.surface.trailingAnchor constraintLessThanOrEqualToAnchor:guide.trailingAnchor],
@@ -94,8 +97,8 @@
         [self.bodyStack.trailingAnchor constraintEqualToAnchor:self.surface.trailingAnchor constant:-14],
         [self.bodyStack.topAnchor constraintEqualToAnchor:self.surface.topAnchor constant:12],
         [self.bodyStack.bottomAnchor constraintEqualToAnchor:self.surface.bottomAnchor constant:-12],
-        [self.symbolView.widthAnchor constraintEqualToConstant:22], [self.symbolView.heightAnchor constraintEqualToConstant:22],
-        [self.disclosure.widthAnchor constraintEqualToConstant:12], [self.disclosure.heightAnchor constraintEqualToConstant:16]
+        symbolWidth, [self.symbolView.heightAnchor constraintEqualToConstant:22],
+        disclosureWidth, [self.disclosure.heightAnchor constraintEqualToConstant:16]
     ]];
     // No second material in the selected state; native cell selection remains the original input path.
     UIView *selected = [[UIView alloc] init];
@@ -716,6 +719,13 @@
     }
 
     NSDictionary *item = self.prefContents[indexPath.section][indexPath.row];
+
+    // Search forwards programmatically, so UIKit cannot enforce the disabled cell's touch gate.
+    // Consult the existing condition; do not invent or change any setting's availability rule.
+    if (self.usesRefinedSettingsPresentation) {
+        BOOL(^checkEnable)(void) = item[@"enableCondition"];
+        if (checkEnable && !checkEnable()) return;
+    }
 
     if (item[@"type"] == self.typeButton) {
         [self tableView:tableView invokeActionWithPromptAtIndexPath:indexPath];

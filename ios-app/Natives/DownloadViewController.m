@@ -231,6 +231,7 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
 
 - (void)prepareForReuse {
     [super prepareForReuse];
+    self.pressFeedback.hidden = YES; // Reset the M04 decoration along with native reuse state.
     // 取消该 cell 上正在进行的图标加载请求（cell 复用时旧请求不应继续占用网络与回调）
     // 对应 Glide 的 clear() + ZL2 Compose 组合自动取消
     [IconLoader cancelLoadingForImageView:self.iconView];
@@ -957,7 +958,9 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     self.providerMenuButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
     ((AmePinkGlassButton *)self.providerMenuButton).ameRole = AmeGlassButtonRoleSecondary;
     self.providerMenuButton.showsMenuAsPrimaryAction = YES;
-    [self.providerMenuButton.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
+    NSLayoutConstraint *providerTouchHeight = [self.providerMenuButton.heightAnchor constraintGreaterThanOrEqualToConstant:44];
+    providerTouchHeight.priority = 999;
+    providerTouchHeight.active = YES;
     self.providerMenuButton.contentEdgeInsets = UIEdgeInsetsMake(8, 10, 8, 10);
     self.versionTypeMenuButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
     ((AmePinkGlassButton *)self.versionTypeMenuButton).ameRole = AmeGlassButtonRoleSecondary;
@@ -966,7 +969,9 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     self.versionTypeMenuButton.titleLabel.numberOfLines = 0;
     self.versionTypeMenuButton.titleLabel.font = AmeUIFont(AmeUIFontRoleButton);
     self.versionTypeMenuButton.titleLabel.adjustsFontForContentSizeCategory = YES;
-    [self.versionTypeMenuButton.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
+    NSLayoutConstraint *versionTouchHeight = [self.versionTypeMenuButton.heightAnchor constraintGreaterThanOrEqualToConstant:44];
+    versionTouchHeight.priority = 999;
+    versionTouchHeight.active = YES;
     [self.versionTypeMenuButton.widthAnchor constraintLessThanOrEqualToAnchor:self.catalogueChrome.frameLayoutGuide.widthAnchor].active = YES;
     self.providerMenuButton.titleLabel.numberOfLines = 0;
     self.providerMenuButton.titleLabel.font = AmeUIFont(AmeUIFontRoleButton);
@@ -983,6 +988,9 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     self.importModpackButton.translatesAutoresizingMaskIntoConstraints = NO;
     NSLayoutConstraint *filterWidth = [self.filterButton.widthAnchor constraintEqualToConstant:44];
     filterWidth.priority = 999;
+    NSLayoutConstraint *filterTouchHeight = [self.filterButton.heightAnchor constraintEqualToConstant:44];
+    NSLayoutConstraint *importTouchHeight = [self.importModpackButton.heightAnchor constraintEqualToConstant:44];
+    filterTouchHeight.priority = importTouchHeight.priority = 999; // Vertical accessibility stacks hide unused controls.
     [NSLayoutConstraint activateConstraints:@[
         [self.searchBar.topAnchor constraintEqualToAnchor:self.searchSurface.topAnchor],
         [self.searchBar.leadingAnchor constraintEqualToAnchor:self.searchSurface.leadingAnchor],
@@ -991,8 +999,7 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
         [self.searchBar.heightAnchor constraintGreaterThanOrEqualToConstant:52],
         [self.catalogueControls.heightAnchor constraintGreaterThanOrEqualToConstant:44],
         filterWidth,
-        [self.filterButton.heightAnchor constraintEqualToConstant:44],
-        [self.importModpackButton.heightAnchor constraintEqualToConstant:44]
+        filterTouchHeight, importTouchHeight
     ]];
 }
 

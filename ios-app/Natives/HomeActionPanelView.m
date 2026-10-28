@@ -31,7 +31,7 @@ static inline CGFloat AmeAvatarPadding(void) {
 
 static const CGFloat kExpandedWidth = 260.0;
 static const CGFloat kExpandedHeight = 306.0;
-static const CGFloat kChipRowHeight = 34.0;
+static const CGFloat kChipRowHeight = 44.0;
 static const CGFloat kCollapsedTopOffset = 8.0;    // level with the top nav bar (safe.topAnchor + 8)
 static const CGFloat kExpandedTopOffset = 76.0;   // opens right below the nav bar
 
@@ -255,7 +255,7 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
     self.cardStackTopConstraint =
         [self.cardStack.topAnchor constraintEqualToAnchor:self.chipRow.bottomAnchor constant:8.0];
     self.cardStackBottomConstraint =
-        [self.cardStack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-12.0];
+        [self.cardStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.bottomAnchor constant:-12.0];
     // The name may be squeezed to nothing while the panel is collapsed: keep that constraint soft.
     NSLayoutConstraint *nameTrailing =
         [self.accountNameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.toggleButton.leadingAnchor constant:-6.0];
@@ -274,10 +274,10 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
         [self.accountNameLabel.centerYAnchor constraintEqualToAnchor:self.avatarView.centerYAnchor],
         [self.toggleButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-8.0],
         [self.toggleButton.centerYAnchor constraintEqualToAnchor:self.avatarView.centerYAnchor],
-        [self.toggleButton.widthAnchor constraintEqualToConstant:32.0],
-        [self.toggleButton.heightAnchor constraintEqualToConstant:32.0],
+        [self.toggleButton.widthAnchor constraintEqualToConstant:44.0],
+        [self.toggleButton.heightAnchor constraintEqualToConstant:44.0],
         [self.chipRow.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:10.0],
-        [self.chipRow.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-10.0],
+        [self.chipRow.widthAnchor constraintEqualToConstant:(AmeIsPad() ? 280.0 : kExpandedWidth) - 20.0],
         [self.chipRow.topAnchor constraintEqualToAnchor:self.avatarView.bottomAnchor constant:10.0],
         [self.chipRow.heightAnchor constraintEqualToConstant:kChipRowHeight],
         [self.badgeLayer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
@@ -285,7 +285,7 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
         [self.badgeLayer.topAnchor constraintEqualToAnchor:self.topAnchor],
         [self.badgeLayer.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
         [self.cardStack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:10.0],
-        [self.cardStack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-10.0],
+        [self.cardStack.widthAnchor constraintEqualToConstant:(AmeIsPad() ? 280.0 : kExpandedWidth) - 20.0],
         self.cardStackTopConstraint,
         self.cardStackBottomConstraint
     ]];
@@ -333,7 +333,7 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
     self.avatarTopConstraint.constant = expanded ? 10.0 : pad;
     self.avatarWidthConstraint.constant = expanded ? (AmeIsPad() ? 52.0 : 46.0) : avSize;
     self.avatarHeightConstraint.constant = expanded ? (AmeIsPad() ? 52.0 : 46.0) : avSize;
-    self.cardStackTopConstraint.active = expanded;
+    self.cardStackTopConstraint.active = YES; // Keep hidden contents laid out at expanded size behind the clipped avatar.
     self.cardStackBottomConstraint.active = expanded;
     [self.toggleButton setImage:[UIImage systemImageNamed:(expanded ? @"chevron.up" : @"chevron.down")]
                        forState:UIControlStateNormal];
@@ -354,10 +354,10 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
         [self.superview layoutIfNeeded];
         [self layoutIfNeeded];
     };
-    if (animated && self.superview) {
+    if (animated && !UIAccessibilityIsReduceMotionEnabled() && self.superview) {
         [UIView animateWithDuration:0.22
                               delay:0
-                            options:UIViewAnimationOptionCurveEaseInOut
+                            options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                          animations:changes
                          completion:nil];
     } else {

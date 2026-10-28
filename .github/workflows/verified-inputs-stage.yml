@@ -1,0 +1,130 @@
+name: Verify pinned missing native inputs
+run-name: Stage pinned Air missing inputs (no application source overwrite)
+
+on:
+  push:
+    branches: [feat/renewed-uikit-home]
+    paths: [.github/workflows/verified-inputs-stage.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: metallic-pinned-dependencies
+  cancel-in-progress: false
+
+jobs:
+  staged-inputs:
+    if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/renewed-uikit-home'
+    runs-on: macos-26
+    timeout-minutes: 25
+    env:
+      ORIGINAL_SHA: 32e3d8b391d267432316bb871f33e7d971cf655f
+      AIR_SHA: c4797387ca9a81f31fdcdd2723ec1050ca35fdb3
+      ZEROTIER_SHA: b8e672f54286be8500bc875e153826af7b01d6e6
+    steps:
+      - name: Checkout exact Metallic Renewed source (unchanged)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: unfilteredpranxu/metallic-renewed
+          ref: 32e3d8b391d267432316bb871f33e7d971cf655f
+          path: source
+          persist-credentials: false
+          submodules: false
+
+      - name: Select iOS 26 SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/verified-inputs"
+          test -d /Applications/Xcode_26.3.app/Contents/Developer
+          echo "DEVELOPER_DIR=/Applications/Xcode_26.3.app/Contents/Developer" >> "$GITHUB_ENV"
+
+      - name: Retrieve immutable upstream snapshots and verify identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          git clone --filter=blob:none --no-checkout https://github.com/herbrine8403/Amethyst-iOS-MyRemastered.git air
+          git -C air fetch --depth=1 origin "$AIR_SHA"
+          git -C air -c advice.detachedHead=false checkout --detach "$AIR_SHA"
+          test "$(git -C air rev-parse HEAD)" = "$AIR_SHA"
+          git -C air submodule update --init --depth=1 Natives/external/ZeroTierFramework
+          test "$(git -C air/Natives/external/ZeroTierFramework rev-parse HEAD)" = "$ZEROTIER_SHA"
+          test -f air/Natives/installer/modpack/ModrinthAPI.h
+          test -f air/Natives/input/ControllerInput.m
+          test -f air/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt
+          {
+            printf 'Original Metallic source SHA: %s\n' "$ORIGINAL_SHA"
+            printf 'Air snapshot SHA: %s\n' "$(git -C air rev-parse HEAD)"
+            printf 'ZeroTier submodule SHA: %s\n' "$(git -C air/Natives/external/ZeroTierFramework rev-parse HEAD)"
+            printf 'Staging uses pinned snapshots; no files are copied to the GitHub repository branch.\n'
+          } | tee "$RUNNER_TEMP/verified-inputs/provenance.txt"
+          shasum -a 256 air/Natives/installer/modpack/ModrinthAPI.h air/Natives/input/ControllerInput.m air/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt | tee "$RUNNER_TEMP/verified-inputs/input-hashes.txt"
+
+      - name: Copy ONLY missing source and framework files to disposable scratch checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = "$ORIGINAL_SHA"
+          SCRATCH="$RUNNER_TEMP/renewed-scratch"
+          mkdir -p "$SCRATCH"
+          rsync -a --exclude='.git' source/ "$SCRATCH/"
+          UPSTREAM="$RUNNER_TEMP/air/Natives"
+          TARGET="$SCRATCH/ios-app/Natives"
+          for folder in installer input external/ZeroTierFramework resources/Frameworks; do
+            mkdir -p "$TARGET/$folder"
+            rsync -a --ignore-existing --exclude='.git' "$UPSTREAM/$folder/" "$TARGET/$folder/"
+          done
+          {
+            echo '# Pinned dependency staging'
+            echo
+            echo 'Staged only into temporary scratch directory; original checkout untouched.'
+            echo
+            for p in installer/modpack/ModrinthAPI.h input/ControllerInput.m external/ZeroTierFramework/ios-example-app/zt.framework/zt resources/Frameworks/libEGL.framework/libEGL resources/Frameworks/libGLESv2.framework/libGLESv2 resources/Frameworks/AltKit.framework/AltKit resources/Frameworks/CAltKit.framework/CAltKit resources/Frameworks/UnzipKit.framework/UnzipKit; do
+              if [ -f "$TARGET/$p" ]; then echo "FOUND $p"; else echo "MISSING $p"; fi
+            done
+          } | tee "$RUNNER_TEMP/verified-inputs/staging.txt"
+          git -C source diff --exit-code HEAD -- | tee "$RUNNER_TEMP/verified-inputs/original-invariance.txt"
+
+      - name: Check Downloads UIKit under iOS 26 SDK with recovered original headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/renewed-scratch/ios-app/Natives"
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          {
+            xcodebuild -version
+            xcrun --sdk iphoneos --show-sdk-version
+            echo 'This is a syntax/type check ONLY. It does not link, sign or build a test IPA.'
+          } | tee "$RUNNER_TEMP/verified-inputs/toolchain.txt"
+          set +e
+          xcrun clang -target arm64-apple-ios14.0 -fobjc-arc -fblocks -fmodules -fsyntax-only -isysroot "$SDK"             -I. -Iexternal/AFNetworking/AFNetworking -Iexternal/AFNetworking/UIKit+AFNetworking             -Iexternal/DBNumberedSlider/Classes -Iexternal/NRFileManager -Iexternal/UnzipKit             -Iexternal/fishhook -Iexternal/lzma -Iexternal/mesa -Iexternal/AltKit             -Iexternal/Apple -Iexternal/ballpa1n -Iexternal/ballpa1n/wrapped -Iexternal/mach             -Iexternal/ZeroTierFramework/ios-example-app/zt.framework/Headers             DownloadViewController.m > "$RUNNER_TEMP/verified-inputs/downloads-clang.log" 2>&1
+          result=$?
+          set -e
+          if [ "$result" -eq 0 ]; then
+            echo 'Downloads source typecheck PASS with pinned recovered headers' | tee "$RUNNER_TEMP/verified-inputs/result.txt"
+          else
+            echo 'Downloads source typecheck failed; see first original-source compiler diagnostic (no fixes applied)' | tee "$RUNNER_TEMP/verified-inputs/result.txt"
+            grep -m 12 -E 'fatal error:|error:' "$RUNNER_TEMP/verified-inputs/downloads-clang.log" || true
+            exit "$result"
+          fi
+
+      - name: Verify original source unchanged
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/verified-inputs"
+          if [ -d source/.git ]; then
+            git -C source diff --exit-code HEAD -- > "$RUNNER_TEMP/verified-inputs/source-integrity.txt" 2>&1
+            git -C source status --short >> "$RUNNER_TEMP/verified-inputs/source-integrity.txt"
+          fi
+
+      - name: Upload provenance and compiler diagnostics even if blocked
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: metallic-pinned-inputs-${{ github.run_id }}
+          path: ${{ runner.temp }}/verified-inputs/
+          if-no-files-found: warn
+          retention-days: 7

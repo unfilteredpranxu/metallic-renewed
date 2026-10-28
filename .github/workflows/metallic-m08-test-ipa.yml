@@ -1,0 +1,399 @@
+# Isolated test: exact M08 source; no existing workflow or application source edits.
+name: Metallic M08 exact-source test IPA
+run-name: Metallic M08 692fff39 full test IPA
+permissions:
+  contents: read
+concurrency:
+  group: metallic-m08-692fff39-test-ipa
+  cancel-in-progress: false
+jobs:
+  native-test:
+    if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/renewed-ui-polish'
+    runs-on: macos-26
+    timeout-minutes: 75
+    env:
+      SOURCE_SHA: 692fff39835a0651bef09f6fe33a9598a0f9cd53
+      AIR_SHA: c4797387ca9a81f31fdcdd2723ec1050ca35fdb3
+      ZEROTIER_SHA: b8e672f54286be8500bc875e153826af7b01d6e6
+      NG_GL4ES_SHA: 6e153a1622a8d9ef903f7975aafbef2453571bab
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+    - name: Check out exact immutable M08 application sources
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        repository: unfilteredpranxu/metallic-renewed
+        ref: 692fff39835a0651bef09f6fe33a9598a0f9cd53
+        path: original
+        persist-credentials: false
+        submodules: false
+        lfs: true
+    - name: Verify source SHA, Metallic identity and immutable artwork before any build
+      id: source
+      shell: bash
+      run: |-
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-01.log") 2>&1
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        test "$(git -C original rev-parse HEAD)" = "$SOURCE_SHA"
+        git -C original diff --exit-code HEAD --
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import hashlib,json,os,plistlib,subprocess
+        src=Path('original'); diag=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'
+        info=plistlib.loads((src/'ios-app/Natives/Info.plist').read_bytes())
+        for k,v in {'CFBundleDisplayName':'Metallic','CFBundleName':'Metallic','CFBundleIdentifier':'com.tokyxkai.metallic','CFBundleExecutable':'AngelAuraAmethyst'}.items():
+            assert info[k]==v,(k,info.get(k))
+        assets=src/'ios-app/Natives/Assets.xcassets'
+        assert assets.is_dir()
+        manifest={}
+        for p in sorted(assets.rglob('*')):
+            if p.is_file(): manifest[str(p.relative_to(src))]=hashlib.sha256(p.read_bytes()).hexdigest()
+        for contents in assets.rglob('Contents.json'):
+            for item in json.loads(contents.read_text()).get('images',[]):
+                if item.get('filename'): assert (contents.parent/item['filename']).is_file(),item
+        assert (assets/'AppIcon-Light.appiconset/1024x1024.png').is_file()
+        expected={'1024x1024.png':'7504cf1938ccfc8ea08a2cd89f03535a1556870464ba2291658698d2771c61fe','1024x1024-Transparent.png':'7504cf1938ccfc8ea08a2cd89f03535a1556870464ba2291658698d2771c61fe','1024x1024-Monochrome-White.png':'3e62a34edc15c57aebff8bbd98572f52d2ce13dc07fe14500a4c3e15f8e99e09'}
+        for name,h in expected.items(): assert hashlib.sha256((assets/'AppIcon-Light.appiconset'/name).read_bytes()).hexdigest()==h,name
+        (diag/'m08-assets-sha256.json').write_text(json.dumps(manifest,indent=2))
+        (diag/'source-identity.json').write_text(json.dumps(info,indent=2))
+        (diag/'revisions.json').write_text(json.dumps({k:os.environ.get(k) for k in ['SOURCE_SHA','GITHUB_SHA','GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_RUN_ID','AIR_SHA','ZEROTIER_SHA','NG_GL4ES_SHA']},indent=2))
+        print('VERIFIED exact M08 checkout, Metallic metadata and original icon artwork hashes')
+        PYCODE
+    - name: Install and identify original build toolchain
+      uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+      with:
+        distribution: zulu
+        java-version: '8'
+    - name: Toolchain and prerequisite setup
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-03.log") 2>&1
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        test -d /Applications/Xcode_26.3.app/Contents/Developer
+        test "$DEVELOPER_DIR" = /Applications/Xcode_26.3.app/Contents/Developer
+        brew list --versions ldid >/dev/null 2>&1 || brew install ldid
+        brew list --versions wget >/dev/null 2>&1 || brew install wget
+        brew list --versions cmake >/dev/null 2>&1 || brew install cmake
+        {
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          xcrun clang --version
+          xcrun swiftc --version
+          make --version
+          java -version
+          javac -version
+          cmake --version
+          ldid -h || true
+        } > "$RUNNER_TEMP/metallic-native-build/toolchain.log" 2>&1
+
+        test "$(xcrun --sdk iphoneos --show-sdk-version)" = 26.2
+    - name: Initialize original pinned NG-GL4ES Git submodule
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-04.log") 2>&1
+        set -euo pipefail
+        test "$(git -C original rev-parse HEAD)" = "$SOURCE_SHA"
+        git -C original submodule update --init --depth=1 ios-app/ThirdParty/NG-GL4ES
+        git -C original submodule status | tee "$RUNNER_TEMP/metallic-native-build/source-submodules.txt"
+
+        test "$(git -C original/ios-app/ThirdParty/NG-GL4ES rev-parse HEAD)" = "$NG_GL4ES_SHA"
+    - name: Retrieve fixed-revision Air and ZeroTier inputs
+      shell: bash
+      env:
+        GIT_LFS_SKIP_SMUDGE: '1'
+      run: |
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-05.log") 2>&1
+        set -euo pipefail
+        cd "$RUNNER_TEMP"
+        git init air
+        git -C air remote add origin https://github.com/herbrine8403/Amethyst-iOS-MyRemastered.git
+        git -C air fetch --filter=blob:none --depth=1 origin "$AIR_SHA"
+        git -C air -c advice.detachedHead=false checkout --detach "$AIR_SHA"
+        test "$(git -C air rev-parse HEAD)" = "$AIR_SHA"
+        git -C air submodule update --init --depth=1 Natives/external/ZeroTierFramework Natives/external/AFNetworking Natives/external/DBNumberedSlider Natives/external/fishhook
+        test "$(git -C air/Natives/external/ZeroTierFramework rev-parse HEAD)" = "$ZEROTIER_SHA"
+        for p in Natives/installer/modpack/ModrinthAPI.h Natives/input/ControllerInput.m Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt; do
+          test -f "air/$p" || { echo "Missing pinned dependency: $p"; exit 1; }
+        done
+        {
+          echo "Original source: $SOURCE_SHA"
+          echo "Air commit: $(git -C air rev-parse HEAD)"
+          echo "ZeroTier commit: $(git -C air/Natives/external/ZeroTierFramework rev-parse HEAD)"
+          shasum -a 256 air/Natives/installer/modpack/ModrinthAPI.h air/Natives/input/ControllerInput.m air/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt
+        } | tee "$RUNNER_TEMP/metallic-native-build/pinned-inputs.txt"
+
+        git -C air submodule status --recursive >> "$RUNNER_TEMP/metallic-native-build/pinned-inputs.txt"
+    - name: Construct independent scratch build without overwriting any original file
+      shell: bash
+      run: |-
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-06.log") 2>&1
+        set -euo pipefail
+        SRC="$GITHUB_WORKSPACE/original"
+        SCRATCH="$RUNNER_TEMP/metallic-scratch"
+        mkdir -p "$SCRATCH"
+        rsync -a "$SRC/" "$SCRATCH/"
+        echo "SCRATCH_DIR=$SCRATCH" >> "$GITHUB_ENV"
+        test "$(git -C "$SCRATCH" rev-parse HEAD)" = "$SOURCE_SHA"
+        git -C "$SCRATCH" diff --exit-code HEAD --
+        python3 - "$RUNNER_TEMP/air/Natives" "$SCRATCH" <<'PYCODE'
+        from pathlib import Path
+        import os,sys,re,shutil,json,hashlib,collections
+        up=Path(sys.argv[1]);root=Path(sys.argv[2]);dst=root/'ios-app/Natives'
+        diag=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build';ledger=[]
+        def stage(src,target,provenance):
+            if os.path.lexists(target): return False
+            # Never traverse a symlink/file parent to stage an upstream directory into original inputs.
+            for parent in target.parents:
+                if parent==root: break
+                if parent.is_symlink() or (parent.exists() and not parent.is_dir()): return False
+            target.parent.mkdir(parents=True,exist_ok=True)
+            if src.is_symlink(): target.symlink_to(os.readlink(src));digest=None
+            elif src.is_file(): shutil.copy2(src,target);digest=hashlib.sha256(src.read_bytes()).hexdigest()
+            else: return False
+            ledger.append({'destination':str(target.relative_to(root)),'source':str(src),'revision':provenance,'sha256':digest,'symlink':os.readlink(src) if src.is_symlink() else None})
+            return True
+        # Vendor prerequisites referenced by the existing build. Do not hydrate arbitrary upstream UI trees.
+        scopes=['installer','input','external/ZeroTierFramework','external/AFNetworking','external/DBNumberedSlider','external/NRFileManager','external/UnzipKit','external/fishhook','external/ballpa1n','external/mach','external/AltKit','external/Apple','external/lzma','external/mesa','resources/Frameworks']
+        for scope in scopes:
+            source=up/scope
+            if not source.exists(): continue
+            for folder,dirs,files in os.walk(source,followlinks=False):
+                for name in list(dirs):
+                    if name in ('.git','build'): dirs.remove(name);continue
+                    p=Path(folder)/name
+                    if p.is_symlink(): dirs.remove(name);stage(p,dst/p.relative_to(up),os.environ['AIR_SHA'])
+                for name in files:
+                    if name!='.git':
+                        p=Path(folder)/name;stage(p,dst/p.relative_to(up),os.environ['AIR_SHA'])
+        # Recover complete original localization/storyboard resources; never insert partial tables.
+        for source in (up/'resources').glob('*.lproj'):
+            for p in source.rglob('*'):
+                if p.is_file() or p.is_symlink(): stage(p,dst/p.relative_to(up),os.environ['AIR_SHA'])
+        # Missing native units explicitly registered in original CMake, plus their quoted-header closure.
+        cmake=(dst/'CMakeLists.txt').read_text()
+        cmake='\n'.join(line.split('#',1)[0] for line in cmake.splitlines())
+        paths=set(re.findall(r'(?<![\w$])([\w./+-]+\.(?:m|mm|c|cc|cpp|h|hpp|swift))\b',cmake))
+        for rel in sorted(paths):
+            p=Path(rel)
+            if not p.is_absolute() and '..' not in p.parts: stage(up/p,dst/p,os.environ['AIR_SHA'])
+        queue=collections.deque(dst/rel for rel in sorted(paths) if (dst/rel).is_file() and (dst/rel).suffix in ('.m','.mm','.c','.cpp','.h','.hpp'))
+        seen=set()
+        while queue:
+            p=queue.popleft()
+            if p in seen or not p.is_file(): continue
+            seen.add(p)
+            for inc in re.findall(r'^\s*#(?:import|include)\s*"([^"\n]+)"',p.read_text(errors='replace'),re.M):
+                candidates=[p.parent/inc,dst/inc]
+                if any(q.exists() for q in candidates): continue
+                for target in candidates:
+                    try: rel=target.resolve().relative_to(dst.resolve())
+                    except ValueError: continue
+                    source=up/rel
+                    if source.is_file() and stage(source,target,os.environ['AIR_SHA']): queue.append(target);break
+        # Exact M08 script resources at the runtime bundle lookup location, only when absent.
+        # These bytes are not taken from upstream and no script implementation is edited.
+        for name in ['UniversalJIT26.js','UniversalJIT26Extension.js','JIT26Script.js']:
+            source=root/'bundle-templates'/name
+            assert source.is_file(),source
+            target=dst/'resources'/name
+            if os.path.lexists(target):
+                assert target.is_file() and target.read_bytes()==source.read_bytes(),f'Existing JIT asset differs from exact M08 template: {target}'
+            else: stage(source,target,os.environ['SOURCE_SHA'])
+        (diag/'staged-prerequisites.json').write_text(json.dumps(ledger,indent=2))
+        expected=json.loads((diag/'m08-assets-sha256.json').read_text())
+        for rel,digest in expected.items(): assert hashlib.sha256((root/rel).read_bytes()).hexdigest()==digest,rel
+        for rel in ['installer/modpack/ModrinthAPI.h','input/ControllerInput.m','external/ZeroTierFramework/ios-example-app/zt.framework/zt','resources/Frameworks/libEGL.framework/libEGL','resources/Frameworks/libGLESv2.framework/libGLESv2','resources/Frameworks/AltKit.framework/AltKit','resources/Frameworks/CAltKit.framework/CAltKit','resources/Frameworks/UnzipKit.framework/UnzipKit','resources/en.lproj/LaunchScreen.storyboardc']:
+            assert (dst/rel).exists(),f'Missing original prerequisite: {rel}'
+        print('Staged absent prerequisites:',len(ledger),'; existing paths, symlinks and artwork preserved')
+        PYCODE
+        git -C "$SCRATCH" diff --exit-code HEAD --
+        printf 'Application SHA: %s\nWorkflow SHA: %s\n' "$SOURCE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/metallic-native-build/staging-summary.txt"
+    - name: ONE full original make all build of exact M08 in scratch
+      shell: bash
+      run: |-
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-07.log") 2>&1
+        set -euo pipefail
+        cd "$SCRATCH_DIR/ios-app"
+        export PATH="/opt/homebrew/bin:$PATH"
+        export SDKPATH="$(xcrun --sdk iphoneos --show-sdk-path)"
+        test "$(git -C "$SCRATCH_DIR" rev-parse HEAD)" = "$SOURCE_SHA"
+        git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
+        echo 'Building exact M08 via original make all; no runner-side application patches.'
+        set +e
+        make all BOOTJDK="$JAVA_HOME/bin" SDKPATH="$SDKPATH" JOBS=3 > "$RUNNER_TEMP/metallic-native-build/build.log" 2>&1
+        rc=$?
+        set -e
+        printf '%s\n' "$rc" > "$RUNNER_TEMP/metallic-native-build/build-exit-code.txt"
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import os,re
+        p=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'
+        lines=(p/'build.log').read_text(errors='replace').splitlines()
+        pattern=re.compile(r'fatal error:|\berror:|CMake Error|No rule to make target|Undefined symbols|^ld:|make(?:\[\d+\])?: \*\*\*')
+        first=next((i for i,s in enumerate(lines) if pattern.search(s)),None)
+        (p/'first-error-context.txt').write_text('No matching error diagnostic.\n' if first is None else '\n'.join(f'{i+1}: {lines[i]}' for i in range(max(0,first-20),min(len(lines),first+50)))+'\n')
+        PYCODE
+        if [ "$rc" -ne 0 ]; then
+          cat "$RUNNER_TEMP/metallic-native-build/first-error-context.txt"
+          exit "$rc"
+        fi
+      id: build
+    - name: Validate the archived IPA, identity, icon provenance, full runtimes and native payload
+      shell: bash
+      run: |-
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-08.log") 2>&1
+        set -euo pipefail
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import os,json,plistlib,zipfile,hashlib,subprocess,stat,posixpath
+        root=Path(os.environ['SCRATCH_DIR']);diag=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'
+        ipas=list((root/'ios-app/artifacts').glob('com.tokyxkai.metallic-*-ios.ipa'))
+        assert len(ipas)==1,ipas
+        ipa=ipas[0];assert ipa.stat().st_size>0
+        source=json.loads((diag/'source-identity.json').read_text())
+        # Artwork provenance is unchanged across scratch hydration AND original asset compilation.
+        for rel,digest in json.loads((diag/'m08-assets-sha256.json').read_text()).items():
+            assert hashlib.sha256((root/rel).read_bytes()).hexdigest()==digest,rel
+        prefix='Payload/AngelAuraAmethyst.app/'
+        with zipfile.ZipFile(ipa) as z:
+            assert z.testzip() is None,'IPA ZIP integrity failure'
+            names=set(z.namelist())
+            info=plistlib.loads(z.read(prefix+'Info.plist'))
+            for k in ['CFBundleDisplayName','CFBundleName','CFBundleIdentifier','CFBundleExecutable','CFBundleIcons','CFBundleIcons~ipad']:
+                assert info.get(k)==source.get(k),(k,info.get(k),source.get(k))
+            assert info['CFBundleDisplayName']==info['CFBundleName']=='Metallic'
+            assert prefix+'Assets.car' in names,'Missing compiled catalogue'
+            icon_paths=sorted(n for n in names if n.startswith(prefix) and n.endswith('.png') and n.rsplit('/',1)[-1].startswith('AppIcon-Light'))
+            assert icon_paths,'Missing primary compiled app icon PNGs'
+            required=['Frameworks/zt.framework/zt','Frameworks/libMoltenVK.dylib','Frameworks/libopenal.dylib','Frameworks/libopenal_impl.dylib','AngelAuraAmethyst','Frameworks/libmetallum.dylib','Frameworks/libEGL.framework/libEGL','Frameworks/libGLESv2.framework/libGLESv2','Frameworks/AltKit.framework/AltKit','Frameworks/CAltKit.framework/CAltKit','Frameworks/UnzipKit.framework/UnzipKit','Frameworks/libspirv-cross-c-shared.0.dylib','libs/launcher.jar','libs/patchjna_agent.jar','libs/patchsvc.jar','libs/mojang-stubs.jar','libs/lwjgl-333/lwjgl.jar','libs/lwjgl-341/lwjgl.jar','UniversalJIT26.js','UniversalJIT26Extension.js','JIT26Script.js']
+            required += [f'java_runtimes/java-{v}-openjdk/lib/server/libjvm.dylib' for v in [8,17,21,25]]
+            def archived_bytes(name):
+                for _ in range(16):
+                    member=z.getinfo(name)
+                    if not stat.S_ISLNK(member.external_attr >> 16): return z.read(name)
+                    name=posixpath.normpath(posixpath.join(posixpath.dirname(name),z.read(name).decode()))
+                    assert name.startswith(prefix), 'IPA symlink escapes app'
+                raise AssertionError('IPA symlink cycle')
+            for rel in required:
+                assert prefix+rel in names and z.getinfo(prefix+rel).file_size>0,f'Missing mandatory payload: {rel}'
+            for rel in ['UniversalJIT26.js','UniversalJIT26Extension.js','JIT26Script.js']:
+                assert z.read(prefix+rel)==(root/'bundle-templates'/rel).read_bytes(),rel
+            # Inspect actual ZIP-contained binary bytes, not just the build's pre-ZIP directory.
+            inspection=diag/'ipa-inspection';inspection.mkdir(exist_ok=True)
+            macho=[rel for rel in required if rel.startswith('Frameworks/') or rel.endswith('.dylib') or rel=='AngelAuraAmethyst']
+            with (diag/'macho-load-commands.txt').open('w') as log:
+                for rel in macho:
+                    p=inspection/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(archived_bytes(prefix+rel))
+                    arch=subprocess.check_output(['lipo','-archs',str(p)],text=True).strip();assert 'arm64' in arch.split(),(rel,arch)
+                    log.write('\n'+rel+' '+arch+'\n');log.flush()
+                    subprocess.run(['otool','-L',str(p)],stdout=log,stderr=subprocess.STDOUT,check=True)
+                    if rel!='AngelAuraAmethyst': p.unlink()
+            exe=inspection/'AngelAuraAmethyst'
+            signed=subprocess.run(['ldid','-e',str(exe)],capture_output=True,check=True)
+            (diag/'ipa-entitlements.plist').write_bytes(signed.stdout)
+            assert plistlib.loads(signed.stdout)==plistlib.loads((root/'ios-app/entitlements.sideload.xml').read_bytes()),'Packaged entitlements differ from original signing recipe'
+            with (diag/'codesign-evidence.txt').open('w') as log:
+                for args in [['codesign','-dv','--verbose=4',str(exe)],['codesign','--verify','--verbose=4',str(exe)]]:
+                    proc=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT);log.write(f'\nCommand exit: {proc.returncode}\n')
+            (diag/'packaged-info.plist').write_bytes(z.read(prefix+'Info.plist'))
+            (diag/'packaged-icon-paths.txt').write_text('\n'.join(icon_paths)+'\n')
+            # Reject a localized app-identity override instead of silently rewriting its catalog.
+            for n in names:
+                if n.startswith(prefix) and n.endswith('.lproj/InfoPlist.strings'):
+                    tmp=inspection/'InfoPlist.strings';tmp.write_bytes(z.read(n))
+                    values=json.loads(subprocess.check_output(['plutil','-convert','json','-o','-',str(tmp)],text=True))
+                    for key in ['CFBundleName','CFBundleDisplayName']:
+                        assert key not in values or values[key]=='Metallic',f'Inherited localized identity in {n}: {key}'
+            checksum=hashlib.sha256()
+            with ipa.open('rb') as stream:
+                for chunk in iter(lambda:stream.read(1024*1024),b''): checksum.update(chunk)
+            result={'application_sha':os.environ['SOURCE_SHA'],'workflow_sha':os.environ['GITHUB_SHA'],'filename':ipa.name,'size_bytes':ipa.stat().st_size,'sha256':checksum.hexdigest(),'display_name':info['CFBundleDisplayName'],'bundle_identifier':info['CFBundleIdentifier'],'executable':info['CFBundleExecutable'],'icon_verification':'PASS: unchanged M08 artwork hashes + unchanged packaged icon configuration + compiled Assets.car and primary PNGs','java_runtimes':[8,17,21,25],'zip_integrity':'PASS','signing':'Existing ldid sideload entitlements; no provisioning supplied. Installation/resigning and physical JIT/gameplay still require testing.'}
+        (diag/'ipa-result.json').write_text(json.dumps(result,indent=2))
+        with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
+            f.write('## Validated M08 test IPA\n\n'+json.dumps(result,indent=2)+'\n\nNot proof of installation, JIT attachment or Minecraft gameplay.\n')
+        print(json.dumps(result,indent=2))
+        PYCODE
+      id: ipa
+    - name: Save original checkout and scratch mutation diagnostics
+      if: always()
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        if [ -d original/.git ]; then
+          {
+            git -C original rev-parse HEAD
+            git -C original diff --stat HEAD --
+            git -C original status --short
+            git -C original submodule status || true
+          } > "$RUNNER_TEMP/metallic-native-build/original-integrity.txt" 2>&1
+        fi
+        if [ -n "${SCRATCH_DIR:-}" ] && [ -d "$SCRATCH_DIR/.git" ]; then
+          {
+            git -C "$SCRATCH_DIR" diff --name-status HEAD --
+            git -C "$SCRATCH_DIR" status --short | sed -n '1,100p'
+          } > "$RUNNER_TEMP/metallic-native-build/scratch-mutations.txt" 2>&1
+        fi
+        {
+          echo '## Test-only build gate'
+          echo 'Full native IPA and JIT gameplay are NOT proven by a green compile alone.'
+          echo 'Any candidate IPA uses pinned recovered upstream input files that may differ from original Alpha 1.2 dependencies.'
+          echo 'Do not release without signing, framework/JRE/JIT payload inspection and physical-device gameplay.'
+        } > "$RUNNER_TEMP/metallic-native-build/notice.txt"
+
+        if [ -d original/.git ]; then
+          test "$(git -C original rev-parse HEAD)" = "$SOURCE_SHA"
+          git -C original diff --exit-code HEAD --
+        fi
+      id: integrity
+    - name: Upload real native IPA only if compiled and packaged
+      if: success() && steps.ipa.outcome == 'success' && steps.integrity.outcome == 'success'
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: metallic-m08-full-test-ipa-${{ github.run_id }}
+        path: ${{ runner.temp }}/metallic-scratch/ios-app/artifacts/*.ipa
+        if-no-files-found: error
+        compression-level: 0
+        retention-days: 7
+      id: upload_ipa
+    - name: Record final build gate and step outcomes
+      if: always()
+      shell: bash
+      env:
+        STEP_OUTCOMES: ${{ toJSON(steps) }}
+      run: |-
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        printf '%s\n' "$STEP_OUTCOMES" > "$RUNNER_TEMP/metallic-native-build/step-outcomes.json"
+        {
+          echo "Application source: $SOURCE_SHA"
+          echo "Workflow commit: $GITHUB_SHA"
+          echo "Run URL: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ -f "$RUNNER_TEMP/metallic-native-build/build-exit-code.txt" ]; then
+            printf 'make all exit: '; cat "$RUNNER_TEMP/metallic-native-build/build-exit-code.txt"
+          else
+            echo 'make all: NOT RUN (an earlier gate failed)'
+          fi
+        } | tee "$RUNNER_TEMP/metallic-native-build/final-status.txt" >> "$GITHUB_STEP_SUMMARY"
+    - name: Upload full diagnostic logs even on failure
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: metallic-m08-diagnostics-${{ github.run_id }}
+        path: ${{ runner.temp }}/metallic-native-build/
+        if-no-files-found: warn
+        compression-level: 6
+        retention-days: 7
+      id: upload_diagnostics
+'on':
+  push:
+    branches:
+    - feat/renewed-ui-polish
+    paths:
+    - .github/workflows/metallic-m08-test-ipa.yml

@@ -51,7 +51,7 @@ jobs:
           git -C air fetch --depth=1 origin "$AIR_SHA"
           git -C air -c advice.detachedHead=false checkout --detach "$AIR_SHA"
           test "$(git -C air rev-parse HEAD)" = "$AIR_SHA"
-          git -C air submodule update --init --depth=1 Natives/external/ZeroTierFramework
+          git -C air submodule update --init --depth=1 Natives/external/ZeroTierFramework Natives/external/AFNetworking Natives/external/DBNumberedSlider Natives/external/fishhook
           test "$(git -C air/Natives/external/ZeroTierFramework rev-parse HEAD)" = "$ZEROTIER_SHA"
           test -f air/Natives/installer/modpack/ModrinthAPI.h
           test -f air/Natives/input/ControllerInput.m
@@ -74,7 +74,7 @@ jobs:
           rsync -a --exclude='.git' source/ "$SCRATCH/"
           UPSTREAM="$RUNNER_TEMP/air/Natives"
           TARGET="$SCRATCH/ios-app/Natives"
-          for folder in installer input external/ZeroTierFramework resources/Frameworks; do
+          for folder in installer input external/ZeroTierFramework external/UnzipKit external/NRFileManager external/AFNetworking external/DBNumberedSlider external/fishhook resources/Frameworks; do
             mkdir -p "$TARGET/$folder"
             rsync -a --ignore-existing --exclude='.git' "$UPSTREAM/$folder/" "$TARGET/$folder/"
           done
@@ -83,7 +83,7 @@ jobs:
             echo
             echo 'Staged only into temporary scratch directory; original checkout untouched.'
             echo
-            for p in installer/modpack/ModrinthAPI.h input/ControllerInput.m external/ZeroTierFramework/ios-example-app/zt.framework/zt resources/Frameworks/libEGL.framework/libEGL resources/Frameworks/libGLESv2.framework/libGLESv2 resources/Frameworks/AltKit.framework/AltKit resources/Frameworks/CAltKit.framework/CAltKit resources/Frameworks/UnzipKit.framework/UnzipKit; do
+            for p in installer/modpack/ModrinthAPI.h input/ControllerInput.m external/ZeroTierFramework/ios-example-app/zt.framework/zt external/UnzipKit/UnzipKit.h external/NRFileManager/NSFileManager+NRFileManager.h resources/Frameworks/libEGL.framework/libEGL resources/Frameworks/libGLESv2.framework/libGLESv2 resources/Frameworks/AltKit.framework/AltKit resources/Frameworks/CAltKit.framework/CAltKit resources/Frameworks/UnzipKit.framework/UnzipKit; do
               if [ -f "$TARGET/$p" ]; then echo "FOUND $p"; else echo "MISSING $p"; fi
             done
           } | tee "$RUNNER_TEMP/verified-inputs/staging.txt"

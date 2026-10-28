@@ -1,5 +1,18 @@
 #import "HomeActionPanelView.h"
 
+// Keep the existing avatar tap route available to VoiceOver as well as touch.
+@interface AMEProfileImageView : UIImageView
+@end
+@implementation AMEProfileImageView
+- (BOOL)accessibilityActivate {
+    HomeActionPanelView *panel = (HomeActionPanelView *)self.superview;
+    if (![panel isKindOfClass:HomeActionPanelView.class] || !panel.userInteractionEnabled) return NO;
+    if (!panel.expanded && panel.onWillExpand) panel.onWillExpand();
+    [panel setExpanded:!panel.expanded animated:!UIAccessibilityIsReduceMotionEnabled()];
+    return YES;
+}
+@end
+
 static inline BOOL AmeIsPad(void) {
     return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
 }
@@ -9,7 +22,7 @@ static inline CGFloat AmeCollapsedSize(void) {
 }
 
 static inline CGFloat AmeAvatarSize(void) {
-    return AmeIsPad() ? 48.0 : 38.0;
+    return AmeIsPad() ? 48.0 : 44.0;
 }
 
 static inline CGFloat AmeAvatarPadding(void) {
@@ -147,7 +160,10 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
     self.layer.cornerRadius = 22.0;
     self.clipsToBounds = YES;
 
-    self.avatarView = [[UIImageView alloc] init];
+    self.avatarView = [[AMEProfileImageView alloc] init];
+    self.avatarView.isAccessibilityElement = YES;
+    self.avatarView.accessibilityLabel = @"Profile";
+    self.avatarView.accessibilityTraits = UIAccessibilityTraitButton;
     self.avatarView.translatesAutoresizingMaskIntoConstraints = NO;
     self.avatarView.backgroundColor = [UIColor colorWithWhite:0.25 alpha:1.0];
     self.avatarView.layer.borderWidth = 1.0;
@@ -301,7 +317,8 @@ static UIVisualEffectView *ApplyGlass(UIView *host) {
 }
 
 - (void)toggleTapped {
-    [self setExpanded:!self.expanded animated:YES];
+    if (!self.expanded && self.onWillExpand) self.onWillExpand();
+    [self setExpanded:!self.expanded animated:!UIAccessibilityIsReduceMotionEnabled()];
 }
 
 - (void)setExpanded:(BOOL)expanded animated:(BOOL)animated {

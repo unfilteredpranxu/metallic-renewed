@@ -27,6 +27,7 @@
 #import "DownloadTasksViewController.h"
 #import "BottomActionBarView.h"
 #import "HomeActionPanelView.h"
+#import "AmeRootTabController.h"
 #import "AccountListViewController.h"
 #import "AMEAssetCrypto.h"
 #import "DownloadViewController.h"
@@ -1906,6 +1907,9 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 /// 每次主页出现都向(不可见的)右栏索取一次最新状态(版本号 / JIT / 启动键文案)。
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    if ([self.tabBarController isKindOfClass:AmeRootTabController.class]) {
+        [(AmeRootTabController *)self.tabBarController installNavigationProfilePanel:self.actionPanel];
+    }
     if (self.rightPanelVC) {
         [self.rightPanelVC norightBroadcastState];
     }
@@ -1919,7 +1923,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     [super viewDidAppear:animated];
     [self.view bringSubviewToFront:self.norightLaunchCapsule];
     if (self.bottomBar) [self.view bringSubviewToFront:self.bottomBar];
-    if (self.actionPanel) [self.view bringSubviewToFront:self.actionPanel];
+    if (self.actionPanel.superview == self.view) [self.view bringSubviewToFront:self.actionPanel];
 }
 
 /// 右栏广播的状态 → 欢迎卡版本号 / 顶栏 JIT pill / 底部启动胶囊。

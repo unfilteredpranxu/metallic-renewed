@@ -5,6 +5,8 @@ NS_ASSUME_NONNULL_BEGIN
 @interface HomeActionPanelView : UIView
 
 @property (nonatomic, readonly) BOOL expanded;
+/// Presentation-only hook: ensure the panel's existing owner is visible before expansion.
+@property (nonatomic, copy, nullable) void (^onWillExpand)(void);
 @property (nonatomic, strong, readonly) UIImageView *avatarView;
 @property (nonatomic, strong, readonly) UIButton *toggleButton;
 @property (nonatomic, strong, readonly) UIButton *launchButton;

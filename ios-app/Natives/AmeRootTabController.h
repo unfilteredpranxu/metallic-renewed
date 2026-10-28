@@ -15,10 +15,14 @@
 /// and calls the existing handleMenuSelection: directly, leaving navigation semantics unchanged.
 extern NSString * const AmeTabTappedNotification;
 
+@class HomeActionPanelView;
+
 @interface AmeRootTabController : UITabBarController
 /// Create a controller with the given home (content): five tabs = Home / Downloads / AI / Instances / Settings.
 /// The home hosts the real content (LauncherRootViewController or CardLayout); the other four are shells.
 /// Tapping one only broadcasts a notification and immediately selects Home again, so the content
 /// remains on screen and the bottom bar always remains system-provided.
 + (instancetype)tabControllerWithHomeViewController:(UIViewController *)home;
+/// Adopt the existing Home profile UI without changing its actions or data ownership.
+- (void)installNavigationProfilePanel:(HomeActionPanelView *)panel;
 @end

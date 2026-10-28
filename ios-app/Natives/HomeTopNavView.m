@@ -4,17 +4,16 @@
 #import "utils.h"                // localize()
 #import "BottomActionBarView.h"   // AmeThemeTintColor
 
-// Bar geometry. AmeRootTabController and LauncherNewsViewController reserve space for this height,
-// so if you change it, update kHomeNavReserve in LauncherNewsViewController.m and the
-// additionalSafeAreaInsets value in AmeRootTabController.m as well (height + 8 top margin + 8 gap).
-static const CGFloat kNavBarHeight  = 60.0;
-static const CGFloat kNavBarPad     = 6.0;    // gap between the bar edge and the selector
-static const CGFloat kNavItemPadH   = 8.0;   // horizontal padding inside each item
+// The 52-point capsule sits inside the existing 60-point root header reservation.
+// Keep the existing 76-point page insets; changing the silhouette does not change page geometry.
+static const CGFloat kNavBarHeight  = 52.0;
+static const CGFloat kNavBarPad     = 4.0;    // gap between the bar edge and the selector
+static const CGFloat kNavItemPadH   = 0.0;   // horizontal padding inside each item
 
 @interface HomeTopNavView ()
 @property (nonatomic, strong) UIView *bar;
 @property (nonatomic, strong) UIStackView *stack;
-@property (nonatomic, strong) UIVisualEffectView *selector;   // the sliding "liquid" capsule
+@property (nonatomic, strong) UIView *selector;   // the sliding "liquid" capsule
 @property (nonatomic, strong) NSArray<UIView *> *items;
 @property (nonatomic, strong) NSArray<UIImageView *> *icons;
 @property (nonatomic, strong) NSArray<UILabel *> *labels;
@@ -40,7 +39,7 @@ static UIColor *NavAccentColor(void) {
                                                    object:nil];
         // One visual refresh path; no extra tab-selection observer or callback.
         for (NSString *name in @[@"LauncherAppearanceChanged", @"UIThemeChanged", @"BackgroundUIEffectChanged", AMEGlassStyleChangedNotification,
-                                 UIContentSizeCategoryDidChangeNotification]) {
+                                 UIContentSizeCategoryDidChangeNotification, UIAccessibilityDarkerSystemColorsStatusDidChangeNotification]) {
             [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(themeChanged:)
                                                          name:name object:nil];
         }
@@ -60,13 +59,13 @@ static UIColor *NavAccentColor(void) {
     AmeApplyGlassChipStyle(self.bar, kNavBarHeight / 2.0, YES);
     [self addSubview:self.bar];
 
-    // 2) Liquid selector: a second glass capsule that slides to the selected item.
+    // 2) A quiet selection fill slides above the single material backdrop.
     //    Added after the glass backdrop (so it draws above it) and before the items (so icons stay on top).
-    self.selector = [[UIVisualEffectView alloc] initWithEffect:AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial)];
+    self.selector = [[UIView alloc] init];
     self.selector.userInteractionEnabled = NO;
     self.selector.clipsToBounds = YES;
     self.selector.layer.cornerCurve = kCACornerCurveContinuous;
-    self.selector.contentView.backgroundColor = AmeUISelectedFillColor();
+    self.selector.backgroundColor = AmeUISelectedFillColor();
     [self.bar addSubview:self.selector];
 
     // Visible order is independent of the stable internal controller array.
@@ -86,16 +85,16 @@ static UIColor *NavAccentColor(void) {
     NSMutableArray<UILabel *> *labels = [NSMutableArray array];
     NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
     for (NSInteger index = 0; index < (NSInteger)symbols.count; index++) {
-        UIImageView *icon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:symbols[index]]];
+        UIImageView *icon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:symbols[index] withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium]]];
         icon.translatesAutoresizingMaskIntoConstraints = NO;
         icon.contentMode = UIViewContentModeScaleAspectFit;
-        [icon.widthAnchor constraintEqualToConstant:24.0].active = YES;
-        [icon.heightAnchor constraintEqualToConstant:24.0].active = YES;
+        [icon.widthAnchor constraintEqualToConstant:20.0].active = YES;
+        [icon.heightAnchor constraintEqualToConstant:20.0].active = YES;
 
         UILabel *label = [[UILabel alloc] init];
         label.text = titles[index];
         label.font = AmeUINavigationFont();
-        label.hidden = (titles[index].length == 0);
+        label.hidden = YES; // One icon-only presentation at every width.
 
         UIStackView *content = [[UIStackView alloc] initWithArrangedSubviews:@[icon, label]];
         content.translatesAutoresizingMaskIntoConstraints = NO;
@@ -112,7 +111,9 @@ static UIColor *NavAccentColor(void) {
         UIButton *hit = [UIButton buttonWithType:UIButtonTypeCustom];
         hit.translatesAutoresizingMaskIntoConstraints = NO;
         hit.tag = index;
-        hit.accessibilityLabel = (titles[index].length > 0) ? titles[index] : @"Help";
+        NSString *title = titles[index];
+        NSArray *fallbacks = @[@"Home", @"Instances", @"Downloads", @"Appearance", @"Settings"];
+        hit.accessibilityLabel = (!title.length || [title hasPrefix:@"tab."] || [title hasPrefix:@"renewed."]) ? fallbacks[index] : title;
         [hit addTarget:self action:@selector(tapped:) forControlEvents:UIControlEventTouchUpInside];
         [item addSubview:hit];
 
@@ -122,7 +123,7 @@ static UIColor *NavAccentColor(void) {
             [content.trailingAnchor constraintLessThanOrEqualToAnchor:item.trailingAnchor constant:-kNavItemPadH],
             [content.centerYAnchor constraintEqualToAnchor:item.centerYAnchor],
             [content.centerXAnchor constraintEqualToAnchor:item.centerXAnchor],
-            [item.widthAnchor constraintGreaterThanOrEqualToConstant:44],
+            [item.widthAnchor constraintEqualToConstant:44],
             [hit.leadingAnchor constraintEqualToAnchor:item.leadingAnchor],
             [hit.trailingAnchor constraintEqualToAnchor:item.trailingAnchor],
             [hit.topAnchor constraintEqualToAnchor:item.topAnchor],
@@ -159,21 +160,15 @@ static UIColor *NavAccentColor(void) {
     ]];
 }
 
+- (CGSize)intrinsicContentSize {
+    return CGSizeMake(5 * 44.0 + 2 * kNavBarPad, kNavBarHeight);
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
     // Re-seat the selector only when the bar's width changed (rotation, first layout), so a running
     // slide animation is never interrupted by an unrelated layout pass.
     CGFloat width = self.bar.bounds.size.width;
-    CGFloat widest = 0;
-    for (UILabel *label in self.labels) widest = MAX(widest, label.intrinsicContentSize.width);
-    BOOL compact = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory)
-        || width < self.items.count * (widest + 24 + 7 + 2 * kNavItemPadH) + 2 * kNavBarPad;
-    BOOL changed = self.labels.firstObject.hidden != compact;
-    for (UILabel *label in self.labels) label.hidden = compact;
-    if (changed) {
-        [self.stack layoutIfNeeded];
-        self.lastBarWidth = -1;
-    }
     if (fabs(width - self.lastBarWidth) > 0.5) {
         self.lastBarWidth = width;
         [self placeSelectorAnimated:NO];
@@ -225,13 +220,12 @@ static UIColor *NavAccentColor(void) {
 - (void)themeChanged:(NSNotification *)notification {
     if ([notification.name isEqualToString:AMEGlassStyleChangedNotification]) {
         AmeApplyGlassChipStyle(self.bar, kNavBarHeight / 2.0, YES);
-        self.selector.effect = AmeGlassEffect(UIBlurEffectStyleSystemThinMaterial);
     }
-    self.selector.contentView.backgroundColor = AmeUISelectedFillColor();
+    self.selector.backgroundColor = AmeUISelectedFillColor();
     BackgroundManager *manager = [BackgroundManager sharedManager];
     UIVisualEffectView *backdrop = (UIVisualEffectView *)[self.bar viewWithTag:kAmeGlassBackdropTag];
     [manager applyInterfaceAppearanceToMaterial:backdrop inView:self.bar];
-    self.selector.alpha = manager.uiEffect == BackgroundUIEffectBlur ? manager.interfaceBlurIntensity : 0.0;
+    self.selector.alpha = 1.0; // Selection remains readable even with UI Blur at zero.
     if ([notification.name isEqualToString:UIContentSizeCategoryDidChangeNotification]) {
         for (UILabel *label in self.labels) label.font = AmeUINavigationFont();
         // Text width can change without the outer bar width changing.

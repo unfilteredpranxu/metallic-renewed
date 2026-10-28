@@ -24,15 +24,22 @@
 // ★ [MP-RESTORE] Multiplayer entry point.
 #import "TerracottaViewController.h"
 #import "HomeTopNavView.h"
+#import "HomeActionPanelView.h"
 #import "BackgroundSettingsViewController.h"
 #import "BottomActionBarView.h"   // AmePinkGlassButton
 #import <objc/message.h>
 
 NSString * const AmeTabTappedNotification = @"AmeTabTapped";   // ★ [ROOTTAB]
 
-@interface AmeRootTabController () <UITabBarControllerDelegate, UINavigationControllerDelegate>   // ★ Declare the protocol to eliminate the delegate-assignment warning.
+@interface AmeRootTabController () <UITabBarControllerDelegate, UINavigationControllerDelegate, UIContextMenuInteractionDelegate>   // ★ Declare the protocol to eliminate the delegate-assignment warning.
 @property (nonatomic, strong) HomeTopNavView *topNav;
-@property (nonatomic, strong) AmePinkGlassButton *toolsButton;
+@property (nonatomic, strong) UIView *navigationGroup;
+@property (nonatomic, strong) UILayoutGuide *profileSlot;
+@property (nonatomic, strong) HomeActionPanelView *navigationProfilePanel;
+@property (nonatomic, strong) NSLayoutConstraint *profileSlotWidth;
+@property (nonatomic, strong) NSLayoutConstraint *profileSlotHeight;
+@property (nonatomic, strong) UIMenu *toolsMenu;
+@property (nonatomic, strong) UIAction *aiAction;
 @property (nonatomic, strong) AmePinkGlassButton *floatingDoneButton;   // bottom-right "Done" shown on pushed pages
 @end
 
@@ -192,32 +199,39 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 
     self.topNav = [[HomeTopNavView alloc] init];
     self.topNav.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.view addSubview:self.topNav];
-    self.toolsButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
-    self.toolsButton.ameRole = AmeGlassButtonRoleSubtle;
-    self.toolsButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.toolsButton setImage:[UIImage systemImageNamed:@"ellipsis"] forState:UIControlStateNormal];
-    self.toolsButton.accessibilityLabel = localize(@"renewed.navigation.tools", @"Tools");
-    self.toolsButton.showsMenuAsPrimaryAction = YES; // Public UIKit API, deployment target iOS 14.
+    self.navigationGroup = [[UIView alloc] init];
+    self.navigationGroup.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.navigationGroup];
+    [self.navigationGroup addSubview:self.topNav];
     __weak typeof(self) toolsWeakSelf = self;
     UIAction *ai = [UIAction actionWithTitle:localize(@"tab.ai", @"AI")
         image:[UIImage systemImageNamed:@"sparkles"] identifier:nil handler:^(__kindof UIAction *action) {
         __strong typeof(toolsWeakSelf) strongSelf = toolsWeakSelf;
-        if (!strongSelf || strongSelf.presentedViewController) return;
-        strongSelf.selectedIndex = AMELauncherTabAI;
+        [strongSelf ameOpenAI];
     }];
-    self.toolsButton.menu = [UIMenu menuWithTitle:@"" children:@[ai]];
-    [self.view addSubview:self.toolsButton];
+    self.aiAction = ai;
+    self.toolsMenu = [UIMenu menuWithTitle:@"Tools" children:@[ai]];
+    // Tools retains its native menu, exposed by a profile context menu instead of a sixth icon.
+    self.profileSlot = [[UILayoutGuide alloc] init];
+    [self.navigationGroup addLayoutGuide:self.profileSlot];
+    self.profileSlotWidth = [self.profileSlot.widthAnchor constraintEqualToConstant:56];
+    self.profileSlotHeight = [self.profileSlot.heightAnchor constraintEqualToConstant:56];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
-        [self.topNav.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8],
-        [self.topNav.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:16],
-        [self.topNav.trailingAnchor constraintEqualToAnchor:self.toolsButton.leadingAnchor constant:-8],
-        [self.toolsButton.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-16],
-        [self.toolsButton.centerYAnchor constraintEqualToAnchor:self.topNav.centerYAnchor],
-        [self.toolsButton.widthAnchor constraintEqualToConstant:44],
-        [self.toolsButton.heightAnchor constraintEqualToConstant:44],
+        [self.navigationGroup.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8],
+        [self.navigationGroup.centerXAnchor constraintEqualToAnchor:safe.centerXAnchor],
+        [self.navigationGroup.leadingAnchor constraintGreaterThanOrEqualToAnchor:safe.leadingAnchor constant:8],
+        [self.navigationGroup.trailingAnchor constraintLessThanOrEqualToAnchor:safe.trailingAnchor constant:-8],
+        [self.navigationGroup.heightAnchor constraintEqualToConstant:60],
+        [self.topNav.leadingAnchor constraintEqualToAnchor:self.navigationGroup.leadingAnchor],
+        [self.topNav.centerYAnchor constraintEqualToAnchor:self.navigationGroup.centerYAnchor],
+        [self.profileSlot.leadingAnchor constraintEqualToAnchor:self.topNav.trailingAnchor constant:8],
+        [self.profileSlot.trailingAnchor constraintEqualToAnchor:self.navigationGroup.trailingAnchor],
+        // The panel's unchanged 8/76 expansion offsets are relative to this guide.
+        [self.profileSlot.centerYAnchor constraintEqualToAnchor:self.navigationGroup.centerYAnchor constant:-8],
+        self.profileSlotWidth, self.profileSlotHeight,
     ]];
+    if (self.navigationProfilePanel) [self installNavigationProfilePanel:self.navigationProfilePanel];
 
     // Pages below the bar start under it: bar height 60 + 8 top margin + 8 gap = 76.
     // Home (index 0) reserves its own space in LauncherNewsViewController (kHomeNavReserve),
@@ -262,8 +276,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 
     __weak typeof(self) weakSelf = self;
     self.topNav.selectedIndex = self.selectedIndex;
-    self.toolsButton.selected = (self.selectedIndex == AMELauncherTabAI);
-    self.toolsButton.accessibilityTraits = UIAccessibilityTraitButton | (self.toolsButton.selected ? UIAccessibilityTraitSelected : 0);
+    self.aiAction.state = self.selectedIndex == AMELauncherTabAI ? UIMenuElementStateOn : UIMenuElementStateOff;
     self.topNav.onSelect = ^(AMEPrimaryDestination destination) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
@@ -280,6 +293,56 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         NSInteger tab = AMETabForPrimaryDestination(destination);
         if (tab != NSNotFound && tab < (NSInteger)strongSelf.viewControllers.count) strongSelf.selectedIndex = tab;
     };
+}
+
+// The Home controller continues owning account callbacks, avatar updates and status chips.
+// Only the panel's presentation parent changes; no controller containment is changed.
+- (void)installNavigationProfilePanel:(HomeActionPanelView *)panel {
+    if (!panel || (panel == self.navigationProfilePanel && panel.superview == self.view)) return;
+    self.navigationProfilePanel = panel;
+    if (!self.profileSlot) return; // Home may load while UIKit is constructing the root.
+    [panel setExpanded:NO animated:NO];
+    CGSize collapsed = [panel systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
+    self.profileSlotWidth.constant = MAX(44, collapsed.width);
+    self.profileSlotHeight.constant = MAX(44, collapsed.height);
+    [panel removeFromSuperview]; // Releases the old Home-only positioning constraints.
+    [self.view addSubview:panel];
+    NSLayoutConstraint *top = [panel.topAnchor constraintEqualToAnchor:self.profileSlot.topAnchor constant:8];
+    panel.topOffsetConstraint = top;
+    [NSLayoutConstraint activateConstraints:@[
+        top, [panel.trailingAnchor constraintEqualToAnchor:self.profileSlot.trailingAnchor]
+    ]];
+    __weak typeof(self) weakSelf = self;
+    panel.onWillExpand = ^{
+        // Existing panel controls present through Home; keep that owner visible, even from another tab.
+        AmeRootTabController *root = weakSelf;
+        UINavigationController *home = [root.viewControllers.firstObject isKindOfClass:UINavigationController.class]
+            ? (UINavigationController *)root.viewControllers.firstObject : nil;
+        if (root && !root.presentedViewController &&
+            (root.selectedIndex != AMELauncherTabHome || home.viewControllers.count > 1)) [root ameResetToHome];
+    };
+    [panel.avatarView addInteraction:[[UIContextMenuInteraction alloc] initWithDelegate:self]];
+    panel.avatarView.accessibilityHint = @"Opens the profile panel. Tools are available in the actions menu.";
+    panel.avatarView.accessibilityCustomActions = @[
+        [[UIAccessibilityCustomAction alloc] initWithName:@"Tools: AI" actionHandler:^BOOL(UIAccessibilityCustomAction *action) {
+            return [weakSelf ameOpenAI];
+        }]
+    ];
+}
+
+- (BOOL)ameOpenAI {
+    if (self.presentedViewController) return NO;
+    [self.navigationProfilePanel setExpanded:NO animated:!UIAccessibilityIsReduceMotionEnabled()];
+    self.selectedIndex = AMELauncherTabAI;
+    return YES;
+}
+
+- (UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+                      configurationForMenuAtLocation:(CGPoint)location {
+    return [UIContextMenuConfiguration configurationWithIdentifier:nil previewProvider:nil
+        actionProvider:^UIMenu *(NSArray<UIMenuElement *> *suggestedActions) {
+            return self.toolsMenu;
+        }];
 }
 
 - (void)ameSuppressSystemTabBar {
@@ -359,8 +422,8 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [self ameSuppressSystemTabBar];
-    [self.view bringSubviewToFront:self.topNav];
-    [self.view bringSubviewToFront:self.toolsButton];
+    [self.view bringSubviewToFront:self.navigationGroup];
+    if (self.navigationProfilePanel.superview == self.view) [self.view bringSubviewToFront:self.navigationProfilePanel];
     [self.view bringSubviewToFront:self.floatingDoneButton];
 }
 
@@ -471,8 +534,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 - (void)setSelectedIndex:(NSUInteger)selectedIndex {
     [super setSelectedIndex:selectedIndex];
     self.topNav.selectedIndex = selectedIndex;
-    self.toolsButton.selected = (selectedIndex == AMELauncherTabAI);
-    self.toolsButton.accessibilityTraits = UIAccessibilityTraitButton | (self.toolsButton.selected ? UIAccessibilityTraitSelected : 0);
+    self.aiAction.state = selectedIndex == AMELauncherTabAI ? UIMenuElementStateOn : UIMenuElementStateOff;
     [self ameUpdateFloatingDoneButton];
 }
 

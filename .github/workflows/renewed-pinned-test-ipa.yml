@@ -1,5 +1,5 @@
 name: Build Metallic Renewed pinned-input test IPA
-run-name: Native test IPA of f2f1cda with pinned upstream inputs
+run-name: Native test IPA of df86eb0 with pinned upstream inputs
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 75
     env:
-      SOURCE_SHA: f2f1cdaedafd17b93ea052a9c9b0053250505472
+      SOURCE_SHA: df86eb029223d557d4396a909f576bddba202d4d
       AIR_SHA: c4797387ca9a81f31fdcdd2723ec1050ca35fdb3
       ZEROTIER_SHA: b8e672f54286be8500bc875e153826af7b01d6e6
     steps:
@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: unfilteredpranxu/metallic-renewed
-          ref: f2f1cdaedafd17b93ea052a9c9b0053250505472
+          ref: df86eb029223d557d4396a909f576bddba202d4d
           path: original
           persist-credentials: false
           submodules: false

@@ -42,6 +42,8 @@ jobs:
 
       - name: Retrieve immutable upstream snapshots and verify identities
         shell: bash
+        env:
+          GIT_LFS_SKIP_SMUDGE: '1' # Unrelated upstream trace-replay fixture is missing from LFS; none of the selected native inputs use LFS
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP"

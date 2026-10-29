@@ -1,3 +1,4 @@
+#define _DARWIN_C_SOURCE 1
 #define _POSIX_C_SOURCE 200809L
 #include "../ios-app/Natives/PLDownloadProgressMath.h"
 #include "../ios-app/Natives/PLDownloadFileCommit.h"

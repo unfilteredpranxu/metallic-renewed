@@ -1619,9 +1619,15 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     self.instanceRow.axis = width >= 700 && !accessibilityText ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
     self.instanceRow.distribution = UIStackViewDistributionFill;
     BOOL horizontal=self.instanceRow.axis==UILayoutConstraintAxisHorizontal;
+    CGFloat spacing=42*scale;
+    NSUInteger tileCount=0;
+    for (UIView *tile in self.instanceRow.arrangedSubviews) if (tile.tag!=745901) tileCount++;
+    CGFloat available=MAX(0,width-self.directionalLayoutMargins.leading-self.directionalLayoutMargins.trailing);
+    CGFloat fittingWidth=tileCount ? MAX(44,(available-spacing*MAX(0,(NSInteger)self.instanceRow.arrangedSubviews.count-1))/tileCount) : 330*scale;
+    CGFloat tileWidth=MIN(330*scale,fittingWidth); // Keep reference widths when they fit; no narrow-window overflow.
     for (UIView *tile in self.instanceRow.arrangedSubviews) {
         if(tile.tag==745901) {tile.hidden=!horizontal; continue;}
-        NSLayoutConstraint *referenceWidth=objc_getAssociatedObject(tile,"referenceInstanceWidth"); referenceWidth.active=horizontal; referenceWidth.constant=330*scale;
+        NSLayoutConstraint *referenceWidth=objc_getAssociatedObject(tile,"referenceInstanceWidth"); referenceWidth.active=horizontal; referenceWidth.constant=tileWidth;
         for(NSLayoutConstraint *c in [tile.constraints copy]) {
             if([c.identifier isEqualToString:@"referenceInstanceHeight"]) c.constant=172*scale;
         }

@@ -1649,8 +1649,9 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection { [super traitCollectionDidChange:previousTraitCollection]; [self refreshAppearance]; }
 - (void)appearanceChanged:(NSNotification *)note { [self refreshAppearance]; }
 - (void)contentSizeChanged:(NSNotification *)note { if (self.onNeedsSizing) self.onNeedsSizing(); }
-- (void)actionTapped:(UIButton *)button { if (self.onAction) self.onAction(button.tag); }
+- (void)actionTapped:(UIButton *)button { if(button.enabled)MetallicPlayUIFeedback(button.tag==0?@"launch":@"confirm"); if (self.onAction) self.onAction(button.tag); }
 - (void)profileTapped:(UIButton *)button {
+    MetallicPlayUIFeedback(@"instance");
     NSString *name = objc_getAssociatedObject(button, "renewedProfileName");
     if (name.length && self.onProfile) self.onProfile(name);
 }

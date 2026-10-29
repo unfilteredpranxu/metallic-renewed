@@ -2280,6 +2280,15 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
             if ([keys containsObject:sound.prefContents[section][row][@"key"]]) [paths addObject:[NSIndexPath indexPathForRow:row inSection:section]];
         }
     }
+    // Additive UI-only preference; the original90 descriptors and their stores stay intact.
+    NSArray *originalGeneral=sound.prefContents.firstObject;
+    NSMutableArray *general=[originalGeneral mutableCopy];
+    [general addObject:@{@"key":@"metallic_interface_sounds",@"title":@"Interface Sounds",@"type":sound.typeSwitch}];
+    NSMutableArray *contents=[sound.prefContents mutableCopy]; contents[0]=general; sound.prefContents=contents;
+    GetPreferenceBlock originalGet=sound.getPreference; SetPreferenceBlock originalSet=sound.setPreference;
+    sound.getPreference=^id(NSString *section,NSString *key) { return [key isEqualToString:@"metallic_interface_sounds"] ? @([NSUserDefaults.standardUserDefaults boolForKey:@"metallic.ui.interfaceSounds"]) : originalGet(section,key); };
+    sound.setPreference=^(NSString *section,NSString *key,id value) { if([key isEqualToString:@"metallic_interface_sounds"]) [NSUserDefaults.standardUserDefaults setBool:[value boolValue] forKey:@"metallic.ui.interfaceSounds"]; else originalSet(section,key,value); };
+    [paths insertObject:[NSIndexPath indexPathForRow:general.count-1 inSection:0] atIndex:0];
     sound.presentationRows = @[paths]; sound.title = @"Sound & Haptics";
     [self.navigationController pushViewController:sound animated:YES];
 }

@@ -46,3 +46,6 @@ static inline NSInteger AMEPrimaryDestinationForTab(NSInteger tab) {
 @property (nonatomic, assign) CGFloat referenceScale;
 @property(nonatomic, strong) UIMenu *moreMenu;
 @end
+
+/// Optional launcher-only feedback; never configures the game audio session.
+FOUNDATION_EXPORT void MetallicPlayUIFeedback(NSString *event);

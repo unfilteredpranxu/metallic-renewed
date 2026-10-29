@@ -1,0 +1,1 @@
+Original Metallic UI sound compositions. Generated sine-pair motifs,120ms,22050Hz mono PCM16,raised-sine envelope,peak gain<=0.075. No proprietary sound samples. Distributed under the repository GPLv3 terms. System UI sound volume/silent-mode behavior applies.

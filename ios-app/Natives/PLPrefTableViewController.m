@@ -1,3 +1,4 @@
+#import "HomeTopNavView.h"
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 
@@ -760,6 +761,7 @@ static NSString *MetallicReferencePreferenceDetail(NSString *key) {
     NSArray *customSwitchValue = item[@"customSwitchValue"];
     self.setPreference(section, key, customSwitchValue ?
         customSwitchValue[sender.isOn] : @(sender.isOn));
+    MetallicPlayUIFeedback(@"toggle");
 
     void(^invokeAction)(BOOL) = item[@"action"];
     if (invokeAction) {

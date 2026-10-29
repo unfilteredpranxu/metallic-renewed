@@ -1,3 +1,6 @@
+#import <AudioToolbox/AudioToolbox.h>
+#import <dlfcn.h>
+#import "ios_uikit_bridge.h"
 #import "HomeTopNavView.h"
 #import "BackgroundManager.h"
 #import "UIKit+GlassSurface.h"   // AmeApplyGlassChipStyle / AmeGlassEffect (system Liquid Glass on iOS 26+)
@@ -313,8 +316,38 @@ static UIColor *NavAccentColor(void) {
 }
 
 - (void)tapped:(UIButton *)button {
+    MetallicPlayUIFeedback(@"navigation");
     // The root owns selection; presenting Appearance must not pretend to switch internal tabs.
     if (self.onSelect) self.onSelect((AMEPrimaryDestination)button.tag);
 }
 
 @end
+
+
+void MetallicPlayUIFeedback(NSString *event) {
+    if(!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(),^{ MetallicPlayUIFeedback(event); }); return; }
+    if(UIApplication.sharedApplication.applicationState!=UIApplicationStateActive || AmeGameLandscapeLockActive())return;
+    static CFTimeInterval last=0; CFTimeInterval now=CACurrentMediaTime(); if(now-last<.08)return; last=now;
+    if(!getPrefBool(@"control.disable_haptics") && UIDevice.currentDevice.userInterfaceIdiom==UIUserInterfaceIdiomPhone && !NSProcessInfo.processInfo.lowPowerModeEnabled) {
+        static UISelectionFeedbackGenerator *feedback; if(!feedback)feedback=[[UISelectionFeedbackGenerator alloc] init]; [feedback selectionChanged];
+    }
+    if(![NSUserDefaults.standardUserDefaults boolForKey:@"metallic.ui.interfaceSounds"])return;
+    // Public system sound API, resolved once: no new linker requirement, audio-session changes,
+    // playback engine, external code or impact on the Minecraft audio category.
+    static OSStatus (*createSound)(CFURLRef,SystemSoundID *); static void (*playSound)(SystemSoundID);
+    static NSMutableDictionary<NSString *,NSNumber *> *cache; static dispatch_once_t once;
+    dispatch_once(&once,^{
+        void *framework=dlopen("/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox",RTLD_LAZY|RTLD_LOCAL);
+        if(framework) { createSound=(OSStatus(*)(CFURLRef,SystemSoundID *))dlsym(framework,"AudioServicesCreateSystemSoundID"); playSound=(void(*)(SystemSoundID))dlsym(framework,"AudioServicesPlaySystemSound"); }
+        cache=[NSMutableDictionary dictionary];
+    });
+    if(!createSound || !playSound)return;
+    if(![@[@"navigation",@"confirm",@"menu",@"toggle",@"instance",@"completed",@"failed",@"launch"] containsObject:event])return;
+    NSNumber *cached=cache[event];
+    if(!cached) {
+        NSURL *url=[NSBundle.mainBundle URLForResource:event withExtension:@"wav" subdirectory:@"MetallicUI"]; if(!url)return;
+        SystemSoundID sound=0; if(createSound((__bridge CFURLRef)url,&sound)!=noErr)return;
+        cached=@(sound);cache[event]=cached;
+    }
+    playSound(cached.unsignedIntValue);
+}

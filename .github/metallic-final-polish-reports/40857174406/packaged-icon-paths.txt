@@ -1,0 +1,2 @@
+Payload/AngelAuraAmethyst.app/AppIcon-Light60x60@2x.png
+Payload/AngelAuraAmethyst.app/AppIcon-Light76x76@2x~ipad.png

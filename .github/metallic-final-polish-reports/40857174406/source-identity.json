@@ -1,0 +1,160 @@
+{
+  "ALTDeviceID": "",
+  "CADisableMinimumFrameDurationOnPhone": true,
+  "CFBundleDevelopmentRegion": "en",
+  "CFBundleLocalizations": [
+    "zh-Hans",
+    "zh-Hant",
+    "en",
+    "ja"
+  ],
+  "CFBundleDisplayName": "Metallic",
+  "CFBundleExecutable": "AngelAuraAmethyst",
+  "CFBundleIcons": {
+    "CFBundleAlternateIcons": {
+      "AppIcon-Dark": {
+        "CFBundleIconFiles": [
+          "AppIcon-Dark60x60"
+        ]
+      },
+      "AppIcon-Development": {
+        "CFBundleIconFiles": [
+          "AppIcon-Development60x60"
+        ]
+      },
+      "CustomIcon": {
+        "CFBundleIconFiles": [
+          "CustomIcon"
+        ]
+      }
+    },
+    "CFBundlePrimaryIcon": {
+      "CFBundleIconFiles": [
+        "AppIcon-Light60x60"
+      ],
+      "CFBundleIconName": "AppIcon-Light"
+    }
+  },
+  "CFBundleIcons~ipad": {
+    "CFBundleAlternateIcons": {
+      "AppIcon-Dark": {
+        "CFBundleIconFiles": [
+          "AppIcon-Dark60x60",
+          "AppIcon-Dark76x76"
+        ]
+      },
+      "AppIcon-Development": {
+        "CFBundleIconFiles": [
+          "AppIcon-Development60x60",
+          "AppIcon-Development76x76"
+        ]
+      },
+      "CustomIcon": {
+        "CFBundleIconFiles": [
+          "CustomIcon"
+        ]
+      }
+    },
+    "CFBundlePrimaryIcon": {
+      "CFBundleIconFiles": [
+        "AppIcon-Light60x60",
+        "AppIcon-Light76x76"
+      ],
+      "CFBundleIconName": "AppIcon-Light"
+    }
+  },
+  "CFBundleIdentifier": "com.tokyxkai.metallic",
+  "CFBundleInfoDictionaryVersion": "6.0",
+  "CFBundleName": "Metallic",
+  "CFBundlePackageType": "APPL",
+  "CFBundleShortVersionString": "1.2.0",
+  "CFBundleSignature": "????",
+  "CFBundleURLTypes": [
+    {
+      "CFBundleURLName": "com.air-devs.air.urlscheme",
+      "CFBundleURLSchemes": [
+        "amethyst"
+      ]
+    }
+  ],
+  "CFBundleVersion": "1.2.0",
+  "GCSupportedGameControllers": [
+    {
+      "ProfileName": "ExtendedGamepad"
+    }
+  ],
+  "GCSupportsControllerUserInteraction": true,
+  "GCSupportsGameMode": true,
+  "LSApplicationCategoryType": "public.app-category.games",
+  "LSApplicationQueriesSchemes": [
+    "filza",
+    "santander",
+    "shareddocuments",
+    "zerotier",
+    "stikdebug",
+    "stikjit",
+    "sidestore",
+    "trollstore",
+    "stosdebug"
+  ],
+  "LSRequiresIPhoneOS": true,
+  "LSSupportsOpeningDocumentsInPlace": true,
+  "MinimumOSVersion": "14.0",
+  "NSBonjourServices": [
+    "_altserver._tcp"
+  ],
+  "NSLocalNetworkUsageDescription": "Air uses the local network to find and communicate with AltServer and LAN servers, and to enable multiplayer connectivity via Terracotta (compatible with HMCL/FCL/ZL2).",
+  "NSMicrophoneUsageDescription": "Air uses the microphone to enable support for voice chat mods.",
+  "UIApplicationSceneManifest": {
+    "UIApplicationSupportsMultipleScenes": false,
+    "UISceneConfigurations": {
+      "UIWindowSceneSessionRoleApplication": [
+        {
+          "UISceneConfigurationName": "Default Configuration",
+          "UISceneDelegateClassName": "SceneDelegate"
+        }
+      ],
+      "UIWindowSceneSessionRoleExternalDisplay": [
+        {
+          "UISceneConfigurationName": "External Display Configuration",
+          "UISceneDelegateClassName": "SceneExternalDelegate"
+        }
+      ]
+    }
+  },
+  "UIApplicationSupportsIndirectInputEvents": true,
+  "UIBackgroundModes": [
+    "audio",
+    "fetch"
+  ],
+  "UIDeviceFamily": [
+    1,
+    2,
+    3
+  ],
+  "UIFileSharingEnabled": true,
+  "UILaunchStoryboardName": "LaunchScreen",
+  "UIRequiredDeviceCapabilities": [
+    "arm64",
+    "metal"
+  ],
+  "UIStatusBarHidden": true,
+  "UIRequiresFullScreen": true,
+  "UISupportedInterfaceOrientations": [
+    "UIInterfaceOrientationPortrait",
+    "UIInterfaceOrientationLandscapeLeft",
+    "UIInterfaceOrientationLandscapeRight"
+  ],
+  "UISupportedInterfaceOrientations~ipad": [
+    "UIInterfaceOrientationPortrait",
+    "UIInterfaceOrientationPortraitUpsideDown",
+    "UIInterfaceOrientationLandscapeLeft",
+    "UIInterfaceOrientationLandscapeRight"
+  ],
+  "UISupportsDocumentBrowser": true,
+  "UIViewControllerBasedStatusBarAppearance": true,
+  "UIWhitePointAdaptivityStyle": "UIWhitePointAdaptivityStyleGame",
+  "NSAppTransportSecurity": {
+    "NSAllowsArbitraryLoads": true
+  }
+}

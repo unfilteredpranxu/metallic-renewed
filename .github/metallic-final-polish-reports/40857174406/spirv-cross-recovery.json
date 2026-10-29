@@ -1,0 +1,121 @@
+{
+  "application_sha": "25e7bbdf2f057675f2974f104ef52c2a32dad3af",
+  "air_sha": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+  "source_tree": "514ed4f4455ff6451866ad99bfae55955cd5eb92",
+  "original_destination_tree": "08a3bfc528225335563051f4637a60f6d52bcf90",
+  "unchanged_shared_files": [
+    ".clang-format",
+    ".gitignore",
+    "CMakeLists.txt",
+    "CODE_OF_CONDUCT.adoc",
+    "GLSL.std.450.h",
+    "LICENSE",
+    "Makefile",
+    "NonSemanticShaderDebugInfo100.h",
+    "Package.swift",
+    "README.md",
+    "appveyor.yml",
+    "build_glslang_spirv_tools.sh",
+    "checkout_glslang_spirv_tools.sh",
+    "format_all.sh",
+    "main.cpp",
+    "spirv.h",
+    "spirv.hpp",
+    "spirv_cfg.cpp",
+    "spirv_cfg.hpp",
+    "spirv_common.hpp",
+    "spirv_cpp.cpp",
+    "spirv_cpp.hpp",
+    "spirv_cross.cpp",
+    "spirv_cross.hpp",
+    "spirv_cross.natvis",
+    "spirv_cross_c.cpp",
+    "spirv_cross_c.h",
+    "spirv_cross_containers.hpp",
+    "spirv_cross_error_handling.hpp",
+    "spirv_cross_parsed_ir.cpp",
+    "spirv_cross_parsed_ir.hpp"
+  ],
+  "recovered_files": [
+    {
+      "path": "cmake/gitversion.in.h",
+      "git_blob": "bff73e964e8d5e142dfaeedf0067f9a9b1cd51cd",
+      "sha256": "9529c74b9e1b025ce90c864044a23a65d43cb52efcad1bee2d6bf57c87fcc105",
+      "bytes": 275
+    },
+    {
+      "path": "pkg-config/spirv-cross-c.pc.in",
+      "git_blob": "2b586b6ffa59e4f34f3367f7722bee09ffb2abe2",
+      "sha256": "f606fe9ba5ee14b752e3cdf69945432ea355f3490549392f4ab95c99dfe41386",
+      "bytes": 400
+    },
+    {
+      "path": "pkg-config/spirv-cross-c-shared.pc.in",
+      "git_blob": "94e63eaeb4ec0e2dd5025d31ff6c64ac1da01a73",
+      "sha256": "ae3a41e476e434af6a0ca4de3d34ecc276eddfa6384abc6b4d636daf935d9977",
+      "bytes": 478
+    },
+    {
+      "path": "spirv_parser.cpp",
+      "git_blob": "2cf232a5f00d4e403326a5f14d6895bc700cf70d",
+      "sha256": "36bac4dd1c0f311d764c0c2c528e76b340954ffb822950982e5be9f068a9bfcf",
+      "bytes": 44744
+    },
+    {
+      "path": "spirv_parser.hpp",
+      "git_blob": "dabc0e22446bce815ee98b0eb28eff503d50415d",
+      "sha256": "e5cc214ad1d87bd78183f2e72a902c0fb994dc18e7aa6e83e86cb2875708c2f2",
+      "bytes": 2633
+    },
+    {
+      "path": "spirv_glsl.cpp",
+      "git_blob": "cbd135d05dd15ddd661cdfafa82b675473a073f9",
+      "sha256": "f5a313927e6b01f516493f785366d7677f512b64811d8a62ecb2089e3288c033",
+      "bytes": 694587
+    },
+    {
+      "path": "spirv_glsl.hpp",
+      "git_blob": "349fb8d3a49709bdca143fb1ed475ba7438fd416",
+      "sha256": "7dd12c95f65eaeda5ba1f7af25a496a081dda0ccb447af2bf9fac529bb720eda",
+      "bytes": 54302
+    },
+    {
+      "path": "spirv_cross_util.cpp",
+      "git_blob": "f30706f592f2704502f602f6780de2cb1135f477",
+      "sha256": "9f9ce212e5d796c7833a20baba3898bd81083cc278a804996bda91718275d263",
+      "bytes": 2621
+    },
+    {
+      "path": "spirv_cross_util.hpp",
+      "git_blob": "e6e3fcdb6340083259535db4ded9da1310d8bf8c",
+      "sha256": "0942b0bae888eb986685adaf2d6741d15d4811711056d8dbc68fa80f40d18480",
+      "bytes": 1402
+    },
+    {
+      "path": "LICENSES/Apache-2.0.txt",
+      "git_blob": "4ed90b952240cb872426e64da9e41252cc61ae3e",
+      "sha256": "44b0a56e80b41a1b0a6bd1292515e806539fd97b30be54c2719e6c763190ab57",
+      "bytes": 10343
+    },
+    {
+      "path": "LICENSES/CC-BY-4.0.txt",
+      "git_blob": "3f92dfc5fdda05635f28da16a47fa1a5c99c0dc6",
+      "sha256": "b89aeb7c2a164a0576786dd2a8b57f2fb628b23981f0a06bd77e2f99a9befa0f",
+      "bytes": 16814
+    },
+    {
+      "path": "LICENSES/LicenseRef-KhronosFreeUse.txt",
+      "git_blob": "430863bc98ad8ee1d0a4876a4c2a5b6f5d32fd74",
+      "sha256": "fbeaca472f4f70e276dd1106ca5097435967a22ad6c1d8200aef7ad9f70aaf3f",
+      "bytes": 1305
+    },
+    {
+      "path": "LICENSES/MIT.txt",
+      "git_blob": "204b93da48d02900098ced21c54062ffbff36b9c",
+      "sha256": "8f25018489d6fe0dec34a352314c38dc146247b7de65735790f4398a92afa84b",
+      "bytes": 1108
+    }
+  ],
+  "enabled_source_header_closure_files": 18,
+  "revision_rule": "Every recovered blob exists identically in immutable M08 and pinned Air. Existing files are never replaced; no SPIRV-Cross feature flags changed."
+}

@@ -1,0 +1,8 @@
+{
+  "configure_generate": "PASS",
+  "compiler_inputs_verified": 91,
+  "application_source": "46567ce33002ff6ee50ec024766dc93bb4007d80",
+  "architecture": "arm64",
+  "deployment_target": "14.0 (unchanged)",
+  "stage": "Configuration only; actual compilation follows via original make all"
+}

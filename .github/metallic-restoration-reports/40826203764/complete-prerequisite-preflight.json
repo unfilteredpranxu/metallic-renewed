@@ -1,0 +1,563 @@
+{
+  "application_sha": "46567ce33002ff6ee50ec024766dc93bb4007d80",
+  "air_sha": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+  "sfpew_tree": "828811789978e4bbdfb1feff19bacc6f793986f7",
+  "sfpew_files": [
+    {
+      "path": "Natives/external/SimpleFPEWrapper/3rdparty/xxhash/LICENSE",
+      "mode": "100644",
+      "blob": "bcfb5d47b342db4ee87034aae326cf428090fa41",
+      "sha256": "912c125f62eaaba833c9549c682046c07c45576521e93d122dd1218c0d7ae15e",
+      "bytes": 1071
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/3rdparty/xxhash/readme.md",
+      "mode": "100644",
+      "blob": "70e650be7c14daa17923f31cc0b0ccccfd9ce05e",
+      "sha256": "b64ca68153357ff2d698c4843807e84ecba1b316469bcd00a639aa4f8fc990fb",
+      "bytes": 623
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/3rdparty/xxhash/xxhash32.h",
+      "mode": "100644",
+      "blob": "a2ce1d0eb80f0a64ed4c6133e33c8ccb7e2c4350",
+      "sha256": "b6d8b7c7c85f7f3ea920f09f5b314d5afc8928891d02ea3f088e9f2677e5b988",
+      "bytes": 6230
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/3rdparty/xxhash/xxhash64.h",
+      "mode": "100644",
+      "blob": "a362ef958c492808f767cba5e138a49e056239d3",
+      "sha256": "9f8540579cf7b70e4c6505aff77cc8a0fd3cf62969ee5fd312aa1a175f98dff9",
+      "bytes": 6951
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/CMakeLists.txt",
+      "mode": "100644",
+      "blob": "db43dc39416bda154917c9e09cd4cfe5d6fce7d6",
+      "sha256": "a477af357d2ff4ea790e764179ad46b5148b444168cffb7c41c404ed41196d52",
+      "bytes": 8440
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/COPYING",
+      "mode": "100644",
+      "blob": "e72bfddabc15be5718a7cc061ac10e47741d8219",
+      "sha256": "8b1ba204bb69a0ade2bfcf65ef294a920f6bb361b317dba43c7ef29d96332b9b",
+      "bytes": 35148
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/COPYING.LESSER",
+      "mode": "100644",
+      "blob": "153d416dc8d2d60076698ec3cbfce34d91436a03",
+      "sha256": "a5681bf9b05db14d86776930017c647ad9e6e56ff6bbcfdf21e5848288dfaf1b",
+      "bytes": 7651
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/LICENSE",
+      "mode": "100644",
+      "blob": "0e27a2fd7d03a35ae88a21fb094937a99d8dcfc5",
+      "sha256": "37b29c3ba810f4de5d0e2cfc28da34a9803b427a45861280dbdee38d8f4964f2",
+      "bytes": 180
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/backend/capabilities.cpp",
+      "mode": "100644",
+      "blob": "e0a4252d9a22457f563eb6fca65ff1968ac544dd",
+      "sha256": "9c9a90f256ed52ab8c711949ce4654a133a9c4bc3b0406fe550ee30b51f87fd9",
+      "bytes": 13824
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/backend/loader.cpp",
+      "mode": "100644",
+      "blob": "1aaa2295687f41baffd748baad89201d2c20cfdc",
+      "sha256": "d1ea4d76fe7941fca88d299dccff7b370f4f053e456fbac86148164312c3f2d8",
+      "bytes": 27166
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/backend/loader.h",
+      "mode": "100644",
+      "blob": "b51e291a503a7c7ec780bc7ca9651a0577396f58",
+      "sha256": "ff8950d02442f8238b4a8199b952db3e23fd19f42be7f5da376caa49b0dbdc5b",
+      "bytes": 71215
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/egl_dispatch.cpp",
+      "mode": "100644",
+      "blob": "a7cf84df3d59646bdd497581be63d8593dcb06b9",
+      "sha256": "1d3cb4884f8cda75936f903f131774318607cd98e20a923266230a6a3591325e",
+      "bytes": 8675
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/egl_dispatch.h",
+      "mode": "100644",
+      "blob": "9a1589ddd8856d8c1493bee5d40826654b3f6eac",
+      "sha256": "0c7c11a2dbcc6aa9e8a852040d34f061d7edafb969b57b9193de5d562ff5a7e0",
+      "bytes": 1092
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fbo.cpp",
+      "mode": "100644",
+      "blob": "625c824e808593102b7a7de80a5e0cd5e172084f",
+      "sha256": "58a9765e3bf9d47ce9ce2083ffad98d96d0a57714590b50dd94035f1b7f6f1e4",
+      "bytes": 5473
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/attribstack.cpp",
+      "mode": "100644",
+      "blob": "076c1b1d09f0567bb6bc1310cba82a2baba11c82",
+      "sha256": "06cb47525ebde3b9f849d8ecda216e9d454831ce7b842621c4a1b55b9e8bf020",
+      "bytes": 20818
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/defines.h",
+      "mode": "100644",
+      "blob": "d1c18f69a951957604c6be2517b733c797728724",
+      "sha256": "ef57702728c07122b7d7256a1f026485b01989e7dcdf4bad6240232ac2bca768",
+      "bytes": 793
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/draw_now.cpp",
+      "mode": "100644",
+      "blob": "9b7c7167d1db4bcdb22db2fc14cc369f55f40c39",
+      "sha256": "708549c514f9181bb1038c96bdfe46c5ba302ab37281c22e04354d58435a6584",
+      "bytes": 52451
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/drawing1x.cpp",
+      "mode": "100644",
+      "blob": "e64bf0ef6b0509dadd545fbedf7be897cb199731",
+      "sha256": "482df0282c2a45f18a139d62af72a2f6cacd8b807cb7b1fa6cd8d21d3f9ae64a",
+      "bytes": 77672
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/drawing1x.h",
+      "mode": "100644",
+      "blob": "6aa659aabd1812a37316063f928c2292748db70a",
+      "sha256": "599f5aa0d4a43a3fa12c4cf2d18fbfd4c10954809162be3e3fa7dbc0f728629e",
+      "bytes": 22187
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/drawstate1x.cpp",
+      "mode": "100644",
+      "blob": "93822644999c3dee150b61ffd5003253380223d4",
+      "sha256": "503acdc8af02b6ff625f157ec30c3e7245f05bcc2c4955e3daea2f89ea4b232c",
+      "bytes": 9335
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/evaluators.cpp",
+      "mode": "100644",
+      "blob": "9ef2ebd89d7cdab3e63b84bbd8574d08c05e221f",
+      "sha256": "2c556874130ef6d6054588e5e8fcd601d82966a5f5adf2dccab096ffaffad783",
+      "bytes": 20082
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/ffp_state_query.cpp",
+      "mode": "100644",
+      "blob": "a88de03f042d10b448fce6e36f203bc14bf3e7e9",
+      "sha256": "1324b71cafcc3df62a784caa3402c454eac9cd67f565f81c31087e31e99eb5a8",
+      "bytes": 40089
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe.cpp",
+      "mode": "100644",
+      "blob": "1bed0b7582d70115f7b1f17d6c0cb65c02b636f5",
+      "sha256": "c1c011fb8dce09eda3c847127113df0146463957a080d1cf5f224d8ef31c2c16",
+      "bytes": 73451
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe.hpp",
+      "mode": "100644",
+      "blob": "6d2c4bdf58b79163a66b9d03048ad638122a0f23",
+      "sha256": "3cc2dce42b0cbd3d7d0cf1700bd77985ba643f94374e8040cc8a73df661799cd",
+      "bytes": 22728
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe_shadergen.cpp",
+      "mode": "100644",
+      "blob": "b10f4693a2c8c9acee1467c76c6f7660aa2ee3fa",
+      "sha256": "dc1680e3d41cf4f13a37d603abc99b6a21898ffb5ec9eb0808665ea23a8e21df",
+      "bytes": 86141
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe_shadergen.h",
+      "mode": "100644",
+      "blob": "87f2c86ee6560014ec725337eed2bf4e64b560f5",
+      "sha256": "0a9c0ccc221f2ee9de0689937f51b03dd046fdefd892b467a214a46454384208",
+      "bytes": 2157
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/glstate.cpp",
+      "mode": "100644",
+      "blob": "88e6541ca4d0c36d9d679d83557a265fa12b3a49",
+      "sha256": "2bfe9570df535aeaa0031f4594b4a915d4e97931c1462343fd565259eb2030b8",
+      "bytes": 41086
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/imaging.cpp",
+      "mode": "100644",
+      "blob": "8e2029a167799fd683ecac6047dd7f42a7bc4d06",
+      "sha256": "55f520a15957dbae96c0ebb39e71ece4b09bfe87cc563ce81925bea36a89f641",
+      "bytes": 85157
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/imaging.h",
+      "mode": "100644",
+      "blob": "f1c4265f5f72fb4ef1608634a38ddac337e32b22",
+      "sha256": "74beef4cdcc8f9ef9d60aa4fe6beaae1647197913ee51d01344b77828315f92f",
+      "bytes": 8809
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/linestipple.cpp",
+      "mode": "100644",
+      "blob": "f7b326baba3190b0b1af6ad5182eb8c1b7c01c8d",
+      "sha256": "f04ee72290e3f23398e412f5fac6d5bce17e7820d85c9c6464fedde42bef3d9d",
+      "bytes": 13753
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list.cpp",
+      "mode": "100644",
+      "blob": "1458d6e5dd97fbb6baf31765d7dc42b139101142",
+      "sha256": "05a9f5382eead3e55c10ba8645d85d51965af9f037f492990faa5a8010c160cf",
+      "bytes": 7930
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list.h",
+      "mode": "100644",
+      "blob": "fd258e77fd2803c2395395aac2d1746a918b190b",
+      "sha256": "d9c1bdf8a1033bdd25bde41774755ecf2de3731d7d1b260736a264852ddccb3a",
+      "bytes": 24825
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list_capture.cpp",
+      "mode": "100644",
+      "blob": "535077e388ec69704d5972b803ed72d0493af23c",
+      "sha256": "8d15a9124bec774f614977489a18b9c0d8c8677b5e6f5ec3e84c04ceaa5f1b4f",
+      "bytes": 77063
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list_diagnostics.cpp",
+      "mode": "100644",
+      "blob": "9f2985ebacce63f045a451fbd4cecf950ead6535",
+      "sha256": "db48f5b8da29f4e44815a5d377bcbc6ee76bdf98c3a6b240c114374914df3855",
+      "bytes": 10661
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list_diagnostics.h",
+      "mode": "100644",
+      "blob": "90432ae2e33fe16e0c0a399e2911d42e0aab4d49",
+      "sha256": "f59c5a2298b95a48ed7ebb9a753e00d96013c41fce38f45c9e59e010a0959a97",
+      "bytes": 5388
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/pixelops.cpp",
+      "mode": "100644",
+      "blob": "4a6ae108be93814a372be204967e9ed604f8a8e9",
+      "sha256": "8de46772b31d15c02145ff1ee56f5817a9193603a7610e981e1a6cb774c44781",
+      "bytes": 102650
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/pointer_utils.cpp",
+      "mode": "100644",
+      "blob": "b961a8b3ae08fe4864b8a251e6b523fc106b2da1",
+      "sha256": "0c19b02d6d1a449c5afdc008dc11c734f9d6cedef073414d53bcba1712921282",
+      "bytes": 1868
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/pointer_utils.h",
+      "mode": "100644",
+      "blob": "0cb5841ebe40b39ecf3a5a697e0e8c86f5824ba6",
+      "sha256": "c53d2f59fe1f0a1d133dc1e5dd0c18c6476a4bb1eeb7f39db521d96d4cc8f53f",
+      "bytes": 492
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/selection.cpp",
+      "mode": "100644",
+      "blob": "9144c115fc817575d136501d05ed9be5bd1c40d3",
+      "sha256": "e4095b73b46ab7082a750b149e11e72adececbd17f4163edc3e0367d2d28dddd",
+      "bytes": 10582
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/state.cpp",
+      "mode": "100644",
+      "blob": "fa4350c3e6553f02d2d7cf1a2696da533ca31ce5",
+      "sha256": "75b5fb8a4c581e1a2ee6eb3f00151c38a4036e8550ed06990502af966a50b2a5",
+      "bytes": 84947
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/state.h",
+      "mode": "100644",
+      "blob": "6f5a7b0f5090010548e5cfd967662d2ad4fc05e3",
+      "sha256": "50beeb6569f6ee6906b7d8a24e8a4290206dc005f39b79ac4601ffab8adebc2f",
+      "bytes": 2709
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/transformation.cpp",
+      "mode": "100644",
+      "blob": "0ab5a270f86433f4a28c5fd1297d0a73c091d97e",
+      "sha256": "66c65c51aaf015097bc8abf4c184bc4f07febc2539a98350cc9f44de3076d76e",
+      "bytes": 18023
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/transformation.h",
+      "mode": "100644",
+      "blob": "095d7a403c71eaca3087754b5942f6cb13714420",
+      "sha256": "3165bf8146a6bc81d1b5a0ded4c3b3277775b4a2093bfd2908b669d19a7624ca",
+      "bytes": 2366
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/types.h",
+      "mode": "100644",
+      "blob": "703dab60ef4afe012b3413f260a0059ab94bcea7",
+      "sha256": "014b40ace04816cadcb26867c5e42207db009a986ee6380e75fd26f56f88728c",
+      "bytes": 58244
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer.cpp",
+      "mode": "100644",
+      "blob": "79bcbcd6f6f67e6f06f05b519895cafd61e542bc",
+      "sha256": "2bd0c19a9c511cf4847da30dd4e5f8f7330ffb8a4fcc0b7d372360f2b1263283",
+      "bytes": 45862
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer.h",
+      "mode": "100644",
+      "blob": "8dfb54cebd9e3f4379310bfb65afd387589320fc",
+      "sha256": "59aa2dc132b9e809be32aaa1df305b85974d6c36f42544dd5d441575efb3ccc7",
+      "bytes": 1371
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer_utils.cpp",
+      "mode": "100644",
+      "blob": "540b8ef08af71eb13b2f0f08b5362a239d106671",
+      "sha256": "11b12ca348153197614ef66304c7d57b2ddb89bc9e97e12e6c61f1ecbebb6958",
+      "bytes": 1851
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer_utils.h",
+      "mode": "100644",
+      "blob": "6760aebb6b929b460fa27f12fff110e1bc63d57d",
+      "sha256": "fc687d8046470aa2346fab722a7240179432a1bf3b71948513de1979daf1a24c",
+      "bytes": 437
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointerarray.cpp",
+      "mode": "100644",
+      "blob": "278d9a39b0c1dc6c32bb9fdc179a7e4e5e495775",
+      "sha256": "b0a4932914a01534897e3cf9d6c0e792830f29a699f6c167a5722083436e9b64",
+      "bytes": 4573
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/getter_version_strings.cpp",
+      "mode": "100644",
+      "blob": "237570a2d57ea87808cf212401b514f2aee7a0a8",
+      "sha256": "afe0866eecc3ee698546b12207925202618ced2456323f69345706b3613d4062",
+      "bytes": 9714
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/init.cpp",
+      "mode": "100644",
+      "blob": "bd2da6690de2c2c3aed67bb3404dc98ff835904a",
+      "sha256": "2e387a097b4ef48f49f577ece648ed92f1d9db8b924f3ff374c0db708e1f354c",
+      "bytes": 2522
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/init.h",
+      "mode": "100644",
+      "blob": "3853f0f4effb1b633f2fa8d20bb1a40406e68740",
+      "sha256": "1e8d07303e0c92e0c657134185d97954d6b1e609ded088e5993024cf74de15c2",
+      "bytes": 33335
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/log.h",
+      "mode": "100644",
+      "blob": "025c5e443d2ee286cfc343bcd0f0171c6ba62d65",
+      "sha256": "2961efc13f8e26ce26c548885128abc3842aba05eeee8a9707a88190a5ffa916",
+      "bytes": 1635
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/lookup.cpp",
+      "mode": "100644",
+      "blob": "6f44e502f24f1872cd2fc34a898e94a57337bee1",
+      "sha256": "6eee4ff3efd17bd55d45e679fe6400edacb1f647699e22f062b544d980b9bf5d",
+      "bytes": 55550
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/multidraw.cpp",
+      "mode": "100644",
+      "blob": "cf8925910574a4346370d1174bf6c86515ef1f69",
+      "sha256": "d3a973efbefea28de936f0b809f4436cdb68ed2253b98d99dc6df7982b5944fd",
+      "bytes": 8260
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/ordered_passthrough.cpp",
+      "mode": "100644",
+      "blob": "e97639d476c007c0f7d6d06c31c1ec30ee588d3c",
+      "sha256": "2d0aef6af163f5d3725fb79ee009dcdbefb6a0ca1f52e9c658122a46c7d4678b",
+      "bytes": 50273
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/shaderobjects.cpp",
+      "mode": "100644",
+      "blob": "acadfe7f6039fe1eb3cf9d9b5a5abc50a20b75d9",
+      "sha256": "32098926b65c31f116eadbc15c55972ed9474fa62d03a4b86778d30e6f4149c7",
+      "bytes": 41345
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/translator.cpp",
+      "mode": "100644",
+      "blob": "b395a1b693262152ce1192080d2f723292f50050",
+      "sha256": "5b0a406decaeec29b3f03e69baf3175900745aa64b0b3e8f9e6b5f8e8c9e8b82",
+      "bytes": 66573
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/translator.h",
+      "mode": "100644",
+      "blob": "5ff18eaecffaaed766a72b8c32a8b054a97e99d6",
+      "sha256": "4c345d92cfbb1bd71446aa6b9069aed0db6c856be9af82b675eb46d344977703",
+      "bytes": 4473
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/userprogram.cpp",
+      "mode": "100644",
+      "blob": "d420132b4326ab0e69b3d961cde63a13dd92c883",
+      "sha256": "26a0796912f89ae8854ae305ea5121caee1c2c5a1e08f9a585e6fb177b86f616",
+      "bytes": 27636
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/vertexattrib.cpp",
+      "mode": "100644",
+      "blob": "9b60f5a334d90a414b9b6f80bbd1202b1265a138",
+      "sha256": "955df44c96ed7c77cb624bf4fbe87ee6af86c3c639f21a0b445823f8314b98b0",
+      "bytes": 8516
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/texture_binding.cpp",
+      "mode": "100644",
+      "blob": "2888e0527d8de96c9add083b05692c1ad941a3e1",
+      "sha256": "f09922393ccf220ba172dd7ca3a2af349e14f070d8c59ccea9ad909552c5ec58",
+      "bytes": 8417
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/texture_image.cpp",
+      "mode": "100644",
+      "blob": "68b3adf85d385932cd898febf70f232b7e10eec8",
+      "sha256": "74e873c27378d97e6670d6e38796ff0f7489ea9c759e4bfe66147dcbde57111a",
+      "bytes": 75452
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/version.h",
+      "mode": "100644",
+      "blob": "94f45bf1d85d3296e64dcf31e79a5cf267d08d1c",
+      "sha256": "434beba1724b6a97499a3a906bf94c2b59d865184601486f45c4941153487a8f",
+      "bytes": 4628
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/include/EGL/egl.h",
+      "mode": "100644",
+      "blob": "a919b8d52e50db51d7f856fed4412dfae726a275",
+      "sha256": "696661f38d0194eccc9cf706b5e29a4e7d2e597ad9819187119e16f978eebfff",
+      "bytes": 19285
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/include/EGL/eglext.h",
+      "mode": "100644",
+      "blob": "ed62f2504efebc3d9957d310f8880b6ee960faf6",
+      "sha256": "b66be4d02e6f62c7bf3ea80a985c279a8b4a9fb0d2f6b38ab2bd542044b85cac",
+      "bytes": 73441
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/include/EGL/eglplatform.h",
+      "mode": "100644",
+      "blob": "e9dc07f3ec30d4f6ffb8a5a6cf81f70c1428ac80",
+      "sha256": "8bfe1f086e09f3bf46f30953b1858b5394bd0b4a9373ccd4dc04a125604674cb",
+      "bytes": 5238
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/include/GL/gl.h",
+      "mode": "100644",
+      "blob": "2b565ea7cdfc1139781fe88dfbb9658a5958b548",
+      "sha256": "59c6839428ecda618fe7e318fba77f0fe4eaf3170c2ddf9788a66d04e303fe72",
+      "bytes": 80580
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/include/GL/glcorearb.h",
+      "mode": "100644",
+      "blob": "05bba5996829dbb395eeb1013d9fe55f6bc303db",
+      "sha256": "4eb658ea311cf4e04778e19b85df5d1b54f76cce31c87e22072193e000f4101e",
+      "bytes": 425985
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/include/GL/glext.h",
+      "mode": "100644",
+      "blob": "73039de5b7c5f5afe68d83774fd711b28f5f3bb6",
+      "sha256": "888bc1b1feaa4943d1f891508300fc09cf95bdefee23a8bfe974a09884cbc27f",
+      "bytes": 852751
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/include/GLES/gl32.h",
+      "mode": "100644",
+      "blob": "f683a018579c59f7a060803153762f3e902043da",
+      "sha256": "827f83ea1c2fdf9a98b2f26042eb50ccc96f0f16e238a304d7f6af35f07edbc9",
+      "bytes": 127282
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/include/GLES/gl3platform.h",
+      "mode": "100644",
+      "blob": "68b7fbc8074eca99dbb73d65d129bd1d7abfe26f",
+      "sha256": "c1dabe65675726c470025ed0d85703811567971b6261ae15e71627e787c1d922",
+      "bytes": 641
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/include/KHR/khrplatform.h",
+      "mode": "100644",
+      "blob": "01646449caedc958effc3b450360aefd260671ab",
+      "sha256": "7b1e01aaa7ad8f6fc34b5c7bdf79ebf5189bb09e2c4d2e79fc5d350623d11e83",
+      "bytes": 11131
+    },
+    {
+      "path": "Natives/external/SimpleFPEWrapper/include/android_debug.h",
+      "mode": "100644",
+      "blob": "7f31a2aa608e065c938c9d1d62de0761ae4820ee",
+      "sha256": "440d37e491d0eefbd02e2aa569d16a231ee732b62e9b56146fb040960fb55d75",
+      "bytes": 334
+    }
+  ],
+  "zerotier_packaging": {
+    "sha256": "1249ae3106a0522777360c297a0d7c1f0826f993663aef89e9555c64e69c34b1",
+    "kind": "static archive linked by existing CMake framework option",
+    "runtime_framework_required": false
+  },
+  "mandatory_default_targets": [
+    "all",
+    "native",
+    "dep_mg",
+    "swift",
+    "java",
+    "jre",
+    "assets",
+    "payload",
+    "dep_shader_shims",
+    "dep_openal_shim",
+    "dep_angle_freeze",
+    "dep_sdl3_guard",
+    "dep_nggl4es",
+    "dep_sfpew",
+    "shader-glslang-pack",
+    "package",
+    "dsym"
+  ],
+  "static_make_inputs": [
+    "Natives/openal_shim.c",
+    "Natives/patch_mobilegl_glslang.py",
+    "Natives/patch_mobilegl_ios.py",
+    "Natives/patch_sfpew_ios.py",
+    "Natives/shaderc_impl_glue.c",
+    "Natives/shaderc_include.c",
+    "Natives/shaderc_sandbox.m",
+    "Natives/shaderc_shim.c",
+    "Natives/spvc_shim.c"
+  ],
+  "prebuilt_jar_count": 48,
+  "runtime_archive_validation": "Existing make jre and post-build archive checks retained; URLs and deployment14 unchanged",
+  "optional_targets": "Original MobileGL/Mithril/render-gap conditions unchanged"
+}

@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ALTDeviceID</key>
+	<string></string>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<!-- ★ [I18N] Declare the UI languages we actually support: iOS uses this list to match the system
+	     language (including variants) to the corresponding .lproj (and to populate Settings > App > Language).
+	     Keep this consistent with AmeLauncherSupportedLanguageCodes(); do not declare unlisted .lproj
+	     directories, which are legacy empty shells and could make the system select an "untranslated language".
+	     ★ [AUDIT-DECIDE] E-2/A-8: removed km — km.lproj actually contains Chinese content; declaring it
+	     would show the Chinese UI to users as Khmer in Settings > App > Language. km.lproj remains in the
+	     bundle but is no longer declared. -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>zh-Hans</string>
+		<string>zh-Hant</string>
+		<string>en</string>
+		<string>ja</string>
+	</array>
+	<key>CFBundleDisplayName</key>
+<string>Metallic</string>
+	<key>CFBundleExecutable</key>
+	<string>AngelAuraAmethyst</string>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundleAlternateIcons</key>
+		<dict>
+			<key>AppIcon-Dark</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-Dark60x60</string>
+				</array>
+			</dict>
+			<key>AppIcon-Development</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-Development60x60</string>
+				</array>
+			</dict>
+			<key>CustomIcon</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>CustomIcon</string>
+				</array>
+			</dict>
+		</dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>AppIcon-Light60x60</string>
+			</array>
+			<key>CFBundleIconName</key>
+			<string>AppIcon-Light</string>
+		</dict>
+	</dict>
+	<key>CFBundleIcons~ipad</key>
+	<dict>
+		<key>CFBundleAlternateIcons</key>
+		<dict>
+			<key>AppIcon-Dark</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-Dark60x60</string>
+					<string>AppIcon-Dark76x76</string>
+				</array>
+			</dict>
+			<key>AppIcon-Development</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-Development60x60</string>
+					<string>AppIcon-Development76x76</string>
+				</array>
+			</dict>
+			<key>CustomIcon</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>CustomIcon</string>
+				</array>
+			</dict>
+		</dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>AppIcon-Light60x60</string>
+				<string>AppIcon-Light76x76</string>
+			</array>
+			<key>CFBundleIconName</key>
+			<string>AppIcon-Light</string>
+		</dict>
+	</dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.tokyxkai.metallic</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+<string>Metallic</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+<string>1.2.0</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.air-devs.air.urlscheme</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>amethyst</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+<string>1.2.0</string>
+	<key>GCSupportedGameControllers</key>
+	<array>
+		<dict>
+			<key>ProfileName</key>
+			<string>ExtendedGamepad</string>
+		</dict>
+	</array>
+	<key>GCSupportsControllerUserInteraction</key>
+	<true/>
+	<key>GCSupportsGameMode</key>
+	<true/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.games</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>filza</string>
+		<string>santander</string>
+		<string>shareddocuments</string>
+		<string>zerotier</string>
+		<!-- ★ [POCKETJ-JIT] Scheme for the JIT acquisition/enabling tool (required by PocketJ INTEGRATION.md:
+		     if canOpenURL is used to detect stikdebug, it must be registered). This app currently uses only
+		     openURL's completionHandler for stikjit://, but registration also enables canOpenURL detection,
+		     which lets Settings show whether it is installed and supports a future stikdebug:// path. -->
+		<string>stikdebug</string>
+		<string>stikjit</string>
+		<string>sidestore</string>
+		<string>trollstore</string>
+		<string>stosdebug</string>
+	</array>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>MinimumOSVersion</key>
+	<string>14.0</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_altserver._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Air uses the local network to find and communicate with AltServer and LAN servers, and to enable multiplayer connectivity via Terracotta (compatible with HMCL/FCL/ZL2).</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Air uses the microphone to enable support for voice chat mods.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>SceneDelegate</string>
+				</dict>
+			</array>
+			<key>UIWindowSceneSessionRoleExternalDisplay</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>External Display Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>SceneExternalDelegate</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>fetch</string>
+	</array>
+	<!-- ★ [GLASSUI] Removed this key on 2026-10-03: UIDesignRequiresCompatibility = true makes the app
+	     revert to the pre-iOS 26 appearance, effectively opting out of system Liquid Glass. Upstream 5.1.0
+	     sets it to true, but the fork does not; a side-by-side comparison confirmed that removing it enables
+	     glass. -->
+	<key>UIDeviceFamily</key>
+	<array>
+		<integer>1</integer>
+		<integer>2</integer>
+		<integer>3</integer>
+	</array>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+		<string>metal</string>
+	</array>
+	<key>UIStatusBarHidden</key>
+	<true/>
+	<!-- Air Task 56: Starting with iPadOS 26, iPad defaults to windowed multitasking, and the system
+	     can resize/move the SDLK window freely. The SDL3 path in MC 26.3 then calls requestGeometryUpdate
+	     and treats geometry changes (Code=101) as "window minimized", triggering
+	     SDL_EVENT_WINDOW_MINIMIZED(0x209) → onIconified(true) →
+	     SurfaceException in GlSurface.acquireNextTexture → surface recreation →
+	     EGL_BAD_ALLOC → black screen. Declaring that the app requires full screen prevents the system
+	     from sending these geometry changes (iPhone does not support windowing and is unaffected; this
+	     mainly protects iPad). Matches the Air launcher approach. -->
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportsDocumentBrowser</key>
+	<true/>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+	<key>UIWhitePointAdaptivityStyle</key>
+	<string>UIWhitePointAdaptivityStyleGame</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

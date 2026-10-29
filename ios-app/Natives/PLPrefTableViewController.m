@@ -24,7 +24,8 @@ static NSString *MetallicReferencePreferenceDetail(NSString *key) {
         @"custom_accent_color":@"Choose the launcher accent color.",
         @"custom_text_color":@"Choose the launcher text color.",
         @"multi_threaded":@"Enable multi-threaded downloads.",
-        @"manage_runtime":@"Manage the Java runtimes available to the launcher."
+        @"manage_runtime":@"Manage the Java runtimes available to the launcher.",
+        @"debug_always_attached_jit":@"Controls the existing always-attached JIT option. Requires the universal JIT script option."
     };
     return fallbacks[key] ?: translated;
 }
@@ -313,7 +314,7 @@ static NSString *MetallicReferencePreferenceDetail(NSString *key) {
             id rawValue=self.getPreference(@"general",@"accent_color");
             NSString *value=[rawValue isKindOfClass:NSString.class]?rawValue:@"";
             cell.detailTextLabel.text=value.length?value:@"Use native default";
-            cell.detailTextLabel.backgroundColor=UIColor.blackColor;
+            cell.detailTextLabel.backgroundColor=UIColor.clearColor;
             cell.detailTextLabel.textColor=AmeUISecondaryTextColor();
         } else cell.detailTextLabel.backgroundColor=UIColor.clearColor;
     }
@@ -329,7 +330,7 @@ static NSString *MetallicReferencePreferenceDetail(NSString *key) {
     [(AMERefinedPreferenceCell *)cell configureHeading:heading expanded:expanded first:first last:last
         explanation:explanation destructive:[item[@"destructive"] boolValue]];
     AMERefinedPreferenceCell *reference=(AMERefinedPreferenceCell *)cell;
-    reference.referenceRowMinimum.active=self.presentationRows!=nil;
+    reference.referenceRowMinimum.active=NO;
     if(self.presentationRows) {
         CGFloat viewport=self.view.window.bounds.size.width; if(viewport<=0)viewport=UIScreen.mainScreen.bounds.size.width;
         CGFloat scale=viewport>=900?viewport/1536.0:.72;
@@ -601,6 +602,12 @@ static NSString *MetallicReferencePreferenceDetail(NSString *key) {
             [NSString stringWithFormat:@"preference.title.%@", key]), nil);
     }
 
+    // Preserve translated labels; fallback only the reported first-party identifiers.
+    NSString *titleKey=[@"preference.title." stringByAppendingString:key];
+    if ([cell.textLabel.text isEqualToString:titleKey]) {
+        NSDictionary *titles=@{@"debug_universal_script_jit":@"Universal JIT script",@"debug_always_attached_jit":@"Always-attached JIT"};
+        if(titles[key])cell.textLabel.text=titles[key];
+    }
     // Set general properties
     BOOL destructive = [item[@"destructive"] boolValue];
     cell.imageView.tintColor = destructive ? UIColor.systemRedColor : nil;

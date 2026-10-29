@@ -105,6 +105,7 @@ static CGFloat MetallicAppearanceReferenceScale(UIView *view) {
     [super viewWillAppear:animated];
     [self updatePreview];
     [self.tableView reloadData];
+    if(self.launcherPresentation) [self.tableView setContentOffset:CGPointMake(0,-self.tableView.adjustedContentInset.top) animated:NO];
     
     // Maintain transparency
     if ([[BackgroundManager sharedManager] hasBackground]) {

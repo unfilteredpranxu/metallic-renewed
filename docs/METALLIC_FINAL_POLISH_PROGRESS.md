@@ -20,3 +20,6 @@ Keep engine/JIT/StikJIT/dyld/Java/JVM/Metallum/ANGLE/MobileGlues/shaders/auth/si
 8 Native candidate: TODO; build exact new source, never baseline a3 again.
 
 All new simulator/device/performance/download measurements NOT RUN. Physical user baseline evidence above is historical for new changes. Preserve all90 existing settings descriptors/bindings; additional sound controls must not replace them. No production-readiness claim.
+
+### Milestone1 source changes
+Removed the hard-coded black accent-value background and oversized100/136/146 reference-row minima; retained content-driven minimum56 and existing descriptor factories. Added narrowly scoped missing-JIT-label/description fallbacks, preserving actual options and enable rules. Appearance opens at its true adjusted top rather than inheriting an offset. Pending UI route fixes saved in8cfeb080. All90 original descriptors/getters/setters remain unchanged; native/device validation pending.

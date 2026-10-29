@@ -1,0 +1,18 @@
+{
+  "run_id": "40854377244",
+  "run_url": "https://github.com/unfilteredpranxu/metallic-renewed/actions/runs/40854377244",
+  "application_sha": "12c2977108b2e94f7fd20d984aece9ef7c68440e",
+  "workflow_sha": "0ff093a0dcfec060bdfdda411a192ec54df9f41e",
+  "native_result": "failure",
+  "prior_diagnostics_result": "skipped",
+  "files": [
+    ".github/metallic-final-polish-reports/40854377244/source-identity.json",
+    ".github/metallic-final-polish-reports/40854377244/original-integrity.txt",
+    ".github/metallic-final-polish-reports/40854377244/final-status.txt",
+    ".github/metallic-final-polish-reports/40854377244/revisions.json",
+    ".github/metallic-final-polish-reports/40854377244/notice.txt",
+    ".github/metallic-final-polish-reports/40854377244/m08-assets-sha256.json",
+    ".github/metallic-final-polish-reports/40854377244/step-outcomes.json",
+    ".github/metallic-final-polish-reports/40854377244/step-01.log.gz"
+  ]
+}

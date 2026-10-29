@@ -1,0 +1,132 @@
+{
+  "comparison_baseline": "a3f24f56fb3169e031678c19184742977e7e3e55",
+  "application_and_tests": [
+    {
+      "path": "ios-app/Natives/AmeRootTabController.m",
+      "reason": "Stable Settings/overflow routing, Appearance top reset, original More shortcuts, additive transparent header asset"
+    },
+    {
+      "path": "ios-app/Natives/Assets.xcassets/MetallicChromeTransparent.imageset/Contents.json",
+      "reason": "Additive transparent derivative; original app icons/artwork retained"
+    },
+    {
+      "path": "ios-app/Natives/Assets.xcassets/MetallicChromeTransparent.imageset/MetallicChromeTransparent.png",
+      "reason": "Additive transparent derivative; original app icons/artwork retained"
+    },
+    {
+      "path": "ios-app/Natives/BackgroundSettingsViewController.m",
+      "reason": "Single safe-area owner and predictable initial scroll offset"
+    },
+    {
+      "path": "ios-app/Natives/DownloadTaskManager.m",
+      "reason": "Stage-transition diagnostics only"
+    },
+    {
+      "path": "ios-app/Natives/DownloadTasksViewController.m",
+      "reason": "Coalesced UI reload requests, terminal-state sounds and honest progress formatting"
+    },
+    {
+      "path": "ios-app/Natives/HomeTopNavView.h",
+      "reason": "Shared optional launcher feedback declaration"
+    },
+    {
+      "path": "ios-app/Natives/HomeTopNavView.m",
+      "reason": "Cached opt-in system sounds/haptics and menu/nav feedback; approved geometry preserved"
+    },
+    {
+      "path": "ios-app/Natives/LauncherNewsViewController.m",
+      "reason": "Retire legacy Home feed/requests, preserve hero/instances/actions, fit instance widths, enabled launch feedback"
+    },
+    {
+      "path": "ios-app/Natives/LauncherPreferencesViewController.m",
+      "reason": "Independent/compact Settings scrolling, About/licenses, additive Sound option; original90 descriptors unchanged"
+    },
+    {
+      "path": "ios-app/Natives/MinecraftResourceDownloadTask.m",
+      "reason": "Verified same-directory staging/atomic final placement, existing retry/path/queue rules"
+    },
+    {
+      "path": "ios-app/Natives/PLDownloadFileCommit.h",
+      "reason": "Portable tested atomic rename helper"
+    },
+    {
+      "path": "ios-app/Natives/PLDownloadProgressMath.h",
+      "reason": "Portable tested progress policy"
+    },
+    {
+      "path": "ios-app/Natives/PLPrefTableViewController.m",
+      "reason": "Content-driven row sizing, clear value background, exact missing-label fallbacks, original switch feedback"
+    },
+    {
+      "path": "ios-app/Natives/PLTaskProgressViewController.m",
+      "reason": "Indeterminate stage-aware total, completion gating, Reduce Motion indicator"
+    },
+    {
+      "path": "ios-app/Natives/UpdateChecker.m",
+      "reason": "Honest unconfigured channel gate; no unrelated upstream updates"
+    },
+    {
+      "path": "ios-app/Natives/resources/Metallic-LICENSE.txt",
+      "reason": "Bundled original GPLv3 and accurate upstream source acknowledgments"
+    },
+    {
+      "path": "ios-app/Natives/resources/MetallicUI/PROVENANCE.txt",
+      "reason": "Original120ms PCM feedback asset/provenance, opt-in playback"
+    },
+    {
+      "path": "ios-app/Natives/resources/MetallicUI/completed.wav",
+      "reason": "Original120ms PCM feedback asset/provenance, opt-in playback"
+    },
+    {
+      "path": "ios-app/Natives/resources/MetallicUI/confirm.wav",
+      "reason": "Original120ms PCM feedback asset/provenance, opt-in playback"
+    },
+    {
+      "path": "ios-app/Natives/resources/MetallicUI/failed.wav",
+      "reason": "Original120ms PCM feedback asset/provenance, opt-in playback"
+    },
+    {
+      "path": "ios-app/Natives/resources/MetallicUI/instance.wav",
+      "reason": "Original120ms PCM feedback asset/provenance, opt-in playback"
+    },
+    {
+      "path": "ios-app/Natives/resources/MetallicUI/launch.wav",
+      "reason": "Original120ms PCM feedback asset/provenance, opt-in playback"
+    },
+    {
+      "path": "ios-app/Natives/resources/MetallicUI/menu.wav",
+      "reason": "Original120ms PCM feedback asset/provenance, opt-in playback"
+    },
+    {
+      "path": "ios-app/Natives/resources/MetallicUI/navigation.wav",
+      "reason": "Original120ms PCM feedback asset/provenance, opt-in playback"
+    },
+    {
+      "path": "ios-app/Natives/resources/MetallicUI/toggle.wav",
+      "reason": "Original120ms PCM feedback asset/provenance, opt-in playback"
+    },
+    {
+      "path": "ios-app/Natives/resources/en.lproj/Localizable.strings",
+      "reason": "Complete pinned authoritative English catalog plus verified first-party labels"
+    },
+    {
+      "path": "tests/metallic_download_safety_test.c",
+      "reason": "Read-only source regressions and deterministic actual progress/publication tests"
+    },
+    {
+      "path": "tests/metallic_source_invariants.py",
+      "reason": "Read-only source regressions and deterministic actual progress/publication tests"
+    },
+    {
+      "path": "tests/metallic_staged_file_test.py",
+      "reason": "Read-only source regressions and deterministic actual progress/publication tests"
+    }
+  ],
+  "workflow": ".github/workflows/metallic-final-polish-test-ipa.yml",
+  "documentation": [
+    "docs/METALLIC_FINAL_POLISH_PROGRESS.md",
+    "docs/METALLIC_BRANDING_INVENTORY.json",
+    "docs/METALLIC_FINAL_CHANGED_FILES.json"
+  ],
+  "diagnostics": ".github/metallic-final-polish-reports/<run-id>/ (CI evidence only)"
+}

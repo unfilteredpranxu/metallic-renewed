@@ -1137,14 +1137,15 @@ static __weak PLTaskProgressViewController *PLTaskProgressActiveInstance = nil;
         self.totalFlowView.hidden = YES;
         [self.totalFlowView stopFlowing];
         [self.totalProgressView setProgress:(float)MIN(1.0, MAX(0.0, overall)) animated:NO];
-        NSString *percent = [NSString stringWithFormat:@"%.0f%%", overall * 100.0];
+        NSString *percent = [NSString stringWithFormat:@"%.0f%%", floor(overall * 100.0)];
         self.totalValueLabel.text = rateText ? [NSString stringWithFormat:@"%@ · %@", percent, rateText] : percent;
     } else {
         // 不确定进度：流动动画，不显示百分比
         self.totalProgressView.hidden = YES;
         self.totalFlowView.hidden = NO;
         [self.totalFlowView startFlowing];
-        self.totalValueLabel.text = rateText ?: PLTaskProgressText(@"taskProgress.total.indeterminate", localize(@"i18n_str_1265", nil));
+        NSString *stage = task.currentStage ? PLTaskStageTitleDisplay(task.currentStage.title) : nil;
+        self.totalValueLabel.text = stage.length ? (rateText ? [NSString stringWithFormat:@"%@ · %@",stage,rateText] : stage) : (rateText ?: PLTaskProgressText(@"taskProgress.total.indeterminate", localize(@"i18n_str_1265", nil)));
     }
 }
 

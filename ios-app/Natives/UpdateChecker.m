@@ -128,6 +128,12 @@ static NSString *AMENonEmpty(NSString * _Nullable s, NSString *fallback) {
 
 + (void)checkForUpdateIgnoringSkipped:(BOOL)ignoreSkipped
                            completion:(void(^)(UpdateInfo *_Nullable info, NSError *_Nullable error))completion {
+    if (![self hasOfficialMetallicReleaseChannel]) {
+        if (completion) dispatch_async(dispatch_get_main_queue(), ^{
+            completion(nil,[NSError errorWithDomain:@"MetallicUpdates" code:1 userInfo:@{NSLocalizedDescriptionKey:@"Metallic updates are not configured."}]);
+        });
+        return;
+    }
     [self fetchLatestReleaseJSON:^(NSDictionary * _Nullable json, NSError * _Nullable error) {
         if (error != nil || json == nil) {
             if (completion) dispatch_async(dispatch_get_main_queue(), ^{
@@ -431,6 +437,7 @@ static NSString *AMENonEmpty(NSString * _Nullable s, NSString *fallback) {
 #pragma mark - Open Release Page
 
 + (void)openReleasePageForInfo:(nullable UpdateInfo *)info {
+    if (![self hasOfficialMetallicReleaseChannel]) { NSLog(@"[Metallic Updates] Official release channel is not configured."); return; }
     NSString *urlStr = info.htmlURL;
     if (urlStr.length == 0) {
         /* 回退到固定的 /releases/latest */

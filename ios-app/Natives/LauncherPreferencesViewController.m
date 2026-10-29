@@ -2277,7 +2277,7 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     text.backgroundColor=UIColor.systemBackgroundColor; text.textColor=UIColor.labelColor;
     text.textContainerInset=UIEdgeInsetsMake(20,20,20,20);
     NSURL *license=[NSBundle.mainBundle URLForResource:@"Metallic-LICENSE" withExtension:@"txt"];
-    text.text=[NSString stringWithContentsOfURL:license encoding:NSUTF8StringEncoding error:nil] ?: @"Metallic Launcher\nSource and license notices: https://github.com/unfilteredpranxu/metallic-renewed";
+    text.text=(license ? [NSString stringWithContentsOfURL:license encoding:NSUTF8StringEncoding error:nil] : nil) ?: @"Metallic Launcher\nSource and license notices: https://github.com/unfilteredpranxu/metallic-renewed";
     page.view=text; [self.navigationController pushViewController:page animated:YES];
 }
 - (void)openSoundHaptics {

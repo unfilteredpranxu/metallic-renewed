@@ -42,6 +42,7 @@ static const CGFloat kSectionInset = 16.0;
 @property (nonatomic, weak) DownloadTaskItem *currentTask;
 
 - (void)configureWithTask:(DownloadTaskItem *)task;
+- (void)updateProgressPresentationForTask:(DownloadTaskItem *)task;
 
 @end
 
@@ -279,19 +280,8 @@ static const CGFloat kSectionInset = 16.0;
     self.secondaryActionButton.userInteractionEnabled = YES;
 }
 
-- (void)configureWithTask:(DownloadTaskItem *)task {
-    self.currentTask = task;
-    self.nameLabel.text = task.displayName.length > 0 ? task.displayName : task.resourceName;
-    self.typeTagLabel.text = [self displayNameForResourceType:task.resourceType];
-    [self.typeTagLabel sizeToFit];
-    [self configureSourceTagWithSource:task.downloadSource];
-
-    // 图标：Minecraft 本体 / Modloader 使用 ModLoaderIconHelper 加载真实品牌图标
-    // （与下载游戏界面 DownloadViewController 保持一致，避免只显示通用 SF Symbol）
-    // resourceName 通常已带 loader 标识（如 "fabric-1.20.1-0.15.7" / "optifine-..."），
-    // 用 detectLoaderFromVersionId 解析；解析不到则用通用占位符。
-    [self configureIconForTask:task];
-
+// Progress-only notifications do not recreate cells, reload icons or rebuild controls.
+- (void)updateProgressPresentationForTask:(DownloadTaskItem *)task {
     // 阶段信息行：当前阶段名（经 PLTaskStageTitleDisplay 本地化渲染）+ 阶段计数（如 "3/6"）。
     // stages 非空且 currentStageIndex 有效（currentStage 非 nil）时展示，否则整行收起回退原布局。
     PLTaskStage *currentStage = task.currentStage;
@@ -362,6 +352,23 @@ static const CGFloat kSectionInset = 16.0;
             self.progressView.hidden = YES;
             break;
     }
+
+}
+
+- (void)configureWithTask:(DownloadTaskItem *)task {
+    self.currentTask = task;
+    self.nameLabel.text = task.displayName.length > 0 ? task.displayName : task.resourceName;
+    self.typeTagLabel.text = [self displayNameForResourceType:task.resourceType];
+    [self.typeTagLabel sizeToFit];
+    [self configureSourceTagWithSource:task.downloadSource];
+
+    // 图标：Minecraft 本体 / Modloader 使用 ModLoaderIconHelper 加载真实品牌图标
+    // （与下载游戏界面 DownloadViewController 保持一致，避免只显示通用 SF Symbol）
+    // resourceName 通常已带 loader 标识（如 "fabric-1.20.1-0.15.7" / "optifine-..."），
+    // 用 detectLoaderFromVersionId 解析；解析不到则用通用占位符。
+    [self configureIconForTask:task];
+
+    [self updateProgressPresentationForTask:task];
 
     // FCL 风格：按状态配置主/次操作按钮
     [self configureActionButtonsForTask:task];
@@ -563,8 +570,8 @@ static const CGFloat kSectionInset = 16.0;
 }
 
 - (NSString *)formattedProgress:(double)progress {
-    if (progress < 0.0) return @"--";
-    return [NSString stringWithFormat:@"%.1f%%", progress * 100.0];
+    if (!isfinite(progress) || progress < 0.0 || progress >= 1.0) return @"—";
+    return [NSString stringWithFormat:@"%.1f%%", floor(progress * 1000.0) / 10.0];
 }
 
 - (void)configureSourceTagWithSource:(NSString *)source {
@@ -911,6 +918,9 @@ static const CGFloat kSectionInset = 16.0;
 
 - (void)applyFilters {
     NSArray<DownloadTaskItem *> *allTasks = [[DownloadTaskManager sharedManager] allTasks];
+    NSMutableSet<NSString *> *liveIDs=[NSMutableSet set];
+    for (DownloadTaskItem *task in allTasks) [liveIDs addObject:task.taskId];
+    for (NSString *taskID in self.feedbackStates.allKeys) if (![liveIDs containsObject:taskID]) [self.feedbackStates removeObjectForKey:taskID];
     NSMutableArray<DownloadTaskItem *> *result = [NSMutableArray array];
 
     for (DownloadTaskItem *task in allTasks) {
@@ -1161,6 +1171,14 @@ static const CGFloat kSectionInset = 16.0;
         DownloadTaskItem *task=notification.userInfo[DownloadTaskManagerTaskKey];
         if (task) {
             NSNumber *previous=self.feedbackStates[task.taskId]; self.feedbackStates[task.taskId]=@(task.state);
+            if (previous && previous.integerValue==task.state) {
+                NSUInteger index=[self.filteredTasks indexOfObjectIdenticalTo:task];
+                if (index!=NSNotFound) {
+                    DownloadTaskCell *cell=(DownloadTaskCell *)[self.collectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:index inSection:0]];
+                    if ([cell isKindOfClass:DownloadTaskCell.class]) [cell updateProgressPresentationForTask:task];
+                }
+                return;
+            }
             if (previous && previous.integerValue!=task.state && self.viewIfLoaded.window) {
                 if (task.state==DownloadTaskStateCompleted) MetallicPlayUIFeedback(@"completed");
                 else if (task.state==DownloadTaskStateFailed) MetallicPlayUIFeedback(@"failed");

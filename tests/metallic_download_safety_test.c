@@ -16,6 +16,8 @@ int main(void) {
     assert(PLDownloadOverallProgress(0,6,1,.58,1)==1);
     assert(PLDownloadOverallProgress(0,0,0,NAN,0)==-1);
     assert(PLDownloadOverallProgress(0,0,0,.58,0)==.58);
+    assert(floor(PLDownloadOverallProgress(0,0,0,.99999,0)*100)==99); // No premature rounded100%.
+
     assert(PLDownloadStageContribution(4,0)==1);
     assert(PLDownloadStageContribution(3,.9)==0);
     assert(PLDownloadStageContribution(1,NAN)==-1);

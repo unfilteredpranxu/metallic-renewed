@@ -325,6 +325,70 @@ jobs:
         PYCODE
         git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
         git -C "$SCRATCH_DIR" diff --exit-code HEAD --
+    - name: Recover exact-M08 SPIRV-Cross CMake templates and mandatory source closure
+      shell: bash
+      run: |-
+        set -euo pipefail
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-spirv-recovery.log") 2>&1
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import os,hashlib,json,subprocess,re
+        root=Path(os.environ['SCRATCH_DIR']);original=Path(os.environ['GITHUB_WORKSPACE'])/'original';air=Path(os.environ['RUNNER_TEMP'])/'air';diag=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'
+        large='ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross'
+        small='ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross'
+        src=original/large;dst=root/small
+        assert subprocess.check_output(['git','-C',str(original),'rev-parse','HEAD'],text=True).strip()==os.environ['SOURCE_SHA']
+        for rel,tree in [(large,'514ed4f4455ff6451866ad99bfae55955cd5eb92'),(small,'08a3bfc528225335563051f4637a60f6d52bcf90')]:
+            assert subprocess.check_output(['git','-C',str(original),'rev-parse',os.environ['SOURCE_SHA']+':'+rel],text=True).strip()==tree,rel
+        assert subprocess.check_output(['git','-C',str(air),'rev-parse','HEAD'],text=True).strip()==os.environ['AIR_SHA']
+        # Both original trees have the SAME existing 31 file contents, including CMakeLists.
+        # Recover only missing build inputs; never copy from the later dep_mg-aligned tree.
+        shared=[]
+        for p in sorted((original/small).rglob('*')):
+            if not p.is_file():continue
+            rel=p.relative_to(original/small);other=src/rel
+            assert not p.is_symlink() and other.is_file() and p.read_bytes()==other.read_bytes(),f'Incompatible original SPIRV-Cross revisions: {rel}'
+            assert (dst/rel).is_file() and (dst/rel).read_bytes()==p.read_bytes(),f'Existing scratch SPIRV-Cross changed: {rel}'
+            shared.append(str(rel))
+        assert len(shared)==31,shared
+        records=[{'path': 'cmake/gitversion.in.h', 'git_blob': 'bff73e964e8d5e142dfaeedf0067f9a9b1cd51cd', 'sha256': '9529c74b9e1b025ce90c864044a23a65d43cb52efcad1bee2d6bf57c87fcc105', 'bytes': 275}, {'path': 'pkg-config/spirv-cross-c.pc.in', 'git_blob': '2b586b6ffa59e4f34f3367f7722bee09ffb2abe2', 'sha256': 'f606fe9ba5ee14b752e3cdf69945432ea355f3490549392f4ab95c99dfe41386', 'bytes': 400}, {'path': 'pkg-config/spirv-cross-c-shared.pc.in', 'git_blob': '94e63eaeb4ec0e2dd5025d31ff6c64ac1da01a73', 'sha256': 'ae3a41e476e434af6a0ca4de3d34ecc276eddfa6384abc6b4d636daf935d9977', 'bytes': 478}, {'path': 'spirv_parser.cpp', 'git_blob': '2cf232a5f00d4e403326a5f14d6895bc700cf70d', 'sha256': '36bac4dd1c0f311d764c0c2c528e76b340954ffb822950982e5be9f068a9bfcf', 'bytes': 44744}, {'path': 'spirv_parser.hpp', 'git_blob': 'dabc0e22446bce815ee98b0eb28eff503d50415d', 'sha256': 'e5cc214ad1d87bd78183f2e72a902c0fb994dc18e7aa6e83e86cb2875708c2f2', 'bytes': 2633}, {'path': 'spirv_glsl.cpp', 'git_blob': 'cbd135d05dd15ddd661cdfafa82b675473a073f9', 'sha256': 'f5a313927e6b01f516493f785366d7677f512b64811d8a62ecb2089e3288c033', 'bytes': 694587}, {'path': 'spirv_glsl.hpp', 'git_blob': '349fb8d3a49709bdca143fb1ed475ba7438fd416', 'sha256': '7dd12c95f65eaeda5ba1f7af25a496a081dda0ccb447af2bf9fac529bb720eda', 'bytes': 54302}, {'path': 'spirv_cross_util.cpp', 'git_blob': 'f30706f592f2704502f602f6780de2cb1135f477', 'sha256': '9f9ce212e5d796c7833a20baba3898bd81083cc278a804996bda91718275d263', 'bytes': 2621}, {'path': 'spirv_cross_util.hpp', 'git_blob': 'e6e3fcdb6340083259535db4ded9da1310d8bf8c', 'sha256': '0942b0bae888eb986685adaf2d6741d15d4811711056d8dbc68fa80f40d18480', 'bytes': 1402}, {'path': 'LICENSES/Apache-2.0.txt', 'git_blob': '4ed90b952240cb872426e64da9e41252cc61ae3e', 'sha256': '44b0a56e80b41a1b0a6bd1292515e806539fd97b30be54c2719e6c763190ab57', 'bytes': 10343}, {'path': 'LICENSES/CC-BY-4.0.txt', 'git_blob': '3f92dfc5fdda05635f28da16a47fa1a5c99c0dc6', 'sha256': 'b89aeb7c2a164a0576786dd2a8b57f2fb628b23981f0a06bd77e2f99a9befa0f', 'bytes': 16814}, {'path': 'LICENSES/LicenseRef-KhronosFreeUse.txt', 'git_blob': '430863bc98ad8ee1d0a4876a4c2a5b6f5d32fd74', 'sha256': 'fbeaca472f4f70e276dd1106ca5097435967a22ad6c1d8200aef7ad9f70aaf3f', 'bytes': 1305}, {'path': 'LICENSES/MIT.txt', 'git_blob': '204b93da48d02900098ced21c54062ffbff36b9c', 'sha256': '8f25018489d6fe0dec34a352314c38dc146247b7de65735790f4398a92afa84b', 'bytes': 1108}]
+        assert hashlib.sha256(json.dumps(records,sort_keys=True,separators=(',',':')).encode()).hexdigest()=='c25fe4f677a169af275b82ee351c282aacf1bc0de809d4b7221d166a73e91424'
+        for rec in records:
+            rel=rec['path'];p=src/rel;target=dst/rel
+            assert p.is_file() and not p.is_symlink(),p
+            data=p.read_bytes()
+            assert len(data)==rec['bytes'] and hashlib.sha256(data).hexdigest()==rec['sha256'],rel
+            assert subprocess.check_output(['git','-C',str(original),'rev-parse',os.environ['SOURCE_SHA']+':'+large+'/'+rel],text=True).strip()==rec['git_blob'],rel
+            assert subprocess.check_output(['git','-C',str(air),'rev-parse',os.environ['AIR_SHA']+':Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross/'+rel],text=True).strip()==rec['git_blob'],rel
+            for parent in target.parents:
+                if parent==root:break
+                assert not parent.is_symlink() and (not parent.exists() or parent.is_dir()),parent
+            if os.path.lexists(target):
+                assert not target.is_symlink() and target.is_file() and target.read_bytes()==data,f'Refusing replacement: {target}'
+            else:
+                target.parent.mkdir(parents=True,exist_ok=True)
+                with target.open('xb') as f:f.write(data)
+            assert target.read_bytes()==data,rel
+        # Audit every source listed by the enabled core/GLSL/util targets and its quoted includes.
+        cmake=(dst/'CMakeLists.txt').read_text();units=[]
+        for name in ['core','glsl','util']:
+            match=re.search(r'set\(spirv-cross-'+name+r'-sources\s+(.*?)\)',cmake,re.S);assert match,name
+            for rel in re.findall(r'\$\{CMAKE_CURRENT_SOURCE_DIR\}/([A-Za-z0-9_./+-]+)',match.group(1)):
+                assert (dst/rel).is_file(),rel
+                units.append(dst/rel)
+        queue=list(units);seen=set()
+        while queue:
+            p=queue.pop()
+            if p in seen:continue
+            seen.add(p)
+            for inc in re.findall(r'^\s*#\s*include\s*"([^"\n]+)"',p.read_text(),re.M):
+                q=p.parent/inc;assert q.is_file(),(p,inc);queue.append(q)
+        info={'application_sha':os.environ['SOURCE_SHA'],'air_sha':os.environ['AIR_SHA'],'source_tree':'514ed4f4455ff6451866ad99bfae55955cd5eb92','original_destination_tree':'08a3bfc528225335563051f4637a60f6d52bcf90','unchanged_shared_files':shared,'recovered_files':records,'enabled_source_header_closure_files':len(seen),'revision_rule':'Every recovered blob exists identically in immutable M08 and pinned Air. Existing files are never replaced; no SPIRV-Cross feature flags changed.'}
+        (diag/'spirv-cross-recovery.json').write_text(json.dumps(info,indent=2)+'\n')
+        print('PASS: exact-source SPIRV-Cross templates and enabled source/header closure;13 missing files recovered without replacement')
+        PYCODE
+        git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
+        git -C "$SCRATCH_DIR" diff --exit-code HEAD --
     - name: Complete mandatory build-input preflight and pinned SFPEW recovery verification
       shell: bash
       run: |-
@@ -380,6 +444,36 @@ jobs:
         info={'application_sha':os.environ['SOURCE_SHA'],'air_sha':os.environ['AIR_SHA'],'sfpew_tree':'828811789978e4bbdfb1feff19bacc6f793986f7','sfpew_files':records,'zerotier_packaging':zt_manifest,'mandatory_default_targets':['all','native','dep_mg','swift','java','jre','assets','payload','dep_shader_shims','dep_openal_shim','dep_angle_freeze','dep_sdl3_guard','dep_nggl4es','dep_sfpew','shader-glslang-pack','package','dsym'],'static_make_inputs':required,'prebuilt_jar_count':len(jars),'runtime_archive_validation':'Existing make jre and post-build archive checks retained; URLs and deployment14 unchanged','optional_targets':'Original MobileGL/Mithril/render-gap conditions unchanged'}
         (diag/'complete-prerequisite-preflight.json').write_text(json.dumps(info,indent=2)+'\n')
         print('PASS full pinned SFPEW tree/nested dependencies/original patch, ZeroTier static link input, mandatory native/Java/assets/shader/packaging source preflight')
+        PYCODE
+        # Configure/generate ALL SFPEW/glslang/SPIRV-Cross targets before spending time compiling the app.
+        # Source is the patched disposable probe, never the immutable original or tracked scratch source.
+        set +e
+        cmake -S "$RUNNER_TEMP/sfpew-anchor-probe" -B "$RUNNER_TEMP/sfpew-configure-preflight" \
+          -DCMAKE_CROSSCOMPILING=true -DCMAKE_SYSTEM_NAME=Darwin -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+          -DCMAKE_OSX_SYSROOT="$(xcrun --sdk iphoneos --show-sdk-path)" -DCMAKE_OSX_ARCHITECTURES=arm64 \
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 -DCMAKE_C_FLAGS="-arch arm64" -DCMAKE_CXX_FLAGS="-arch arm64" \
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+          -DSFPEW_MG_3RDPARTY="$SCRATCH_DIR/ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty" \
+          > "$RUNNER_TEMP/metallic-native-build/sfpew-configure-preflight.log" 2>&1
+        rc=$?
+        set -e
+        if [ "$rc" -ne 0 ]; then
+          cat "$RUNNER_TEMP/metallic-native-build/sfpew-configure-preflight.log"
+          exit "$rc"
+        fi
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import os,json
+        build=Path(os.environ['RUNNER_TEMP'])/'sfpew-configure-preflight'
+        commands=json.loads((build/'compile_commands.json').read_text())
+        assert commands,'Empty SFPEW source graph'
+        for command in commands:
+            p=Path(command['file'])
+            if not p.is_absolute():p=Path(command['directory'])/p
+            assert p.is_file(),f'Missing registered SFPEW/glslang/SPIRV-Cross compiler input: {p}'
+        summary={'configure_generate':'PASS','compiler_inputs_verified':len(commands),'application_source':os.environ['SOURCE_SHA'],'architecture':'arm64','deployment_target':'14.0 (unchanged)','stage':'Configuration only; actual compilation follows via original make all'}
+        (Path(os.environ['RUNNER_TEMP'])/'metallic-native-build/sfpew-source-graph.json').write_text(json.dumps(summary,indent=2)+'\n')
+        print(json.dumps(summary,indent=2))
         PYCODE
         git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
         git -C "$SCRATCH_DIR" diff --exit-code HEAD --

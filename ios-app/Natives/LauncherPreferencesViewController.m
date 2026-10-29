@@ -6,6 +6,8 @@
 #import "LauncherMenuViewController.h"
 #import "LauncherPreferences.h"
 #import "LauncherPreferencesViewController.h"
+#import "LauncherNewsViewController.h"
+#import "HomeTopNavView.h"
 #import "LauncherPrefContCfgViewController.h"
 #import "LauncherPrefManageJREViewController.h"
 #import "UIKit+hook.h"
@@ -1525,6 +1527,7 @@
 }
 
 - (void)setupHeroHeader {
+    if (self.referenceContentMode) { self.tableView.tableHeaderView = nil; return; }
     UISearchBar *searchBar = [self.tableView.tableHeaderView isKindOfClass:UISearchBar.class]
         ? (UISearchBar *)self.tableView.tableHeaderView : self.refinedSearchBar;
     [searchBar removeFromSuperview];
@@ -1613,6 +1616,7 @@
 }
 
 - (void)layoutRefinedHeader {
+    if (self.referenceContentMode) return;
     CGFloat width = self.tableView.bounds.size.width;
     if (!self.refinedHeader || width <= 0) return;
     UIEdgeInsets safe = self.tableView.safeAreaInsets;
@@ -2039,4 +2043,158 @@
     }
 }
 
+@end
+static LauncherNewsViewController *MetallicFindHome(UIViewController *controller) {
+    if ([controller isKindOfClass:LauncherNewsViewController.class]) return (LauncherNewsViewController *)controller;
+    for (UIViewController *child in controller.childViewControllers) {
+        LauncherNewsViewController *home = MetallicFindHome(child); if (home) return home;
+    }
+    return nil;
+}
+
+// Screenshot composition hosts the existing preference controller as a real child.
+// Category buttons scroll its ORIGINAL index paths; no options, bindings or stores are copied.
+@interface MetallicSettingsContainerViewController ()
+@property(nonatomic, strong, readwrite) LauncherPreferencesViewController *preferences;
+@property(nonatomic, strong) UIStackView *categoryStack;
+@property(nonatomic, strong) UIScrollView *categoryScroll;
+@property(nonatomic, strong) UIButton *categoryMenu;
+@property(nonatomic, strong) UILabel *sectionTitle;
+@property(nonatomic, strong) UILabel *identity;
+@property(nonatomic, strong) NSArray<NSString *> *categoryTitles;
+@property(nonatomic, strong) NSLayoutConstraint *sidebarWidth;
+@property(nonatomic, strong) NSLayoutConstraint *headingTop;
+@end
+@implementation MetallicSettingsContainerViewController
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = UIColor.clearColor;
+    self.preferences = [[LauncherPreferencesViewController alloc] init];
+    self.preferences.referenceContentMode = YES;
+    self.preferences.prefSectionsVisible = YES;
+    [self addChildViewController:self.preferences];
+    [self.preferences loadViewIfNeeded];
+    self.preferences.prefDetailVisible = YES;
+    UIView *content = self.preferences.view;
+    content.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:content];
+    [self.preferences didMoveToParentViewController:self];
+    UILabel *eyebrow = [[UILabel alloc] init];
+    eyebrow.text = @"METALLIC / PREFERENCES"; eyebrow.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    eyebrow.textColor = AmeUISecondaryTextColor();
+    UILabel *title = [[UILabel alloc] init]; title.text = @"Settings";
+    title.font = [UIFont preferredFontForTextStyle:UIFontTextStyleLargeTitle]; title.textColor = AmeUIPrimaryTextColor();
+    title.adjustsFontForContentSizeCategory = YES;
+    UIStackView *heading = [[UIStackView alloc] initWithArrangedSubviews:@[eyebrow,title]];
+    heading.axis = UILayoutConstraintAxisVertical; heading.spacing = 8; heading.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:heading];
+    UIButton *help = [UIButton buttonWithType:UIButtonTypeSystem]; help.translatesAutoresizingMaskIntoConstraints = NO;
+    [help setImage:[UIImage systemImageNamed:@"questionmark.circle"] forState:UIControlStateNormal];
+    help.accessibilityLabel = @"Show or hide setting descriptions";
+    UIBarButtonItem *helpItem = [self.preferences drawHelpButton];
+    [help addTarget:helpItem.target action:helpItem.action forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:help];
+    [NSLayoutConstraint activateConstraints:@[[help.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-24], [help.centerYAnchor constraintEqualToAnchor:title.centerYAnchor], [help.widthAnchor constraintEqualToConstant:44], [help.heightAnchor constraintEqualToConstant:44]]];
+    UISearchBar *search = [self.preferences presentationSearchBar];
+    [search removeFromSuperview]; search.translatesAutoresizingMaskIntoConstraints = NO;
+    search.placeholder = @"Search settings and tools"; search.searchBarStyle = UISearchBarStyleMinimal;
+    [self.view addSubview:search];
+    self.categoryTitles = @[@"General & Appearance", @"Minecraft & Memory", @"Video & Audio", @"Controls & Input", @"Downloads & Network", @"Accounts & Online", @"Files & Storage", @"Diagnostics & Advanced", @"About & Support", @"Home Customization"];
+    NSArray *symbols = @[@"paintpalette",@"memorychip",@"display",@"gamecontroller",@"arrow.down.circle",@"person.2",@"folder",@"wrench.and.screwdriver",@"info.circle",@"rectangle.3.group"];
+    self.categoryScroll = [[UIScrollView alloc] init]; self.categoryScroll.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.categoryScroll];
+    self.categoryStack = [[UIStackView alloc] init]; self.categoryStack.axis = UILayoutConstraintAxisVertical; self.categoryStack.spacing = 4;
+    self.categoryStack.translatesAutoresizingMaskIntoConstraints = NO; [self.categoryScroll addSubview:self.categoryStack];
+    NSMutableArray *actions = [NSMutableArray array];
+    __weak typeof(self) weakSelf = self;
+    for (NSInteger i=0; i<10; i++) {
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem]; button.tag = i;
+        [button setTitle:self.categoryTitles[i] forState:UIControlStateNormal];
+        [button setImage:[UIImage systemImageNamed:symbols[i]] forState:UIControlStateNormal];
+        button.titleLabel.numberOfLines = 0; button.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+        button.titleLabel.adjustsFontForContentSizeCategory = YES; button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+        button.contentEdgeInsets = UIEdgeInsetsMake(10,12,10,12); button.tintColor = AmeUIPrimaryTextColor();
+        button.layer.cornerRadius = 12;
+        [button.heightAnchor constraintGreaterThanOrEqualToConstant:48].active = YES;
+        [button addTarget:self action:@selector(categoryTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [self.categoryStack addArrangedSubview:button];
+        [actions addObject:[UIAction actionWithTitle:self.categoryTitles[i] image:[UIImage systemImageNamed:symbols[i]] identifier:nil handler:^(__kindof UIAction *action) { [weakSelf selectCategory:i]; }]];
+    }
+    self.categoryMenu = [UIButton buttonWithType:UIButtonTypeSystem]; self.categoryMenu.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.categoryMenu setTitle:@"Settings sections ▾" forState:UIControlStateNormal];
+    self.categoryMenu.menu = [UIMenu menuWithTitle:@"" children:actions]; self.categoryMenu.showsMenuAsPrimaryAction = YES;
+    [self.view addSubview:self.categoryMenu];
+    self.sectionTitle = [[UILabel alloc] init]; self.sectionTitle.font = [UIFont preferredFontForTextStyle:UIFontTextStyleTitle2];
+    self.sectionTitle.textColor = AmeUIPrimaryTextColor(); self.sectionTitle.numberOfLines = 0; self.sectionTitle.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.sectionTitle];
+    self.identity = [[UILabel alloc] init]; self.identity.font = AmeUIFont(AmeUIFontRoleDescription); self.identity.textColor = AmeUISecondaryTextColor();
+    self.identity.numberOfLines = 0; self.identity.translatesAutoresizingMaskIntoConstraints = NO; [self.view addSubview:self.identity];
+    self.sidebarWidth = [self.categoryScroll.widthAnchor constraintEqualToConstant:224];
+    self.headingTop = [self.sectionTitle.topAnchor constraintEqualToAnchor:search.bottomAnchor constant:24];
+    UILayoutGuide *g = self.view.safeAreaLayoutGuide;
+    [NSLayoutConstraint activateConstraints:@[
+        [heading.topAnchor constraintEqualToAnchor:g.topAnchor constant:8], [heading.leadingAnchor constraintEqualToAnchor:g.leadingAnchor constant:24],
+        [heading.trailingAnchor constraintLessThanOrEqualToAnchor:g.trailingAnchor constant:-24],
+        [search.topAnchor constraintEqualToAnchor:heading.bottomAnchor constant:20], [search.leadingAnchor constraintEqualToAnchor:g.leadingAnchor constant:16], [search.trailingAnchor constraintEqualToAnchor:g.trailingAnchor constant:-16], [search.heightAnchor constraintGreaterThanOrEqualToConstant:52],
+        [self.categoryScroll.topAnchor constraintEqualToAnchor:search.bottomAnchor constant:20], [self.categoryScroll.leadingAnchor constraintEqualToAnchor:g.leadingAnchor constant:24], self.sidebarWidth, [self.categoryScroll.bottomAnchor constraintEqualToAnchor:g.bottomAnchor],
+        [self.categoryStack.leadingAnchor constraintEqualToAnchor:self.categoryScroll.contentLayoutGuide.leadingAnchor], [self.categoryStack.trailingAnchor constraintEqualToAnchor:self.categoryScroll.contentLayoutGuide.trailingAnchor], [self.categoryStack.topAnchor constraintEqualToAnchor:self.categoryScroll.contentLayoutGuide.topAnchor], [self.categoryStack.bottomAnchor constraintEqualToAnchor:self.categoryScroll.contentLayoutGuide.bottomAnchor], [self.categoryStack.widthAnchor constraintEqualToAnchor:self.categoryScroll.frameLayoutGuide.widthAnchor],
+        [self.categoryMenu.topAnchor constraintEqualToAnchor:search.bottomAnchor], [self.categoryMenu.leadingAnchor constraintEqualToAnchor:g.leadingAnchor constant:24], [self.categoryMenu.heightAnchor constraintEqualToConstant:44],
+        self.headingTop, [self.sectionTitle.leadingAnchor constraintEqualToAnchor:self.categoryScroll.trailingAnchor constant:24], [self.sectionTitle.trailingAnchor constraintEqualToAnchor:g.trailingAnchor constant:-24],
+        [self.identity.leadingAnchor constraintEqualToAnchor:self.sectionTitle.leadingAnchor], [self.identity.trailingAnchor constraintEqualToAnchor:self.sectionTitle.trailingAnchor], [self.identity.topAnchor constraintEqualToAnchor:self.sectionTitle.bottomAnchor constant:8],
+        [content.leadingAnchor constraintEqualToAnchor:self.sectionTitle.leadingAnchor constant:-12], [content.trailingAnchor constraintEqualToAnchor:g.trailingAnchor constant:-24], [content.topAnchor constraintEqualToAnchor:self.identity.bottomAnchor constant:8], [content.bottomAnchor constraintEqualToAnchor:g.bottomAnchor]
+    ]];
+    [self selectCategory:0];
+}
+- (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self.navigationController setNavigationBarHidden:YES animated:NO]; }
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    BOOL wide = self.view.safeAreaLayoutGuide.layoutFrame.size.width >= 700 && !UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    CGFloat width = wide ? MIN(240, self.view.bounds.size.width * .19) : 0;
+    if (self.sidebarWidth.constant != width) self.sidebarWidth.constant = width;
+    self.headingTop.constant = wide ? 24 : 52;
+    self.categoryScroll.hidden = !wide; self.categoryMenu.hidden = wide;
+    // Compact sections use the same destinations; their menu remains above the content.
+    self.categoryMenu.alpha = wide ? 0 : 1;
+}
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    if (self.navigationController.topViewController != self) [self.navigationController setNavigationBarHidden:NO animated:animated];
+}
+- (void)categoryTapped:(UIButton *)sender { [self selectCategory:sender.tag]; }
+- (void)selectCategory:(NSInteger)index {
+    if (index<0 || index>=10) return;
+    if (index == 9) {
+        UITabBarController *tabs = self.tabBarController;
+        void (^open)(void) = ^{
+            tabs.selectedIndex = AMELauncherTabHome;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (tabs.selectedIndex != AMELauncherTabHome) return;
+                LauncherNewsViewController *home = MetallicFindHome(tabs.viewControllers[AMELauncherTabHome]);
+                [home openCustomize]; // Existing config editor, with its original saved-layout callbacks.
+            });
+        };
+        id<UIViewControllerTransitionCoordinator> transition = tabs.transitionCoordinator;
+        if (transition) [transition animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) { open(); }];
+        else open();
+        return;
+    }
+    self.sectionTitle.text = self.categoryTitles[index];
+    for (UIButton *button in self.categoryStack.arrangedSubviews) {
+        button.backgroundColor = button.tag==index ? AmeUISelectedFillColor() : UIColor.clearColor;
+        button.accessibilityTraits = UIAccessibilityTraitButton | (button.tag==index ? UIAccessibilityTraitSelected : 0);
+    }
+    self.identity.text = index==8 ? [NSString stringWithFormat:@"Metallic Launcher · %@\n%@ · iOS %@", NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"] ?: @"Version unavailable", UIDevice.currentDevice.model, UIDevice.currentDevice.systemVersion] : @"";
+    // These are presentation anchors into the unchanged seven-section/90-option model.
+    NSArray *sections = @[@0,@5,@2,@4,@1,@0,@0,@6,@0,@0];
+    NSArray *keys = @[@"ui_theme",@"auto_ram",@"renderer",@"custom_controls",@"fileSource",@"cosmetica",@"version_isolation",@"debug_universal_script_jit",@"check_update",@"launcher_background"];
+    NSInteger section = [sections[index] integerValue];
+    [self.preferences endPresentationSearch];
+    [[self.preferences presentationSearchBar] resignFirstResponder];
+    NSInteger row = 0;
+    for (NSDictionary *item in self.preferences.prefContents[section]) { if ([item[@"key"] isEqual:keys[index]]) break; row++; }
+    if (row >= (NSInteger)self.preferences.prefContents[section].count) row=0;
+    self.preferences.prefSectionsVisibility[section] = @YES;
+    [self.preferences.tableView reloadData];
+    [self.preferences.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:section] atScrollPosition:UITableViewScrollPositionTop animated:NO];
+}
 @end

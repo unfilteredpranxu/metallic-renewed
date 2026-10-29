@@ -77,6 +77,11 @@ typedef NS_ENUM(NSInteger, ModernAssetType) {
 // Screenshot display order only; native category IDs and the segmented-control state never change.
 static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
 
+static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
+    NSString *translated = localize(key, fallback);
+    return translated.length && ![translated isEqualToString:key] ? translated : (fallback ?: key);
+}
+
 @interface ModernAssetCell : UITableViewCell
 @property (nonatomic, strong) UIView *contentContainer;
 @property (nonatomic, strong) UIImageView *iconView;
@@ -85,12 +90,6 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
 @property (nonatomic, strong) UILabel *metaLabel;
 @property (nonatomic, strong) UIStackView *tagsStack;
 @property (nonatomic, strong) UIButton *downloadButton;
-@property (nonatomic, strong) NSArray<NSLayoutConstraint *> *inlineActionConstraints;
-@property (nonatomic, strong) NSArray<NSLayoutConstraint *> *stackedActionConstraints;
-@property (nonatomic, assign) BOOL rowLayoutConfigured;
-@property (nonatomic, assign) BOOL stackedAction;
-@property (nonatomic, strong) UIView *pressFeedback;
-- (void)updateRowLayoutForWidth:(CGFloat)width;
 // 当前资源类型（用于在 prepareForReuse 时重置占位图标与配色）
 @property (nonatomic, assign) ModernAssetType assetType;
 // 缓存当前正在加载图片的 URL，避免复用时旧请求覆盖新请求（cell 复用竞态）
@@ -106,7 +105,7 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
         self.assetType = ModernAssetTypeMod;
         self.contentContainer = [[UIView alloc] init];
         self.contentContainer.translatesAutoresizingMaskIntoConstraints = NO;
-        self.contentContainer.layer.cornerRadius = 18;
+        self.contentContainer.layer.cornerRadius = 22;
         self.contentContainer.layer.cornerCurve = kCACornerCurveContinuous;
         self.contentContainer.clipsToBounds = YES;
         [self.contentView addSubview:self.contentContainer];
@@ -116,12 +115,11 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
         self.iconView.layer.cornerRadius = 10;
         self.iconView.clipsToBounds = YES;
         self.iconView.contentMode = UIViewContentModeScaleAspectFit;
-        self.iconView.isAccessibilityElement = NO;
         [self.contentContainer addSubview:self.iconView];
         self.titleLabel = [[UILabel alloc] init];
         self.titleLabel.font = AmeUIFont(AmeUIFontRoleSectionHeading);
         self.titleLabel.textColor = AmeUIPrimaryTextColor();
-        self.titleLabel.numberOfLines = 0;
+        self.titleLabel.numberOfLines = 2;
         self.descLabel = [[UILabel alloc] init];
         self.descLabel.font = AmeUIFont(AmeUIFontRoleDescription);
         self.descLabel.textColor = AmeUISecondaryTextColor();
@@ -129,7 +127,7 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
         self.metaLabel = [[UILabel alloc] init];
         self.metaLabel.font = AmeUIFont(AmeUIFontRoleStatus);
         self.metaLabel.textColor = AmeUITertiaryTextColor();
-        self.metaLabel.numberOfLines = 0;
+        self.metaLabel.numberOfLines = 1;
         for (UILabel *label in @[self.titleLabel, self.descLabel, self.metaLabel]) label.adjustsFontForContentSizeCategory = YES;
         self.tagsStack = [[UIStackView alloc] init];
         self.tagsStack.axis = UILayoutConstraintAxisHorizontal;
@@ -152,86 +150,25 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
             [self.contentContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-4],
             [self.iconView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:16],
             [self.iconView.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:18],
-            [self.iconView.widthAnchor constraintEqualToConstant:40],
-            [self.iconView.heightAnchor constraintEqualToConstant:40],
+            [self.iconView.widthAnchor constraintEqualToConstant:32],
+            [self.iconView.heightAnchor constraintEqualToConstant:32],
             [text.leadingAnchor constraintEqualToAnchor:self.iconView.trailingAnchor constant:12],
+            [text.trailingAnchor constraintEqualToAnchor:self.downloadButton.leadingAnchor constant:-8],
             [text.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:16],
+            [text.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor constant:-16],
             [self.downloadButton.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-8],
+            [self.downloadButton.centerYAnchor constraintEqualToAnchor:self.contentContainer.centerYAnchor],
             [self.downloadButton.widthAnchor constraintEqualToConstant:44],
             [self.downloadButton.heightAnchor constraintEqualToConstant:44]
         ]];
-        // Two stable constraint sets; switch only when width/type crosses a layout boundary.
-        self.inlineActionConstraints = @[
-            [text.trailingAnchor constraintEqualToAnchor:self.downloadButton.leadingAnchor constant:-12],
-            [text.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor constant:-16],
-            [self.downloadButton.centerYAnchor constraintEqualToAnchor:self.contentContainer.centerYAnchor],
-            [self.downloadButton.topAnchor constraintGreaterThanOrEqualToAnchor:self.contentContainer.topAnchor constant:12],
-            [self.downloadButton.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentContainer.bottomAnchor constant:-12]
-        ];
-        self.stackedActionConstraints = @[
-            [text.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-16],
-            [self.downloadButton.topAnchor constraintEqualToAnchor:text.bottomAnchor constant:10],
-            [self.downloadButton.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor constant:-12]
-        ];
-        [self.iconView.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentContainer.bottomAnchor constant:-12].active = YES;
-        [self updateRowLayoutForWidth:320];
-        // One noninteractive pressed fill; no extra blur, gesture recognizer or download action.
-        self.pressFeedback = [[UIView alloc] init];
-        self.pressFeedback.translatesAutoresizingMaskIntoConstraints = NO;
-        self.pressFeedback.userInteractionEnabled = NO;
-        self.pressFeedback.hidden = YES;
-        self.pressFeedback.backgroundColor = AmeUISelectedFillColor();
-        [self.contentContainer insertSubview:self.pressFeedback belowSubview:self.iconView];
-        [NSLayoutConstraint activateConstraints:@[
-            [self.pressFeedback.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor],
-            [self.pressFeedback.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor],
-            [self.pressFeedback.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor],
-            [self.pressFeedback.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor]
-        ]];
-        self.selectedBackgroundView = [[UIView alloc] init];
-        self.selectedBackgroundView.backgroundColor = UIColor.clearColor;
-        self.isAccessibilityElement = NO;
-        self.contentContainer.isAccessibilityElement = NO;
         self.contentContainer.layer.borderWidth = AmeUIHairlineWidth(self);
         self.contentContainer.layer.borderColor = AmeUIResolvedColor(AmeUIBorderColor(), self).CGColor;
     }
     return self;
 }
 
-- (void)updateRowLayoutForWidth:(CGFloat)width {
-    BOOL stacked = width < 420 || UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
-    if (self.rowLayoutConfigured && self.stackedAction == stacked) return;
-    [NSLayoutConstraint deactivateConstraints:self.inlineActionConstraints];
-    [NSLayoutConstraint deactivateConstraints:self.stackedActionConstraints];
-    [NSLayoutConstraint activateConstraints:stacked ? self.stackedActionConstraints : self.inlineActionConstraints];
-    self.tagsStack.axis = stacked ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
-    self.stackedAction = stacked;
-    self.rowLayoutConfigured = YES;
-}
-
-- (CGSize)systemLayoutSizeFittingSize:(CGSize)targetSize withHorizontalFittingPriority:(UILayoutPriority)horizontalPriority verticalFittingPriority:(UILayoutPriority)verticalPriority {
-    [self updateRowLayoutForWidth:targetSize.width];
-    return [super systemLayoutSizeFittingSize:targetSize withHorizontalFittingPriority:horizontalPriority verticalFittingPriority:verticalPriority];
-}
-
-- (void)layoutSubviews {
-    [self updateRowLayoutForWidth:self.bounds.size.width];
-    [super layoutSubviews];
-}
-
-- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
-    [super setHighlighted:highlighted animated:animated];
-    self.pressFeedback.hidden = !(highlighted || self.selected);
-}
-
-- (void)setSelected:(BOOL)selected animated:(BOOL)animated {
-    [super setSelected:selected animated:animated];
-    self.pressFeedback.hidden = !(selected || self.highlighted);
-}
-
 - (void)prepareForReuse {
     [super prepareForReuse];
-    self.pressFeedback.hidden = YES; // Reset the M04 decoration along with native reuse state.
     // 取消该 cell 上正在进行的图标加载请求（cell 复用时旧请求不应继续占用网络与回调）
     // 对应 Glide 的 clear() + ZL2 Compose 组合自动取消
     [IconLoader cancelLoadingForImageView:self.iconView];
@@ -437,18 +374,18 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
 /// 6 类资源共用的配置逻辑：标题/描述/元信息/图标/标签
 /// FCL 风格：标题 14sp + 第二行（下载次数 + 描述），元信息（作者/日期）合并到 descLabel
 - (void)configureCommonWithData:(NSDictionary *)data type:(ModernAssetType)type {
-    self.titleLabel.text = data[@"title"] ?: data[@"slug"] ?: localize(@"renewed.downloads.unknown", @"Untitled resource");
+    self.titleLabel.text = data[@"title"] ?: data[@"slug"] ?: MetallicPresentationText(@"renewed.downloads.unknown", @"Untitled resource");
     self.descLabel.text = data[@"description"] ?: @"";
     self.descLabel.hidden = self.descLabel.text.length == 0;
     // Show provider metadata only when supplied, without inventing a zero count.
     NSNumber *downloads = [data[@"downloads"] isKindOfClass:NSNumber.class] ? data[@"downloads"] : nil;
-    self.metaLabel.text = downloads ? [NSString stringWithFormat:localize(@"renewed.downloads.count", @"%@ downloads"), [self formatDownloadCount:downloads]] : @"";
+    self.metaLabel.text = downloads ? [NSString stringWithFormat:MetallicPresentationText(@"renewed.downloads.count", @"%@ downloads"), [self formatDownloadCount:downloads]] : @"";
     self.metaLabel.hidden = !downloads;
     NSString *iconUrl = data[@"imageUrl"] ?: data[@"icon_url"];
     [self loadIconFromURL:iconUrl placeholderType:type];
     [self configureTagsWithCategories:data[@"categories"]];
     self.tagsStack.hidden = self.tagsStack.arrangedSubviews.count == 0;
-    self.downloadButton.accessibilityLabel = [NSString stringWithFormat:@"%@: %@", localize(@"renewed.downloads.select_version", @"Select download version"), self.titleLabel.text];
+    self.downloadButton.accessibilityLabel = [NSString stringWithFormat:@"%@: %@", MetallicPresentationText(@"renewed.downloads.select_version", @"Select download version"), self.titleLabel.text];
     self.titleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
 }
 
@@ -457,9 +394,8 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     [super traitCollectionDidChange:previousTraitCollection];
     self.contentContainer.layer.borderWidth = AmeUIHairlineWidth(self);
     self.contentContainer.layer.borderColor = AmeUIResolvedColor(AmeUIBorderColor(), self).CGColor;
-    self.rowLayoutConfigured = NO;
-    [self updateRowLayoutForWidth:self.bounds.size.width];
-    self.pressFeedback.backgroundColor = AmeUISelectedFillColor();
+    self.tagsStack.axis = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory)
+        ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
 }
 
 @end
@@ -804,13 +740,8 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
 }
 
 - (void)setupTabSegment {
-    // localize's second argument is a comment, not fallback text. This Downloads-owned
-    // label must remain usable when the optional Renewed translation key is absent.
-    NSString *versionsKey = @"renewed.downloads.versions";
-    NSString *versionsTitle = localize(versionsKey, nil);
-    if (!versionsTitle.length || [versionsTitle isEqualToString:versionsKey]) versionsTitle = @"Versions";
     self.categoryTitles = @[
-        versionsTitle, localize(@"i18n_str_1283", @"Mods"),
+        MetallicPresentationText(@"renewed.downloads.versions", @"Versions"), localize(@"i18n_str_1283", @"Mods"),
         localize(@"i18n_str_1284", @"Shaders"), localize(@"i18n_str_1285", @"Resource Packs"),
         localize(@"i18n_str_1286", @"Data Packs"), localize(@"i18n_str_1287", @"Modpacks"), localize(@"i18n_str_119", @"Worlds")
     ];
@@ -820,23 +751,11 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     [self.tabSegment addTarget:self action:@selector(tabChanged:) forControlEvents:UIControlEventValueChanged];
     UILabel *title = [[UILabel alloc] init];
     title.text = localize(@"tab.download", @"Downloads");
-    title.font = AmeUIFont(AmeUIFontRoleCardTitle);
-    title.numberOfLines = 0;
+    title.hidden = YES; // The reference begins with search; task access stays in this header.
+    title.font = AmeUINavigationFont();
     title.adjustsFontForContentSizeCategory = YES;
     title.textColor = AmeUIPrimaryTextColor();
     title.accessibilityTraits = UIAccessibilityTraitHeader;
-    self.catalogueSubtitle = [[UILabel alloc] init];
-    self.catalogueSubtitle.text = self.targetProfileName.length
-        ? [NSString stringWithFormat:@"Resource target: %@", self.targetProfileName]
-        : @"Browse Minecraft versions and resources.";
-    self.catalogueSubtitle.font = AmeUIFont(AmeUIFontRoleStatus);
-    self.catalogueSubtitle.adjustsFontForContentSizeCategory = YES;
-    self.catalogueSubtitle.textColor = AmeUISecondaryTextColor();
-    self.catalogueSubtitle.numberOfLines = 0;
-    UIStackView *introduction = [[UIStackView alloc] initWithArrangedSubviews:@[title, self.catalogueSubtitle]];
-    introduction.axis = UILayoutConstraintAxisVertical;
-    introduction.spacing = 4;
-    [introduction setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     UIView *spacer = [[UIView alloc] init];
     self.categoryMenuButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
     ((AmePinkGlassButton *)self.categoryMenuButton).ameRole = AmeGlassButtonRoleSecondary;
@@ -856,55 +775,24 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
         [actions addObject:action];
     }
     self.categoryActions = actions;
-    self.categoryMenuButton.menu = [UIMenu menuWithTitle:localize(@"renewed.downloads.categories", @"Categories") children:actions];
+    self.categoryMenuButton.menu = [UIMenu menuWithTitle:MetallicPresentationText(@"renewed.downloads.categories", @"Categories") children:actions];
     AmePinkGlassButton *tasks = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
     tasks.ameRole = AmeGlassButtonRoleSubtle;
     [tasks setImage:[UIImage systemImageNamed:@"arrow.down.circle"] forState:UIControlStateNormal];
-    tasks.accessibilityLabel = localize(@"renewed.downloads.tasks", @"Download tasks and progress");
+    tasks.accessibilityLabel = MetallicPresentationText(@"renewed.downloads.tasks", @"Download tasks and progress");
     [tasks addTarget:self action:@selector(renewedOpenTasks) forControlEvents:UIControlEventTouchUpInside];
-    self.catalogueHeader = [[UIStackView alloc] initWithArrangedSubviews:@[introduction, spacer, self.categoryMenuButton, tasks]];
+    self.catalogueHeader = [[UIStackView alloc] initWithArrangedSubviews:@[title, spacer, self.categoryMenuButton, tasks]];
     self.catalogueHeader.spacing = 8;
     self.catalogueHeader.alignment = UIStackViewAlignmentCenter;
     self.catalogueHeader.translatesAutoresizingMaskIntoConstraints = NO;
-    // A bounded workspace below the existing root safe-area reservation, with no second nav bar.
-    self.catalogueWorkspace = [[UILayoutGuide alloc] init];
-    [self.view addLayoutGuide:self.catalogueWorkspace];
-    self.catalogueChrome = [[UIScrollView alloc] init];
-    self.catalogueChrome.translatesAutoresizingMaskIntoConstraints = NO;
-    self.catalogueChrome.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
-    self.catalogueChrome.showsVerticalScrollIndicator = YES;
-    self.catalogueChrome.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
-    self.catalogueChrome.directionalLockEnabled = YES;
-    [self.view addSubview:self.catalogueChrome];
-    self.catalogueChromeStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.catalogueHeader]];
-    self.catalogueChromeStack.axis = UILayoutConstraintAxisVertical;
-    self.catalogueChromeStack.spacing = 10;
-    self.catalogueChromeStack.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.catalogueChrome addSubview:self.catalogueChromeStack];
+    [self.view addSubview:self.catalogueHeader];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
-    NSLayoutConstraint *preferredWidth = [self.catalogueWorkspace.widthAnchor constraintEqualToAnchor:safe.widthAnchor constant:-24];
-    preferredWidth.priority = UILayoutPriorityDefaultHigh;
-    NSLayoutConstraint *naturalHeight = [self.catalogueChrome.heightAnchor constraintEqualToAnchor:self.catalogueChromeStack.heightAnchor];
-    naturalHeight.priority = UILayoutPriorityDefaultLow; // Prefer scrolling over compressing readable control text.
-    NSLayoutConstraint *maximumHeight = [self.catalogueChrome.heightAnchor constraintLessThanOrEqualToAnchor:self.catalogueWorkspace.heightAnchor multiplier:0.52];
-    maximumHeight.priority = 999;
     NSLayoutConstraint *categoryWidth = [self.categoryMenuButton.widthAnchor constraintEqualToConstant:44];
     categoryWidth.priority = 999;
     [NSLayoutConstraint activateConstraints:@[
-        [self.catalogueWorkspace.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8],
-        [self.catalogueWorkspace.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-8],
-        [self.catalogueWorkspace.centerXAnchor constraintEqualToAnchor:safe.centerXAnchor],
-        [self.catalogueWorkspace.leadingAnchor constraintGreaterThanOrEqualToAnchor:safe.leadingAnchor constant:12],
-        [self.catalogueWorkspace.trailingAnchor constraintLessThanOrEqualToAnchor:safe.trailingAnchor constant:-12],
-        [self.catalogueWorkspace.widthAnchor constraintLessThanOrEqualToConstant:1280], preferredWidth,
-        [self.catalogueChrome.topAnchor constraintEqualToAnchor:self.catalogueWorkspace.topAnchor],
-        [self.catalogueChrome.trailingAnchor constraintEqualToAnchor:self.catalogueWorkspace.trailingAnchor],
-        [self.catalogueChrome.heightAnchor constraintGreaterThanOrEqualToConstant:44], naturalHeight, maximumHeight,
-        [self.catalogueChromeStack.topAnchor constraintEqualToAnchor:self.catalogueChrome.contentLayoutGuide.topAnchor],
-        [self.catalogueChromeStack.bottomAnchor constraintEqualToAnchor:self.catalogueChrome.contentLayoutGuide.bottomAnchor],
-        [self.catalogueChromeStack.leadingAnchor constraintEqualToAnchor:self.catalogueChrome.contentLayoutGuide.leadingAnchor],
-        [self.catalogueChromeStack.trailingAnchor constraintEqualToAnchor:self.catalogueChrome.contentLayoutGuide.trailingAnchor],
-        [self.catalogueChromeStack.widthAnchor constraintEqualToAnchor:self.catalogueChrome.frameLayoutGuide.widthAnchor],
+        [self.catalogueHeader.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8],
+        [self.catalogueHeader.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:16],
+        [self.catalogueHeader.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-16],
         categoryWidth,
         [self.categoryMenuButton.heightAnchor constraintEqualToConstant:44],
         [tasks.widthAnchor constraintEqualToConstant:44], [tasks.heightAnchor constraintEqualToConstant:44]
@@ -935,14 +823,8 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     field.layer.cornerRadius = 20;
     field.clipsToBounds = YES;
     field.backgroundColor = UIColor.clearColor;
-    // Own the material outside UIKit's private search-field subview hierarchy.
-    self.searchSurface = [[UIView alloc] init];
-    self.searchSurface.translatesAutoresizingMaskIntoConstraints = NO;
-    self.searchSurface.layer.cornerRadius = 18;
-    self.searchSurface.clipsToBounds = YES;
-    [[BackgroundManager sharedManager] applyEffectToView:self.searchSurface];
-    [self.searchSurface addSubview:self.searchBar];
-    [self.catalogueChromeStack addArrangedSubview:self.searchSurface];
+    [[BackgroundManager sharedManager] applyEffectToView:field];
+    [self.view addSubview:self.searchBar];
     self.filterButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
     ((AmePinkGlassButton *)self.filterButton).ameRole = AmeGlassButtonRoleSecondary;
     [self.filterButton setImage:[UIImage systemImageNamed:@"slider.horizontal.3"] forState:UIControlStateNormal];
@@ -958,48 +840,38 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     self.providerMenuButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
     ((AmePinkGlassButton *)self.providerMenuButton).ameRole = AmeGlassButtonRoleSecondary;
     self.providerMenuButton.showsMenuAsPrimaryAction = YES;
-    NSLayoutConstraint *providerTouchHeight = [self.providerMenuButton.heightAnchor constraintGreaterThanOrEqualToConstant:44];
-    providerTouchHeight.priority = 999;
-    providerTouchHeight.active = YES;
+    [self.providerMenuButton.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
     self.providerMenuButton.contentEdgeInsets = UIEdgeInsetsMake(8, 10, 8, 10);
-    self.versionTypeMenuButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
-    ((AmePinkGlassButton *)self.versionTypeMenuButton).ameRole = AmeGlassButtonRoleSecondary;
-    self.versionTypeMenuButton.showsMenuAsPrimaryAction = YES;
-    self.versionTypeMenuButton.contentEdgeInsets = UIEdgeInsetsMake(10, 12, 10, 12);
-    self.versionTypeMenuButton.titleLabel.numberOfLines = 0;
-    self.versionTypeMenuButton.titleLabel.font = AmeUIFont(AmeUIFontRoleButton);
-    self.versionTypeMenuButton.titleLabel.adjustsFontForContentSizeCategory = YES;
-    NSLayoutConstraint *versionTouchHeight = [self.versionTypeMenuButton.heightAnchor constraintGreaterThanOrEqualToConstant:44];
-    versionTouchHeight.priority = 999;
-    versionTouchHeight.active = YES;
-    [self.versionTypeMenuButton.widthAnchor constraintLessThanOrEqualToAnchor:self.catalogueChrome.frameLayoutGuide.widthAnchor].active = YES;
-    self.providerMenuButton.titleLabel.numberOfLines = 0;
-    self.providerMenuButton.titleLabel.font = AmeUIFont(AmeUIFontRoleButton);
-    self.providerMenuButton.titleLabel.adjustsFontForContentSizeCategory = YES;
-    [self.providerMenuButton.widthAnchor constraintLessThanOrEqualToAnchor:self.catalogueChrome.frameLayoutGuide.widthAnchor].active = YES;
     UIView *spacer = [[UIView alloc] init];
-    self.controlsSpacer = spacer;
-    self.catalogueControls = [[UIStackView alloc] initWithArrangedSubviews:@[self.versionTypeMenuButton, self.providerMenuButton, spacer, self.importModpackButton, self.filterButton]];
+    self.versionTypeMenuButton = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    self.versionTypeMenuButton.showsMenuAsPrimaryAction = YES;
+    [self.versionTypeMenuButton.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
+    UIButton *sort = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    [sort setTitle:@"Sort ▾" forState:UIControlStateNormal];
+    [sort.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
+    [sort addTarget:self action:@selector(showSortOptions) forControlEvents:UIControlEventTouchUpInside];
+    self.controlsSpacer = sort;
+    self.catalogueControls = [[UIStackView alloc] initWithArrangedSubviews:@[self.versionTypeMenuButton, sort, self.providerMenuButton, spacer, self.importModpackButton, self.filterButton]];
     self.catalogueControls.spacing = 8;
     self.catalogueControls.alignment = UIStackViewAlignmentCenter;
     self.catalogueControls.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.catalogueChromeStack addArrangedSubview:self.catalogueControls];
+    [self.view addSubview:self.catalogueControls];
     self.filterButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.importModpackButton.translatesAutoresizingMaskIntoConstraints = NO;
     NSLayoutConstraint *filterWidth = [self.filterButton.widthAnchor constraintEqualToConstant:44];
     filterWidth.priority = 999;
-    NSLayoutConstraint *filterTouchHeight = [self.filterButton.heightAnchor constraintEqualToConstant:44];
-    NSLayoutConstraint *importTouchHeight = [self.importModpackButton.heightAnchor constraintEqualToConstant:44];
-    filterTouchHeight.priority = importTouchHeight.priority = 999; // Vertical accessibility stacks hide unused controls.
     [NSLayoutConstraint activateConstraints:@[
-        [self.searchBar.topAnchor constraintEqualToAnchor:self.searchSurface.topAnchor],
-        [self.searchBar.leadingAnchor constraintEqualToAnchor:self.searchSurface.leadingAnchor],
-        [self.searchBar.trailingAnchor constraintEqualToAnchor:self.searchSurface.trailingAnchor],
-        [self.searchBar.bottomAnchor constraintEqualToAnchor:self.searchSurface.bottomAnchor],
+        [self.searchBar.topAnchor constraintEqualToAnchor:self.catalogueHeader.bottomAnchor constant:8],
+        [self.searchBar.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
+        [self.searchBar.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-8],
         [self.searchBar.heightAnchor constraintGreaterThanOrEqualToConstant:52],
+        [self.catalogueControls.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:4],
+        [self.catalogueControls.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:12],
+        [self.catalogueControls.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16],
         [self.catalogueControls.heightAnchor constraintGreaterThanOrEqualToConstant:44],
         filterWidth,
-        filterTouchHeight, importTouchHeight
+        [self.filterButton.heightAnchor constraintEqualToConstant:44],
+        [self.importModpackButton.heightAnchor constraintEqualToConstant:44]
     ]];
 }
 
@@ -1009,8 +881,7 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     layout.scrollDirection = UICollectionViewScrollDirectionVertical;
     layout.minimumInteritemSpacing = 0;  // 单列，无横向间距
     layout.minimumLineSpacing = 4;       // 行间小间距，卡片自带阴影做视觉分隔
-    layout.itemSize = CGSizeMake(360, 96);
-    layout.estimatedItemSize = layout.itemSize; // 默认宽度，viewDidLayoutSubviews 会覆盖
+    layout.itemSize = CGSizeMake(360, 96); // 默认宽度，viewDidLayoutSubviews 会覆盖
     layout.sectionInset = UIEdgeInsetsMake(4, 4, 12, 4);
 
     self.versionCollectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
@@ -1027,10 +898,10 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
 
     [NSLayoutConstraint activateConstraints:@[
         // 版本列表放在搜索框下方，避免与搜索框重合
-        [self.versionCollectionView.topAnchor constraintEqualToAnchor:self.catalogueChrome.bottomAnchor constant:10],
-        [self.versionCollectionView.leadingAnchor constraintEqualToAnchor:self.catalogueChrome.leadingAnchor],
-        [self.versionCollectionView.trailingAnchor constraintEqualToAnchor:self.catalogueChrome.trailingAnchor],
-        [self.versionCollectionView.bottomAnchor constraintEqualToAnchor:self.catalogueWorkspace.bottomAnchor]
+        [self.versionCollectionView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
+        [self.versionCollectionView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
+        [self.versionCollectionView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-8],
+        [self.versionCollectionView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
 
@@ -1073,10 +944,10 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     // 侧边栏隐藏时宽度为 0，trailingAnchor 等于 view.leadingAnchor，列表自动铺满
     // leading 加 8pt 间距，避免与左侧筛选栏紧贴（视觉呼吸感，阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.modTableView.topAnchor constraintEqualToAnchor:self.catalogueChrome.bottomAnchor constant:10],
-        [self.modTableView.leadingAnchor constraintEqualToAnchor:self.catalogueChrome.leadingAnchor],
-        [self.modTableView.trailingAnchor constraintEqualToAnchor:self.catalogueChrome.trailingAnchor],
-        [self.modTableView.bottomAnchor constraintEqualToAnchor:self.catalogueWorkspace.bottomAnchor]
+        [self.modTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
+        [self.modTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
+        [self.modTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
+        [self.modTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
 
@@ -1100,10 +971,10 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
 
     // leading 加 8pt 间距，避免与左侧筛选栏紧贴（视觉呼吸感，阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.shaderTableView.topAnchor constraintEqualToAnchor:self.catalogueChrome.bottomAnchor constant:10],
-        [self.shaderTableView.leadingAnchor constraintEqualToAnchor:self.catalogueChrome.leadingAnchor],
-        [self.shaderTableView.trailingAnchor constraintEqualToAnchor:self.catalogueChrome.trailingAnchor],
-        [self.shaderTableView.bottomAnchor constraintEqualToAnchor:self.catalogueWorkspace.bottomAnchor]
+        [self.shaderTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
+        [self.shaderTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
+        [self.shaderTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
+        [self.shaderTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
 
@@ -1127,10 +998,10 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
 
     // leading 加 8pt 间距，避免与左侧筛选栏紧贴（视觉呼吸感，阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.modpackTableView.topAnchor constraintEqualToAnchor:self.catalogueChrome.bottomAnchor constant:10],
-        [self.modpackTableView.leadingAnchor constraintEqualToAnchor:self.catalogueChrome.leadingAnchor],
-        [self.modpackTableView.trailingAnchor constraintEqualToAnchor:self.catalogueChrome.trailingAnchor],
-        [self.modpackTableView.bottomAnchor constraintEqualToAnchor:self.catalogueWorkspace.bottomAnchor]
+        [self.modpackTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
+        [self.modpackTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
+        [self.modpackTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
+        [self.modpackTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
 
@@ -1154,10 +1025,10 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
 
     // leading 加 8pt 间距，避免与左侧筛选栏紧贴（视觉呼吸感，阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.resourcepackTableView.topAnchor constraintEqualToAnchor:self.catalogueChrome.bottomAnchor constant:10],
-        [self.resourcepackTableView.leadingAnchor constraintEqualToAnchor:self.catalogueChrome.leadingAnchor],
-        [self.resourcepackTableView.trailingAnchor constraintEqualToAnchor:self.catalogueChrome.trailingAnchor],
-        [self.resourcepackTableView.bottomAnchor constraintEqualToAnchor:self.catalogueWorkspace.bottomAnchor]
+        [self.resourcepackTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
+        [self.resourcepackTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
+        [self.resourcepackTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
+        [self.resourcepackTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
 
@@ -1181,10 +1052,10 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
 
     // leading 加 8pt 间距，避免与左侧筛选栏紧贴（视觉呼吸感，阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.datapackTableView.topAnchor constraintEqualToAnchor:self.catalogueChrome.bottomAnchor constant:10],
-        [self.datapackTableView.leadingAnchor constraintEqualToAnchor:self.catalogueChrome.leadingAnchor],
-        [self.datapackTableView.trailingAnchor constraintEqualToAnchor:self.catalogueChrome.trailingAnchor],
-        [self.datapackTableView.bottomAnchor constraintEqualToAnchor:self.catalogueWorkspace.bottomAnchor]
+        [self.datapackTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
+        [self.datapackTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
+        [self.datapackTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
+        [self.datapackTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
 
@@ -1209,10 +1080,10 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     // 世界 tab 不显示侧边栏（强制 CurseForge），列表 leading 直接跟随 view
     // leading 加 8pt 间距，保持与其他 tab 一致的视觉呼吸感（阶段3 UI 调整）
     [NSLayoutConstraint activateConstraints:@[
-        [self.worldTableView.topAnchor constraintEqualToAnchor:self.catalogueChrome.bottomAnchor constant:10],
-        [self.worldTableView.leadingAnchor constraintEqualToAnchor:self.catalogueChrome.leadingAnchor],
-        [self.worldTableView.trailingAnchor constraintEqualToAnchor:self.catalogueChrome.trailingAnchor],
-        [self.worldTableView.bottomAnchor constraintEqualToAnchor:self.catalogueWorkspace.bottomAnchor]
+        [self.worldTableView.topAnchor constraintEqualToAnchor:self.catalogueControls.bottomAnchor constant:8],
+        [self.worldTableView.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
+        [self.worldTableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
+        [self.worldTableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
 }
 
@@ -1322,14 +1193,16 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
 - (void)setupFilterSidebar {
     self.filterSidebarContainer = [[UIView alloc] init];
     self.filterSidebarContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    self.filterSidebarContainer.backgroundColor = UIColor.clearColor;
+    self.filterSidebarContainer.layer.cornerRadius = 22;
+    self.filterSidebarContainer.clipsToBounds = YES;
+    [[BackgroundManager sharedManager] applyEffectToView:self.filterSidebarContainer];
     [self.view addSubview:self.filterSidebarContainer];
     self.sidebarWidthConstraint = [self.filterSidebarContainer.widthAnchor constraintEqualToConstant:0];
-    self.sidebarLeadingConstraint = [self.filterSidebarContainer.leadingAnchor constraintEqualToAnchor:self.catalogueWorkspace.leadingAnchor];
+    self.sidebarLeadingConstraint = [self.filterSidebarContainer.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor];
     [NSLayoutConstraint activateConstraints:@[
-        [self.filterSidebarContainer.topAnchor constraintEqualToAnchor:self.catalogueWorkspace.topAnchor],
+        [self.filterSidebarContainer.topAnchor constraintEqualToAnchor:self.catalogueHeader.bottomAnchor constant:12],
         self.sidebarLeadingConstraint, self.sidebarWidthConstraint,
-        [self.filterSidebarContainer.bottomAnchor constraintEqualToAnchor:self.catalogueWorkspace.bottomAnchor]
+        [self.filterSidebarContainer.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12]
     ]];
     UIScrollView *scroll = [[UIScrollView alloc] init];
     scroll.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1337,72 +1210,34 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     [self.filterSidebarContainer addSubview:scroll];
     UIStackView *rail = [[UIStackView alloc] init];
     rail.axis = UILayoutConstraintAxisVertical;
-    rail.spacing = 14;
+    rail.spacing = 8;
     rail.translatesAutoresizingMaskIntoConstraints = NO;
     [scroll addSubview:rail];
-    self.categorySurface = [[UIView alloc] init];
-    self.categorySurface.translatesAutoresizingMaskIntoConstraints = NO;
-    self.categorySurface.layer.cornerRadius = 20;
-    self.categorySurface.clipsToBounds = YES;
-    [[BackgroundManager sharedManager] applyEffectToView:self.categorySurface];
-    UIStackView *categoryStack = [[UIStackView alloc] init];
-    categoryStack.translatesAutoresizingMaskIntoConstraints = NO;
-    categoryStack.axis = UILayoutConstraintAxisVertical;
-    categoryStack.spacing = 4;
-    [self.categorySurface addSubview:categoryStack];
-    [rail addArrangedSubview:self.categorySurface];
-    [NSLayoutConstraint activateConstraints:@[
-        [categoryStack.topAnchor constraintEqualToAnchor:self.categorySurface.topAnchor constant:8],
-        [categoryStack.bottomAnchor constraintEqualToAnchor:self.categorySurface.bottomAnchor constant:-8],
-        [categoryStack.leadingAnchor constraintEqualToAnchor:self.categorySurface.leadingAnchor constant:8],
-        [categoryStack.trailingAnchor constraintEqualToAnchor:self.categorySurface.trailingAnchor constant:-8]
-    ]];
     NSArray<NSString *> *icons = @[@"cube", @"puzzlepiece.extension", @"sun.max", @"photo.stack", @"doc.text", @"shippingbox", @"globe"];
     NSMutableArray<UIButton *> *categories = [NSMutableArray array];
     for (NSInteger ordinal = 0; ordinal < 7; ordinal++) {
         NSInteger index = kRenewedDownloadCategoryOrder[ordinal];
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
         button.tag = index;
-        // Explicit content geometry prevents a wrapped button title from becoming a floating-looking
-        // selected label. Both children are noninteractive; the original tagged button owns the tap.
-        UIImageView *icon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:icons[index]
-            withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightMedium]]];
-        icon.contentMode = UIViewContentModeScaleAspectFit;
-        icon.translatesAutoresizingMaskIntoConstraints = NO;
-        UILabel *label = [[UILabel alloc] init];
-        label.text = self.categoryTitles[index];
-        label.font = AmeUIFont(AmeUIFontRoleButton);
-        label.adjustsFontForContentSizeCategory = YES;
-        label.textColor = AmeUIPrimaryTextColor();
-        label.backgroundColor = UIColor.clearColor;
-        label.numberOfLines = 0;
-        UIStackView *content = [[UIStackView alloc] initWithArrangedSubviews:@[icon, label]];
-        content.translatesAutoresizingMaskIntoConstraints = NO;
-        content.alignment = UIStackViewAlignmentCenter;
-        content.spacing = 10;
-        content.userInteractionEnabled = NO;
-        content.accessibilityElementsHidden = YES;
-        [button addSubview:content];
-        [NSLayoutConstraint activateConstraints:@[
-            [icon.widthAnchor constraintEqualToConstant:22], [icon.heightAnchor constraintEqualToConstant:22],
-            [content.leadingAnchor constraintEqualToAnchor:button.leadingAnchor constant:12],
-            [content.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:-12],
-            [content.topAnchor constraintEqualToAnchor:button.topAnchor constant:10],
-            [content.bottomAnchor constraintEqualToAnchor:button.bottomAnchor constant:-10]
-        ]];
-        button.isAccessibilityElement = YES;
+        [button setTitle:self.categoryTitles[index] forState:UIControlStateNormal];
+        [button setImage:[UIImage systemImageNamed:icons[index]] forState:UIControlStateNormal];
+        button.titleLabel.font = AmeUIFont(AmeUIFontRoleButton);
+        button.titleLabel.adjustsFontForContentSizeCategory = YES;
+        button.titleLabel.numberOfLines = 2;
+        button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+        button.contentEdgeInsets = UIEdgeInsetsMake(10, 10, 10, 10);
         button.layer.cornerRadius = 14;
         button.accessibilityLabel = self.categoryTitles[index];
         [button.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
         [button addTarget:self action:@selector(renewedCategoryTapped:) forControlEvents:UIControlEventTouchUpInside];
         [categories addObject:button];
-        [categoryStack addArrangedSubview:button];
+        [rail addArrangedSubview:button];
     }
     self.categoryButtons = categories;
     self.sidebarSourceSegment = [[UISegmentedControl alloc] initWithItems:@[@"Modrinth", @"CurseForge"]];
     [self.sidebarSourceSegment addTarget:self action:@selector(renewedSourceChanged:) forControlEvents:UIControlEventValueChanged];
     self.sidebarSourceContainer = [[UIStackView alloc] initWithArrangedSubviews:@[self.sidebarSourceSegment]];
-    NSLayoutConstraint *sourceHeight = [self.sidebarSourceSegment.heightAnchor constraintGreaterThanOrEqualToConstant:44];
+    NSLayoutConstraint *sourceHeight = [self.sidebarSourceSegment.heightAnchor constraintGreaterThanOrEqualToConstant:32];
     sourceHeight.priority = 999;
     sourceHeight.active = YES;
     self.sidebarVersionButton = [self createSidebarSelectButtonWithTitle:localize(@"i18n_str_2031", nil) value:@"" selector:@selector(sidebarVersionButtonClicked:)];
@@ -1423,20 +1258,19 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
     resetHeight.active = YES;
     self.sidebarFilters = [[UIStackView alloc] initWithArrangedSubviews:@[self.sidebarSourceContainer, self.sidebarVersionButton, self.sidebarLoaderButton, self.sidebarSortButton, self.sidebarResetButton]];
     self.sidebarFilters.axis = UILayoutConstraintAxisVertical;
-    self.sidebarFilters.spacing = 8;
+    self.sidebarFilters.spacing = 10;
     [rail addArrangedSubview:self.sidebarFilters];
     [NSLayoutConstraint activateConstraints:@[
         [scroll.topAnchor constraintEqualToAnchor:self.filterSidebarContainer.topAnchor],
         [scroll.bottomAnchor constraintEqualToAnchor:self.filterSidebarContainer.bottomAnchor],
         [scroll.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.leadingAnchor],
         [scroll.trailingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor],
-        [rail.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor constant:0],
-        [rail.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:0],
-        [rail.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor constant:0],
-        [rail.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor constant:0],
-        [rail.widthAnchor constraintEqualToConstant:224]
+        [rail.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor constant:10],
+        [rail.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-10],
+        [rail.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor constant:10],
+        [rail.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor constant:-10],
+        [rail.widthAnchor constraintEqualToConstant:176]
     ]];
-    [self.catalogueChrome.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:12].active = YES;
 }
 
 /// 创建侧边栏的选择按钮（标题 + 当前值 + 箭头）
@@ -2666,7 +2500,7 @@ static const NSInteger kRenewedDownloadCategoryOrder[7] = {0, 1, 2, 5, 3, 4, 6};
                                               style:UIAlertActionStyleCancel
                                             handler:nil]];
 
-    UIView *sourceView = self.sidebarSortButton.hidden ? self.filterButton : self.sidebarSortButton;
+    UIView *sourceView = self.controlsSpacer && !self.controlsSpacer.hidden ? self.controlsSpacer : (self.sidebarSortButton.hidden ? self.filterButton : self.sidebarSortButton);
     if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
         alert.popoverPresentationController.sourceView = sourceView;
         alert.popoverPresentationController.sourceRect = sourceView.bounds;
@@ -6071,7 +5905,7 @@ static NSString *PLSha1FromPrimaryFile(NSDictionary *primaryFile) {
         button.accessibilityTraits = UIAccessibilityTraitButton | (button.selected ? UIAccessibilityTraitSelected : 0);
         self.categoryActions[i].state = category == index ? UIMenuElementStateOn : UIMenuElementStateOff;
     }
-    self.categoryMenuButton.accessibilityLabel = [NSString stringWithFormat:@"%@: %@", localize(@"renewed.downloads.categories", @"Categories"), self.categoryTitles[index]];
+    self.categoryMenuButton.accessibilityLabel = [NSString stringWithFormat:@"%@: %@", MetallicPresentationText(@"renewed.downloads.categories", @"Categories"), self.categoryTitles[index]];
     // Present existing version-type selection as a compact native menu, keeping its one state owner.
     NSInteger selectedType = self.versionFilterSegment.selectedSegmentIndex;
     NSString *typeTitle = selectedType >= 0 ? [self.versionFilterSegment titleForSegmentAtIndex:selectedType] : @"";
@@ -6116,16 +5950,15 @@ static NSString *PLSha1FromPrimaryFile(NSDictionary *primaryFile) {
 
 - (void)renewedUpdateCataloguePresentation {
     if (!self.searchBar || !self.catalogueControls) return;
-    CGFloat width = self.catalogueWorkspace.layoutFrame.size.width;
-    BOOL accessibility = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
-    BOOL wide = width >= 900 && !accessibility;
+    CGFloat width = self.view.safeAreaLayoutGuide.layoutFrame.size.width;
+    BOOL wide = width >= 900 && !UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
     NSInteger index = self.tabSegment.selectedSegmentIndex;
     BOOL changed = !self.catalogueLayoutConfigured || wide != self.catalogueWide;
     self.catalogueLayoutConfigured = YES;
     self.catalogueWide = wide;
     self.filterSidebarContainer.hidden = !wide;
-    CGFloat sidebarWidth = wide ? 224 : 0;
-    CGFloat sidebarLeading = 0;
+    CGFloat sidebarWidth = wide ? 196 : 0;
+    CGFloat sidebarLeading = wide ? 16 : 0;
     if (self.sidebarWidthConstraint.constant != sidebarWidth) self.sidebarWidthConstraint.constant = sidebarWidth;
     if (self.sidebarLeadingConstraint.constant != sidebarLeading) self.sidebarLeadingConstraint.constant = sidebarLeading;
     self.categoryMenuButton.hidden = wide;
@@ -6137,12 +5970,9 @@ static NSString *PLSha1FromPrimaryFile(NSDictionary *primaryFile) {
     self.sidebarLoaderTitleLabel.hidden = index != 1;
     self.sidebarLoaderValueLabel.hidden = index != 1;
     self.sidebarSourceContainer.hidden = !wide || index == 0 || index == 6;
-    self.versionFilterSegment.hidden = YES; // Model/control target retained; the native menu presents its options.
+    self.versionFilterSegment.hidden = YES;
     self.versionTypeMenuButton.hidden = index != 0;
-    self.catalogueControls.axis = accessibility ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
-    self.catalogueControls.alignment = accessibility ? UIStackViewAlignmentLeading : UIStackViewAlignmentCenter;
-    self.controlsSpacer.hidden = accessibility;
-    self.catalogueSubtitle.hidden = !accessibility && self.view.safeAreaLayoutGuide.layoutFrame.size.height < 360;
+    self.controlsSpacer.hidden = index != 0;
     CGFloat filterHeight = index == 0 ? 32 : 0;
     if (self.versionFilterHeightConstraint.constant != filterHeight) self.versionFilterHeightConstraint.constant = filterHeight;
     self.filterButton.hidden = index == 0 || wide;

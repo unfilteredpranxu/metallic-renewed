@@ -12,6 +12,11 @@
 #import "UIKit+GlassSurface.h"
 #import "AMEGlassStyle.h"   // ★ [GLASS-STYLE] UI style (auto / native / Liquid Glass) resolution layer
 
+static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
+    NSString *translated = localize(key, fallback);
+    return translated.length && ![translated isEqualToString:key] ? translated : (fallback ?: key);
+}
+
 @interface BackgroundSettingsViewController ()
 - (UITableViewCell *)appearanceSliderCell:(NSString *)identifier title:(NSString *)title
                                   value:(CGFloat)value minimum:(CGFloat)minimum action:(SEL)action;
@@ -52,6 +57,10 @@
     
     // Setup preview header
     [self setupPreviewHeader];
+    if (self.launcherPresentation) {
+        self.tableView.tableFooterView = self.tableView.tableHeaderView;
+        [self setupLauncherThemeHeader];
+    }
     
     // Setup sections
     [self setupSections];
@@ -153,12 +162,42 @@
     }
 }
 
+- (void)setupLauncherThemeHeader {
+    UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(0,0,self.tableView.bounds.size.width,168)];
+    panel.layer.cornerRadius = 28; panel.clipsToBounds = YES;
+    [[BackgroundManager sharedManager] applyEffectToView:panel];
+    UILabel *title = [[UILabel alloc] init]; title.text = @"Theme";
+    title.font = [UIFont preferredFontForTextStyle:UIFontTextStyleTitle2]; title.textColor = AmeUIPrimaryTextColor();
+    UISegmentedControl *control = [[UISegmentedControl alloc] initWithItems:@[@"System",@"Light",@"Dark"]];
+    control.selectedSegmentIndex = self.themeIndex>=0 && self.themeIndex<3 ? self.themeIndex : 0;
+    [control addTarget:self action:@selector(launcherThemeChanged:) forControlEvents:UIControlEventValueChanged];
+    UILabel *detail = [[UILabel alloc] init]; detail.text = @"Changes apply across the launcher immediately.";
+    detail.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote]; detail.textColor = AmeUISecondaryTextColor(); detail.numberOfLines = 0;
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[title,control,detail]];
+    stack.axis = UILayoutConstraintAxisVertical; stack.spacing = 20; stack.translatesAutoresizingMaskIntoConstraints = NO;
+    [panel addSubview:stack];
+    [NSLayoutConstraint activateConstraints:@[[stack.topAnchor constraintEqualToAnchor:panel.topAnchor constant:20], [stack.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor constant:24], [stack.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor constant:-24], [stack.bottomAnchor constraintEqualToAnchor:panel.bottomAnchor constant:-16], [control.heightAnchor constraintGreaterThanOrEqualToConstant:44]]];
+    self.tableView.tableHeaderView = panel;
+}
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    if (!self.launcherPresentation) return;
+    UIView *header = self.tableView.tableHeaderView;
+    CGFloat width = self.tableView.bounds.size.width;
+    CGSize fitting = [header systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height) withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    CGRect frame = CGRectMake(0,0,width,MAX(168,ceil(fitting.height)));
+    if (!CGRectEqualToRect(header.frame,frame)) { header.frame=frame; self.tableView.tableHeaderView=header; }
+}
+- (void)launcherThemeChanged:(UISegmentedControl *)sender {
+    if (self.themeSelection) self.themeSelection(sender.selectedSegmentIndex);
+}
+
 - (void)setupSections {
     // Sections: [UI effect settings], [Choose background type], [Image background, Video background],
     // [Restore default background, Clear background].
     self.sections = @[
-        @[localize(@"i18n_str_57", nil), localize(@"renewed.appearance.panel_opacity", @"UI Panel Opacity"),
-          localize(@"renewed.appearance.ui_blur", @"UI Blur"), localize(@"renewed.appearance.reset", @"Reset to Recommended")],
+        @[localize(@"i18n_str_57", nil), MetallicPresentationText(@"renewed.appearance.panel_opacity", @"UI Panel Opacity"),
+          MetallicPresentationText(@"renewed.appearance.ui_blur", @"UI Blur"), MetallicPresentationText(@"renewed.appearance.reset", @"Reset to Recommended")],
         @[localize(@"i18n_str_60", nil)],
         @[localize(@"i18n_str_61", nil), localize(@"i18n_str_55", nil)],
         @[localize(@"i18n_str_62", nil), localize(@"i18n_str_63", nil)],
@@ -170,12 +209,13 @@
         @[localize(@"preference.title.glass_style", nil),
           localize(@"preference.title.glass_handdrawn", nil),
           localize(@"preference.title.glass_strength", nil)],
-        @[localize(@"renewed.appearance.wallpaper_blur", @"Wallpaper Blur"),
-          localize(@"renewed.appearance.wallpaper_dimming", @"Wallpaper Dimming")]
+        @[MetallicPresentationText(@"renewed.appearance.wallpaper_blur", @"Wallpaper Blur"),
+          MetallicPresentationText(@"renewed.appearance.wallpaper_dimming", @"Wallpaper Dimming")]
     ];
 }
 
 - (void)closeTapped {
+    if (self.launcherPresentation) { [self.navigationController popViewControllerAnimated:YES]; return; }
     [self dismissViewControllerAnimated:YES completion:nil];
 }
 
@@ -190,8 +230,8 @@
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    if (section == 0) return localize(@"renewed.appearance.interface", @"Interface Glass");
-    if (section == 5) return localize(@"renewed.appearance.wallpaper", @"Wallpaper");
+    if (section == 0) return MetallicPresentationText(@"renewed.appearance.interface", @"Interface Glass");
+    if (section == 5) return MetallicPresentationText(@"renewed.appearance.wallpaper", @"Wallpaper");
     return self.sections[section][0];
 }
 
@@ -254,6 +294,7 @@
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (self.launcherPresentation && indexPath.section == 0) indexPath = [NSIndexPath indexPathForRow:[@[@2,@1,@3,@0][indexPath.row] integerValue] inSection:0];
     static NSString *cellIdentifier = @"BackgroundCell";
     
     BackgroundManager *manager = [BackgroundManager sharedManager];
@@ -466,8 +507,8 @@
 // ★ [GLASS-STYLE] "UI Style" footer: explain the automatic decision / reason for disabling
 // controls (native style / hand-drawn highlight state).
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if (section == 0) return localize(@"renewed.appearance.interface_help", @"UI Blur changes material visibility in Blur mode, not a Gaussian blur radius. Panel Opacity changes only panel tint. Wallpaper controls are separate.");
-    if (section == 5) return localize(@"renewed.appearance.wallpaper_help", @"Wallpaper Blur changes the background material. Wallpaper Dimming is a separate, gentler overlay in Light mode. Neither changes panel opacity. Choose a custom image or video to enable these controls.");
+    if (section == 0) return MetallicPresentationText(@"renewed.appearance.interface_help", @"UI Blur changes material visibility in Blur mode, not a Gaussian blur radius. Panel Opacity changes only panel tint. Wallpaper controls are separate.");
+    if (section == 5) return MetallicPresentationText(@"renewed.appearance.wallpaper_help", @"Wallpaper Blur changes the background material. Wallpaper Dimming is a separate, gentler overlay in Light mode. Neither changes panel opacity. Choose a custom image or video to enable these controls.");
     if (section == 4) {
         NSMutableString *ameFooter = [NSMutableString string];
         [ameFooter appendString:AMEGlassStyleSystemSupportsLiquid()
@@ -546,10 +587,10 @@
 
 - (void)resetInterfaceAppearance {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:self.sections[0][3]
-        message:localize(@"renewed.appearance.reset_help", @"Reset UI effect, UI Blur and Panel Opacity only. Wallpaper, theme, accounts and game settings stay unchanged.")
+        message:MetallicPresentationText(@"renewed.appearance.reset_help", @"Reset UI effect, UI Blur and Panel Opacity only. Wallpaper, theme, accounts and game settings stay unchanged.")
         preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:localize(@"resman.common.cancel", @"Cancel") style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:localize(@"renewed.appearance.reset", @"Reset to Recommended") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+    [alert addAction:[UIAlertAction actionWithTitle:MetallicPresentationText(@"renewed.appearance.reset", @"Reset to Recommended") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         [[BackgroundManager sharedManager] resetInterfaceAppearance];
         [self.tableView reloadData];
     }]];
@@ -618,6 +659,7 @@
 #pragma mark - Table View Delegate
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (self.launcherPresentation && indexPath.section == 0) indexPath = [NSIndexPath indexPathForRow:[@[@2,@1,@3,@0][indexPath.row] integerValue] inSection:0];
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     
     // UI effect settings section.
@@ -1049,4 +1091,18 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+@end
+@implementation MetallicAppearanceContainerViewController
+- (void)viewDidLoad {
+    [super viewDidLoad]; self.view.backgroundColor = UIColor.clearColor;
+    [self addChildViewController:self.appearance];
+    self.appearance.view.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.appearance.view];
+    [self.appearance didMoveToParentViewController:self];
+    self.navigationItem.rightBarButtonItem = self.appearance.navigationItem.rightBarButtonItem;
+    UILayoutGuide *g = self.view.safeAreaLayoutGuide;
+    NSLayoutConstraint *width = [self.appearance.view.widthAnchor constraintEqualToAnchor:g.widthAnchor multiplier:.84]; width.priority = UILayoutPriorityDefaultHigh;
+    [NSLayoutConstraint activateConstraints:@[[self.appearance.view.centerXAnchor constraintEqualToAnchor:g.centerXAnchor], [self.appearance.view.topAnchor constraintEqualToAnchor:g.topAnchor], [self.appearance.view.bottomAnchor constraintEqualToAnchor:g.bottomAnchor], [self.appearance.view.leadingAnchor constraintGreaterThanOrEqualToAnchor:g.leadingAnchor constant:8], [self.appearance.view.trailingAnchor constraintLessThanOrEqualToAnchor:g.trailingAnchor constant:-8], width]];
+}
+- (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self.navigationController setNavigationBarHidden:YES animated:NO]; }
 @end

@@ -29,6 +29,8 @@ typedef void (^SetPreferenceBlock)(NSString *, NSString *, id);
 /// Presentation opt-in only; no persisted preference. Other subclasses retain their existing cells.
 @property(nonatomic, readonly) BOOL usesRefinedSettingsPresentation;
 - (void)refreshRefinedSettingsPresentation;
+- (UISearchBar *)presentationSearchBar;
+- (void)endPresentationSearch;
 - (UIBarButtonItem *)drawHelpButton;
 - (void)initViewCreation;
 

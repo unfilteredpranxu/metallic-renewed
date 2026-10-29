@@ -15,6 +15,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface BackgroundSettingsViewController : UITableViewController <UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIDocumentPickerDelegate>
 
+@property(nonatomic) BOOL launcherPresentation;
+@property(nonatomic) NSInteger themeIndex;
+@property(nonatomic, copy, nullable) void (^themeSelection)(NSInteger index);
 @end
 
+@interface MetallicAppearanceContainerViewController : UIViewController
+@property(nonatomic, strong) BackgroundSettingsViewController *appearance;
+@end
 NS_ASSUME_NONNULL_END

@@ -28,13 +28,16 @@
 #import "BackgroundSettingsViewController.h"
 #import "UIKit+GlassSurface.h"
 #import "BottomActionBarView.h"   // AmePinkGlassButton
-#import <objc/message.h>
+
 
 NSString * const AmeTabTappedNotification = @"AmeTabTapped";   // ★ [ROOTTAB]
 
 @interface AmeRootTabController () <UITabBarControllerDelegate, UINavigationControllerDelegate, UIContextMenuInteractionDelegate>   // ★ Declare the protocol to eliminate the delegate-assignment warning.
 @property (nonatomic, strong) HomeTopNavView *topNav;
 @property (nonatomic, strong) UIView *navigationGroup;
+@property (nonatomic, strong) UIView *brandView;
+@property (nonatomic, assign) NSUInteger pendingSelection;
+@property (nonatomic, assign) BOOL waitingForTransition;
 @property (nonatomic, strong) UILayoutGuide *profileSlot;
 @property (nonatomic, strong) HomeActionPanelView *navigationProfilePanel;
 @property (nonatomic, strong) NSLayoutConstraint *profileSlotWidth;
@@ -52,73 +55,7 @@ NSString * const AmeTabTappedNotification = @"AmeTabTapped";   // ★ [ROOTTAB]
 //   but currently has no active host (nothing in the repo calls e1ShowInstancesPage) ⇒ it is not
 //   shown under either the "Home" or "Instances" tab.
 
-#pragma mark - ★ [TAB-OVERLAP] Zero-duration tab transition (ensure only one page view exists at a time)
-
-/// ★ [TAB-OVERLAP] Make UIKit's tab switch instantaneous, without a cross-fade.
-/// Background: the system's default tab transition cross-fades container snapshots, so the source
-/// and destination pages coexist during the transition.
-/// If users rapidly tap different bottom-bar buttons, a new transition can begin before the prior
-/// one ends, leaving two page snapshots in the container ⇒ visible "overlap / ghosting".
-/// Return a zero-duration animator: remove the old page, attach the new page, then immediately call
-/// completeTransition. Structurally, there is only one page view at a time ⇒ rapid taps cannot overlap.
-/// Uses only public APIs; does not change selection state or page lifecycle and does not disable taps.
-@interface AmeTabInstantAnimator : NSObject <UIViewControllerAnimatedTransitioning>
-@end
-
-@implementation AmeTabInstantAnimator
-
-- (NSTimeInterval)transitionDuration:(nullable id<UIViewControllerContextTransitioning>)transitionContext {
-    return 0.0;
-}
-
-static void AmePurgeSystemTabBars(UIView *view, UIView *preserveTopNav) {
-    if (!view) return;
-    for (UIView *subview in [view.subviews copy]) {
-        if (subview == preserveTopNav) continue;
-        NSString *className = NSStringFromClass([subview class]);
-        BOOL isSystemBar = [subview isKindOfClass:[UITabBar class]]
-                        || [className containsString:@"TabBar"]
-                        || [className containsString:@"FloatingTab"]
-                        || [className containsString:@"TabContainer"]
-                        || [className containsString:@"TabOutline"]
-                        || [className containsString:@"TabSidebar"];
-        if (isSystemBar) {
-            subview.hidden = YES;
-            subview.alpha = 0.0;
-            subview.userInteractionEnabled = NO;
-            subview.frame = CGRectZero;
-            subview.transform = CGAffineTransformMakeTranslation(0, -9999);
-            if (![subview isKindOfClass:[UITabBar class]]) {
-                [subview removeFromSuperview];
-            }
-        } else {
-            AmePurgeSystemTabBars(subview, preserveTopNav);
-        }
-    }
-}
-
-- (void)animateTransition:(id<UIViewControllerContextTransitioning>)transitionContext {
-    UIView *container = transitionContext.containerView;
-    UIViewController *fromVC = [transitionContext viewControllerForKey:UITransitionContextFromViewControllerKey];
-    UIViewController *toVC   = [transitionContext viewControllerForKey:UITransitionContextToViewControllerKey];
-
-    UIView *toView   = [transitionContext viewForKey:UITransitionContextToViewKey]   ?: (toVC ? toVC.view : nil);
-    UIView *fromView = [transitionContext viewForKey:UITransitionContextFromViewKey] ?: (fromVC ? fromVC.view : nil);
-
-    if (toView) {
-        toView.frame = [transitionContext finalFrameForViewController:toVC];
-        toView.alpha = 1.0;
-        [container addSubview:toView];
-    }
-    if (fromView && fromView.superview == container) {
-        [fromView removeFromSuperview];    // ★ Key: remove the old page immediately, leaving no snapshot ⇒ no overlap.
-    }
-    AmePurgeSystemTabBars(container, nil);
-    [transitionContext completeTransition:YES];
-}
-
-@end
-
+// UIKit owns all tab content and transitions. Never inspect or remove its internal containers.
 @implementation AmeRootTabController
 
 /// Wrap each page in a navigation controller so pages can push/present their own flows.
@@ -153,7 +90,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
             case AMELauncherTabDownloads: content = [[DownloadViewController alloc] init]; break;
             case AMELauncherTabAI: content = [[AISessionListViewController alloc] init]; break;
             case AMELauncherTabInstances: content = [[VersionManagerViewController alloc] init]; break;   // ★ [TAB-INST-REVERT] Instances tab = single Version Manager page (restored, no segments).
-            case AMELauncherTabSettings: content = [[LauncherPreferencesViewController alloc] init]; break;
+            case AMELauncherTabSettings: content = [[MetallicSettingsContainerViewController alloc] init]; break;
             default: content = [[UIViewController alloc] init]; break;
         }
 
@@ -174,18 +111,6 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     tbc.viewControllers = vcs;
     tbc.selectedIndex = AMELauncherTabHome;
     tbc.delegate = tbc;
-
-    if (@available(iOS 18.0, *)) {
-        if ([tbc respondsToSelector:@selector(setTabBarHidden:animated:)]) {
-            ((void (*)(id, SEL, BOOL, BOOL))objc_msgSend)(tbc, @selector(setTabBarHidden:animated:), YES, NO);
-        }
-        if ([tbc respondsToSelector:@selector(traitOverrides)]) {
-            id overrides = [tbc performSelector:@selector(traitOverrides)];
-            if ([overrides respondsToSelector:@selector(setHorizontalSizeClass:)]) {
-                ((void (*)(id, SEL, NSInteger))objc_msgSend)(overrides, @selector(setHorizontalSizeClass:), UIUserInterfaceSizeClassCompact);
-            }
-        }
-    }
 
     // ★ Do not set UITabBarAppearance; doing so overrides the system glass on iOS 26.
     return tbc;
@@ -213,26 +138,61 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     }];
     self.aiAction = ai;
     self.toolsMenu = [UIMenu menuWithTitle:@"Tools" children:@[ai]];
-    // Tools retains its native menu, exposed by a profile context menu instead of a sixth icon.
+    self.pendingSelection = NSNotFound;
     self.profileSlot = [[UILayoutGuide alloc] init];
     [self.navigationGroup addLayoutGuide:self.profileSlot];
     self.profileSlotWidth = [self.profileSlot.widthAnchor constraintEqualToConstant:56];
     self.profileSlotHeight = [self.profileSlot.heightAnchor constraintEqualToConstant:56];
+    UIButton *theme = [UIButton buttonWithType:UIButtonTypeSystem];
+    theme.translatesAutoresizingMaskIntoConstraints = NO;
+    theme.accessibilityLabel = @"Theme and appearance";
+    [theme setImage:[UIImage systemImageNamed:@"moon.fill"] forState:UIControlStateNormal];
+    theme.tintColor = AmeUIPrimaryTextColor();
+    AmeApplyGlassChipStyle(theme, 26, YES);
+    [theme addTarget:self action:@selector(ameOpenAppearance) forControlEvents:UIControlEventTouchUpInside];
+    [self.navigationGroup addSubview:theme];
+    UIScrollView *navigationScroll = [[UIScrollView alloc] init];
+    navigationScroll.translatesAutoresizingMaskIntoConstraints = NO;
+    navigationScroll.showsHorizontalScrollIndicator = NO;
+    navigationScroll.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    [self.navigationGroup addSubview:navigationScroll];
+    [navigationScroll addSubview:self.topNav];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
+    NSLayoutConstraint *preferredWidth = [navigationScroll.widthAnchor constraintEqualToAnchor:safe.widthAnchor multiplier:0.64];
+    preferredWidth.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *fillsViewport = [self.topNav.widthAnchor constraintEqualToAnchor:navigationScroll.frameLayoutGuide.widthAnchor];
+    fillsViewport.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
         [self.navigationGroup.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8],
-        [self.navigationGroup.centerXAnchor constraintEqualToAnchor:safe.centerXAnchor],
+        [self.navigationGroup.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-20],
         [self.navigationGroup.leadingAnchor constraintGreaterThanOrEqualToAnchor:safe.leadingAnchor constant:8],
-        [self.navigationGroup.trailingAnchor constraintLessThanOrEqualToAnchor:safe.trailingAnchor constant:-8],
         [self.navigationGroup.heightAnchor constraintEqualToConstant:60],
-        [self.topNav.leadingAnchor constraintEqualToAnchor:self.navigationGroup.leadingAnchor],
-        [self.topNav.centerYAnchor constraintEqualToAnchor:self.navigationGroup.centerYAnchor],
-        [self.profileSlot.leadingAnchor constraintEqualToAnchor:self.topNav.trailingAnchor constant:8],
+        [navigationScroll.leadingAnchor constraintEqualToAnchor:self.navigationGroup.leadingAnchor],
+        [navigationScroll.topAnchor constraintEqualToAnchor:self.navigationGroup.topAnchor],
+        [navigationScroll.bottomAnchor constraintEqualToAnchor:self.navigationGroup.bottomAnchor], preferredWidth,
+        [self.topNav.leadingAnchor constraintEqualToAnchor:navigationScroll.contentLayoutGuide.leadingAnchor],
+        [self.topNav.trailingAnchor constraintEqualToAnchor:navigationScroll.contentLayoutGuide.trailingAnchor],
+        [self.topNav.topAnchor constraintEqualToAnchor:navigationScroll.contentLayoutGuide.topAnchor],
+        [self.topNav.bottomAnchor constraintEqualToAnchor:navigationScroll.contentLayoutGuide.bottomAnchor],
+        [self.topNav.heightAnchor constraintEqualToAnchor:navigationScroll.frameLayoutGuide.heightAnchor], fillsViewport,
+        [theme.leadingAnchor constraintEqualToAnchor:navigationScroll.trailingAnchor constant:16],
+        [theme.centerYAnchor constraintEqualToAnchor:self.navigationGroup.centerYAnchor],
+        [theme.widthAnchor constraintEqualToConstant:52], [theme.heightAnchor constraintEqualToConstant:52],
+        [self.profileSlot.leadingAnchor constraintEqualToAnchor:theme.trailingAnchor constant:16],
         [self.profileSlot.trailingAnchor constraintEqualToAnchor:self.navigationGroup.trailingAnchor],
-        // The panel's unchanged 8/76 expansion offsets are relative to this guide.
         [self.profileSlot.centerYAnchor constraintEqualToAnchor:self.navigationGroup.centerYAnchor constant:-8],
         self.profileSlotWidth, self.profileSlotHeight,
     ]];
+    UIImageView *logo = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"AppLogo-Current"] ?: [UIImage imageNamed:@"AppIcon-Light60x60"]];
+    logo.contentMode = UIViewContentModeScaleAspectFit;
+    [logo.widthAnchor constraintEqualToConstant:40].active = YES;
+    [logo.heightAnchor constraintEqualToConstant:40].active = YES;
+    UILabel *wordmark = [[UILabel alloc] init];
+    wordmark.attributedText = [[NSAttributedString alloc] initWithString:@"METALLIC" attributes:@{NSKernAttributeName:@3, NSFontAttributeName:[UIFont systemFontOfSize:18 weight:UIFontWeightSemibold], NSForegroundColorAttributeName:AmeUIPrimaryTextColor()}];
+    UIStackView *brand = [[UIStackView alloc] initWithArrangedSubviews:@[logo,wordmark]];
+    brand.spacing = 12; brand.alignment = UIStackViewAlignmentCenter; brand.translatesAutoresizingMaskIntoConstraints = NO;
+    self.brandView = brand; [self.view addSubview:brand];
+    [NSLayoutConstraint activateConstraints:@[[brand.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:24], [brand.centerYAnchor constraintEqualToAnchor:self.navigationGroup.centerYAnchor]]];
     if (self.navigationProfilePanel) [self installNavigationProfilePanel:self.navigationProfilePanel];
 
     // Pages below the bar start under it: bar height 60 + 8 top margin + 8 gap = 76.
@@ -285,15 +245,14 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         if (destination == AMEPrimaryDestinationHome) { [strongSelf ameResetToHome]; return; }
         if (strongSelf.presentedViewController) return;
         if (destination == AMEPrimaryDestinationAppearance) {
-            // Keep the current tab/stack and its selection intact under this functional sheet.
-            BackgroundSettingsViewController *appearance = [[BackgroundSettingsViewController alloc] init];
-            UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:appearance];
-            nav.modalPresentationStyle = UIModalPresentationFormSheet;
-            [strongSelf presentViewController:nav animated:YES completion:nil];
+            [strongSelf ameOpenAppearance];
             return;
         }
         NSInteger tab = AMETabForPrimaryDestination(destination);
-        if (tab != NSNotFound && tab < (NSInteger)strongSelf.viewControllers.count) strongSelf.selectedIndex = tab;
+        if (tab != NSNotFound && tab < (NSInteger)strongSelf.viewControllers.count) {
+            if (destination == AMEPrimaryDestinationSettings) [(UINavigationController *)strongSelf.viewControllers[tab] popToRootViewControllerAnimated:NO];
+            strongSelf.selectedIndex = tab;
+        }
     };
 }
 
@@ -346,6 +305,36 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     ];
 }
 
+- (void)ameOpenAppearance {
+    if (self.presentedViewController) return;
+    UINavigationController *nav = (UINavigationController *)self.viewControllers[AMELauncherTabSettings];
+    if (![nav.topViewController isKindOfClass:MetallicAppearanceContainerViewController.class]) {
+        MetallicSettingsContainerViewController *settings = (MetallicSettingsContainerViewController *)nav.viewControllers.firstObject;
+        [settings loadViewIfNeeded];
+        BackgroundSettingsViewController *appearance = [[BackgroundSettingsViewController alloc] initWithStyle:UITableViewStyleInsetGrouped];
+        appearance.launcherPresentation = YES;
+        __weak LauncherPreferencesViewController *owner = settings.preferences;
+        appearance.themeSelection = ^(NSInteger index) {
+            LauncherPreferencesViewController *prefs = owner;
+            NSDictionary *item = nil;
+            for (NSDictionary *row in prefs.prefContents.firstObject) if ([row[@"key"] isEqual:@"ui_theme"]) { item = row; break; }
+            NSArray *keys = @[@"auto", @"light", @"dark"];
+            if (!item || index < 0 || index >= (NSInteger)keys.count) return;
+            BOOL (^enabled)(void) = item[@"enableCondition"];
+            if (enabled && !enabled()) return;
+            prefs.setPreference(@"general", @"ui_theme", keys[index]);
+            void (^action)(NSString *) = item[@"action"]; if (action) action(keys[index]);
+        };
+        NSString *value = settings.preferences.getPreference(@"general", @"ui_theme");
+        appearance.themeIndex = [@[@"auto", @"light", @"dark"] indexOfObject:value];
+        MetallicAppearanceContainerViewController *page = [[MetallicAppearanceContainerViewController alloc] init];
+        page.appearance = appearance;
+        [nav pushViewController:page animated:NO];
+    }
+    self.selectedIndex = AMELauncherTabSettings;
+    self.topNav.appearanceActive = YES; self.topNav.selectedIndex = self.selectedIndex;
+}
+
 - (BOOL)ameOpenAI {
     if (self.presentedViewController) return NO;
     [self.navigationProfilePanel setExpanded:NO animated:!UIAccessibilityIsReduceMotionEnabled()];
@@ -362,62 +351,12 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 }
 
 - (void)ameSuppressSystemTabBar {
-    self.tabBar.hidden = YES;
-    self.tabBar.alpha = 0.0;
-    self.tabBar.userInteractionEnabled = NO;
-    self.tabBar.frame = CGRectZero;
-    self.tabBar.transform = CGAffineTransformMakeTranslation(0, -9999);
-
     if (@available(iOS 18.0, *)) {
-        if ([self respondsToSelector:@selector(setTabBarHidden:animated:)]) {
-            ((void (*)(id, SEL, BOOL, BOOL))objc_msgSend)(self, @selector(setTabBarHidden:animated:), YES, NO);
-        }
-        if ([self respondsToSelector:@selector(traitOverrides)]) {
-            id overrides = [self performSelector:@selector(traitOverrides)];
-            if ([overrides respondsToSelector:@selector(setHorizontalSizeClass:)]) {
-                ((void (*)(id, SEL, NSInteger))objc_msgSend)(overrides, @selector(setHorizontalSizeClass:), UIUserInterfaceSizeClassCompact);
-            }
-        }
-        if ([self respondsToSelector:@selector(sidebar)]) {
-            id sidebar = [self performSelector:@selector(sidebar)];
-            if ([sidebar respondsToSelector:@selector(setHidden:)]) {
-                ((void (*)(id, SEL, BOOL))objc_msgSend)(sidebar, @selector(setHidden:), YES);
-            }
-        }
+        self.mode = UITabBarControllerModeTabBar;
+        [self setTabBarHidden:YES animated:NO];
+    } else {
+        self.tabBar.hidden = YES;
     }
-
-    AmePurgeSystemTabBars(self.view, self.topNav);
-    if (self.tabBar.superview && self.tabBar.superview != self.view) {
-        AmePurgeSystemTabBars(self.tabBar.superview, self.topNav);
-    }
-    if (self.view.window) {
-        for (UIView *wSub in self.view.window.subviews) {
-            NSString *cn = NSStringFromClass([wSub class]);
-            if ([cn containsString:@"FloatingTab"] || [cn containsString:@"TabContainer"] || [cn containsString:@"TabSidebar"]) {
-                wSub.hidden = YES;
-                wSub.alpha = 0.0;
-                wSub.userInteractionEnabled = NO;
-                wSub.frame = CGRectZero;
-                [wSub removeFromSuperview];
-            }
-        }
-    }
-}
-
-- (BOOL)isTabBarHidden {
-    return YES;
-}
-
-- (void)setTabBarHidden:(BOOL)hidden animated:(BOOL)animated {
-    [super setTabBarHidden:YES animated:NO];
-}
-
-- (BOOL)_canShowFloatingTabBar {
-    return NO;
-}
-
-- (BOOL)_shouldShowFloatingTabBar {
-    return NO;
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -430,14 +369,11 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     [self ameSuppressSystemTabBar];
 }
 
-- (void)viewWillLayoutSubviews {
-    [super viewWillLayoutSubviews];
-    [self ameSuppressSystemTabBar];
-}
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    [self ameSuppressSystemTabBar];
+    self.brandView.hidden = CGRectGetMaxX(self.brandView.frame) + 16 > CGRectGetMinX(self.navigationGroup.frame);
+    [self.view bringSubviewToFront:self.brandView];
     [self.view bringSubviewToFront:self.navigationGroup];
     if (self.navigationProfilePanel.superview == self.view) [self.view bringSubviewToFront:self.navigationProfilePanel];
     [self.view bringSubviewToFront:self.floatingDoneButton];
@@ -505,8 +441,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     UINavigationController *inner = [self ameDeepestNavigationControllerIn:selected];
     UIBarButtonItem *bar = inner ? [self ameOwnExitItemOfNav:inner] : nil;
     if (bar) {
-        void (*send)(id, SEL, id) = (void (*)(id, SEL, id))objc_msgSend;
-        send(bar.target, bar.action, bar);
+        [UIApplication.sharedApplication sendAction:bar.action to:bar.target from:bar forEvent:nil];
         [self ameUpdateFloatingDoneButton];
         dispatch_async(dispatch_get_main_queue(), ^{ [self ameUpdateFloatingDoneButton]; });
         return;
@@ -522,6 +457,11 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 - (void)navigationController:(UINavigationController *)navigationController
        didShowViewController:(UIViewController *)viewController
                     animated:(BOOL)animated {
+    NSLog(@"[MetallicNavigation] didShow %@ in %@", NSStringFromClass(viewController.class), NSStringFromClass(navigationController.class));
+    if (navigationController == self.selectedViewController) {
+        self.topNav.appearanceActive = [viewController isKindOfClass:MetallicAppearanceContainerViewController.class];
+        self.topNav.selectedIndex = self.selectedIndex;
+    }
     [self ameUpdateFloatingDoneButton];
 }
 
@@ -548,7 +488,27 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 }
 
 - (void)setSelectedIndex:(NSUInteger)selectedIndex {
+    if (selectedIndex >= self.viewControllers.count) return;
+    id<UIViewControllerTransitionCoordinator> coordinator = self.transitionCoordinator;
+    if (coordinator && coordinator.isAnimated && self.selectedIndex != selectedIndex) {
+        self.pendingSelection = selectedIndex;
+        if (!self.waitingForTransition) {
+            self.waitingForTransition = YES;
+            __weak typeof(self) weakSelf = self;
+            [coordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    AmeRootTabController *root = weakSelf;
+                    root.waitingForTransition = NO;
+                    NSUInteger next = root.pendingSelection; root.pendingSelection = NSNotFound;
+                    if (next != NSNotFound) root.selectedIndex = next;
+                });
+            }];
+        }
+        return;
+    }
+    NSLog(@"[MetallicNavigation] selection %lu -> %lu", (unsigned long)self.selectedIndex, (unsigned long)selectedIndex);
     [super setSelectedIndex:selectedIndex];
+    self.topNav.appearanceActive = selectedIndex == AMELauncherTabSettings && [[(UINavigationController *)self.selectedViewController topViewController] isKindOfClass:MetallicAppearanceContainerViewController.class];
     self.topNav.selectedIndex = selectedIndex;
     // Home's editor disables its local chrome. That must not lock the shared profile on other tabs.
     if (selectedIndex != AMELauncherTabHome) self.navigationProfilePanel.userInteractionEnabled = YES;
@@ -583,6 +543,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 - (void)tabBarController:(UITabBarController *)tabBarController
  didSelectViewController:(UIViewController *)viewController {
     NSInteger idx = [tabBarController.viewControllers indexOfObject:viewController];
+    self.topNav.selectedIndex = self.selectedIndex;
     if (idx == NSNotFound) return;
     NSLog(@"[ROOTTAB] tap index=%ld", (long)idx);
     // Broadcast to legacy code that cares about navigation (LauncherMenuViewController, etc.);
@@ -590,17 +551,6 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     [[NSNotificationCenter defaultCenter] postNotificationName:AmeTabTappedNotification
                                                        object:nil
                                                      userInfo:@{@"index": @(idx)}];
-}
-
-#pragma mark - ★ [TAB-OVERLAP] Bottom-bar tab transition
-
-/// ★ [TAB-OVERLAP] Use a zero-duration transition for tab switches (see AmeTabInstantAnimator):
-/// rapid taps on different bottom-bar buttons can no longer leave a window where the previous
-/// snapshot remains while the next one appears ⇒ no overlap.
-- (id<UIViewControllerAnimatedTransitioning>)tabBarController:(UITabBarController *)tabBarController
-        animationControllerForTransitionFromViewController:(UIViewController *)fromViewController
-                                          toViewController:(UIViewController *)toViewController {
-    return [[AmeTabInstantAnimator alloc] init];
 }
 
 @end

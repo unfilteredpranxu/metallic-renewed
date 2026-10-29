@@ -66,5 +66,6 @@ extern NSString * const kShortcutActionMultiplayer;   // ★ [MP-RESTORE] Multip
 // MARK: - LauncherNewsViewController
 
 @interface LauncherNewsViewController : UIViewController
+- (void)openCustomize; // Existing editor and saved-layout callbacks.
 
 @end

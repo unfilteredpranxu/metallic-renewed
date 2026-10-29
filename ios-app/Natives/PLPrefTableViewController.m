@@ -240,6 +240,12 @@
 @implementation PLPrefTableViewController
 
 - (BOOL)usesRefinedSettingsPresentation { return NO; }
+- (UISearchBar *)presentationSearchBar { return self.searchController.searchBar; }
+- (void)endPresentationSearch {
+    self.searchController.active = NO;
+    self.searchController.searchBar.text = @"";
+    [self updateSearchResultsForSearchController:self.searchController];
+}
 
 - (void)refreshRefinedSettingsPresentation {
     if (!self.usesRefinedSettingsPresentation) return;

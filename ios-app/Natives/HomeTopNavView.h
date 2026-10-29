@@ -42,4 +42,5 @@ static inline NSInteger AMEPrimaryDestinationForTab(NSInteger tab) {
 @property (nonatomic, copy) void (^onSelect)(AMEPrimaryDestination destination);
 // Remains an INTERNAL index for legacy notification/caller compatibility.
 @property (nonatomic, assign) NSInteger selectedIndex;
+@property (nonatomic, assign) BOOL appearanceActive;
 @end

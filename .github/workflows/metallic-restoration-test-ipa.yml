@@ -1,0 +1,809 @@
+# Exact-M08 experimental test build. CI evidence commits never match the workflow path trigger.
+name: Metallic exact-reference restoration test IPA
+run-name: Metallic restoration 711f704d full test IPA
+permissions:
+  contents: read
+concurrency:
+  group: metallic-restoration-711f704d-test-ipa
+  cancel-in-progress: true
+jobs:
+  native-test:
+    if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/metallic-exact-ui-restoration'
+      && !contains(github.event.head_commit.message, '[m08-diagnostics]')
+    runs-on: macos-26
+    timeout-minutes: 75
+    env:
+      SOURCE_SHA: 711f704da6046427bbd9f0c4706b143dce9849fd
+      AIR_SHA: c4797387ca9a81f31fdcdd2723ec1050ca35fdb3
+      ZEROTIER_SHA: b8e672f54286be8500bc875e153826af7b01d6e6
+      NG_GL4ES_SHA: 6e153a1622a8d9ef903f7975aafbef2453571bab
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+    - name: Check out exact immutable M08 application sources
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        repository: unfilteredpranxu/metallic-renewed
+        ref: 711f704da6046427bbd9f0c4706b143dce9849fd
+        path: original
+        persist-credentials: false
+        submodules: false
+        lfs: true
+    - name: Verify source SHA, Metallic identity and immutable artwork before any build
+      id: source
+      shell: bash
+      run: |-
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-01.log") 2>&1
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        test "$(git -C original rev-parse HEAD)" = "$SOURCE_SHA"
+        git -C original diff --exit-code HEAD --
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import hashlib,json,os,plistlib,subprocess
+        src=Path('original'); diag=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'
+        info=plistlib.loads((src/'ios-app/Natives/Info.plist').read_bytes())
+        for k,v in {'CFBundleDisplayName':'Metallic','CFBundleName':'Metallic','CFBundleIdentifier':'com.tokyxkai.metallic','CFBundleExecutable':'AngelAuraAmethyst'}.items():
+            assert info[k]==v,(k,info.get(k))
+        assets=src/'ios-app/Natives/Assets.xcassets'
+        assert assets.is_dir()
+        manifest={}
+        for p in sorted(assets.rglob('*')):
+            if p.is_file(): manifest[str(p.relative_to(src))]=hashlib.sha256(p.read_bytes()).hexdigest()
+        for contents in assets.rglob('Contents.json'):
+            for item in json.loads(contents.read_text()).get('images',[]):
+                if item.get('filename'): assert (contents.parent/item['filename']).is_file(),item
+        assert (assets/'AppIcon-Light.appiconset/1024x1024.png').is_file()
+        expected={'1024x1024.png':'7504cf1938ccfc8ea08a2cd89f03535a1556870464ba2291658698d2771c61fe','1024x1024-Transparent.png':'7504cf1938ccfc8ea08a2cd89f03535a1556870464ba2291658698d2771c61fe','1024x1024-Monochrome-White.png':'3e62a34edc15c57aebff8bbd98572f52d2ce13dc07fe14500a4c3e15f8e99e09'}
+        for name,h in expected.items(): assert hashlib.sha256((assets/'AppIcon-Light.appiconset'/name).read_bytes()).hexdigest()==h,name
+        (diag/'m08-assets-sha256.json').write_text(json.dumps(manifest,indent=2))
+        (diag/'source-identity.json').write_text(json.dumps(info,indent=2))
+        (diag/'revisions.json').write_text(json.dumps({k:os.environ.get(k) for k in ['SOURCE_SHA','GITHUB_SHA','GITHUB_WORKFLOW_SHA','GITHUB_WORKFLOW_REF','GITHUB_RUN_ID','AIR_SHA','ZEROTIER_SHA','NG_GL4ES_SHA']},indent=2))
+        print('VERIFIED exact M08 checkout, Metallic metadata and original icon artwork hashes')
+        PYCODE
+    - name: Install and identify original build toolchain
+      uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+      with:
+        distribution: zulu
+        java-version: '8'
+    - name: Toolchain and prerequisite setup
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-03.log") 2>&1
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        test -d /Applications/Xcode_26.3.app/Contents/Developer
+        test "$DEVELOPER_DIR" = /Applications/Xcode_26.3.app/Contents/Developer
+        brew list --versions ldid >/dev/null 2>&1 || brew install ldid
+        brew list --versions wget >/dev/null 2>&1 || brew install wget
+        brew list --versions cmake >/dev/null 2>&1 || brew install cmake
+        {
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          xcrun clang --version
+          xcrun swiftc --version
+          make --version
+          java -version
+          javac -version
+          cmake --version
+          ldid -h || true
+        } > "$RUNNER_TEMP/metallic-native-build/toolchain.log" 2>&1
+
+        test "$(xcrun --sdk iphoneos --show-sdk-version)" = 26.2
+    - name: Initialize original pinned NG-GL4ES Git submodule
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-04.log") 2>&1
+        set -euo pipefail
+        test "$(git -C original rev-parse HEAD)" = "$SOURCE_SHA"
+        git -C original submodule update --init --depth=1 ios-app/ThirdParty/NG-GL4ES
+        git -C original submodule status | tee "$RUNNER_TEMP/metallic-native-build/source-submodules.txt"
+
+        test "$(git -C original/ios-app/ThirdParty/NG-GL4ES rev-parse HEAD)" = "$NG_GL4ES_SHA"
+    - name: Retrieve fixed-revision Air and ZeroTier inputs
+      shell: bash
+      env:
+        GIT_LFS_SKIP_SMUDGE: '1'
+      run: |
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-05.log") 2>&1
+        set -euo pipefail
+        cd "$RUNNER_TEMP"
+        git init air
+        git -C air remote add origin https://github.com/herbrine8403/Amethyst-iOS-MyRemastered.git
+        git -C air fetch --filter=blob:none --depth=1 origin "$AIR_SHA"
+        git -C air -c advice.detachedHead=false checkout --detach "$AIR_SHA"
+        test "$(git -C air rev-parse HEAD)" = "$AIR_SHA"
+        git -C air submodule update --init --depth=1 Natives/external/ZeroTierFramework Natives/external/AFNetworking Natives/external/DBNumberedSlider Natives/external/fishhook
+        test "$(git -C air/Natives/external/ZeroTierFramework rev-parse HEAD)" = "$ZEROTIER_SHA"
+        for p in Natives/installer/modpack/ModrinthAPI.h Natives/input/ControllerInput.m Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt; do
+          test -f "air/$p" || { echo "Missing pinned dependency: $p"; exit 1; }
+        done
+        {
+          echo "Original source: $SOURCE_SHA"
+          echo "Air commit: $(git -C air rev-parse HEAD)"
+          echo "ZeroTier commit: $(git -C air/Natives/external/ZeroTierFramework rev-parse HEAD)"
+          shasum -a 256 air/Natives/installer/modpack/ModrinthAPI.h air/Natives/input/ControllerInput.m air/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt
+        } | tee "$RUNNER_TEMP/metallic-native-build/pinned-inputs.txt"
+
+        git -C air submodule status --recursive >> "$RUNNER_TEMP/metallic-native-build/pinned-inputs.txt"
+    - name: Construct independent scratch build without overwriting any original file
+      shell: bash
+      run: |-
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-06.log") 2>&1
+        set -euo pipefail
+        SRC="$GITHUB_WORKSPACE/original"
+        SCRATCH="$RUNNER_TEMP/metallic-scratch"
+        mkdir -p "$SCRATCH"
+        rsync -a "$SRC/" "$SCRATCH/"
+        echo "SCRATCH_DIR=$SCRATCH" >> "$GITHUB_ENV"
+        test "$(git -C "$SCRATCH" rev-parse HEAD)" = "$SOURCE_SHA"
+        git -C "$SCRATCH" diff --exit-code HEAD --
+        python3 - "$RUNNER_TEMP/air/Natives" "$SCRATCH" <<'PYCODE'
+        from pathlib import Path
+        import os,sys,re,shutil,json,hashlib,collections
+        up=Path(sys.argv[1]);root=Path(sys.argv[2]);dst=root/'ios-app/Natives'
+        diag=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build';ledger=[]
+        def stage(src,target,provenance):
+            if os.path.lexists(target): return False
+            # Never traverse a symlink/file parent to stage an upstream directory into original inputs.
+            for parent in target.parents:
+                if parent==root: break
+                if parent.is_symlink() or (parent.exists() and not parent.is_dir()): return False
+            target.parent.mkdir(parents=True,exist_ok=True)
+            if src.is_symlink(): target.symlink_to(os.readlink(src));digest=None
+            elif src.is_file(): shutil.copy2(src,target);digest=hashlib.sha256(src.read_bytes()).hexdigest()
+            else: return False
+            ledger.append({'destination':str(target.relative_to(root)),'source':str(src),'revision':provenance,'sha256':digest,'symlink':os.readlink(src) if src.is_symlink() else None})
+            return True
+        # Vendor prerequisites referenced by the existing build. Do not hydrate arbitrary upstream UI trees.
+        scopes=['external/SimpleFPEWrapper','installer','input','external/ZeroTierFramework','external/AFNetworking','external/DBNumberedSlider','external/NRFileManager','external/UnzipKit','external/fishhook','external/ballpa1n','external/mach','external/AltKit','external/Apple','external/lzma','external/mesa','resources/Frameworks']
+        for scope in scopes:
+            source=up/scope
+            if not source.exists(): continue
+            for folder,dirs,files in os.walk(source,followlinks=False):
+                for name in list(dirs):
+                    if name in ('.git','build'): dirs.remove(name);continue
+                    p=Path(folder)/name
+                    if p.is_symlink(): dirs.remove(name);stage(p,dst/p.relative_to(up),os.environ['AIR_SHA'])
+                for name in files:
+                    if name!='.git':
+                        p=Path(folder)/name;stage(p,dst/p.relative_to(up),os.environ['AIR_SHA'])
+        # Recover complete original localization/storyboard resources; never insert partial tables.
+        for source in (up/'resources').glob('*.lproj'):
+            for p in source.rglob('*'):
+                if p.is_file() or p.is_symlink(): stage(p,dst/p.relative_to(up),os.environ['AIR_SHA'])
+        # Missing native units explicitly registered in original CMake, plus their quoted-header closure.
+        cmake=(dst/'CMakeLists.txt').read_text()
+        cmake='\n'.join(line.split('#',1)[0] for line in cmake.splitlines())
+        paths=set(re.findall(r'(?<![\w$])([\w./+-]+\.(?:m|mm|c|cc|cpp|h|hpp|swift))\b',cmake))
+        for rel in sorted(paths):
+            p=Path(rel)
+            if not p.is_absolute() and '..' not in p.parts: stage(up/p,dst/p,os.environ['AIR_SHA'])
+        queue=collections.deque(dst/rel for rel in sorted(paths) if (dst/rel).is_file() and (dst/rel).suffix in ('.m','.mm','.c','.cpp','.h','.hpp'))
+        seen=set()
+        while queue:
+            p=queue.popleft()
+            if p in seen or not p.is_file(): continue
+            seen.add(p)
+            for inc in re.findall(r'^\s*#(?:import|include)\s*"([^"\n]+)"',p.read_text(errors='replace'),re.M):
+                candidates=[p.parent/inc,dst/inc]
+                if any(q.exists() for q in candidates): continue
+                for target in candidates:
+                    try: rel=target.resolve().relative_to(dst.resolve())
+                    except ValueError: continue
+                    source=up/rel
+                    if source.is_file() and stage(source,target,os.environ['AIR_SHA']): queue.append(target);break
+        # Exact M08 script resources at the runtime bundle lookup location, only when absent.
+        # These bytes are not taken from upstream and no script implementation is edited.
+        for name in ['UniversalJIT26.js','UniversalJIT26Extension.js','JIT26Script.js']:
+            source=root/'bundle-templates'/name
+            assert source.is_file(),source
+            target=dst/'resources'/name
+            if os.path.lexists(target):
+                assert target.is_file() and target.read_bytes()==source.read_bytes(),f'Existing JIT asset differs from exact M08 template: {target}'
+            else: stage(source,target,os.environ['SOURCE_SHA'])
+        (diag/'staged-prerequisites.json').write_text(json.dumps(ledger,indent=2))
+        expected=json.loads((diag/'m08-assets-sha256.json').read_text())
+        for rel,digest in expected.items(): assert hashlib.sha256((root/rel).read_bytes()).hexdigest()==digest,rel
+        for rel in ['installer/modpack/ModrinthAPI.h','input/ControllerInput.m','external/ZeroTierFramework/ios-example-app/zt.framework/zt','resources/Frameworks/libEGL.framework/libEGL','resources/Frameworks/libGLESv2.framework/libGLESv2','resources/Frameworks/AltKit.framework/AltKit','resources/Frameworks/CAltKit.framework/CAltKit','resources/Frameworks/UnzipKit.framework/UnzipKit','resources/en.lproj/LaunchScreen.storyboardc']:
+            assert (dst/rel).exists(),f'Missing original prerequisite: {rel}'
+        print('Staged absent prerequisites:',len(ledger),'; existing paths, symlinks and artwork preserved')
+        PYCODE
+        git -C "$SCRATCH" diff --exit-code HEAD --
+        printf 'Application SHA: %s\nWorkflow SHA: %s\n' "$SOURCE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/metallic-native-build/staging-summary.txt"
+    - name: Stage verified Terracotta and Khronos headers into disposable scratch only
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import hashlib, json, os, shutil
+        run=Path(os.environ['RUNNER_TEMP'])
+        repo=Path(os.environ['GITHUB_WORKSPACE'])/'original'
+        scratch=Path(os.environ['SCRATCH_DIR'])
+        air=run/'air'
+        diag=run/'metallic-native-build'
+        expected='3f438c8cc07d86cf27d7c0db94cbffb1ef7ce1af65beaf314783d541908d60f9'
+        src=air/'Natives/terracotta/libterracotta.xcframework/ios-arm64/libterracotta.a'
+        dst=scratch/'ios-app/Natives/terracotta/libterracotta.xcframework/ios-arm64/libterracotta.a'
+        assert src.is_file(),f'Pinned Air Terracotta archive missing: {src}'
+        def sha256(p):
+            h=hashlib.sha256()
+            with p.open('rb') as stream:
+                for data in iter(lambda:stream.read(1024*1024),b''):
+                    h.update(data)
+            return h.hexdigest()
+        actual=sha256(src)
+        assert actual==expected,f'Terracotta SHA-256 mismatch: {actual}'
+        for parent in dst.parents:
+            if parent==scratch: break
+            assert not parent.is_symlink() and (not parent.exists() or parent.is_dir()),f'Unsafe Terracotta parent: {parent}'
+        if os.path.lexists(dst):
+            assert dst.is_file() and sha256(dst)==expected,'Refusing to replace existing Terracotta input'
+        else:
+            dst.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copy2(src,dst)
+        assert sha256(dst)==expected
+        # Genuine existing M08 Khronos headers. Repair only the missing LTW include search path.
+        existing=scratch/'ios-app/Natives/external/MobileGlues/MobileGlues-cpp/include'
+        src_header=repo/'ios-app/Natives/external/MobileGlues/MobileGlues-cpp/include/GLES3/gl32.h'
+        assert existing.is_dir() and (existing/'GLES3/gl32.h').is_file(),'Original Khronos GLES3 header not found'
+        assert src_header.is_file() and sha256(src_header)==sha256(existing/'GLES3/gl32.h'),'Source header provenance mismatch'
+        search=scratch/'ios-app/Natives/external/MobileGlues/src/main/cpp/include'
+        if os.path.lexists(search):
+            assert (search/'GLES3/gl32.h').is_file() and sha256(search/'GLES3/gl32.h')==sha256(src_header),'Existing LTW include path is incompatible; refusing overwrite'
+        else:
+            for parent in search.parents:
+                if parent==scratch: break
+                assert not parent.is_symlink() and (not parent.exists() or parent.is_dir()),f'Unsafe LTW parent: {parent}'
+            search.parent.mkdir(parents=True,exist_ok=True)
+            search.symlink_to(os.path.relpath(existing,search.parent),target_is_directory=True)
+        assert sha256(search/'GLES3/gl32.h')==sha256(src_header)
+        info={
+            'source_sha':os.environ['SOURCE_SHA'],
+            'air_sha':os.environ['AIR_SHA'],
+            'terracotta_sha256':actual,
+            'terracotta_archive_bytes':src.stat().st_size,
+            'terracotta_stage':'scratch-only; no replacement',
+            'gles3_gl32_sha256':sha256(src_header),
+            'ltw_include_path':'scratch-only symlink or matching existing directory',
+            'deployment_target':'UNCHANGED (iOS 14 source target; Terracotta contains iOS 18.5 objects)',
+            'older_os_compatibility':'UNVERIFIED; test IPA only',
+        }
+        (diag/'m08-recovered-inputs.json').write_text(json.dumps(info,indent=2)+'\n')
+        print(json.dumps(info,indent=2))
+        PYCODE
+        git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
+        git -C "$SCRATCH_DIR" diff --exit-code HEAD --
+    - name: Stage pinned Blaze3D shader mirror group with byte verification
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 - <<'PYCODE'
+        import hashlib, os, shutil, json
+        from pathlib import Path
+        root=Path(os.environ['SCRATCH_DIR'])
+        original=Path(os.environ['GITHUB_WORKSPACE'])/'original'
+        air=Path(os.environ['RUNNER_TEMP'])/'air'/'Natives'/'shader_glslang'
+        target=root/'ios-app'/'Natives'/'shader_glslang'
+        diag=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'
+        manifest=air/'blaze3d_group.txt'
+        assert manifest.is_file(),f'Pinned Air group manifest absent: {manifest}'
+        assert not os.path.lexists(original/'ios-app/Natives/shader_glslang'),'Source already contains shader group: refuse replacing application assets'
+        assert not os.path.lexists(target),'Scratch already contains shader group: refuse replacing assets'
+        entries=[];total=0
+        for raw in manifest.read_text(encoding='utf-8').splitlines():
+            line=raw.strip()
+            if not line or line.startswith('#'):continue
+            digest, size, name=line.split(None,2)
+            assert name.startswith('com/mojang/blaze3d/') and all(x not in ('.','..','') for x in name.split('/')),f'Unsafe class path: {name}'
+            assert len(digest)==32 and all(x in '0123456789abcdef' for x in digest),name
+            rel=Path(name+'.class')
+            src=air/'blaze3d'/rel
+            assert src.is_file() and not src.is_symlink(),f'Missing pinned class: {name}'
+            data=src.read_bytes()
+            assert len(data)==int(size) and hashlib.md5(data).hexdigest()==digest,f'Pinned group source mismatch: {name}'
+            entries.append((rel,src,data))
+            total+=len(data)
+        assert len(entries)==129 and total==557034,f'Unexpected pinned Blaze3D mirror group count/size: {len(entries)}/{total}'
+        assert len({str(rel) for rel,_,_ in entries})==len(entries),'Duplicate class paths'
+        target.mkdir(parents=True,exist_ok=False)
+        shutil.copy2(manifest,target/'blaze3d_group.txt')
+        for rel,src,data in entries:
+            dst=target/'blaze3d'/rel
+            dst.parent.mkdir(parents=True,exist_ok=True)
+            assert not os.path.lexists(dst)
+            shutil.copy2(src,dst)
+            assert dst.read_bytes()==data
+        info={'application_sha':os.environ['SOURCE_SHA'],'source_revision':os.environ['AIR_SHA'],'classes':len(entries),'class_bytes':total,'manifest_sha256':hashlib.sha256(manifest.read_bytes()).hexdigest(),'archive_role':'Scratch-only shader packaging input; original M08 pack_shader_glslang.py unchanged'}
+        (diag/'blaze3d-group-recovery.json').write_text(json.dumps(info,indent=2)+'\n')
+        print(json.dumps(info,indent=2))
+        PYCODE
+        git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
+        git -C "$SCRATCH_DIR" diff --exit-code HEAD --
+    - name: Recover exact-M08 SPIRV-Cross CMake templates and mandatory source closure
+      shell: bash
+      run: |-
+        set -euo pipefail
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-spirv-recovery.log") 2>&1
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import os,hashlib,json,subprocess,re
+        root=Path(os.environ['SCRATCH_DIR']);original=Path(os.environ['GITHUB_WORKSPACE'])/'original';air=Path(os.environ['RUNNER_TEMP'])/'air';diag=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'
+        large='ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross'
+        small='ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross'
+        src=original/large;dst=root/small
+        assert subprocess.check_output(['git','-C',str(original),'rev-parse','HEAD'],text=True).strip()==os.environ['SOURCE_SHA']
+        for rel,tree in [(large,'514ed4f4455ff6451866ad99bfae55955cd5eb92'),(small,'08a3bfc528225335563051f4637a60f6d52bcf90')]:
+            assert subprocess.check_output(['git','-C',str(original),'rev-parse',os.environ['SOURCE_SHA']+':'+rel],text=True).strip()==tree,rel
+        assert subprocess.check_output(['git','-C',str(air),'rev-parse','HEAD'],text=True).strip()==os.environ['AIR_SHA']
+        # Both original trees have the SAME existing 31 file contents, including CMakeLists.
+        # Recover only missing build inputs; never copy from the later dep_mg-aligned tree.
+        shared=[]
+        for p in sorted((original/small).rglob('*')):
+            if not p.is_file():continue
+            rel=p.relative_to(original/small);other=src/rel
+            assert not p.is_symlink() and other.is_file() and p.read_bytes()==other.read_bytes(),f'Incompatible original SPIRV-Cross revisions: {rel}'
+            assert (dst/rel).is_file() and (dst/rel).read_bytes()==p.read_bytes(),f'Existing scratch SPIRV-Cross changed: {rel}'
+            shared.append(str(rel))
+        assert len(shared)==31,shared
+        records=[{'path': 'cmake/gitversion.in.h', 'git_blob': 'bff73e964e8d5e142dfaeedf0067f9a9b1cd51cd', 'sha256': '9529c74b9e1b025ce90c864044a23a65d43cb52efcad1bee2d6bf57c87fcc105', 'bytes': 275}, {'path': 'pkg-config/spirv-cross-c.pc.in', 'git_blob': '2b586b6ffa59e4f34f3367f7722bee09ffb2abe2', 'sha256': 'f606fe9ba5ee14b752e3cdf69945432ea355f3490549392f4ab95c99dfe41386', 'bytes': 400}, {'path': 'pkg-config/spirv-cross-c-shared.pc.in', 'git_blob': '94e63eaeb4ec0e2dd5025d31ff6c64ac1da01a73', 'sha256': 'ae3a41e476e434af6a0ca4de3d34ecc276eddfa6384abc6b4d636daf935d9977', 'bytes': 478}, {'path': 'spirv_parser.cpp', 'git_blob': '2cf232a5f00d4e403326a5f14d6895bc700cf70d', 'sha256': '36bac4dd1c0f311d764c0c2c528e76b340954ffb822950982e5be9f068a9bfcf', 'bytes': 44744}, {'path': 'spirv_parser.hpp', 'git_blob': 'dabc0e22446bce815ee98b0eb28eff503d50415d', 'sha256': 'e5cc214ad1d87bd78183f2e72a902c0fb994dc18e7aa6e83e86cb2875708c2f2', 'bytes': 2633}, {'path': 'spirv_glsl.cpp', 'git_blob': 'cbd135d05dd15ddd661cdfafa82b675473a073f9', 'sha256': 'f5a313927e6b01f516493f785366d7677f512b64811d8a62ecb2089e3288c033', 'bytes': 694587}, {'path': 'spirv_glsl.hpp', 'git_blob': '349fb8d3a49709bdca143fb1ed475ba7438fd416', 'sha256': '7dd12c95f65eaeda5ba1f7af25a496a081dda0ccb447af2bf9fac529bb720eda', 'bytes': 54302}, {'path': 'spirv_cross_util.cpp', 'git_blob': 'f30706f592f2704502f602f6780de2cb1135f477', 'sha256': '9f9ce212e5d796c7833a20baba3898bd81083cc278a804996bda91718275d263', 'bytes': 2621}, {'path': 'spirv_cross_util.hpp', 'git_blob': 'e6e3fcdb6340083259535db4ded9da1310d8bf8c', 'sha256': '0942b0bae888eb986685adaf2d6741d15d4811711056d8dbc68fa80f40d18480', 'bytes': 1402}, {'path': 'LICENSES/Apache-2.0.txt', 'git_blob': '4ed90b952240cb872426e64da9e41252cc61ae3e', 'sha256': '44b0a56e80b41a1b0a6bd1292515e806539fd97b30be54c2719e6c763190ab57', 'bytes': 10343}, {'path': 'LICENSES/CC-BY-4.0.txt', 'git_blob': '3f92dfc5fdda05635f28da16a47fa1a5c99c0dc6', 'sha256': 'b89aeb7c2a164a0576786dd2a8b57f2fb628b23981f0a06bd77e2f99a9befa0f', 'bytes': 16814}, {'path': 'LICENSES/LicenseRef-KhronosFreeUse.txt', 'git_blob': '430863bc98ad8ee1d0a4876a4c2a5b6f5d32fd74', 'sha256': 'fbeaca472f4f70e276dd1106ca5097435967a22ad6c1d8200aef7ad9f70aaf3f', 'bytes': 1305}, {'path': 'LICENSES/MIT.txt', 'git_blob': '204b93da48d02900098ced21c54062ffbff36b9c', 'sha256': '8f25018489d6fe0dec34a352314c38dc146247b7de65735790f4398a92afa84b', 'bytes': 1108}]
+        assert hashlib.sha256(json.dumps(records,sort_keys=True,separators=(',',':')).encode()).hexdigest()=='c25fe4f677a169af275b82ee351c282aacf1bc0de809d4b7221d166a73e91424'
+        for rec in records:
+            rel=rec['path'];p=src/rel;target=dst/rel
+            assert p.is_file() and not p.is_symlink(),p
+            data=p.read_bytes()
+            assert len(data)==rec['bytes'] and hashlib.sha256(data).hexdigest()==rec['sha256'],rel
+            assert subprocess.check_output(['git','-C',str(original),'rev-parse',os.environ['SOURCE_SHA']+':'+large+'/'+rel],text=True).strip()==rec['git_blob'],rel
+            assert subprocess.check_output(['git','-C',str(air),'rev-parse',os.environ['AIR_SHA']+':Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross/'+rel],text=True).strip()==rec['git_blob'],rel
+            for parent in target.parents:
+                if parent==root:break
+                assert not parent.is_symlink() and (not parent.exists() or parent.is_dir()),parent
+            if os.path.lexists(target):
+                assert not target.is_symlink() and target.is_file() and target.read_bytes()==data,f'Refusing replacement: {target}'
+            else:
+                target.parent.mkdir(parents=True,exist_ok=True)
+                with target.open('xb') as f:f.write(data)
+            assert target.read_bytes()==data,rel
+        # Audit every source listed by the enabled core/GLSL/util targets and its quoted includes.
+        cmake=(dst/'CMakeLists.txt').read_text();units=[]
+        for name in ['core','glsl','util']:
+            match=re.search(r'set\(spirv-cross-'+name+r'-sources\s+(.*?)\)',cmake,re.S);assert match,name
+            for rel in re.findall(r'\$\{CMAKE_CURRENT_SOURCE_DIR\}/([A-Za-z0-9_./+-]+)',match.group(1)):
+                assert (dst/rel).is_file(),rel
+                units.append(dst/rel)
+        queue=list(units);seen=set()
+        while queue:
+            p=queue.pop()
+            if p in seen:continue
+            seen.add(p)
+            for inc in re.findall(r'^\s*#\s*include\s*"([^"\n]+)"',p.read_text(),re.M):
+                q=p.parent/inc;assert q.is_file(),(p,inc);queue.append(q)
+        info={'application_sha':os.environ['SOURCE_SHA'],'air_sha':os.environ['AIR_SHA'],'source_tree':'514ed4f4455ff6451866ad99bfae55955cd5eb92','original_destination_tree':'08a3bfc528225335563051f4637a60f6d52bcf90','unchanged_shared_files':shared,'recovered_files':records,'enabled_source_header_closure_files':len(seen),'revision_rule':'Every recovered blob exists identically in immutable M08 and pinned Air. Existing files are never replaced; no SPIRV-Cross feature flags changed.'}
+        (diag/'spirv-cross-recovery.json').write_text(json.dumps(info,indent=2)+'\n')
+        print('PASS: exact-source SPIRV-Cross templates and enabled source/header closure;13 missing files recovered without replacement')
+        PYCODE
+        git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
+        git -C "$SCRATCH_DIR" diff --exit-code HEAD --
+    - name: Complete mandatory build-input preflight and pinned SFPEW recovery verification
+      shell: bash
+      run: |-
+        set -euo pipefail
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import os,subprocess,hashlib,json,shutil,re,zipfile
+        root=Path(os.environ['SCRATCH_DIR']);original=Path(os.environ['GITHUB_WORKSPACE'])/'original';air=Path(os.environ['RUNNER_TEMP'])/'air';diag=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'
+        assert subprocess.check_output(['git','-C',str(original),'rev-parse','HEAD'],text=True).strip()==os.environ['SOURCE_SHA']
+        rel='Natives/external/SimpleFPEWrapper'
+        assert subprocess.check_output(['git','-C',str(air),'rev-parse',os.environ['AIR_SHA']+':'+rel],text=True).strip()=='828811789978e4bbdfb1feff19bacc6f793986f7'
+        records=[]
+        for entry in subprocess.check_output(['git','-C',str(air),'ls-tree','-r','-z',os.environ['AIR_SHA'],rel]).split(b'\0'):
+            if not entry:continue
+            meta,name=entry.split(b'\t',1);mode,kind,oid=meta.decode().split();name=name.decode()
+            assert kind=='blob' and mode in ('100644','100755'),f'Unexpected nested dependency/symlink: {name}'
+            src=air/name;dst=root/'ios-app'/name
+            assert src.is_file() and dst.is_file(),f'Incomplete pinned SFPEW input: {name}'
+            assert subprocess.check_output(['git','hash-object',str(src)],text=True).strip()==oid,name
+            data=src.read_bytes();assert not data.startswith(b'version https://git-lfs.github.com/spec/v1'),name
+            assert dst.read_bytes()==data,f'Refusing to replace divergent SFPEW file: {name}'
+            records.append({'path':name,'mode':mode,'blob':oid,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+        assert len(records)==74 and sum(x['bytes'] for x in records)==3227287,'Incomplete SFPEW tree'
+        assert hashlib.sha256(json.dumps(records,sort_keys=True,separators=(',',':')).encode()).hexdigest()=='7d0e22978fa3b7b007c2d0189697ba69b4cd4a88e53e61c7280d24e992006a09'
+        # ZeroTier is a pinned STATIC archive; it is linked into the executable, not a runtime framework.
+        zt=air/'Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt'
+        assert subprocess.check_output(['git','-C',str(air/'Natives/external/ZeroTierFramework'),'rev-parse','HEAD'],text=True).strip()==os.environ['ZEROTIER_SHA']
+        assert zt.is_file() and zt.read_bytes().startswith(b'!<arch>\n'),'Pinned ZeroTier no longer matches static framework layout'
+        zt_digest=hashlib.sha256(zt.read_bytes()).hexdigest()
+        assert zt_digest=='1249ae3106a0522777360c297a0d7c1f0826f993663aef89e9555c64e69c34b1'
+        zt_manifest={'sha256':zt_digest,'kind':'static archive linked by existing CMake framework option','runtime_framework_required':False}
+        # Enumerate mandatory default make graph and all static script/source inputs, not generated outputs.
+        app=root/'ios-app';native=app/'Natives';make=(app/'Makefile').read_text();required=[]
+        for name in sorted(set(re.findall(r'\$\(SOURCEDIR\)/([A-Za-z0-9_./+-]+\.(?:py|c|m|mm|cpp|h)(?![A-Za-z0-9_.]))',make))):
+            if name in ['scripts/patch_angle_surface_freeze.py','scripts/patch_sdl3_eventfilter_guard.py'] and not (app/name).exists():
+                continue # Original Makefile explicitly treats these as optional; do not change that engine behavior.
+            assert (app/name).is_file(),f'Missing original Makefile input: {name}';required.append(name)
+        cmake='\n'.join(line.split('#',1)[0] for line in (native/'CMakeLists.txt').read_text().splitlines())
+        for name in sorted(set(re.findall(r'(?m)^\s*([\w./+-]+\.(?:m|mm|c|cc|cpp|swift))\s*$',cmake))):
+            assert (native/name).is_file(),f'Missing registered native source: {name}'
+        for name in ['src/main/cpp/3rdparty/glslang/CMakeLists.txt','src/main/cpp/3rdparty/SPIRV-Cross/CMakeLists.txt','src/main/cpp/3rdparty/glm/glm/glm.hpp']:
+            assert (native/'external/MobileGlues'/name).is_file(),f'Missing SFPEW nested prerequisite: {name}'
+        for name in ['3rdparty/xxhash/xxhash32.h','3rdparty/xxhash/xxhash64.h','include/GLES/gl32.h','CMakeLists.txt']:
+            assert (native/'external/SimpleFPEWrapper'/name).is_file(),name
+        for name in ['JavaApp/Makefile','JavaApp/src/patchjna_agent.txt','JavaApp/src/patchsvc.txt','Natives/Assets.xcassets/Contents.json','Natives/resources/en.lproj/LaunchScreen.storyboardc','Natives/shader_glslang/blaze3d_group.txt','entitlements.sideload.xml']:
+            assert (app/name).exists(),f'Missing Java/assets/shader/packaging input: {name}'
+        jars=list((app/'JavaApp/libs').rglob('*.jar'));assert jars
+        for jar in jars:assert jar.stat().st_size>0 and zipfile.is_zipfile(jar),f'Invalid original prebuilt JAR: {jar}'
+        # Validate the unchanged original patch on a disposable copy, not the staged build tree.
+        probe=Path(os.environ['RUNNER_TEMP'])/'sfpew-anchor-probe';shutil.copytree(native/'external/SimpleFPEWrapper',probe)
+        with (diag/'sfpew-patch-preflight.log').open('w') as log:
+            for _ in range(2):subprocess.run(['python3',str(native/'patch_sfpew_ios.py'),str(probe)],stdout=log,stderr=subprocess.STDOUT,check=True)
+        info={'application_sha':os.environ['SOURCE_SHA'],'air_sha':os.environ['AIR_SHA'],'sfpew_tree':'828811789978e4bbdfb1feff19bacc6f793986f7','sfpew_files':records,'zerotier_packaging':zt_manifest,'mandatory_default_targets':['all','native','dep_mg','swift','java','jre','assets','payload','dep_shader_shims','dep_openal_shim','dep_angle_freeze','dep_sdl3_guard','dep_nggl4es','dep_sfpew','shader-glslang-pack','package','dsym'],'static_make_inputs':required,'prebuilt_jar_count':len(jars),'runtime_archive_validation':'Existing make jre and post-build archive checks retained; URLs and deployment14 unchanged','optional_targets':'Original MobileGL/Mithril/render-gap conditions unchanged'}
+        (diag/'complete-prerequisite-preflight.json').write_text(json.dumps(info,indent=2)+'\n')
+        print('PASS full pinned SFPEW tree/nested dependencies/original patch, ZeroTier static link input, mandatory native/Java/assets/shader/packaging source preflight')
+        PYCODE
+        # Configure/generate ALL SFPEW/glslang/SPIRV-Cross targets before spending time compiling the app.
+        # Source is the patched disposable probe, never the immutable original or tracked scratch source.
+        set +e
+        cmake -S "$RUNNER_TEMP/sfpew-anchor-probe" -B "$RUNNER_TEMP/sfpew-configure-preflight" \
+          -DCMAKE_CROSSCOMPILING=true -DCMAKE_SYSTEM_NAME=Darwin -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+          -DCMAKE_OSX_SYSROOT="$(xcrun --sdk iphoneos --show-sdk-path)" -DCMAKE_OSX_ARCHITECTURES=arm64 \
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 -DCMAKE_C_FLAGS="-arch arm64" -DCMAKE_CXX_FLAGS="-arch arm64" \
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+          -DSFPEW_MG_3RDPARTY="$SCRATCH_DIR/ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty" \
+          > "$RUNNER_TEMP/metallic-native-build/sfpew-configure-preflight.log" 2>&1
+        rc=$?
+        set -e
+        if [ "$rc" -ne 0 ]; then
+          cat "$RUNNER_TEMP/metallic-native-build/sfpew-configure-preflight.log"
+          exit "$rc"
+        fi
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import os,json
+        build=Path(os.environ['RUNNER_TEMP'])/'sfpew-configure-preflight'
+        commands=json.loads((build/'compile_commands.json').read_text())
+        assert commands,'Empty SFPEW source graph'
+        for command in commands:
+            p=Path(command['file'])
+            if not p.is_absolute():p=Path(command['directory'])/p
+            assert p.is_file(),f'Missing registered SFPEW/glslang/SPIRV-Cross compiler input: {p}'
+        summary={'configure_generate':'PASS','compiler_inputs_verified':len(commands),'application_source':os.environ['SOURCE_SHA'],'architecture':'arm64','deployment_target':'14.0 (unchanged)','stage':'Configuration only; actual compilation follows via original make all'}
+        (Path(os.environ['RUNNER_TEMP'])/'metallic-native-build/sfpew-source-graph.json').write_text(json.dumps(summary,indent=2)+'\n')
+        print(json.dumps(summary,indent=2))
+        PYCODE
+        git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
+        git -C "$SCRATCH_DIR" diff --exit-code HEAD --
+    - name: ONE full original make all build of exact M08 in scratch
+      shell: bash
+      run: "mkdir -p \"$RUNNER_TEMP/metallic-native-build\"\nexec > >(tee \"$RUNNER_TEMP/metallic-native-build/step-07.log\"\
+        ) 2>&1\nset -euo pipefail\ncd \"$SCRATCH_DIR/ios-app\"\nexport PATH=\"/opt/homebrew/bin:$PATH\"\nexport\
+        \ SDKPATH=\"$(xcrun --sdk iphoneos --show-sdk-path)\"\ntest \"$(git -C \"$SCRATCH_DIR\" rev-parse HEAD)\"\
+        \ = \"$SOURCE_SHA\"\ngit -C \"$GITHUB_WORKSPACE/original\" diff --exit-code HEAD --\necho 'Building exact\
+        \ M08 via original make all; no runner-side application patches.'\nset +e\nmake all BOOTJDK=\"$JAVA_HOME/bin\"\
+        \ SDKPATH=\"$SDKPATH\" JOBS=3 > \"$RUNNER_TEMP/metallic-native-build/build.log\" 2>&1\nrc=$?\nset -e\nprintf\
+        \ '%s\\n' \"$rc\" > \"$RUNNER_TEMP/metallic-native-build/build-exit-code.txt\"\npython3 - <<'PYCODE'\nfrom\
+        \ pathlib import Path\nimport os,re\np=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'\nlines=(p/'build.log').read_text(errors='replace').splitlines()\n\
+        ansi=re.compile(r'\\x1b\\[[0-9;]*[A-Za-z]')\ncompiler=re.compile(r'^(?:(?:.*?):\\d+(?::\\d+)?:\\s*|(?:clang(?:\\\
+        +\\+)?|swiftc|cc1(?:plus)?|cc|c\\+\\+):\\s*)?(?:fatal\\s+)?error:\\s',re.I)\nlinker=re.compile(r'^(?:Undefined\
+        \ symbols for architecture\\b|ld(?:64(?:\\.lld)?|\\.lld)?:(?!\\s*(?:warning|note)\\s*:)\\s*\\S.*)',re.I)\n\
+        prerequisite=re.compile(r'^(?:CMake Error(?:\\s|:)|make(?:\\[\\d+\\])?:\\s*\\*\\*\\*\\s*No rule to make\
+        \ target)',re.I)\nhits=[]\nfor i,raw in enumerate(lines):\n    text=ansi.sub('',raw).strip()\n    kind='linker'\
+        \ if linker.match(text) else 'compiler' if compiler.match(text) else 'prerequisite' if prerequisite.match(text)\
+        \ else None\n    if kind:hits.append({'kind':kind,'line':i+1,'diagnostic':text})\nfor kind,name in [(None,'first-error-context.txt'),('compiler','first-compiler-error.txt'),('linker','first-linker-error.txt')]:\n\
+        \    hit=next((h for h in hits if kind is None or h['kind']==kind),None)\n    text='No genuine diagnostic\
+        \ matched; inspect full log and exit status.\\n'\n    if hit:\n        n=hit['line'];text=f\"FIRST GENUINE\
+        \ {hit['kind'].upper()} ERROR \u2014 build.log line {n}\\n{hit['diagnostic']}\\n\\nContext:\\n\"+'\\n'.join(f'{i+1}:\
+        \ {lines[i]}' for i in range(max(0,n-21),min(len(lines),n+49)))+'\\n'\n    (p/name).write_text(text)\n(p/'error-index.json').write_text(__import__('json').dumps(hits,indent=2))\n\
+        PYCODE\nif [ \"$rc\" -ne 0 ]; then\n  cat \"$RUNNER_TEMP/metallic-native-build/first-error-context.txt\"\
+        \n  exit \"$rc\"\nfi"
+      id: build
+    - name: Validate the archived IPA, identity, icon provenance, full runtimes and native payload
+      shell: bash
+      run: |-
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/step-08.log") 2>&1
+        set -euo pipefail
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import os,json,plistlib,zipfile,hashlib,subprocess,stat,posixpath
+        root=Path(os.environ['SCRATCH_DIR']);diag=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'
+        ipas=list((root/'ios-app/artifacts').glob('com.tokyxkai.metallic-*-ios.ipa'))
+        assert len(ipas)==1,ipas
+        ipa=ipas[0];assert ipa.stat().st_size>0
+        source=json.loads((diag/'source-identity.json').read_text())
+        # Artwork provenance is unchanged across scratch hydration AND original asset compilation.
+        for rel,digest in json.loads((diag/'m08-assets-sha256.json').read_text()).items():
+            assert hashlib.sha256((root/rel).read_bytes()).hexdigest()==digest,rel
+        prefix='Payload/AngelAuraAmethyst.app/'
+        with zipfile.ZipFile(ipa) as z:
+            assert z.testzip() is None,'IPA ZIP integrity failure'
+            names=set(z.namelist())
+            info=plistlib.loads(z.read(prefix+'Info.plist'))
+            for k in ['CFBundleDisplayName','CFBundleName','CFBundleIdentifier','CFBundleExecutable','CFBundleIcons','CFBundleIcons~ipad']:
+                assert info.get(k)==source.get(k),(k,info.get(k),source.get(k))
+            assert info['CFBundleDisplayName']==info['CFBundleName']=='Metallic'
+            assert prefix+'Assets.car' in names,'Missing compiled catalogue'
+            icon_paths=sorted(n for n in names if n.startswith(prefix) and n.endswith('.png') and n.rsplit('/',1)[-1].startswith('AppIcon-Light'))
+            assert icon_paths,'Missing primary compiled app icon PNGs'
+            required=['Frameworks/libnggl4es.dylib','Frameworks/libSimpleFPEWrapper.dylib','Frameworks/libMoltenVK.dylib','Frameworks/libopenal.dylib','Frameworks/libopenal_impl.dylib','AngelAuraAmethyst','Frameworks/libmetallum.dylib','Frameworks/libEGL.framework/libEGL','Frameworks/libGLESv2.framework/libGLESv2','Frameworks/AltKit.framework/AltKit','Frameworks/CAltKit.framework/CAltKit','Frameworks/UnzipKit.framework/UnzipKit','Frameworks/libspirv-cross-c-shared.0.dylib','libs/launcher.jar','libs/patchjna_agent.jar','libs/patchsvc.jar','libs/mojang-stubs.jar','libs/lwjgl-333/lwjgl.jar','libs/lwjgl-341/lwjgl.jar','UniversalJIT26.js','UniversalJIT26Extension.js','JIT26Script.js']
+            required += [f'java_runtimes/java-{v}-openjdk/lib/server/libjvm.dylib' for v in [8,17,21,25]]
+            def archived_bytes(name):
+                for _ in range(16):
+                    member=z.getinfo(name)
+                    if not stat.S_ISLNK(member.external_attr >> 16): return z.read(name)
+                    name=posixpath.normpath(posixpath.join(posixpath.dirname(name),z.read(name).decode()))
+                    assert name.startswith(prefix), 'IPA symlink escapes app'
+                raise AssertionError('IPA symlink cycle')
+            for rel in required:
+                assert prefix+rel in names and z.getinfo(prefix+rel).file_size>0,f'Missing mandatory payload: {rel}'
+            for rel in ['UniversalJIT26.js','UniversalJIT26Extension.js','JIT26Script.js']:
+                assert z.read(prefix+rel)==(root/'bundle-templates'/rel).read_bytes(),rel
+            # Inspect actual ZIP-contained binary bytes, not just the build's pre-ZIP directory.
+            inspection=diag/'ipa-inspection';inspection.mkdir(exist_ok=True)
+            macho=[rel for rel in required if rel.startswith('Frameworks/') or rel.endswith('.dylib') or rel=='AngelAuraAmethyst']
+            with (diag/'macho-load-commands.txt').open('w') as log:
+                for rel in macho:
+                    p=inspection/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(archived_bytes(prefix+rel))
+                    arch=subprocess.check_output(['lipo','-archs',str(p)],text=True).strip();assert 'arm64' in arch.split(),(rel,arch)
+                    log.write('\n'+rel+' '+arch+'\n');log.flush()
+                    subprocess.run(['otool','-L',str(p)],stdout=log,stderr=subprocess.STDOUT,check=True)
+                    if rel!='AngelAuraAmethyst': p.unlink()
+            exe=inspection/'AngelAuraAmethyst'
+            defined=subprocess.check_output(['nm','-U',str(exe)],text=True)
+            (diag/'executable-defined-symbols.txt').write_text(defined)
+            for symbol in ['_zts_node_start','_zts_init_from_storage','_zts_bsd_socket']:
+                assert symbol in defined,f'Missing statically linked ZeroTier API: {symbol}'
+            signed=subprocess.run(['ldid','-e',str(exe)],capture_output=True,check=True)
+            (diag/'ipa-entitlements.plist').write_bytes(signed.stdout)
+            # The original signing-recipe XML begins with a DOCTYPE instead of an XML declaration.
+            # Python plistlib rejects that otherwise valid Apple plist. Normalize a comparison
+            # copy only; never edit the original entitlements, executable or signature.
+            expected_entitlements=(root/'ios-app/entitlements.sideload.xml').read_bytes()
+            if expected_entitlements.lstrip().startswith(b'<!DOCTYPE plist'):
+                expected_entitlements=b'<?xml version="1.0" encoding="UTF-8"?>\n'+expected_entitlements
+            assert plistlib.loads(signed.stdout)==plistlib.loads(expected_entitlements),'Packaged entitlements differ from original signing recipe'
+            with (diag/'codesign-evidence.txt').open('w') as log:
+                for args in [['codesign','-dv','--verbose=4',str(exe)],['codesign','--verify','--verbose=4',str(exe)]]:
+                    proc=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT);log.write(f'\nCommand exit: {proc.returncode}\n')
+            (diag/'packaged-info.plist').write_bytes(z.read(prefix+'Info.plist'))
+            (diag/'packaged-icon-paths.txt').write_text('\n'.join(icon_paths)+'\n')
+            # Reject a localized app-identity override instead of silently rewriting its catalog.
+            for n in names:
+                if n.startswith(prefix) and n.endswith('.lproj/InfoPlist.strings'):
+                    tmp=inspection/'InfoPlist.strings';tmp.write_bytes(z.read(n))
+                    values=json.loads(subprocess.check_output(['plutil','-convert','json','-o','-',str(tmp)],text=True))
+                    for key in ['CFBundleName','CFBundleDisplayName']:
+                        assert key not in values or values[key]=='Metallic',f'Inherited localized identity in {n}: {key}'
+            checksum=hashlib.sha256()
+            with ipa.open('rb') as stream:
+                for chunk in iter(lambda:stream.read(1024*1024),b''): checksum.update(chunk)
+            result={'application_sha':os.environ['SOURCE_SHA'],'workflow_sha':os.environ['GITHUB_SHA'],'filename':ipa.name,'size_bytes':ipa.stat().st_size,'sha256':checksum.hexdigest(),'display_name':info['CFBundleDisplayName'],'bundle_identifier':info['CFBundleIdentifier'],'executable':info['CFBundleExecutable'],'icon_verification':'PASS: unchanged M08 artwork hashes + unchanged packaged icon configuration + compiled Assets.car and primary PNGs','java_runtimes':[8,17,21,25],'zip_integrity':'PASS','signing':'Existing ldid sideload entitlements; no provisioning supplied. Installation/resigning and physical JIT/gameplay still require testing.'}
+        (diag/'ipa-result.json').write_text(json.dumps(result,indent=2))
+        with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
+            f.write('## Validated M08 test IPA\n\n'+json.dumps(result,indent=2)+'\n\nNot proof of installation, JIT attachment or Minecraft gameplay.\n')
+        print(json.dumps(result,indent=2))
+        PYCODE
+      id: ipa
+    - name: Save original checkout and scratch mutation diagnostics
+      if: always()
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        if [ -d original/.git ]; then
+          {
+            git -C original rev-parse HEAD
+            git -C original diff --stat HEAD --
+            git -C original status --short
+            git -C original submodule status || true
+          } > "$RUNNER_TEMP/metallic-native-build/original-integrity.txt" 2>&1
+        fi
+        if [ -n "${SCRATCH_DIR:-}" ] && [ -d "$SCRATCH_DIR/.git" ]; then
+          {
+            git -C "$SCRATCH_DIR" diff --name-status HEAD --
+            git -C "$SCRATCH_DIR" status --short | sed -n '1,100p'
+          } > "$RUNNER_TEMP/metallic-native-build/scratch-mutations.txt" 2>&1
+        fi
+        {
+          echo '## Test-only build gate'
+          echo 'Full native IPA and JIT gameplay are NOT proven by a green compile alone.'
+          echo 'Any candidate IPA uses pinned recovered upstream input files that may differ from original Alpha 1.2 dependencies.'
+          echo 'Do not release without signing, framework/JRE/JIT payload inspection and physical-device gameplay.'
+        } > "$RUNNER_TEMP/metallic-native-build/notice.txt"
+
+        if [ -d original/.git ]; then
+          test "$(git -C original rev-parse HEAD)" = "$SOURCE_SHA"
+          git -C original diff --exit-code HEAD --
+        fi
+
+        if [ -n "${SCRATCH_DIR:-}" ]; then
+          python3 - <<'PYCODE'
+        from pathlib import Path
+        import os,shutil
+        root=Path(os.environ['SCRATCH_DIR'])/'ios-app/Natives/build';out=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build/sub-build-logs'
+        for p in root.rglob('*build.log'):
+            if p.is_file():
+                q=out/p.relative_to(root);q.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,q)
+        PYCODE
+        fi
+      id: integrity
+    - name: Upload real native IPA only if compiled and packaged
+      if: success() && steps.ipa.outcome == 'success' && steps.integrity.outcome == 'success'
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: metallic-restoration-full-test-ipa-${{ github.run_id }}
+        path: ${{ runner.temp }}/metallic-scratch/ios-app/artifacts/*.ipa
+        if-no-files-found: error
+        compression-level: 0
+        retention-days: 7
+      id: upload_ipa
+    - name: Record final build gate and step outcomes
+      if: always()
+      shell: bash
+      env:
+        STEP_OUTCOMES: ${{ toJSON(steps) }}
+      run: |-
+        mkdir -p "$RUNNER_TEMP/metallic-native-build"
+        printf '%s\n' "$STEP_OUTCOMES" > "$RUNNER_TEMP/metallic-native-build/step-outcomes.json"
+        {
+          echo "Application source: $SOURCE_SHA"
+          echo "Workflow commit: $GITHUB_SHA"
+          echo "Run URL: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ -f "$RUNNER_TEMP/metallic-native-build/build-exit-code.txt" ]; then
+            printf 'make all exit: '; cat "$RUNNER_TEMP/metallic-native-build/build-exit-code.txt"
+          else
+            echo 'make all: NOT RUN (an earlier gate failed)'
+          fi
+        } | tee "$RUNNER_TEMP/metallic-native-build/final-status.txt" >> "$GITHUB_STEP_SUMMARY"
+    - name: Upload full diagnostic logs even on failure
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: metallic-restoration-diagnostics-${{ github.run_id }}
+        path: ${{ runner.temp }}/metallic-native-build/
+        if-no-files-found: warn
+        compression-level: 6
+        retention-days: 7
+      id: upload_diagnostics
+    permissions:
+      contents: read
+  prior-diagnostics:
+    if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/metallic-exact-ui-restoration'
+      && contains(github.event.head_commit.message, '[m08-diagnostics]')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+    - name: Read complete diagnostics from the latest failed build
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: metallic-m08-diagnostics-40809653802
+        path: diagnostics
+        run-id: '40809653802'
+        github-token: ${{ github.token }}
+    - name: Record diagnostic provenance
+      if: always()
+      shell: bash
+      run: |-
+        mkdir -p diagnostics
+        printf '%s\n' '{"origin_run_id":"40739263905","mode":"prior-diagnostics"}' > diagnostics/bridge-origin.json
+    - name: Retain retrieved diagnostic evidence
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: metallic-restoration-diagnostics-${{ github.run_id }}
+        path: diagnostics/
+        if-no-files-found: error
+        retention-days: 7
+    needs:
+    - run-receipt
+    timeout-minutes: 10
+  publish-diagnostics:
+    needs:
+    - native-test
+    - prior-diagnostics
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+    - name: Check out only authorized report destination
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        ref: feat/metallic-exact-ui-restoration
+        fetch-depth: 0
+        persist-credentials: true
+        lfs: false
+        submodules: false
+        filter: blob:none
+        sparse-checkout: /.github/metallic-restoration-reports/
+        sparse-checkout-cone-mode: false
+    - name: Read this run diagnostic artifact
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      continue-on-error: true
+      with:
+        name: metallic-restoration-diagnostics-${{ github.run_id }}
+        path: diagnostics
+    - name: Publish CI evidence via normal Git; no source or workflow edits
+      env:
+        NATIVE_RESULT: ${{ needs.native-test.result }}
+        PRIOR_RESULT: ${{ needs.prior-diagnostics.result }}
+      shell: bash
+      run: |-
+        set -euo pipefail
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import os,json,gzip,shutil,subprocess
+        root=Path.cwd();out=root/'.github/metallic-restoration-reports'/os.environ['GITHUB_RUN_ID'];out.mkdir(parents=True,exist_ok=True)
+        src=root/'diagnostics';files=[]
+        if src.exists():
+            for p in src.rglob('*'):
+                if not p.is_file() or p.is_symlink() or p.suffix not in ('.json','.txt','.log','.plist','.yaml','.md'):continue
+                rel=p.relative_to(src);target=out/rel;target.parent.mkdir(parents=True,exist_ok=True)
+                if p.suffix in ('.log','.yaml'):
+                    target=Path(str(target)+'.gz')
+                    with p.open('rb') as a,gzip.open(target,'wb',compresslevel=6) as b:shutil.copyfileobj(a,b)
+                    assert target.stat().st_size<90*1024*1024,'Diagnostic log exceeds safe Git-file limit'
+                else:shutil.copy2(p,target)
+                files.append(str(target.relative_to(root)))
+        meta={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'application_sha':'711f704da6046427bbd9f0c4706b143dce9849fd','workflow_sha':os.environ['GITHUB_SHA'],'native_result':os.environ['NATIVE_RESULT'],'prior_diagnostics_result':os.environ['PRIOR_RESULT'],'files':files}
+        (out/'report.json').write_text(json.dumps(meta,indent=2)+'\n')
+        subprocess.run(['git','diff','--exit-code','711f704da6046427bbd9f0c4706b143dce9849fd','HEAD','--','ios-app'],check=True)
+        subprocess.run(['git','add','--',str(out.relative_to(root))],check=True)
+        paths=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
+        assert paths and all(p.startswith('.github/metallic-restoration-reports/'+os.environ['GITHUB_RUN_ID']+'/') for p in paths)
+        PYCODE
+        git config user.name 'github-actions[bot]'
+        git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+        git commit -m "ci: record M08 run $GITHUB_RUN_ID diagnostics"
+        git push origin HEAD:refs/heads/feat/metallic-exact-ui-restoration
+    timeout-minutes: 10
+  run-receipt:
+    if: github.repository == 'unfilteredpranxu/metallic-renewed' && github.ref == 'refs/heads/feat/metallic-exact-ui-restoration'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Check out only CI report destination
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        ref: feat/metallic-exact-ui-restoration
+        fetch-depth: 0
+        filter: blob:none
+        sparse-checkout: /.github/metallic-restoration-reports/
+        sparse-checkout-cone-mode: false
+        lfs: false
+        submodules: false
+        persist-credentials: true
+    - name: Publish exact run receipt; no source changes
+      shell: bash
+      env:
+        RUN_MODE: ${{ contains(github.event.head_commit.message, '[m08-diagnostics]') && 'diagnostics' || 'native-build'
+          }}
+      run: |-
+        set -euo pipefail
+        python3 - <<'PYCODE'
+        from pathlib import Path
+        import json,os,subprocess
+        p=Path('.github/metallic-restoration-reports')/os.environ['GITHUB_RUN_ID'];p.mkdir(parents=True,exist_ok=True)
+        data={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'workflow_sha':os.environ['GITHUB_SHA'],'application_sha':'711f704da6046427bbd9f0c4706b143dce9849fd','state':'run-started','mode':os.environ['RUN_MODE']}
+        (p/'started.json').write_text(json.dumps(data,indent=2)+'\n')
+        subprocess.run(['git','diff','--exit-code','711f704da6046427bbd9f0c4706b143dce9849fd','HEAD','--','ios-app'],check=True)
+        subprocess.run(['git','add','--',str(p)],check=True)
+        PYCODE
+        git config user.name 'github-actions[bot]'
+        git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+        git commit -m "ci: record M08 run $GITHUB_RUN_ID start"
+        git push origin HEAD:refs/heads/feat/metallic-exact-ui-restoration
+    timeout-minutes: 10
+'on':
+  push:
+    branches:
+    - feat/metallic-exact-ui-restoration
+    paths:
+    - .github/workflows/metallic-restoration-test-ipa.yml

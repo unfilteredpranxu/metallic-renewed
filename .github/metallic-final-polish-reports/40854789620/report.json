@@ -1,0 +1,12 @@
+{
+  "run_id": "40854789620",
+  "run_url": "https://github.com/unfilteredpranxu/metallic-renewed/actions/runs/40854789620",
+  "application_sha": "12c2977108b2e94f7fd20d984aece9ef7c68440e",
+  "workflow_sha": "f78775c916f4e4e4acb012cebe1b36d37acefca8",
+  "native_result": "skipped",
+  "prior_diagnostics_result": "failure",
+  "files": [
+    ".github/metallic-final-polish-reports/40854789620/bridge-origin.json",
+    ".github/metallic-final-polish-reports/40854789620/failed-test-job.log.gz"
+  ]
+}

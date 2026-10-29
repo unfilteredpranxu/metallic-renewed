@@ -1,5 +1,7 @@
 # Metallic Renewed — UI refinement tracker
 
+> CURRENT — Exact-reference restoration is PARTIAL, not accepted/production-ready. Source `711f704d` compiled and its validated IPA uploaded in run `40816485445`. Branch `feat/metallic-exact-ui-restoration` is backed up remotely. See final restoration evidence below; historical milestone statements remain as recorded at their dates.
+
 Current refinement state: `feat/renewed-ui-polish`; M02–M07 history retained. M08 authorized branding and launcher-only orientation source work is recorded below; overall **BLOCKED / PARTIAL**, not release-ready. Remaining gates: complete authoritative localization catalogs; inherited copy inside protected/default-value implementations and restricted plist metadata; iOS14/15 portrait compatibility; native compilation, correct-source build workflow and physical tests. Starting M08 HEAD: `110a4e0b6200e60a4b029d2f0df86b6fd17e2b58`. All checkpoints remain local; no push/build/release.
 
 Single source of truth for this eight-milestone refinement program. Read this first in future refinement sessions; earlier M0–M6 evidence remains in the three existing continuity documents. Do not repeat those audits. Only this document is changed in Milestone 01. No automatic commit, push or PR.
@@ -481,3 +483,28 @@ Verified limitations / differences from reference:
 Static validation: complete changed ObjC grammar (known SDK macros normalized), duplicate-method check, git diff --check PASS.134 non-layout Downloads methods byte-identical to M08; original preference construction/get/set block byte-identical; canonical Home launch/account/profile/editor forwarding byte-identical. Reuse icon cancellation/reset preserved (removed obsolete M04-only press-decoration reset). Private tab manipulation absent. SDK compilation, repeat-switch tests, VoiceOver/Dynamic Type/device settings persistence and screenshot overlay comparison PENDING.
 
 Native handoff: create a separate isolated restoration workflow from the proven pinned recovery workflow, pin APPLICATION checkout to restoration source commit (not692), keep all SFPEW/SPIRV-Cross/GLES/Terracotta/Blaze3D/ZeroTier/NG-GL4ES/JRE checks and original make/ldid process. Push restoration branch only; no changes to feat/renewed-ui-polish/main/baseline. Actual artifact and SHA to be recorded after build. Production/release acceptance remains BLOCKED until missing-reference features are resolved and user device acceptance completes.
+
+### Restoration native validation result — 2026-10-29
+
+- Application source: `711f704da6046427bbd9f0c4706b143dce9849fd`; workflow `6deb4571064a12c93d5166b9a5ed45f8d1c71a77`. All original history retained; no original/protected branch push.
+- Actual run: https://github.com/unfilteredpranxu/metallic-renewed/actions/runs/40816485445 — native job SUCCESS, original make all exit0, Xcode26.3/iPhoneOS26.2. Runners were actually available; no billing setting changed.
+- Uploaded artifact: `metallic-restoration-full-test-ipa-40816485445`, ID12872444715; https://github.com/unfilteredpranxu/metallic-renewed/actions/runs/40816485445/artifacts/12872444715 . Actual upload outcome SUCCESS.
+- IPA: `com.tokyxkai.metallic-1.2.0-ios.ipa`, 261709598 bytes; SHA-256 `d3e756f08947dcabfac6511cdf9b87c8b0d565045a1e6908da9133f6497a1cb6`. ZIP integrity, Payload/AngelAuraAmethyst.app, arm64 inspected binaries, Metallic display/name, unchanged icon artwork/config/compiled PNGs and Assets.car, JRE8/17/21/25 JVMs, JIT templates, required native libraries and unchanged original ldid entitlement recipe PASS.
+- Signing remains the original ad-hoc/ldid sideload process, no Apple provisioning supplied. User must sign/install using their existing method. This is not ordinary Apple-provisioned installation readiness or proof of JIT/gameplay. Older iOS compatibility remains UNVERIFIED (recovered Terracotta objects carry iOS18.5 metadata; app deployment14 preserved).
+- Full diagnostics retained as `metallic-restoration-diagnostics-40816485445` and Git evidence under `.github/metallic-restoration-reports/40816485445/`; exact generated file list is `report.json`. Compiler warnings include existing nullability/deprecations and an unchanged installer nextStep retain-cycle warning. No protected installer fix attempted. Original checkout integrity report clean.
+- Exact application files changed versus M08:
+  - `ios-app/Natives/AmeRootTabController.m`
+  - `ios-app/Natives/BackgroundSettingsViewController.h`
+  - `ios-app/Natives/BackgroundSettingsViewController.m`
+  - `ios-app/Natives/DownloadViewController.m`
+  - `ios-app/Natives/HomeTopNavView.h`
+  - `ios-app/Natives/HomeTopNavView.m`
+  - `ios-app/Natives/LauncherNewsViewController.h`
+  - `ios-app/Natives/LauncherNewsViewController.m`
+  - `ios-app/Natives/LauncherPreferencesViewController.h`
+  - `ios-app/Natives/LauncherPreferencesViewController.m`
+  - `ios-app/Natives/PLPrefTableViewController.h`
+  - `ios-app/Natives/PLPrefTableViewController.m`
+- Other authored paths: `docs/METALLIC_RENEWED_UI_REFINEMENT_TRACKER.md`, new `.github/workflows/metallic-restoration-test-ipa.yml`. Existing pinned-M08 workflow untouched by restoration. CI reports are automated evidence, not application source.
+- Outstanding acceptance: rendered same-geometry comparison against all FOUR reference JPEGs NOT PERFORMED; current device repeat-tab/Settings90 interactions/account/Downloads/Appearance/Home/JIT/Java25/Metallum/game test PENDING; current Oct29 UI crash .ips absent. Launch Intro and unified Sound & Haptics reference implementations absent in available source. Ten Settings categories are scroll anchors; card grouping/spacing and moon interaction need user visual review. No exact/pixel-perfect/crash-free/full-restoration claim.
+- Next: user signs/installs THIS artifact, captures Home/Downloads/Appearance/Settings at reference landscape geometry, tests repeated five-destination switching and supplies current crash evidence if reproduced. Restore missing reference-only features only from verified native source/assets or separately authorized implementation; preserve all protected systems.

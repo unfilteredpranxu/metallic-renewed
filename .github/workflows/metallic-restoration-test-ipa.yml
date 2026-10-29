@@ -1,10 +1,10 @@
 # Screenshot-defined reconstruction experimental test build. CI evidence commits never match the workflow path trigger.
 name: Metallic exact-reference restoration test IPA
-run-name: Metallic restoration 46567ce3 full test IPA
+run-name: Metallic restoration a3f24f56 full test IPA
 permissions:
   contents: read
 concurrency:
-  group: metallic-restoration-46567ce3-test-ipa
+  group: metallic-restoration-a3f24f56-test-ipa
   cancel-in-progress: true
 jobs:
   native-test:
@@ -13,7 +13,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 75
     env:
-      SOURCE_SHA: 46567ce33002ff6ee50ec024766dc93bb4007d80
+      SOURCE_SHA: a3f24f56fb3169e031678c19184742977e7e3e55
       AIR_SHA: c4797387ca9a81f31fdcdd2723ec1050ca35fdb3
       ZEROTIER_SHA: b8e672f54286be8500bc875e153826af7b01d6e6
       NG_GL4ES_SHA: 6e153a1622a8d9ef903f7975aafbef2453571bab
@@ -23,7 +23,7 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       with:
         repository: unfilteredpranxu/metallic-renewed
-        ref: 46567ce33002ff6ee50ec024766dc93bb4007d80
+        ref: a3f24f56fb3169e031678c19184742977e7e3e55
         path: original
         persist-credentials: false
         submodules: false
@@ -477,13 +477,13 @@ jobs:
         PYCODE
         git -C "$GITHUB_WORKSPACE/original" diff --exit-code HEAD --
         git -C "$SCRATCH_DIR" diff --exit-code HEAD --
-    - name: ONE full original make all build of exact M08 in scratch
+    - name: Full original make all build of exact reconstruction in scratch
       shell: bash
       run: "mkdir -p \"$RUNNER_TEMP/metallic-native-build\"\nexec > >(tee \"$RUNNER_TEMP/metallic-native-build/step-07.log\"\
         ) 2>&1\nset -euo pipefail\ncd \"$SCRATCH_DIR/ios-app\"\nexport PATH=\"/opt/homebrew/bin:$PATH\"\nexport\
         \ SDKPATH=\"$(xcrun --sdk iphoneos --show-sdk-path)\"\ntest \"$(git -C \"$SCRATCH_DIR\" rev-parse HEAD)\"\
         \ = \"$SOURCE_SHA\"\ngit -C \"$GITHUB_WORKSPACE/original\" diff --exit-code HEAD --\necho 'Building exact\
-        \ M08 via original make all; no runner-side application patches.'\nset +e\nmake all BOOTJDK=\"$JAVA_HOME/bin\"\
+        \ reference reconstruction via original make all; no runner-side application patches.'\nset +e\nmake all BOOTJDK=\"$JAVA_HOME/bin\"\
         \ SDKPATH=\"$SDKPATH\" JOBS=3 > \"$RUNNER_TEMP/metallic-native-build/build.log\" 2>&1\nrc=$?\nset -e\nprintf\
         \ '%s\\n' \"$rc\" > \"$RUNNER_TEMP/metallic-native-build/build-exit-code.txt\"\npython3 - <<'PYCODE'\nfrom\
         \ pathlib import Path\nimport os,re\np=Path(os.environ['RUNNER_TEMP'])/'metallic-native-build'\nlines=(p/'build.log').read_text(errors='replace').splitlines()\n\
@@ -751,9 +751,9 @@ jobs:
                     assert target.stat().st_size<90*1024*1024,'Diagnostic log exceeds safe Git-file limit'
                 else:shutil.copy2(p,target)
                 files.append(str(target.relative_to(root)))
-        meta={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'application_sha':'46567ce33002ff6ee50ec024766dc93bb4007d80','workflow_sha':os.environ['GITHUB_SHA'],'native_result':os.environ['NATIVE_RESULT'],'prior_diagnostics_result':os.environ['PRIOR_RESULT'],'files':files}
+        meta={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'application_sha':'a3f24f56fb3169e031678c19184742977e7e3e55','workflow_sha':os.environ['GITHUB_SHA'],'native_result':os.environ['NATIVE_RESULT'],'prior_diagnostics_result':os.environ['PRIOR_RESULT'],'files':files}
         (out/'report.json').write_text(json.dumps(meta,indent=2)+'\n')
-        subprocess.run(['git','diff','--exit-code','46567ce33002ff6ee50ec024766dc93bb4007d80','HEAD','--','ios-app'],check=True)
+        subprocess.run(['git','diff','--exit-code','a3f24f56fb3169e031678c19184742977e7e3e55','HEAD','--','ios-app'],check=True)
         subprocess.run(['git','add','--',str(out.relative_to(root))],check=True)
         paths=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
         assert paths and all(p.startswith('.github/metallic-restoration-reports/'+os.environ['GITHUB_RUN_ID']+'/') for p in paths)
@@ -791,9 +791,9 @@ jobs:
         from pathlib import Path
         import json,os,subprocess
         p=Path('.github/metallic-restoration-reports')/os.environ['GITHUB_RUN_ID'];p.mkdir(parents=True,exist_ok=True)
-        data={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'workflow_sha':os.environ['GITHUB_SHA'],'application_sha':'46567ce33002ff6ee50ec024766dc93bb4007d80','state':'run-started','mode':os.environ['RUN_MODE']}
+        data={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'workflow_sha':os.environ['GITHUB_SHA'],'application_sha':'a3f24f56fb3169e031678c19184742977e7e3e55','state':'run-started','mode':os.environ['RUN_MODE']}
         (p/'started.json').write_text(json.dumps(data,indent=2)+'\n')
-        subprocess.run(['git','diff','--exit-code','46567ce33002ff6ee50ec024766dc93bb4007d80','HEAD','--','ios-app'],check=True)
+        subprocess.run(['git','diff','--exit-code','a3f24f56fb3169e031678c19184742977e7e3e55','HEAD','--','ios-app'],check=True)
         subprocess.run(['git','add','--',str(p)],check=True)
         PYCODE
         git config user.name 'github-actions[bot]'

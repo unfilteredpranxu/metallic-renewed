@@ -1,10 +1,10 @@
 # Screenshot-defined reconstruction experimental test build. CI evidence commits never match the workflow path trigger.
 name: Metallic exact-reference restoration test IPA
-run-name: Metallic restoration 1ef48189 full test IPA
+run-name: Metallic restoration 46567ce3 full test IPA
 permissions:
   contents: read
 concurrency:
-  group: metallic-restoration-1ef48189-test-ipa
+  group: metallic-restoration-46567ce3-test-ipa
   cancel-in-progress: true
 jobs:
   native-test:
@@ -13,7 +13,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 75
     env:
-      SOURCE_SHA: 1ef481898d102978c7ccc428d4cad903a93d10c2
+      SOURCE_SHA: 46567ce33002ff6ee50ec024766dc93bb4007d80
       AIR_SHA: c4797387ca9a81f31fdcdd2723ec1050ca35fdb3
       ZEROTIER_SHA: b8e672f54286be8500bc875e153826af7b01d6e6
       NG_GL4ES_SHA: 6e153a1622a8d9ef903f7975aafbef2453571bab
@@ -23,7 +23,7 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       with:
         repository: unfilteredpranxu/metallic-renewed
-        ref: 1ef481898d102978c7ccc428d4cad903a93d10c2
+        ref: 46567ce33002ff6ee50ec024766dc93bb4007d80
         path: original
         persist-credentials: false
         submodules: false
@@ -751,9 +751,9 @@ jobs:
                     assert target.stat().st_size<90*1024*1024,'Diagnostic log exceeds safe Git-file limit'
                 else:shutil.copy2(p,target)
                 files.append(str(target.relative_to(root)))
-        meta={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'application_sha':'1ef481898d102978c7ccc428d4cad903a93d10c2','workflow_sha':os.environ['GITHUB_SHA'],'native_result':os.environ['NATIVE_RESULT'],'prior_diagnostics_result':os.environ['PRIOR_RESULT'],'files':files}
+        meta={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'application_sha':'46567ce33002ff6ee50ec024766dc93bb4007d80','workflow_sha':os.environ['GITHUB_SHA'],'native_result':os.environ['NATIVE_RESULT'],'prior_diagnostics_result':os.environ['PRIOR_RESULT'],'files':files}
         (out/'report.json').write_text(json.dumps(meta,indent=2)+'\n')
-        subprocess.run(['git','diff','--exit-code','1ef481898d102978c7ccc428d4cad903a93d10c2','HEAD','--','ios-app'],check=True)
+        subprocess.run(['git','diff','--exit-code','46567ce33002ff6ee50ec024766dc93bb4007d80','HEAD','--','ios-app'],check=True)
         subprocess.run(['git','add','--',str(out.relative_to(root))],check=True)
         paths=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
         assert paths and all(p.startswith('.github/metallic-restoration-reports/'+os.environ['GITHUB_RUN_ID']+'/') for p in paths)
@@ -791,9 +791,9 @@ jobs:
         from pathlib import Path
         import json,os,subprocess
         p=Path('.github/metallic-restoration-reports')/os.environ['GITHUB_RUN_ID'];p.mkdir(parents=True,exist_ok=True)
-        data={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'workflow_sha':os.environ['GITHUB_SHA'],'application_sha':'1ef481898d102978c7ccc428d4cad903a93d10c2','state':'run-started','mode':os.environ['RUN_MODE']}
+        data={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'workflow_sha':os.environ['GITHUB_SHA'],'application_sha':'46567ce33002ff6ee50ec024766dc93bb4007d80','state':'run-started','mode':os.environ['RUN_MODE']}
         (p/'started.json').write_text(json.dumps(data,indent=2)+'\n')
-        subprocess.run(['git','diff','--exit-code','1ef481898d102978c7ccc428d4cad903a93d10c2','HEAD','--','ios-app'],check=True)
+        subprocess.run(['git','diff','--exit-code','46567ce33002ff6ee50ec024766dc93bb4007d80','HEAD','--','ios-app'],check=True)
         subprocess.run(['git','add','--',str(p)],check=True)
         PYCODE
         git config user.name 'github-actions[bot]'

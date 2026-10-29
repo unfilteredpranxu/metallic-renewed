@@ -1,0 +1,4 @@
+## Test-only build gate
+Full native IPA and JIT gameplay are NOT proven by a green compile alone.
+Any candidate IPA uses pinned recovered upstream input files that may differ from original Alpha 1.2 dependencies.
+Do not release without signing, framework/JRE/JIT payload inspection and physical-device gameplay.

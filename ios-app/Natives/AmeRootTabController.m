@@ -398,6 +398,11 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         [nav pushViewController:page animated:NO];
     }
     self.selectedIndex = AMELauncherTabSettings;
+    if([nav.topViewController isKindOfClass:MetallicAppearanceContainerViewController.class]) {
+        BackgroundSettingsViewController *appearance=((MetallicAppearanceContainerViewController *)nav.topViewController).appearance;
+        [appearance loadViewIfNeeded];
+        [appearance.tableView setContentOffset:CGPointMake(0,-appearance.tableView.adjustedContentInset.top) animated:NO];
+    }
     self.topNav.appearanceActive = YES; self.topNav.selectedIndex = self.selectedIndex;
 }
 

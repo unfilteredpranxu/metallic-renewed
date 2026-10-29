@@ -67,6 +67,8 @@ static CGFloat MetallicAppearanceReferenceScale(UIView *view) {
     // Setup preview header
     [self setupPreviewHeader];
     if (self.launcherPresentation) {
+        self.tableView.contentInsetAdjustmentBehavior=UIScrollViewContentInsetAdjustmentNever;
+        self.tableView.contentInset=UIEdgeInsetsZero;
         self.tableView.tableFooterView = self.tableView.tableHeaderView;
         [self setupLauncherThemeHeader];
     }

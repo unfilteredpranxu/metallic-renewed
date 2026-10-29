@@ -2112,6 +2112,8 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     [self addChildViewController:self.preferences];
     [self.preferences loadViewIfNeeded];
     self.preferences.prefDetailVisible = YES;
+    self.preferences.tableView.contentInsetAdjustmentBehavior=UIScrollViewContentInsetAdjustmentNever;
+    self.preferences.tableView.contentInset=UIEdgeInsetsZero;
     UIView *content = self.preferences.view;
     content.translatesAutoresizingMaskIntoConstraints = NO;
     [self.referenceContent addSubview:content];
@@ -2206,6 +2208,7 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     [super viewDidLayoutSubviews];
     BOOL wide = self.view.safeAreaLayoutGuide.layoutFrame.size.width >= 700 && !UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
     CGFloat scale = wide ? self.view.bounds.size.width/1536.0 : .72;
+    self.referencePageScroll.scrollEnabled=!wide || self.view.safeAreaLayoutGuide.layoutFrame.size.height<460;
     CGFloat width = wide ? 252*scale : 0;
     if (self.sidebarWidth.constant != width) self.sidebarWidth.constant = width;
     self.headingTop.constant = wide ? 32*scale : 52;
@@ -2331,7 +2334,8 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     self.soundButton.hidden = index!=0;
     self.preferences.presentationRows = rows.count ? @[rows] : @[];
     [self.preferences.tableView reloadData];
-    [self.preferences.tableView setContentOffset:CGPointZero animated:NO];
+    [self.preferences.tableView layoutIfNeeded]; // Once per category, before its intentional top reset.
+    [self.preferences.tableView setContentOffset:CGPointMake(0,-self.preferences.tableView.adjustedContentInset.top) animated:NO];
     [self.view setNeedsLayout];
 }
 @end

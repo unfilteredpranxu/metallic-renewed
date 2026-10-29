@@ -178,6 +178,7 @@ static UIColor *NavAccentColor(void) {
     [self.bar addSubview:self.destinationScroll]; [self.destinationScroll addSubview:self.selector]; [self.destinationScroll addSubview:self.stack];
     self.moreButton=[UIButton buttonWithType:UIButtonTypeSystem]; self.moreButton.translatesAutoresizingMaskIntoConstraints=NO;
     [self.moreButton setImage:[UIImage systemImageNamed:@"ellipsis"] forState:UIControlStateNormal]; self.moreButton.tintColor=AmeUIPrimaryTextColor();
+    [self.moreButton addTarget:self action:@selector(menuOpened:) forControlEvents:UIControlEventMenuActionTriggered];
     self.moreButton.accessibilityLabel=@"More launcher actions"; self.moreButton.showsMenuAsPrimaryAction=YES;
     [self.bar addSubview:self.moreButton];
     [NSLayoutConstraint activateConstraints:@[
@@ -314,6 +315,8 @@ static UIColor *NavAccentColor(void) {
     NSNumber *index = notification.userInfo[@"index"];
     if ([index isKindOfClass:NSNumber.class]) self.selectedIndex = index.integerValue;
 }
+
+- (void)menuOpened:(UIButton *)button { MetallicPlayUIFeedback(@"menu"); }
 
 - (void)tapped:(UIButton *)button {
     MetallicPlayUIFeedback(@"navigation");

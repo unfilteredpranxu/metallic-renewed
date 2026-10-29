@@ -1,4 +1,5 @@
 #import "utils.h"
+#import "HomeTopNavView.h"
 #import "DownloadTasksViewController.h"
 #import "DownloadTaskManager.h"
 #import "DownloadTaskItem.h"
@@ -640,6 +641,8 @@ static const CGFloat kSectionInset = 16.0;
 @property (nonatomic, strong) UIView *emptyStateView;
 
 @property (nonatomic, copy) NSArray<DownloadTaskItem *> *filteredTasks;
+@property(nonatomic,strong) NSMutableDictionary<NSString *,NSNumber *> *feedbackStates;
+@property(nonatomic) BOOL reloadScheduled;
 @property (nonatomic, copy) NSArray<NSString *> *resourceTypes;
 @property (nonatomic, copy) NSDictionary<NSString *, NSString *> *typeDisplayNames;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *typeCounts;
@@ -656,6 +659,8 @@ static const CGFloat kSectionInset = 16.0;
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
 
     self.view.backgroundColor = [UIColor systemBackgroundColor];
+    self.feedbackStates=[NSMutableDictionary dictionary];
+    for (DownloadTaskItem *task in DownloadTaskManager.sharedManager.allTasks) self.feedbackStates[task.taskId]=@(task.state);
     self.filterState = DownloadTaskStatePending;
     self.filterType = nil;
 
@@ -1153,14 +1158,25 @@ static const CGFloat kSectionInset = 16.0;
 
 - (void)handleTaskUpdate:(NSNotification *)notification {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self reloadData];
+        DownloadTaskItem *task=notification.userInfo[DownloadTaskManagerTaskKey];
+        if (task) {
+            NSNumber *previous=self.feedbackStates[task.taskId]; self.feedbackStates[task.taskId]=@(task.state);
+            if (previous && previous.integerValue!=task.state && self.viewIfLoaded.window) {
+                if (task.state==DownloadTaskStateCompleted) MetallicPlayUIFeedback(@"completed");
+                else if (task.state==DownloadTaskStateFailed) MetallicPlayUIFeedback(@"failed");
+            }
+        }
+        [self scheduleTaskPresentationReload];
     });
 }
-
+- (void)scheduleTaskPresentationReload {
+    if (self.reloadScheduled) return;
+    self.reloadScheduled=YES;
+    __weak typeof(self) weakSelf=self;
+    dispatch_async(dispatch_get_main_queue(), ^{ weakSelf.reloadScheduled=NO; [weakSelf reloadData]; });
+}
 - (void)handleAggregateStateChanged:(NSNotification *)notification {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self reloadData];
-    });
+    dispatch_async(dispatch_get_main_queue(), ^{ [self scheduleTaskPresentationReload]; });
 }
 
 #pragma mark - UICollectionViewDataSource

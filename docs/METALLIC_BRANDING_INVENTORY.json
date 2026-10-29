@@ -1,0 +1,139 @@
+{
+  "catalog_source": "https://github.com/herbrine8403/Amethyst-iOS-MyRemastered/tree/c4797387ca9a81f31fdcdd2723ec1050ca35fdb3/Natives/resources/en.lproj",
+  "source_revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+  "original_sha256": "fbf3de4bc2b3b9f8df6096866fa11994e8cd3905703798b94740dd335253446c",
+  "first_party_product_labels": {
+    "init.migrateDir": {
+      "before": "The Amethyst data directory is now %@. All of your existing data has been moved to the new location.",
+      "after": "The Metallic data directory is now %@. All of your existing data has been moved to the new location."
+    },
+    "launcher.wait_jit.message": {
+      "before": "Amethyst relies on JIT(Just-in-time) compilation for Java to work at maximum performance",
+      "after": "Metallic relies on JIT(Just-in-time) compilation for Java to work at maximum performance"
+    },
+    "login.warn.title.legacy_device": {
+      "before": "The next release of Amethyst will not be compatible with this device.",
+      "after": "The next release of Metallic will not be compatible with this device."
+    },
+    "login.warn.title.legacy_ios": {
+      "before": "The next release of Amethyst will require a system update.",
+      "after": "The next release of Metallic will require a system update."
+    },
+    "preference.section.footer.video": {
+      "before": "Auto renderer allows Amethyst to choose the best option based on Minecraft version. Decreasing resolution reduces GPU workload for better performance.",
+      "after": "Auto renderer allows Metallic to choose the best option based on Minecraft version. Decreasing resolution reduces GPU workload for better performance."
+    },
+    "preference.detail.appicon": {
+      "before": "Allows you to choose between different Home Screen icons for Amethyst.",
+      "after": "Allows you to choose between different Home Screen icons for Metallic."
+    },
+    "preference.title.appicon-default": {
+      "before": "Familiar Amethyst light",
+      "after": "Familiar Metallic light"
+    },
+    "preference.title.appicon-dark": {
+      "before": "Familiar Amethyst dark",
+      "after": "Familiar Metallic dark"
+    },
+    "preference.detail.silence_other_audio": {
+      "before": "Enable to allow Amethyst to pause audio from other apps, such as Music, when launching the game.",
+      "after": "Enable to allow Metallic to pause audio from other apps, such as Music, when launching the game."
+    },
+    "announcement.preview_version": {
+      "before": "Welcome to Amethyst iOS Remastered Preview Version!",
+      "after": "Welcome to Metallic Launcher Preview!"
+    },
+    "announcement.latest_version": {
+      "before": "Welcome to Amethyst iOS Remastered! This is the latest stable version.",
+      "after": "Welcome to Metallic Launcher! This is the latest stable version."
+    },
+    "preference.detail.check_update": {
+      "before": "Check GitHub Releases for the latest stable version of Amethyst iOS",
+      "after": "Metallic updates are not configured. No official release channel has been verified."
+    },
+    "i18n_str_359": {
+      "before": "Welcome to the Amethyst iOS Remastered beta!",
+      "after": "Welcome to the Metallic Launcher beta!"
+    },
+    "i18n_str_360": {
+      "before": "Welcome to Amethyst iOS Remastered!",
+      "after": "Welcome to Metallic Launcher!"
+    },
+    "i18n_str_362": {
+      "before": "Welcome to Amethyst iOS Remastered! You are up to date.",
+      "after": "Welcome to Metallic Launcher! You are up to date."
+    },
+    "login.warn.title.ios19_jitdead": {
+      "before": "Amethyst is not supported on iOS 26 or later.",
+      "after": "Metallic is not supported on iOS 26 or later."
+    },
+    "login.warn.message.ios19_jitdead": {
+      "before": "Due to changes in iOS that inhibit the ability to enable JIT, Amethyst cannot work in its current state and requires heavy research to find a new path forward.\\nPressing OK will close the app.",
+      "after": "Due to changes in iOS that inhibit the ability to enable JIT, Metallic cannot work in its current state and requires heavy research to find a new path forward.\\nPressing OK will close the app."
+    }
+  },
+  "added_display_keys": {
+    "renewed.appearance.panel_opacity": "UI Panel Opacity",
+    "renewed.appearance.ui_blur": "UI Blur",
+    "renewed.appearance.reset": "Reset to Recommended",
+    "renewed.appearance.wallpaper_blur": "Wallpaper Blur",
+    "renewed.appearance.wallpaper_dimming": "Wallpaper Dimming",
+    "renewed.appearance.interface": "Interface Glass",
+    "renewed.appearance.wallpaper": "Wallpaper",
+    "renewed.appearance.interface_help": "UI Blur changes material visibility in Blur mode, not a Gaussian blur radius. Panel Opacity changes only panel tint. Wallpaper controls are separate.",
+    "renewed.appearance.wallpaper_help": "Wallpaper Blur changes the background material. Wallpaper Dimming is a separate, gentler overlay in Light mode. Neither changes panel opacity. Choose a custom image or video to enable these controls.",
+    "renewed.appearance.reset_help": "Reset UI effect, UI Blur and Panel Opacity only. Wallpaper, theme, accounts and game settings stay unchanged.",
+    "renewed.downloads.unknown": "Untitled resource",
+    "renewed.downloads.count": "%@ downloads",
+    "renewed.downloads.select_version": "Select download version",
+    "renewed.downloads.versions": "Versions",
+    "renewed.downloads.categories": "Categories",
+    "renewed.downloads.tasks": "Download tasks and progress",
+    "renewed.appearance.title": "Appearance",
+    "renewed.home.unavailable": "Not reported",
+    "renewed.home.tagline": "YOUR WORLD. ANYWHERE.",
+    "renewed.home.welcome": "Welcome back.",
+    "renewed.home.selected": "SELECTED INSTANCE",
+    "renewed.home.account": "Account",
+    "renewed.home.discover": "Discover Minecraft",
+    "renewed.home.choose": "Choose another instance",
+    "renewed.home.status": "MY METALLIC",
+    "renewed.home.java_preference": "Java runtime",
+    "renewed.home.instances": "Your Instances",
+    "renewed.home.see_all": "See All",
+    "renewed.home.empty_instances": "Your next adventure starts here. Create an instance or install Minecraft from Downloads.",
+    "renewed.home.not_configured": "Not configured",
+    "renewed.home.signed_out": "Not signed in",
+    "renewed.home.start": "GET STARTED",
+    "renewed.home.next_world": "Your next world awaits.",
+    "renewed.home.install_hint": "Install Minecraft to get started, or choose a saved profile in Instances.",
+    "renewed.home.no_target": "No configured instance",
+    "renewed.home.auto_configured": "Automatic (configured)",
+    "renewed.home.no_tasks": "No active tasks reported",
+    "renewed.home.open_tasks": "Open Download Center",
+    "renewed.home.launch_unavailable": "Launch unavailable",
+    "renewed.home.manage": "Manage profiles",
+    "preference.title.debug_universal_script_jit": "Universal JIT script",
+    "preference.title.debug_always_attached_jit": "Always-attached JIT",
+    "preference.detail.debug_always_attached_jit": "Controls the existing always-attached JIT option. Requires the universal JIT script option.",
+    "renewed.downloads.install_options": "Choose installation options",
+    "renewed.downloads.saved_profile": "Referenced by a saved profile",
+    "renewed.instances.edit_hint": "Opens profile settings. Use Profile actions to select or delete.",
+    "renewed.instances.actions": "Profile actions",
+    "renewed.instances.directory_hint": "Selects this directory. Touch and hold for directory actions.",
+    "renewed.instances.new": "New instance",
+    "renewed.instances.count": "%lu saved profiles \u00b7 Select a card to edit",
+    "renewed.instances.profile_help": "Saved profiles \u00b7 More actions selects or deletes a profile"
+  },
+  "preserved": [
+    "Internal classes/selectors/symbols",
+    "Bundle/executable identity",
+    "Persistence paths and keys",
+    "Third-party names and licenses",
+    "Game/JIT/Java/renderer source and logs"
+  ],
+  "unverified": [
+    "Other language branding requires language-aware review; existing translations retained",
+    "Device-rendered branding and layout"
+  ]
+}

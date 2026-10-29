@@ -1649,7 +1649,16 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection { [super traitCollectionDidChange:previousTraitCollection]; [self refreshAppearance]; }
 - (void)appearanceChanged:(NSNotification *)note { [self refreshAppearance]; }
 - (void)contentSizeChanged:(NSNotification *)note { if (self.onNeedsSizing) self.onNeedsSizing(); }
-- (void)actionTapped:(UIButton *)button { if(button.enabled)MetallicPlayUIFeedback(button.tag==0?@"launch":@"confirm"); if (self.onAction) self.onAction(button.tag); }
+- (void)actionTapped:(UIButton *)button {
+    if (!button.enabled) return;
+    MetallicPlayUIFeedback(button.tag==0?@"launch":@"confirm");
+    if (!UIAccessibilityIsReduceMotionEnabled() && !NSProcessInfo.processInfo.lowPowerModeEnabled) {
+        [button.layer removeAnimationForKey:@"metallicPress"];
+        CAKeyframeAnimation *feedback=[CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
+        feedback.values=@[@1,@.98,@1]; feedback.duration=.14; [button.layer addAnimation:feedback forKey:@"metallicPress"];
+    }
+    if (self.onAction) self.onAction(button.tag);
+}
 - (void)profileTapped:(UIButton *)button {
     MetallicPlayUIFeedback(@"instance");
     NSString *name = objc_getAssociatedObject(button, "renewedProfileName");

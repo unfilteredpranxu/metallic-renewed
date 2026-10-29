@@ -2269,7 +2269,22 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     [super viewWillDisappear:animated];
     if (self.navigationController.topViewController != self) [self.navigationController setNavigationBarHidden:NO animated:animated];
 }
+- (void)openMetallicLicenses {
+    if (self.navigationController.topViewController!=self) return;
+    UIViewController *page=[[UIViewController alloc] init]; page.title=@"Open Source & Licenses";
+    UITextView *text=[[UITextView alloc] init]; text.editable=NO; text.dataDetectorTypes=UIDataDetectorTypeLink;
+    text.font=[UIFont preferredFontForTextStyle:UIFontTextStyleBody]; text.adjustsFontForContentSizeCategory=YES;
+    text.backgroundColor=UIColor.systemBackgroundColor; text.textColor=UIColor.labelColor;
+    text.textContainerInset=UIEdgeInsetsMake(20,20,20,20);
+    NSURL *license=[NSBundle.mainBundle URLForResource:@"Metallic-LICENSE" withExtension:@"txt"];
+    text.text=[NSString stringWithContentsOfURL:license encoding:NSUTF8StringEncoding error:nil] ?: @"Metallic Launcher\nSource and license notices: https://github.com/unfilteredpranxu/metallic-renewed";
+    page.view=text; [self.navigationController pushViewController:page animated:YES];
+}
 - (void)openSoundHaptics {
+    for (UIButton *category in self.categoryStack.arrangedSubviews) {
+        if (category.tag==8 && (category.accessibilityTraits & UIAccessibilityTraitSelected)) { [self openMetallicLicenses]; return; }
+    }
+
     LauncherPreferencesViewController *sound = [[LauncherPreferencesViewController alloc] init];
     sound.referenceContentMode = YES; sound.prefSectionsVisible = YES;
     [sound loadViewIfNeeded]; sound.prefDetailVisible = YES;
@@ -2310,12 +2325,13 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
         open();
         return;
     }
+    if (self.isViewLoaded && self.view.window) MetallicPlayUIFeedback(@"navigation");
     self.sectionTitle.text = self.categoryTitles[index];
     for (UIButton *button in self.categoryStack.arrangedSubviews) {
         button.backgroundColor = button.tag==index ? AmeUISelectedFillColor() : UIColor.clearColor;
         button.accessibilityTraits = UIAccessibilityTraitButton | (button.tag==index ? UIAccessibilityTraitSelected : 0);
     }
-    self.identity.text = index==8 ? [NSString stringWithFormat:@"Metallic Launcher · %@\n%@ · iOS %@", NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"] ?: @"Version unavailable", UIDevice.currentDevice.model, UIDevice.currentDevice.systemVersion] : @"";
+    self.identity.text = index==8 ? [NSString stringWithFormat:@"Metallic Launcher · %@ (build %@)\n%@ · iOS %@\nUpdates: not configured", NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"] ?: @"Version unavailable", NSBundle.mainBundle.infoDictionary[@"CFBundleVersion"] ?: @"unavailable", UIDevice.currentDevice.model, UIDevice.currentDevice.systemVersion] : @"";
     // Category content is an ordering of ORIGINAL identities, not a second preference model.
     [self.preferences endPresentationSearch];
     NSMutableArray<NSIndexPath *> *rows = [NSMutableArray array];
@@ -2340,7 +2356,9 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
             return [a compare:b];
         }];
     }
-    self.soundButton.hidden = index!=0;
+    self.soundButton.hidden = index!=0 && index!=8;
+    [self.soundButton setTitle:index==8 ? @"Open Source & Licenses" : @"Sound & Haptics" forState:UIControlStateNormal];
+    [self.soundButton setImage:[UIImage systemImageNamed:index==8 ? @"doc.text" : @"speaker.wave.2"] forState:UIControlStateNormal];
     self.preferences.presentationRows = rows.count ? @[rows] : @[];
     [self.preferences.tableView reloadData];
     [self.preferences.tableView layoutIfNeeded]; // Once per category, before its intentional top reset.

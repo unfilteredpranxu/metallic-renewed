@@ -2107,6 +2107,8 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     UISearchBar *search = [self.preferences presentationSearchBar]; self.referenceSearch=search;
     [search removeFromSuperview]; search.translatesAutoresizingMaskIntoConstraints = NO;
     search.placeholder = @"Search settings and tools"; search.searchBarStyle = UISearchBarStyleMinimal;
+    search.backgroundImage=[[UIImage alloc] init]; search.searchTextField.backgroundColor=UIColor.clearColor;
+    search.searchTextField.borderStyle=UITextBorderStyleNone;
     [self.view addSubview:search];
     self.categoryTitles = @[@"General & Appearance", @"Minecraft & Memory", @"Video & Audio", @"Controls & Input", @"Downloads & Network", @"Accounts & Online", @"Files & Storage", @"Diagnostics & Advanced", @"About & Support", @"Home Customization"];
     NSArray *symbols = @[@"paintpalette",@"memorychip",@"display",@"gamecontroller",@"arrow.down.circle",@"person.2",@"folder",@"wrench.and.screwdriver",@"info.circle",@"rectangle.3.group"];
@@ -2124,7 +2126,7 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
         button.titleLabel.adjustsFontForContentSizeCategory = YES; button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         button.contentEdgeInsets = UIEdgeInsetsMake(10,12,10,12); button.tintColor = AmeUIPrimaryTextColor();
         button.layer.cornerRadius = 12;
-        [button.heightAnchor constraintGreaterThanOrEqualToConstant:48].active = YES;
+        [button.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
         [button addTarget:self action:@selector(categoryTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.categoryStack addArrangedSubview:button];
         [actions addObject:[UIAction actionWithTitle:self.categoryTitles[i] image:[UIImage systemImageNamed:symbols[i]] identifier:nil handler:^(__kindof UIAction *action) { [weakSelf selectCategory:i]; }]];
@@ -2180,6 +2182,16 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     eyebrow.font=[UIFont systemFontOfSize:16*scale weight:UIFontWeightMedium];
     title.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleLargeTitle] scaledFontForFont:[UIFont systemFontOfSize:44*scale weight:UIFontWeightBold]];
     self.referenceHeading.spacing=18*scale;
+    NSArray *railTitles=@[@"General &\nAppearance",@"Minecraft & Memory",@"Video & Audio",@"Controls & Input",@"Downloads\n& Network",@"Accounts & Online",@"Files & Storage",@"Diagnostics\n& Advanced",@"About & Support",@"Home\nCustomization"];
+    for (UIButton *button in self.categoryStack.arrangedSubviews) {
+        [button setTitle:railTitles[button.tag] forState:UIControlStateNormal];
+        BOOL selected=(button.accessibilityTraits & UIAccessibilityTraitSelected)!=0;
+        button.titleLabel.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:20*scale weight:selected?UIFontWeightSemibold:UIFontWeightRegular]];
+        button.contentEdgeInsets=UIEdgeInsetsMake(6*scale,14*scale,6*scale,14*scale);
+        [button setPreferredSymbolConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:22*scale weight:UIImageSymbolWeightRegular] forImageInState:UIControlStateNormal];
+        button.accessibilityLabel=self.categoryTitles[button.tag];
+    }
+
     self.sectionTitle.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle2] scaledFontForFont:[UIFont systemFontOfSize:28*scale weight:UIFontWeightSemibold]];
     for(NSLayoutConstraint *c in self.view.constraints) {
         CGFloat value=c.constant;
@@ -2191,16 +2203,14 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
             if(c.firstAttribute==NSLayoutAttributeTrailing)value=-38*scale;
             if(c.firstAttribute==NSLayoutAttributeHeight)value=MAX(44,62*scale);
         }
-        if(c.firstItem==self.categoryScroll && c.firstAttribute==NSLayoutAttributeLeading)value=wide?38*scale:24;
-        if(c.firstItem==self.categoryScroll && c.firstAttribute==NSLayoutAttributeTop)value=24*scale;
-        if(c.firstItem==self.sectionTitle && c.firstAttribute==NSLayoutAttributeLeading)value=wide?62*scale:0;
+        if(c.firstItem==self.categoryScroll && c.firstAttribute==NSLayoutAttributeLeading)value=wide?48*scale:24;
+        if(c.firstItem==self.categoryScroll && c.firstAttribute==NSLayoutAttributeTop)value=30*scale;
+        if(c.firstItem==self.sectionTitle && c.firstAttribute==NSLayoutAttributeLeading)value=wide?52*scale:0;
         if(c.firstItem==self.identity && c.firstAttribute==NSLayoutAttributeTop)value=10*scale;
         if(c.firstItem==self.soundButton && c.firstAttribute==NSLayoutAttributeTop)value=self.soundButton.hidden?0:21*scale;
         if(c.firstItem==self.preferences.view && c.firstAttribute==NSLayoutAttributeTop)value=self.soundButton.hidden?20*scale:24*scale;
         if(fabs(c.constant-value)>.1)c.constant=value;
     }
-    self.referenceSearch.backgroundImage=[[UIImage alloc] init]; self.referenceSearch.searchTextField.backgroundColor=UIColor.clearColor;
-    self.referenceSearch.searchTextField.borderStyle=UITextBorderStyleNone;
     if(![self.referenceSearch viewWithTag:kAmeGlassBackdropTag]) AmeApplyGlassChipStyle(self.referenceSearch,31*scale,YES);
     self.paneRight.constant = wide ? -216*scale : -24;
     self.soundHeight.constant = self.soundButton.hidden ? 0 : MAX(44,88*scale);

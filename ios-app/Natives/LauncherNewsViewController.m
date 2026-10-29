@@ -1371,7 +1371,9 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     [button setTitle:title forState:UIControlStateNormal];
     button.titleLabel.numberOfLines = 0;
     button.titleLabel.textAlignment = NSTextAlignmentCenter;
-    button.contentEdgeInsets = UIEdgeInsetsMake(10, 16, 10, 16);
+    button.contentEdgeInsets = primary ? UIEdgeInsetsMake(10,16,10,16) : UIEdgeInsetsZero;
+    button.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;
+    if (primary) button.contentHorizontalAlignment=UIControlContentHorizontalAlignmentCenter;
     button.tag = action;
     NSLayoutConstraint *touchHeight = [button.heightAnchor constraintGreaterThanOrEqualToConstant:AmeUIMinimumTouchSize];
     touchHeight.priority = 999; touchHeight.active = YES;

@@ -159,7 +159,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     AmeApplyGlassChipStyle(theme, 26, YES);
     __weak typeof(self) themeOwner=self;
     theme.showsMenuAsPrimaryAction=YES;
-    UIDeferredMenuElement *themeChoices=[UIDeferredMenuElement elementWithProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
+    void (^themeProvider)(void (^)(NSArray<UIMenuElement *> *))=^(void (^completion)(NSArray<UIMenuElement *> *)) {
         AmeRootTabController *root=themeOwner;
         UINavigationController *nav=(UINavigationController *)root.viewControllers[AMELauncherTabSettings];
         MetallicSettingsContainerViewController *settings=(MetallicSettingsContainerViewController *)nav.viewControllers.firstObject;
@@ -171,7 +171,10 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
             action.state=[current isEqual:keys[i]]?UIMenuElementStateOn:UIMenuElementStateOff; [actions addObject:action];
         }
         completion(actions);
-    }];
+    };
+    UIDeferredMenuElement *themeChoices;
+    if (@available(iOS 15.0, *)) themeChoices=[UIDeferredMenuElement elementWithUncachedProvider:themeProvider];
+    else themeChoices=[UIDeferredMenuElement elementWithProvider:themeProvider];
     theme.menu=[UIMenu menuWithTitle:@"Theme" children:@[themeChoices]];
     [self.navigationGroup addSubview:theme];
     UIScrollView *navigationScroll = [[UIScrollView alloc] init];
@@ -435,7 +438,12 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     NSDictionary *values=@{@"top":@(MAX(self.view.safeAreaInsets.top+8,52*scale)),@"right":@(-38*scale),@"height":@(MAX(MAX(48,68*scale),self.topNav.intrinsicContentSize.height)),@"bar":@(938*scale),@"themeGap":@(16*scale),@"themeW":@(MAX(44,58*scale)),@"themeH":@(MAX(44,58*scale)),@"profileGap":@(24*scale)};
     for (NSString *key in values) { NSLayoutConstraint *c=self.headerMetrics[key]; CGFloat value=[values[key] doubleValue]; if (fabs(c.constant-value)>.1)c.constant=value; }
     self.profileSlotWidth.constant=51*scale;
-    self.brandLabel.attributedText=[[NSAttributedString alloc] initWithString:@"METALLIC" attributes:@{NSKernAttributeName:@(4*scale),NSFontAttributeName:[UIFont systemFontOfSize:22*scale weight:UIFontWeightSemibold],NSForegroundColorAttributeName:AmeUIPrimaryTextColor()}];
+    for(NSLayoutConstraint *c in self.view.constraints) if(c.firstItem==self.brandView && c.firstAttribute==NSLayoutAttributeLeading) c.constant=38*scale;
+    ((UIStackView *)self.brandView).spacing=12*scale;
+    for(NSLayoutConstraint *c in self.brandLogo.constraints) if(c.firstAttribute==NSLayoutAttributeWidth || c.firstAttribute==NSLayoutAttributeHeight)c.constant=46*scale;
+
+    NSAttributedString *brand=[[NSAttributedString alloc] initWithString:@"METALLIC" attributes:@{NSKernAttributeName:@(4*scale),NSFontAttributeName:[UIFont systemFontOfSize:22*scale weight:UIFontWeightSemibold],NSForegroundColorAttributeName:AmeUIPrimaryTextColor()}];
+    if (![self.brandLabel.attributedText isEqualToAttributedString:brand]) self.brandLabel.attributedText=brand;
     for (NSUInteger i=1;i<self.viewControllers.count;i++) {
         UIViewController *page=self.viewControllers[i]; UIEdgeInsets inset=page.additionalSafeAreaInsets; CGFloat top=[self launcherHeaderReservation];
         if (fabs(inset.top-top)>.1) { inset.top=top; page.additionalSafeAreaInsets=inset; }

@@ -1,0 +1,3446 @@
+[
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/CMakeLists.txt",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/CMakeLists.txt",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a477af357d2ff4ea790e764179ad46b5148b444168cffb7c41c404ed41196d52",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/LICENSE",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/LICENSE",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "37b29c3ba810f4de5d0e2cfc28da34a9803b427a45861280dbdee38d8f4964f2",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/COPYING.LESSER",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/COPYING.LESSER",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a5681bf9b05db14d86776930017c647ad9e6e56ff6bbcfdf21e5848288dfaf1b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/COPYING",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/COPYING",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8b1ba204bb69a0ade2bfcf65ef294a920f6bb361b317dba43c7ef29d96332b9b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/texture_image.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/texture_image.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "74e873c27378d97e6670d6e38796ff0f7489ea9c759e4bfe66147dcbde57111a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/version.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/version.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "434beba1724b6a97499a3a906bf94c2b59d865184601486f45c4941153487a8f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fbo.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fbo.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "58a9765e3bf9d47ce9ce2083ffad98d96d0a57714590b50dd94035f1b7f6f1e4",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/texture_binding.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/texture_binding.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f09922393ccf220ba172dd7ca3a2af349e14f070d8c59ccea9ad909552c5ec58",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/multidraw.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/multidraw.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d3a973efbefea28de936f0b809f4436cdb68ed2253b98d99dc6df7982b5944fd",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/ordered_passthrough.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/ordered_passthrough.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2d0aef6af163f5d3725fb79ee009dcdbefb6a0ca1f52e9c658122a46c7d4678b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/egl_dispatch.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/egl_dispatch.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1d3cb4884f8cda75936f903f131774318607cd98e20a923266230a6a3591325e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/log.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/log.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2961efc13f8e26ce26c548885128abc3842aba05eeee8a9707a88190a5ffa916",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/init.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/init.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2e387a097b4ef48f49f577ece648ed92f1d9db8b924f3ff374c0db708e1f354c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/init.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/init.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1e8d07303e0c92e0c657134185d97954d6b1e609ded088e5993024cf74de15c2",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/lookup.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/lookup.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "6eee4ff3efd17bd55d45e679fe6400edacb1f647699e22f062b544d980b9bf5d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/egl_dispatch.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/egl_dispatch.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0c7c11a2dbcc6aa9e8a852040d34f061d7edafb969b57b9193de5d562ff5a7e0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/getter_version_strings.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/getter_version_strings.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "afe0866eecc3ee698546b12207925202618ced2456323f69345706b3613d4062",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/backend/loader.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/backend/loader.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ff8950d02442f8238b4a8199b952db3e23fd19f42be7f5da376caa49b0dbdc5b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/backend/capabilities.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/backend/capabilities.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9c9a90f256ed52ab8c711949ce4654a133a9c4bc3b0406fe550ee30b51f87fd9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/backend/loader.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/backend/loader.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d1ea4d76fe7941fca88d299dccff7b370f4f053e456fbac86148164312c3f2d8",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "59aa2dc132b9e809be32aaa1df305b85974d6c36f42544dd5d441575efb3ccc7",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/types.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/types.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "014b40ace04816cadcb26867c5e42207db009a986ee6380e75fd26f56f88728c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/drawing1x.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/drawing1x.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "599f5aa0d4a43a3fa12c4cf2d18fbfd4c10954809162be3e3fa7dbc0f728629e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer_utils.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer_utils.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fc687d8046470aa2346fab722a7240179432a1bf3b71948513de1979daf1a24c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list_diagnostics.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list_diagnostics.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f59c5a2298b95a48ed7ebb9a753e00d96013c41fce38f45c9e59e010a0959a97",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe.hpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe.hpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3cc2dce42b0cbd3d7d0cf1700bd77985ba643f94374e8040cc8a73df661799cd",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/ffp_state_query.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/ffp_state_query.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1324b71cafcc3df62a784caa3402c454eac9cd67f565f81c31087e31e99eb5a8",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list_capture.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list_capture.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8d15a9124bec774f614977489a18b9c0d8c8677b5e6f5ec3e84c04ceaa5f1b4f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/drawstate1x.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/drawstate1x.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "503acdc8af02b6ff625f157ec30c3e7245f05bcc2c4955e3daea2f89ea4b232c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/state.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/state.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "75b5fb8a4c581e1a2ee6eb3f00151c38a4036e8550ed06990502af966a50b2a5",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe_shadergen.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe_shadergen.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dc1680e3d41cf4f13a37d603abc99b6a21898ffb5ec9eb0808665ea23a8e21df",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/draw_now.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/draw_now.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "708549c514f9181bb1038c96bdfe46c5ba302ab37281c22e04354d58435a6584",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/glstate.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/glstate.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2bfe9570df535aeaa0031f4594b4a915d4e97931c1462343fd565259eb2030b8",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/defines.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/defines.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ef57702728c07122b7d7256a1f026485b01989e7dcdf4bad6240232ac2bca768",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list_diagnostics.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list_diagnostics.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "db48f5b8da29f4e44815a5d377bcbc6ee76bdf98c3a6b240c114374914df3855",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/imaging.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/imaging.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "74beef4cdcc8f9ef9d60aa4fe6beaae1647197913ee51d01344b77828315f92f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/evaluators.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/evaluators.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2c556874130ef6d6054588e5e8fcd601d82966a5f5adf2dccab096ffaffad783",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d9c1bdf8a1033bdd25bde41774755ecf2de3731d7d1b260736a264852ddccb3a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c1c011fb8dce09eda3c847127113df0146463957a080d1cf5f224d8ef31c2c16",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/pixelops.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/pixelops.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8de46772b31d15c02145ff1ee56f5817a9193603a7610e981e1a6cb774c44781",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/pointer_utils.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/pointer_utils.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0c19b02d6d1a449c5afdc008dc11c734f9d6cedef073414d53bcba1712921282",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/list.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "05a9f5382eead3e55c10ba8645d85d51965af9f037f492990faa5a8010c160cf",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointerarray.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointerarray.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b0a4932914a01534897e3cf9d6c0e792830f29a699f6c167a5722083436e9b64",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2bd0c19a9c511cf4847da30dd4e5f8f7330ffb8a4fcc0b7d372360f2b1263283",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/drawing1x.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/drawing1x.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "482df0282c2a45f18a139d62af72a2f6cacd8b807cb7b1fa6cd8d21d3f9ae64a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/transformation.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/transformation.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "66c65c51aaf015097bc8abf4c184bc4f07febc2539a98350cc9f44de3076d76e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/transformation.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/transformation.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3165bf8146a6bc81d1b5a0ded4c3b3277775b4a2093bfd2908b669d19a7624ca",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/imaging.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/imaging.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "55f520a15957dbae96c0ebb39e71ece4b09bfe87cc563ce81925bea36a89f641",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer_utils.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/vertexpointer_utils.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "11b12ca348153197614ef66304c7d57b2ddb89bc9e97e12e6c61f1ecbebb6958",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/state.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/state.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "50beeb6569f6ee6906b7d8a24e8a4290206dc005f39b79ac4601ffab8adebc2f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/attribstack.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/attribstack.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "06cb47525ebde3b9f849d8ecda216e9d454831ce7b842621c4a1b55b9e8bf020",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/pointer_utils.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/pointer_utils.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c53d2f59fe1f0a1d133dc1e5dd0c18c6476a4bb1eeb7f39db521d96d4cc8f53f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/linestipple.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/linestipple.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f04ee72290e3f23398e412f5fac6d5bce17e7820d85c9c6464fedde42bef3d9d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe_shadergen.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/fpe_shadergen.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0a9c0ccc221f2ee9de0689937f51b03dd046fdefd892b467a214a46454384208",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/selection.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/fpe/selection.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e4095b73b46ab7082a750b149e11e72adececbd17f4163edc3e0367d2d28dddd",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/vertexattrib.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/vertexattrib.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "955df44c96ed7c77cb624bf4fbe87ee6af86c3c639f21a0b445823f8314b98b0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/translator.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/translator.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5b0a406decaeec29b3f03e69baf3175900745aa64b0b3e8f9e6b5f8e8c9e8b82",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/userprogram.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/userprogram.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "26a0796912f89ae8854ae305ea5121caee1c2c5a1e08f9a585e6fb177b86f616",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/translator.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/translator.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4c345d92cfbb1bd71446aa6b9069aed0db6c856be9af82b675eb46d344977703",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/shaderobjects.cpp",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/SimpleFPEWrapper/shader/shaderobjects.cpp",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "32098926b65c31f116eadbc15c55972ed9474fa62d03a4b86778d30e6f4149c7",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/include/android_debug.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/include/android_debug.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "440d37e491d0eefbd02e2aa569d16a231ee732b62e9b56146fb040960fb55d75",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/include/GLES/gl32.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/include/GLES/gl32.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "827f83ea1c2fdf9a98b2f26042eb50ccc96f0f16e238a304d7f6af35f07edbc9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/include/GLES/gl3platform.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/include/GLES/gl3platform.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c1dabe65675726c470025ed0d85703811567971b6261ae15e71627e787c1d922",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/include/KHR/khrplatform.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/include/KHR/khrplatform.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "7b1e01aaa7ad8f6fc34b5c7bdf79ebf5189bb09e2c4d2e79fc5d350623d11e83",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/include/EGL/egl.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/include/EGL/egl.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "696661f38d0194eccc9cf706b5e29a4e7d2e597ad9819187119e16f978eebfff",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/include/EGL/eglext.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/include/EGL/eglext.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b66be4d02e6f62c7bf3ea80a985c279a8b4a9fb0d2f6b38ab2bd542044b85cac",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/include/EGL/eglplatform.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/include/EGL/eglplatform.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8bfe1f086e09f3bf46f30953b1858b5394bd0b4a9373ccd4dc04a125604674cb",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/include/GL/glext.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/include/GL/glext.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "888bc1b1feaa4943d1f891508300fc09cf95bdefee23a8bfe974a09884cbc27f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/include/GL/gl.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/include/GL/gl.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "59c6839428ecda618fe7e318fba77f0fe4eaf3170c2ddf9788a66d04e303fe72",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/include/GL/glcorearb.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/include/GL/glcorearb.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4eb658ea311cf4e04778e19b85df5d1b54f76cce31c87e22072193e000f4101e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/3rdparty/xxhash/LICENSE",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/3rdparty/xxhash/LICENSE",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "912c125f62eaaba833c9549c682046c07c45576521e93d122dd1218c0d7ae15e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/3rdparty/xxhash/xxhash64.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/3rdparty/xxhash/xxhash64.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9f8540579cf7b70e4c6505aff77cc8a0fd3cf62969ee5fd312aa1a175f98dff9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/3rdparty/xxhash/readme.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/3rdparty/xxhash/readme.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b64ca68153357ff2d698c4843807e84ecba1b316469bcd00a639aa4f8fc990fb",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/SimpleFPEWrapper/3rdparty/xxhash/xxhash32.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/SimpleFPEWrapper/3rdparty/xxhash/xxhash32.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b6d8b7c7c85f7f3ea920f09f5b314d5afc8928891d02ea3f088e9f2677e5b988",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/FabricUtils.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/FabricUtils.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "47e2fa2907f44289892645743a747f128f131b08a77614941e49464965d32e02",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ModLoaderInstallViewController.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ModLoaderInstallViewController.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "43978332941f86623f1ba3d24d9f72d1c197dd6b7b12dc0e12e13e53f5aa71c8",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/FabricInstallViewController.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/FabricInstallViewController.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "56db0ea56b4a5b9b90b9182fcd52d6f87a12ec6aead27a2474bc0962c9431242",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/NeoForgeVersionFetcher.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/NeoForgeVersionFetcher.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c5d12252d03c7d8cae4b1581ae9d485b5b25dd15b9dc351eff1010d36e0ad77c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ForgeInstallSchemeViewController.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ForgeInstallSchemeViewController.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "02aa559fe21fda3c5407584a8554775106ed638505cebd43d041520e639819d9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ForgeDirectInstaller.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ForgeDirectInstaller.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "cd3210a019d9276c644168fd827a11dc1a5fa13867e4a3ef748e62114ceb37dc",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/NeoForgeDirectInstaller.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/NeoForgeDirectInstaller.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0ebac364d3d22037bbda4ba36f88b44e7e9d77159f64985b1dee792d08dcdb56",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ForgeProcessorExecutor.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ForgeProcessorExecutor.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "592207d7b57031f3b7183720d23f88603a017419d82d1ade65ae34c279023a62",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ModpackInstallViewController.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ModpackInstallViewController.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "773a185b35e10d22b55542dd3438b0782b64ddfdc936d36eb8bafd3b7be9fbbe",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ForgeInstallViewController.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ForgeInstallViewController.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "be23ebb48ea2315f4d0893417272f2cc0d03c9ca524560c6e03085518eeef9dd",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/CurseForgeAPIKeyViewController.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/CurseForgeAPIKeyViewController.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9c6c8f016d72aa9023579d2a380298bb3229d772bcc9a123314baf78c45312ba",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/FabricUtils.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/FabricUtils.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "39bdd5f88c7133e36c859fbaaebf6e1c9fbe6eec6048e4eb9efa0009e788e1e3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ForgeInstallSchemeViewController.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ForgeInstallSchemeViewController.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "66ef939da4a47e8ef342d0e0f3964a95674c6fe324c17b71454a36c336f4bf5e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/NeoForgeVersionFetcher.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/NeoForgeVersionFetcher.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0956cf9744a72129a3f599bb794cccfc37ec11f30688a38078b75aa98c404994",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/FabricInstallViewController.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/FabricInstallViewController.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "172ecd6fc9d3b42a335786eade7bf6f53c382258715bcfdb2b62becf15ba6cd9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ModLoaderInstallViewController.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ModLoaderInstallViewController.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "cb7da09a425558e648c77390a518da1c8331ba8da55025e1c31eb30703d10e1d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ModpackInstallViewController.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ModpackInstallViewController.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a7ca85d3723e40fe0c37a48e54bfb6cba5ae5738d541828c70aab7a7af465f57",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ForgeProcessorExecutor.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ForgeProcessorExecutor.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "bafb42f3852d466f3c6d6c5690794652b020af2ecc48443fd0694f0fc0d218b6",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/NeoForgeDirectInstaller.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/NeoForgeDirectInstaller.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8a09b1e009efaaa95e53e8191e90b504c8603564d8a2c2d225a9d779c8643b32",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ForgeDirectInstaller.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ForgeDirectInstaller.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "7b133c2d3610351b0c4ae04b63c33c19514441f15929ba627c320b6e3eebac29",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/CurseForgeAPIKeyViewController.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/CurseForgeAPIKeyViewController.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f5883445871c776dd4431996b180df8d50c2d4fc3d30c4fb5fb27bb7462deee0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/ForgeInstallViewController.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/ForgeInstallViewController.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "16ab95291d9707ba550b535a1ddb44d8098b215810ab079a702395aa29253e15",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/modpack/ModpackUtils.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/modpack/ModpackUtils.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e101f56e2db41e33ee505cadc452edf9e45a9affd5c84c75e22159830903f05a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/modpack/ModpackConfiguration.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/modpack/ModpackConfiguration.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "7c36ec79a22c289385b7cd1a954506f621f9035733884d7408e5ccb77230a876",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/modpack/ModrinthAPI.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/modpack/ModrinthAPI.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3644c02540da676b78272fa7c845b433f1ea211e837186200c33c47c56e63543",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/modpack/CurseForgeAPI.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/modpack/CurseForgeAPI.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "17d9c55b77c101d1dd14738b4e10b57d2b48f9f5f618e997c858b4f6ab7e93c3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/modpack/ModpackAPI.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/modpack/ModpackAPI.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9b710d60761c00d5ac058192b9f69209d23f26375f41eb690169c05eb418073a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/modpack/CurseForgeAPI.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/modpack/CurseForgeAPI.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "985998ef791e8b8c45ac2d3580b153d0130cec0ffc790fc33e6c43860764de43",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/modpack/ModrinthAPI.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/modpack/ModrinthAPI.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f4fe5c293a5d619afb90e0e2666c2e34d4beff98db7923a5a11ce68dd103db69",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/modpack/ModpackConfiguration.m",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/modpack/ModpackConfiguration.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "91386cba28fed6fc196b6956aba93ce99d0a28c4fa0414b8f92a2e7de030807a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/modpack/ModpackUtils.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/modpack/ModpackUtils.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f1f2cd155c0049aa5ea034eb0ff1b1aac16161cb389e5c4c327269e6b30624f7",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/installer/modpack/ModpackAPI.h",
+    "source": "/Users/runner/work/_temp/air/Natives/installer/modpack/ModpackAPI.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "828f064f571f2d9de106b03aad9dd61d7d3e731311493a9fa50384d1b5af4399",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/input/ControllerInput.h",
+    "source": "/Users/runner/work/_temp/air/Natives/input/ControllerInput.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f2f24ca78b554dc3b955d18b8e473df433fa142b267a0505712a1563530b1e89",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/input/GyroInput.m",
+    "source": "/Users/runner/work/_temp/air/Natives/input/GyroInput.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9cc5981e2a7ae51891ab68eda0c26f8da33c697cd09080b80dc1d77e1e18fd36",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/input/KeyboardInput.m",
+    "source": "/Users/runner/work/_temp/air/Natives/input/KeyboardInput.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "82287928c4efc03f6bc6881dd15710b61303dd4efdf39365c8ea0d393e3a9c06",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/input/GyroInput.h",
+    "source": "/Users/runner/work/_temp/air/Natives/input/GyroInput.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "6613d2287f6a3c1bd491272f226d2c5a11b9198456af83da99e22ac433f0b370",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/input/ControllerInput.m",
+    "source": "/Users/runner/work/_temp/air/Natives/input/ControllerInput.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d071ce92cf2d5493f58e88156bc81700d09b7a857903f354aceeb08498b61f65",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/input/KeyboardInput.h",
+    "source": "/Users/runner/work/_temp/air/Natives/input/KeyboardInput.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f264636cf2c0b0a9f51e61aefbde24776f21884af4d5299cea03b5b5f1a598b6",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/README.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/README.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "16cb3855afa2bd612eb4c5f1b6901c55742da9adae1eaf1b3021d3f2abf58871",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/.gitignore",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/.gitignore",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "33db56bcd5392737025e53520a7ff732e0feca5b5a46db25b04df21914a3b621",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/LICENSE.txt",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/LICENSE.txt",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ef3edeecd9fa4fb5eff7a74afe964a02b7d9136bd07c4b4cd3864432d6890515",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/macos-example-app.xcodeproj/project.pbxproj",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/macos-example-app.xcodeproj/project.pbxproj",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "541e14c5bca807e4023796f37470a056a95050ed22da7c919134c9808f7ebaac",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/macos-example-app.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/macos-example-app.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "7f3b00b5c3fdb45242d7b87e1e5c4e25d1fa8129a16c94295ecc4e8ea2235c5f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/macos-example-app.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/macos-example-app.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dfa0f9bb85b95ccba9c6811adadf8cb407fb5d52088e89db83ebc308ec448542",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/macos-example-app/main.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/macos-example-app/main.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "39d70a0be2aa09a4e43121f381927d1870d86bb08a046d3b53036e82a15f4af7",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/zt",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/zt",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "040273748eef5f7750723d062a08c100ab20dca5263dd4cf13a0339955454d6b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Resources/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Resources/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "cd553514bb3a3e546da8c22bde1afefcfd0a513b66f7f3234527d3b2120b38c2",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/A/zt",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/A/zt",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "040273748eef5f7750723d062a08c100ab20dca5263dd4cf13a0339955454d6b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/A/Resources/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/A/Resources/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "cd553514bb3a3e546da8c22bde1afefcfd0a513b66f7f3234527d3b2120b38c2",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/A/Headers/ZeroTierSockets.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/A/Headers/ZeroTierSockets.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0d66771590a73b5f1aa9380df465d57831ade5a96086a9456fee9ce64adc11da",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/A/Modules/module.modulemap",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/A/Modules/module.modulemap",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a6030e96389631d8a540ca750daa8ba193f6e0378fce12d5c5ea01d99fba24ef",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/Current/zt",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/Current/zt",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "040273748eef5f7750723d062a08c100ab20dca5263dd4cf13a0339955454d6b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/Current/Resources/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/Current/Resources/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "cd553514bb3a3e546da8c22bde1afefcfd0a513b66f7f3234527d3b2120b38c2",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/Current/Headers/ZeroTierSockets.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/Current/Headers/ZeroTierSockets.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0d66771590a73b5f1aa9380df465d57831ade5a96086a9456fee9ce64adc11da",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/Current/Modules/module.modulemap",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Versions/Current/Modules/module.modulemap",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a6030e96389631d8a540ca750daa8ba193f6e0378fce12d5c5ea01d99fba24ef",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Headers/ZeroTierSockets.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Headers/ZeroTierSockets.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0d66771590a73b5f1aa9380df465d57831ade5a96086a9456fee9ce64adc11da",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Modules/module.modulemap",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/macos-example-app/zt.framework/Modules/module.modulemap",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a6030e96389631d8a540ca750daa8ba193f6e0378fce12d5c5ea01d99fba24ef",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/img/4.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/img/4.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2f7506325d9e677d30dfbff37b5697111159fa2a28d572474c85f383a61675b4",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/img/2.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/img/2.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "39f9fd80c66051d19c31160cecc13e920eece430a65b34d37fbbe3612817e4df",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/img/3.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/img/3.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "634a15659c094ab1fba031dc011005fe33dace1f3b0cbd55c48defa18229c2b7",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/img/1.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/img/1.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0b82c84c25b1ae2230f0bfbed9d21befc516f5311a094dcad1a5ca9843734aac",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/img/0.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/img/0.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5797edcc7ac74ce9f4697fa4ccc94f9fb62d3028998896c3832a6ad07c50f011",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-appUITests/ios_example_appUITestsLaunchTests.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-appUITests/ios_example_appUITestsLaunchTests.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1cc827b0c47cfb0396a4e78bec3bed04d168ef002c39520fc95f8b4829cd7e9b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-appUITests/ios_example_appUITests.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-appUITests/ios_example_appUITests.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c2deab13dfb052d4f2722cac82b052da2e8ae957ce80325930d2f02d358ab4dd",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-appTests/ios_example_appTests.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-appTests/ios_example_appTests.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2fb9bd8bd7d326f215f3d706a83ff5e75f4f662f22cff858c6b674a9d963ec2f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app.xcodeproj/project.pbxproj",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app.xcodeproj/project.pbxproj",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "497a9fbd95bf4ddffd841a0aced7caff18cee3348bc75daeacad3d36d6cdf10a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "7f3b00b5c3fdb45242d7b87e1e5c4e25d1fa8129a16c94295ecc4e8ea2235c5f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dfa0f9bb85b95ccba9c6811adadf8cb407fb5d52088e89db83ebc308ec448542",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/ios_example_appApp.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/ios_example_appApp.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/main.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/main.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4e46017580979aa187e619bcabafbaeea60d465ca26b3dbacb6225cf22317863",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/ContentView.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/ContentView.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e51e9a8ecfb242e3a7e4d9371ee42888fc1e05115ee38874eb9944f04c941e04",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/Assets.xcassets/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/Assets.xcassets/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0fd49ba3c3585c709678e0046a821c3c60685ec7063720d30d3a3448be3a208b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "554c06afb2bf81e3af423161e55281ea25575759a2d2d8c63229d4981d89bd0b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/Assets.xcassets/AccentColor.colorset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/Assets.xcassets/AccentColor.colorset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9af65086fa30b49252fae1a1225731691de794f7775af74d71befeb507d12b7c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/Preview Content/main.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/Preview Content/main.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4e46017580979aa187e619bcabafbaeea60d465ca26b3dbacb6225cf22317863",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/Preview Content/Preview Assets.xcassets/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/ios-example-app/Preview Content/Preview Assets.xcassets/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0fd49ba3c3585c709678e0046a821c3c60685ec7063720d30d3a3448be3a208b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1249ae3106a0522777360c297a0d7c1f0826f993663aef89e9555c64e69c34b1",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fccd4b1734bf62621e7e180feaeefee98878a9a100fe03e543a9d955d6339159",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/Headers/ZeroTierSockets.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/Headers/ZeroTierSockets.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0d66771590a73b5f1aa9380df465d57831ade5a96086a9456fee9ce64adc11da",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/Modules/module.modulemap",
+    "source": "/Users/runner/work/_temp/air/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/Modules/module.modulemap",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a6030e96389631d8a540ca750daa8ba193f6e0378fce12d5c5ea01d99fba24ef",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/CONTRIBUTING_CH.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/CONTRIBUTING_CH.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "26194ee85748120b3b62311b73c260b9e2aa99a5ac46b4e6da2eb72459f98f9a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/.ruby-gemset",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/.ruby-gemset",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0f68afdea4a169b42312c52b80d62f0384556309dd8d77bc6b57745d8b488d99",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/.cocoadocs.yml",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/.cocoadocs.yml",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9a4e5a1f2c5f2e350b7790a80b3dcaaa32d01b400cb1a314354f13f0f029f88d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/.codecov.yml",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/.codecov.yml",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0efb35c232f1d59a5bda6f297a7ecfbcc9a9025a04b0fd528e1892ffeb509a6f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/LICENSE",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/LICENSE",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "de671a9375033308db4dd62a5de02fd75f8d0441c069b2e6d01fb3182d7ed230",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/.ruby-version",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/.ruby-version",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "362148d7721ad4a1bb64981ff8d604ef7f4d22267ea8845042f54f90940f24fd",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/CHANGELOG.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/CHANGELOG.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8c356d2c976dbc6cf1c18ec020861238167f43626343e140a5cc7236512966f5",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/README.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/README.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e04e315a7388ffe0fd5bfb1092c801f1bcd7ebb8a6578977f5dbe328e22dea9b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/.gitignore",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/.gitignore",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "05ac8a5da63894415a9270dc6ffd7f9c452482cecb8ad1e8ff0faa3efb0fbd86",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/CONTRIBUTING.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/CONTRIBUTING.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "99988ddf2947dc7fd37ac75845c4455ba5cb493278c59a5379e2d32e0ef4c8f9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Package.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Package.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3b55ead5a6f8be872489bdc2cc34904b0e309108e481faa6c93e69b372a322b3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking.podspec",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking.podspec",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dde32372457acc70b06c7c1bf358052b8c0aa6d2155790f78216f3b7296a6a68",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Gemfile",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Gemfile",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "19433a3339cd33288604d12845a4c4405d5f0613c8446389745c265cee16b232",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Gemfile.lock",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Gemfile.lock",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "30986390d4296fc702d07e1922d115d288c0e4afb34a043a19100234505214fa",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Framework/AFNetworking.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Framework/AFNetworking.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ce3a84c23ded01485c00a319b089835995e20c046173569d9fafccb1eb94e9f1",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Framework/module.modulemap",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Framework/module.modulemap",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "66c0eb93889e16deca52b81ac15706a3d91001f9a08edc1faf4c181ab3a3e199",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Framework/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Framework/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9a10b17b9d4aa5f4674cf1e26c94ad2f2f4c5b7451180df886662be6a071fbe0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/AFNetworking Example.entitlements",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/AFNetworking Example.entitlements",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c8b93a3d569c97d3e5b74851ab0d7459d4fc50f5ea8ac9b6ef68143288a62b48",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Prefix.pch",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Prefix.pch",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dd835a28fdd98310089e4ce098d2e0a30dc864720d64494a4875b72656b5c037",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/main.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/main.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "599aefa6f0b255abea4d69a9a84256195608f989111c45cfac6b4bbe8f362ede",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Today Extension Example/TodayViewController.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Today Extension Example/TodayViewController.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "63ae967218b7dc02c7d33383672ad6b9d5697bfb53406052ea2dfeab08e3b348",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Today Extension Example/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Today Extension Example/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1302b79420b69ba10fa9cefed7bb6de1b73d28c90c4fcafc5f212d77ab4a3963",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Today Extension Example/TodayViewController.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Today Extension Example/TodayViewController.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "21e7b1596872cc9efdd63b9d4971564c8434a8d816d3ae34dd34abb3cb1ab5af",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Today Extension Example/Base.lproj/MainInterface.storyboard",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Today Extension Example/Base.lproj/MainInterface.storyboard",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d47fec6d5b38d87c07f27810b6d59f88229904d299af1c3ed68295cf182a9c4b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/en.lproj/MainMenu.xib",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/en.lproj/MainMenu.xib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a4bc66ae13ed35b53e69b2a3c4a0576c9d49cc757a84206e486b8deb15caff6e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/macOS Example/AppDelegate.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/macOS Example/AppDelegate.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5aa95f5ed055fb37322d3a638f7bdd95cd9c1595f141946d4799db9c83864f54",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/macOS Example/main.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/macOS Example/main.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "640e4becd0b99d3ebffcac59cf477d0f4ca19e845cb1f4fac8cca38fec5c5a18",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/macOS Example/MainMenu.xib",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/macOS Example/MainMenu.xib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "cca042ea8bc4bdf8c4c7d4a8934ded573246b61491272a6191732ce7ec91e0c7",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/macOS Example/AppDelegate.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/macOS Example/AppDelegate.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "bda0967f846fdb75258b43c76c8d239bc105f8dab840031b724678edf4f5364a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/macOS Example/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/macOS Example/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "6b5a88d8e24f74de2ed9717ccb15b65587ad4d0b88aca9d35940d89d99f1ca61",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/macOS Example/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/macOS Example/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "884db26f7c9de0dd3e0542d616ba109636a804283b72dc2939a4c572a640d51a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/AFNetworking watchOS/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/AFNetworking watchOS/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e02a56e823aef26dd7ea9c79c0cc089f7ed9b39e096e381887db5b9a20c17135",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/AFNetworking watchOS/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/AFNetworking watchOS/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "78eb8d47e0647b18e46b7acb8396b1e68740ae32f44d49e4726420e28efdf60b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/AFNetworking watchOS/Base.lproj/Interface.storyboard",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/AFNetworking watchOS/Base.lproj/Interface.storyboard",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "824e8da15e78609a1f5b9b6e20f46d9ba404d9b8286fd3ed37d238be90ce6dc5",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Classes/Models/Post.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Classes/Models/Post.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "742a7ca0712f6e11f5681fab335b2bef3fc2d53e25b10ed4ba2d3f3eb6fe2da3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Classes/Models/User.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Classes/Models/User.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d9feb33f7079da035b18609d5b58531a4ee75b1908f6476752187acd08f9c29e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Classes/Models/Post.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Classes/Models/Post.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "989eb24bb19c61c02eb571b97ca42332e3c3a19ed67a526a0eefef0174ba9791",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Classes/Models/User.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Classes/Models/User.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c03c5141faf92cdbbe363d1357f75ed87a7b57c5119013da8aee7fc34b57d42b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Classes/Networking Extensions/AFAppDotNetAPIClient.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Classes/Networking Extensions/AFAppDotNetAPIClient.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "bcbaf99721db36dfbb8a5b883a32396a9b29a2973de5b22b4862b37b75c0d481",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Classes/Networking Extensions/AFAppDotNetAPIClient.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Classes/Networking Extensions/AFAppDotNetAPIClient.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4be043650a1eeb6101fd4999cfcff1b650c274fece170c2f5482e5eba052a4c5",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/AFNetworking tvOS Example.xcodeproj/project.pbxproj",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/AFNetworking tvOS Example.xcodeproj/project.pbxproj",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9117be7af84eec3f95409f50471829f9cf1a3bedd451eb13450456104208d4d6",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "972ec1fd42325872438eb085ac29e94f51c10788ec18ec5549439950866c541d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/profile-image-placeholder.imageset/profile-image-placeholder@2x.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/profile-image-placeholder.imageset/profile-image-placeholder@2x.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8549b461f4683a154c73215dbd3d5e6770f702a940f0c8be4378309cf19a3cad",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/profile-image-placeholder.imageset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/profile-image-placeholder.imageset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9b6f6f57a61804415b3db2a81e027cce17f59717e5dcb5c43caa419f2181e762",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/profile-image-placeholder.imageset/profile-image-placeholder.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/profile-image-placeholder.imageset/profile-image-placeholder.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c5dab508f375d43f969c11e734bca261c4af3565ce5eca82a8b135ef1a154ea3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-76@2x.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-76@2x.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5441d6166aebb1e32e276a53c58836ba17e3b933cde3a3bc74569c233205ed3d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-40@2x.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-40@2x.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3cf3709cd29a53dfb72e0dc4ad0284db060f574e85b215d4711a3b68b0b40ab0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-40@3x.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-40@3x.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "89b75614ba197bccd3fb4aff5b175198a75ddfbbdb7158930f27113e74d91ffc",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-Small.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-Small.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2f20d365a622ba626023467ee1a5a88a36884c304059359d9b6f75ffa00dabe2",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-60@3x.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-60@3x.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "24e7cfcd4f12d629a0e749bff80cbdf963fe9df1a9da8c0b081075aeb81c7fe6",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-76.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-76.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "52b3f40ec942caf7324770b9690d2468bec9d11c3d0d1c7487d0595ad675511b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-1024.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-1024.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b7f4a42555de07fdf6bd106990253947c313b7782c7d5d893da509da816b25fa",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-60@2x.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-60@2x.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "89b75614ba197bccd3fb4aff5b175198a75ddfbbdb7158930f27113e74d91ffc",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-40.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-40.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fa98e0a1a68174a27ed2bc249cd7a7429369c4d19281f56a8c3b1497e1a34137",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3c565142dc292d97cf3249ced9dc78eae9a58e8f956b98b5e2a0a85af1331486",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-Small@3x.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-Small@3x.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4c693006c82fcc67d6538ede9f299b3fe22d60d2d40bbf6b95d0bf91bc150481",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-Small@2x.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Assets.xcassets/AppIcon.appiconset/Icon-Small@2x.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "bb3b58aec919aefa1c93fed45e33e0a70d2f76761646c378dcc7188ec7b5fd6e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/iOS Example/Launchscreen.storyboard",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/iOS Example/Launchscreen.storyboard",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b3816e0c74f08d972ac020873ab68de91b5903bd7e890dcf686d2d3cd5a128ce",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/iOS Example/AppDelegate.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/iOS Example/AppDelegate.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "763c3e4bc17b386fe5cecf643328aa9ae9a79ab8d93286de4852e1f0d335d212",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/iOS Example/AppDelegate.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/iOS Example/AppDelegate.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "67738ee3485af25bdd8d98955b579de146bf27c16fec1e009e7166ca03b98d0b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/iOS Example/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/iOS Example/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "14592b002d69833807ebc0f21115c802cd29ff9de40fa15b5e48e132894ee5a1",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/iOS Example/Controllers/GlobalTimelineViewController.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/iOS Example/Controllers/GlobalTimelineViewController.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b56fd4acc2eda30431365c24898d7ab9e3045036af2acd123aa64c0a5fb0e2cc",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/iOS Example/Controllers/GlobalTimelineViewController.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/iOS Example/Controllers/GlobalTimelineViewController.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4c212a76db17496842a23c707a1b645046fdf78918d335e5cc3f9d4ed5aa57a4",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/iOS Example/Views/PostTableViewCell.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/iOS Example/Views/PostTableViewCell.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d1ecb7425505546332dcd6765a73ed3efa02fb36d5bd904358e7988fcd2412e3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/iOS Example/Views/PostTableViewCell.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/iOS Example/Views/PostTableViewCell.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e1ef9cc08858b9ce01014653d3bff01157070d2c7d679da15e9d89e467663abb",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Certificates/root_ca.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Certificates/root_ca.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "7431e5f4c3c1ce4690774f0b61e05440883ba9a01ed00ba6abd7806ed3b118cf",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Certificates/adn.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Certificates/adn.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e877d83263c4be8203e74a47d9e8fb4ac70f8e09d7c94dc4a359f37c8750ef32",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/Certificates/digicert_ca_3.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/Certificates/digicert_ca_3.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "21eb37ab4cf6ef8965ec1766409ca76b8b2e03f2d1a388df734208e86deee679",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/watchOS Example/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/watchOS Example/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "25eeae86ef6147f6425f65e8eed8e30f58896390607d843a3aede9ba25911dfe",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/watchOS Example/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/watchOS Example/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "78eb8d47e0647b18e46b7acb8396b1e68740ae32f44d49e4726420e28efdf60b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/watchOS Example/Base.lproj/Interface.storyboard",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/watchOS Example/Base.lproj/Interface.storyboard",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "824e8da15e78609a1f5b9b6e20f46d9ba404d9b8286fd3ed37d238be90ce6dc5",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/ViewController.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/ViewController.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "bae09359dbd84ea8205872a1de700d7136e2aa58c7328711e63aa9c1e9212b69",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Gravatar.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Gravatar.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "15ab1b0f500a30a99a663fafc856863fdcbaed9f5a88cf661a5365708aeade59",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/AFNetworking tvOS Example-Bridging-Header.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/AFNetworking tvOS Example-Bridging-Header.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "727cefff34229ee1c3c959ba8c19d7d11e025a9b2870e3bff620ebbdd3ae0440",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/AppDelegate.swift",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/AppDelegate.swift",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b5faba16ad6116b4416cf33a9673c577cfbde62082ffe526906d0b4ef62c5fd5",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "49e2c1295633fd8c903bb58d2891d50ae84aff936b4f3973cf941bcdf381f8cb",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "972ec1fd42325872438eb085ac29e94f51c10788ec18ec5549439950866c541d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/LaunchImage.launchimage/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/LaunchImage.launchimage/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d466db3af8a6e6c9cc80e4386c62a59d2a9af6324d1d5d090b1f6922f4b6c2c4",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ffef7e102372840a29fefad08618afcbba86a66af5ea48f5ac62cd3b5bce8ae3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/Top Shelf Image.imageset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/Top Shelf Image.imageset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dae3bebf389f590a15b92a3dce2d14fb5cb2c5fb1a88d460688ef7a25c4c55d9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e7793563c702188762efbacc808e3b2dc139a796747e242f14731366af08f5ea",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Front.imagestacklayer/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Front.imagestacklayer/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "972ec1fd42325872438eb085ac29e94f51c10788ec18ec5549439950866c541d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Front.imagestacklayer/Content.imageset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Front.imagestacklayer/Content.imageset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dae3bebf389f590a15b92a3dce2d14fb5cb2c5fb1a88d460688ef7a25c4c55d9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Back.imagestacklayer/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Back.imagestacklayer/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "972ec1fd42325872438eb085ac29e94f51c10788ec18ec5549439950866c541d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Back.imagestacklayer/Content.imageset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Back.imagestacklayer/Content.imageset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dae3bebf389f590a15b92a3dce2d14fb5cb2c5fb1a88d460688ef7a25c4c55d9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Middle.imagestacklayer/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Middle.imagestacklayer/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "972ec1fd42325872438eb085ac29e94f51c10788ec18ec5549439950866c541d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Middle.imagestacklayer/Content.imageset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Large.imagestack/Middle.imagestacklayer/Content.imageset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dae3bebf389f590a15b92a3dce2d14fb5cb2c5fb1a88d460688ef7a25c4c55d9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e7793563c702188762efbacc808e3b2dc139a796747e242f14731366af08f5ea",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Front.imagestacklayer/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Front.imagestacklayer/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "972ec1fd42325872438eb085ac29e94f51c10788ec18ec5549439950866c541d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Front.imagestacklayer/Content.imageset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Front.imagestacklayer/Content.imageset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dae3bebf389f590a15b92a3dce2d14fb5cb2c5fb1a88d460688ef7a25c4c55d9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Back.imagestacklayer/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Back.imagestacklayer/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "972ec1fd42325872438eb085ac29e94f51c10788ec18ec5549439950866c541d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Back.imagestacklayer/Content.imageset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Back.imagestacklayer/Content.imageset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dae3bebf389f590a15b92a3dce2d14fb5cb2c5fb1a88d460688ef7a25c4c55d9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Middle.imagestacklayer/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Middle.imagestacklayer/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "972ec1fd42325872438eb085ac29e94f51c10788ec18ec5549439950866c541d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Middle.imagestacklayer/Content.imageset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/App Icon - Small.imagestack/Middle.imagestacklayer/Content.imageset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dae3bebf389f590a15b92a3dce2d14fb5cb2c5fb1a88d460688ef7a25c4c55d9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/Top Shelf Image Wide.imageset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Assets.xcassets/App Icon & Top Shelf Image.brandassets/Top Shelf Image Wide.imageset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dae3bebf389f590a15b92a3dce2d14fb5cb2c5fb1a88d460688ef7a25c4c55d9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/tvOS Example/Base.lproj/Main.storyboard",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/tvOS Example/Base.lproj/Main.storyboard",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "6ab6cac119fdab9fb4a80ee82f5c80cd84fa5111389db9da440b07089025ca81",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/watchOS Example Extension/ExtensionDelegate.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/watchOS Example Extension/ExtensionDelegate.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "eac8c8c69ae65b8e7542b832844c4121c4613ad6d53fce9dce1a37b05b4370a0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/watchOS Example Extension/InterfaceController.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/watchOS Example Extension/InterfaceController.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "650eec04e72b1615268a710c45a798fa07af72e0f861c8fa0a03ba32cdaf66dc",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/watchOS Example Extension/ExtensionDelegate.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/watchOS Example Extension/ExtensionDelegate.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e5fa1635bc1b1a4ac443c691c890568af35ec3d1af67e7effaa8fca901c7d999",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/watchOS Example Extension/InterfaceController.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/watchOS Example Extension/InterfaceController.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "08208938dc238d92936133ab8b4b018322e17557a59c2d6c505404dcc76eb81e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/watchOS Example Extension/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/watchOS Example Extension/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ac839d598294f2432172ef0260b21c0114896ccb5ab8e164e8d01c6dee8f38a4",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/watchOS Example Extension/Assets.xcassets/README__ignoredByTemplate__",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/watchOS Example Extension/Assets.xcassets/README__ignoredByTemplate__",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "80f345b4743c2bc2839265ea8c422a188d3b3da22df6cb8b615ae8238f7f5199",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/project.pbxproj",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/project.pbxproj",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3d2fbe4e82e43a5a0244a6fe63d1f7438ef31510bb37cd1b878b3a0122a0578f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/xcshareddata/xcschemes/tvOS Example.xcscheme",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/xcshareddata/xcschemes/tvOS Example.xcscheme",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fdce518141b01c117ff97b298590bedf9ee8cc82c96c543d4e01458da0fc021f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/xcshareddata/xcschemes/watchOS Example.xcscheme",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/xcshareddata/xcschemes/watchOS Example.xcscheme",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5e838318b8fe6490e6f2ebb138a2d95413649abf009f9231dee02e0e2413f404",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/xcshareddata/xcschemes/macOS Example.xcscheme",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/xcshareddata/xcschemes/macOS Example.xcscheme",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1e7a9f112c3dc5fa04e2a134c777c19c4aae457cfac85b36024f6012fdeaa733",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/xcshareddata/xcschemes/iOS Today Extension Example.xcscheme",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/xcshareddata/xcschemes/iOS Today Extension Example.xcscheme",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "22744722dc11973f053716baf48b22248d5ecd8f0a99ef816c760fa294723a50",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/xcshareddata/xcschemes/iOS Example.xcscheme",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Example/AFNetworking Example.xcodeproj/xcshareddata/xcschemes/iOS Example.xcscheme",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d18b3d7908f1372e8009305a74a1f44f4f1b436747cefe903eec2ec733d7d0ee",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests-Prefix.pch",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests-Prefix.pch",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "bd092e2cd8c204017e508b969fddf1e97cbf5682aeabac06b8b4cf654dcec067",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fdf0cc0f89dd4bc9e238c4f0e0ca05f398a89ac27e6f701d93fbe982b286ca2b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/logo.png",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/logo.png",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "52eb0da6538bd690be6ee149ddf674076e1f69fbd28dbeab662307298c626828",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleInternetAuthorityG2.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleInternetAuthorityG2.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c3f697a92a293d86f9a3ee7ccb970e20e0050b8728cc83ed1b996ce9005d4c36",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/Google.com/google.com.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/Google.com/google.com.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "58a8679b098a2617903558103d1fa96ba2dd41872f2de0646d27164155856bc3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/Google.com/Equifax_Secure_Certificate_Authority_Root.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/Google.com/Equifax_Secure_Certificate_Authority_Root.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "08297a4047dba23680c731db6e317653ca7848e1bebd3a0b0179a707f92cf178",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/Google.com/GeoTrust_Global_CA-cross.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/Google.com/GeoTrust_Global_CA-cross.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3c35cc963eb004451323d3275d05b353235053490d9cd83729a2faf5e7ca1cc0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/Google.com/GeoTrust_Global_CA_Root.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/Google.com/GeoTrust_Global_CA_Root.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ff856a2d251dcd88d36656f450126798cfabaade40799c722de4d2b5db36a73a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleComServerTrustChainPath1/googlecom_0.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleComServerTrustChainPath1/googlecom_0.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "58a8679b098a2617903558103d1fa96ba2dd41872f2de0646d27164155856bc3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleComServerTrustChainPath1/googlecom_1.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleComServerTrustChainPath1/googlecom_1.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c3f697a92a293d86f9a3ee7ccb970e20e0050b8728cc83ed1b996ce9005d4c36",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleComServerTrustChainPath2/googlecom_0.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleComServerTrustChainPath2/googlecom_0.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "58a8679b098a2617903558103d1fa96ba2dd41872f2de0646d27164155856bc3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleComServerTrustChainPath2/googlecom_1.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleComServerTrustChainPath2/googlecom_1.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c3f697a92a293d86f9a3ee7ccb970e20e0050b8728cc83ed1b996ce9005d4c36",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleComServerTrustChainPath2/googlecom_2.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/Google.com/GoogleComServerTrustChainPath2/googlecom_2.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3c35cc963eb004451323d3275d05b353235053490d9cd83729a2faf5e7ca1cc0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/ADN.net/ADNNetServerTrustChain/adn_2.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/ADN.net/ADNNetServerTrustChain/adn_2.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "7431e5f4c3c1ce4690774f0b61e05440883ba9a01ed00ba6abd7806ed3b118cf",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/ADN.net/ADNNetServerTrustChain/adn_0.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/ADN.net/ADNNetServerTrustChain/adn_0.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e877d83263c4be8203e74a47d9e8fb4ac70f8e09d7c94dc4a359f37c8750ef32",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/ADN.net/ADNNetServerTrustChain/adn_1.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/ADN.net/ADNNetServerTrustChain/adn_1.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "21eb37ab4cf6ef8965ec1766409ca76b8b2e03f2d1a388df734208e86deee679",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/httpbinorg_02182021.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/httpbinorg_02182021.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "837e88a91302dca944eeec3a92c3943a010b989726e3b0c3c1a05c7b60b747db",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/Amazon Root CA 1.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/Amazon Root CA 1.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "87dcd4dc74640a322cd205552506d1be64f12596258096544986b4850bc72706",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/Starfield Services Root Certificate Authority - G2.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/Starfield Services Root Certificate Authority - G2.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "28689b30e4c306aab53b027b29e36ad6dd1dcf4b953994482ca84bdc1ecac996",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/Amazon.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/Amazon.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f55f9ffcb83c73453261601c7e044db15a0f034b93c05830f28635ef889cf670",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/HTTPBinOrgServerTrustChain/httpbin_0.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/HTTPBinOrgServerTrustChain/httpbin_0.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "837e88a91302dca944eeec3a92c3943a010b989726e3b0c3c1a05c7b60b747db",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/HTTPBinOrgServerTrustChain/httpbin_1.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/HTTPBinOrgServerTrustChain/httpbin_1.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f55f9ffcb83c73453261601c7e044db15a0f034b93c05830f28635ef889cf670",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/HTTPBinOrgServerTrustChain/httpbin_3.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/HTTPBinOrgServerTrustChain/httpbin_3.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "28689b30e4c306aab53b027b29e36ad6dd1dcf4b953994482ca84bdc1ecac996",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/HTTPBinOrgServerTrustChain/httpbin_2.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/HTTPBin.org/HTTPBinOrgServerTrustChain/httpbin_2.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "87dcd4dc74640a322cd205552506d1be64f12596258096544986b4850bc72706",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/SelfSigned/AltName.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/SelfSigned/AltName.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ef3f5ed95dc5e569ab4b5cd4c6c2d62f85eed8d931d36505db0fb497900b7270",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/SelfSigned/NoDomains.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/SelfSigned/NoDomains.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "7a7748aab982eb6f61621ca265ce6a25369dedb23bfe9d27ad12442ed3669994",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Resources/SelfSigned/foobar.com.cer",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Resources/SelfSigned/foobar.com.cer",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "786d70a1ae1c3fb229ebca28a02f4613ab62fc354306caa9f5f2aacd1704c5b5",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFImageResponseSerializerTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFImageResponseSerializerTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b3e95677caa90bfc0d5c82fc6382a30b93b13c990af5afd03760c907dcd813a3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFHTTPRequestSerializationTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFHTTPRequestSerializationTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "558ef8563502549079619556f1440cd9dc85726160ef006208eb9e80a169f699",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFPropertyListRequestSerializerTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFPropertyListRequestSerializerTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0ca766ab940d4fa9516331c59f97804a086f403cc69b16bed1f4d6559fab78bb",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFUIButtonTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFUIButtonTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9b65bd3a8e3929d6b967c49aec39daa054c75d9100d5a0766c8740c204d77bcd",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFHTTPResponseSerializationTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFHTTPResponseSerializationTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "793684dc9c6d2bddd9690a5bafe7e0a3b713fbebcbefbdf0de601b524b92502e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFNetworkActivityManagerTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFNetworkActivityManagerTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "cb4c2068c27b6708d6cbfea20f692c0b812d443b5b64f67c2c273093fbcf84bf",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFNetworkReachabilityManagerTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFNetworkReachabilityManagerTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f47967f42475634b2bc6fa0b05ff634606cf1f4cff37241471a84af2bb09fa28",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFImageDownloaderTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFImageDownloaderTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "697dd26ab16168dab9e9c5d53678bd49b3f46158438ef2ebe24b6e3c7cc005b0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFWKWebViewTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFWKWebViewTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "68ea9f6b02eb7c0807ed99748e3afcc8bbf1c7d22ab723153553b91e5266eec1",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFXMLDocumentResponseSerializerTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFXMLDocumentResponseSerializerTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a7ff90f1f1dba9734fe6cddadb10899965ef873faa7a1cca4a94fcf45087d6dd",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFURLSessionManagerTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFURLSessionManagerTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "31622b6fc5d343b47a4c985ff13bf034723db2705d0646f1dbc9565561177b24",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFTestCase.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFTestCase.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "eec170ccdf3e606b7188d3cea0f3eaf8e8eb271fb595ff8cf9af45c8336c924c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFAutoPurgingImageCacheTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFAutoPurgingImageCacheTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1915470c5afb463f9b06b983399d8c92f08e639dbb500767b75db9d6902aef01",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFCompoundResponseSerializerTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFCompoundResponseSerializerTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "828b866093b1c803c708e41b5755cc199c2240ee4c45ee1ab46c3610bc69268c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFXMLParserResponseSerializerTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFXMLParserResponseSerializerTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4ab1fdf43f73ad990f387a40500c5f1f6fd428a52e45f873eba9e7ecf9259fc8",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFPropertyListResponseSerializerTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFPropertyListResponseSerializerTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "6cd2789d62fedc5415b255901cbf0490eb3a6e27b0fd01f27caf7854e780186e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFHTTPSessionManagerTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFHTTPSessionManagerTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "45ae9a4c766852bd7944e76a1bbc957db0d99eb42b81d1fa7246dbe378ee5dc8",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFSecurityPolicyTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFSecurityPolicyTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8fe21b28c822ef224017742c2a75785620e7edc1879962943e36ff801ff29e44",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFJSONSerializationTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFJSONSerializationTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "705073670cb1c4ade4495230c1a5ff7eb9d9010bffafb950b77d0ac2e6574a45",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFUIImageViewTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFUIImageViewTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c9b63ba3d34ceacc0a29af9fb677d619b9cf6bbdf06f50f6eec755cb855f4450",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFUIRefreshControlTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFUIRefreshControlTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f92d7f5bb9dbec8d6750cdb18c05a5d0017969bbd8bd33a4296f364e7685702b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFTestCase.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFTestCase.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "776b2f4c0bc3c027827e60effad9fe9ba1fc9d7d4e934e29f2d87878bc708b0e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/Tests/Tests/AFUIActivityIndicatorViewTests.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/Tests/Tests/AFUIActivityIndicatorViewTests.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c2ab350d6cdc54b02d6dcb0fb05483d4a4f7c18e5dd98327f6e60a63ff2570bf",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking.xcworkspace/contents.xcworkspacedata",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking.xcworkspace/contents.xcworkspacedata",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0703362819f04b8c8d10d4b7633f1f80151064e2226c04188722e3737f7839dd",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking.xcodeproj/project.pbxproj",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking.xcodeproj/project.pbxproj",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c114f26a5d018ce2fd3568cfbadccf99ca60dd68d2ba532ed17a0cb22770576c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking.xcodeproj/xcshareddata/xcschemes/AFNetworking tvOS.xcscheme",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking.xcodeproj/xcshareddata/xcschemes/AFNetworking tvOS.xcscheme",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ca680bbf29b30122e0d8cb084884181ae43f5d4f3d553aa5a3a8adc3e64d51ed",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking.xcodeproj/xcshareddata/xcschemes/AFNetworking macOS.xcscheme",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking.xcodeproj/xcshareddata/xcschemes/AFNetworking macOS.xcscheme",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "aca337e12211ea1c64a7e8c201ed2ce55bb05762ffb9546b00d08f75bdbdc3ee",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking.xcodeproj/xcshareddata/xcschemes/AFNetworking iOS.xcscheme",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking.xcodeproj/xcshareddata/xcschemes/AFNetworking iOS.xcscheme",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "6a2192b1ee12733368a8ab01432d4fa42afbcf7465d559e19945410a6ae5e26b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking.xcodeproj/xcshareddata/xcschemes/AFNetworking watchOS.xcscheme",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking.xcodeproj/xcshareddata/xcschemes/AFNetworking watchOS.xcscheme",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "08f067992de5c65da5bff865d467c6618ee84869af7ec5d7defa052437fb4286",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/WKWebView+AFNetworking.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/WKWebView+AFNetworking.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "145526b6010cc8af157f402c236d53f7a64b8f20f498d39633675d53ad73323c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/UIProgressView+AFNetworking.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/UIProgressView+AFNetworking.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "7a4d3109955bb9f890ffb1ff3ad4db48c03854fc5625e93b4a20794f28f42fb3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/UIButton+AFNetworking.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/UIButton+AFNetworking.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "99f9982068b13946df140d22d04821ef5f43211a6af5fd237f24aa325266c53a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/UIRefreshControl+AFNetworking.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/UIRefreshControl+AFNetworking.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f1c1cf19c187dfbd2cc6fbc1a935ec46f156bccbb73475b937a9fe673cf43ae0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/UIImageView+AFNetworking.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/UIImageView+AFNetworking.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fd776f7b29b20f71ac18b5b09b2cbbf5e7e7c1d4f278f0e58548fbb6bae6cefe",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/AFImageDownloader.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/AFImageDownloader.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a764fd7a87749ae652a461348a951aa0c53de79ea1121fc900ef0cee106263ec",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/AFNetworkActivityIndicatorManager.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/AFNetworkActivityIndicatorManager.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8420e9229ba431b3613f04c0f41f4b2453ecc03a8a812e90aa816322eaa7db45",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/AFAutoPurgingImageCache.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/AFAutoPurgingImageCache.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "95b75e7a793d0cc77c23f89b13e829a45825e5fa2b71ec67c676fc9e9803807b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/UIActivityIndicatorView+AFNetworking.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/UIActivityIndicatorView+AFNetworking.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "35f0ff75f67b66bdee5259032ddf571dd2b3299c75e0715c2a981c318d99114e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/WKWebView+AFNetworking.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/WKWebView+AFNetworking.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8109d0399de612c097a1aa5f37cbf1270e883c04aad640c61811549634e4ae05",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/UIProgressView+AFNetworking.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/UIProgressView+AFNetworking.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "21263b3ea3b1e58e7efd23032c6ab2e0737be79f0a3e8b47d99cbc2b2c675777",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/UIImageView+AFNetworking.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/UIImageView+AFNetworking.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9f9bae00289c809e527c535aa5f6359124480bc4ff01b23ee938a26aab6c8393",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/UIKit+AFNetworking.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/UIKit+AFNetworking.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c9bf02b7b6617b36c346f30d39b95093f952ac57ec77e53d5037bf2b9942f537",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/UIRefreshControl+AFNetworking.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/UIRefreshControl+AFNetworking.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "581e27458ae1931c2f9487f27c36ecde334827d35c82558b21d0ed84417d4fb9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/UIButton+AFNetworking.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/UIButton+AFNetworking.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "48cc23fdef8c53418843b54d909fa066d6833f0b721bb12743bccf9a5bc400f9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/UIActivityIndicatorView+AFNetworking.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/UIActivityIndicatorView+AFNetworking.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0df3a5951e8e66e82f445c11b86de9ebbdaa9f96445f0881c68bfbec08def7ea",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/AFAutoPurgingImageCache.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/AFAutoPurgingImageCache.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2728303693ec70ac8cd56655b846eb269f98a29d309023af3ef5dcff2a25e12e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/AFNetworkActivityIndicatorManager.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/AFNetworkActivityIndicatorManager.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8e588e496dea68806daf33b7b0d1b65694315ab5d0e760124765812cd8ec7473",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/UIKit+AFNetworking/AFImageDownloader.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/UIKit+AFNetworking/AFImageDownloader.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "84e3111c9f726b5e23223d97aa82c11a9b38dfcb2a275e29f0a6e268a44c5fd1",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/fastlane/.env.tvos13_xcode11",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/fastlane/.env.tvos13_xcode11",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "271df4c8c8c4188a94b2894715935cec570749081981ead4d2bd5fe3889f726b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/fastlane/Fastfile",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/fastlane/Fastfile",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "279a43e6a46acc990b3364ea65e4a6a0d06d2d902c88602603be12d1ae691798",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/fastlane/.env.ios12_xcode10",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/fastlane/.env.ios12_xcode10",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "35fbe2f43b645395a0896d7854d17b92215d9588098eb7d3abf93f1650fe8eef",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/fastlane/.env.macos",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/fastlane/.env.macos",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4b191a865100d9470aa0bbb49cab397e6028d56b973523d7bcc030737bf385e0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/fastlane/.env",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/fastlane/.env",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d0757eca3c2ad64e2f935a799a86c5d1bc41d26445cc6e41552caa9ad812a9ee",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/fastlane/.env.ios13_xcode11",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/fastlane/.env.ios13_xcode11",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "059bb45bb1651feb7918589bcc070dd68b936119c3da2703360310c3a6c697f2",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/fastlane/.env.ios11_xcode94",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/fastlane/.env.ios11_xcode94",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "436c826bbec3608f7f562e91cdb5492a50466329367e36d80cdc60d7883b9778",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/fastlane/.env.deploy",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/fastlane/.env.deploy",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1d137969d5dda0ccbc6df5a1cc982cfd1377fd78a316a0e38061627c55ee1693",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/fastlane/.env.default",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/fastlane/.env.default",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "df192a2b20b96a37a5cb5bf9eb6b84c204746f35c46e99d14c1f18c289708599",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/fastlane/.env.catalyst",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/fastlane/.env.catalyst",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "23948c82e250bb95253f453b3c11c7a924bfb2d45f63321aff7739efe8931aad",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/.github/stale.yml",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/.github/stale.yml",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b6639f7b91831863649f68e9e979e35d26c22ab945d0d3c60775b4b37ddbc0b4",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/.github/pull_request_template.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/.github/pull_request_template.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b96aaf0ca9ecba3f3dae9167591267540e286e7e37c02bcca0909101a3142690",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/.github/issue_template.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/.github/issue_template.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9f44614984dd2228ca316b230a06682035d7b41c4d8624e30f2d7b78c174ead6",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/.github/workflows/ci.yml",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/.github/workflows/ci.yml",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b90903dfa5c9b47cb198440fac0bf54aa6391f456aa82ae174ed2596d3463900",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFSecurityPolicy.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFSecurityPolicy.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3623f0e76f0ca095c86a550c577b7772c6bdbb87659564fb41f85336730aed6e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFNetworkReachabilityManager.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFNetworkReachabilityManager.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "02eab81291162d1c6e5b0a52f35c5dd4ae1d0df85a7ad424a16cfb122267e27a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFURLSessionManager.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFURLSessionManager.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "7bf95b1621649bbb75fd9a5b3bee7dabbcf4de39c78069d7da81678ac71c9ffd",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFURLRequestSerialization.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFURLRequestSerialization.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b066d889d8f5cf60c2bbe165862b38e029d586cfe95c596853d8ca00d01939af",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFURLResponseSerialization.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFURLResponseSerialization.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a8d3826d2046ee693e80c4e318cf3e5a4b8396c35479dc1025946932e19e8918",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFHTTPSessionManager.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFHTTPSessionManager.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b74fcb9cdab6f88689517d7677650db114288f0cd7d1794e3d4175f43821dd5e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFURLResponseSerialization.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFURLResponseSerialization.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "892ebb989b2947239b857a8e7c2cc9cfba45f82e7d4ff608b67ecc1ff37cbcc5",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFURLSessionManager.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFURLSessionManager.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9e3db7d740358ba0e5fedfb70747eb8b2bad9ebb744fd434e129f4347906f906",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFURLRequestSerialization.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFURLRequestSerialization.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "de9b077f47fd6dcda8f4781a797e6c70518ef2ccc3cd5d9b9ad65eb1c54a9d5b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFNetworking.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFNetworking.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "7ab01157ab09e7fbc45f0cb3efe3af4014a160b3fb1bd91d67673dfd4a36f830",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFNetworkReachabilityManager.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFNetworkReachabilityManager.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "13ba33a91efa4b4df81dc7f3d3d2a460864518448ea0254c9a352f2165f8c1bf",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFSecurityPolicy.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFSecurityPolicy.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1e942f9bcf388b59c7f6a6440f332ba8dd3eaad93ac24854ed29913993926466",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFCompatibilityMacros.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFCompatibilityMacros.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a5e17dac80a294e8b00e8ddb8345c1b094231890e2c82a57d33c7d9f273dfc9a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/AFNetworking/AFNetworking/AFHTTPSessionManager.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/AFNetworking/AFNetworking/AFHTTPSessionManager.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a13da8f4e793b87956b5c96fd00b82a65df315ca01a3cdd32ed9572b1a0ea4c6",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/LICENSE",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/LICENSE",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c73e30ea8e33cef9c5940b8ecefebfc4ad7549429aab4c051f3c3e842196b7a8",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/README.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/README.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "adf5e76a0c288b857f483b8b3bb2e95ec431d19970436d0b86cb969e0aeb1fba",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/.gitignore",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/.gitignore",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "42e61d5bbe231cffdf2ea2990f2c75345a6919ec83691f2fc5ca106eeb2ea7f1",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/DBNumberedSlider.podspec",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/DBNumberedSlider.podspec",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d3989c526ac521c76784b1bb5648995624d819ff6a8714581bfc5526ce4af7e0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/Classes/DBNumberedSlider.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/Classes/DBNumberedSlider.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "af6d2ad9c8b902cc1855fd5cc45598e71475089462137b14931ea1581665475b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/Classes/DBNumberedSlider.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/Classes/DBNumberedSlider.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b0089bde16d22b150f2323a94db586c209b6c3f3dccab4279f4170e259a11e65",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/AppDelegate.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/AppDelegate.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5190e375add951b041c0f22b810d0779a4131ad81930bee1e3aa39701c5871d6",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/main.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/main.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "06c1d2b4f5c2ffa99b38ad51ede30782b4348fcd16d54260fcd6a7482bad96df",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/AppDelegate.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/AppDelegate.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "6404e5dffde26800931e515135694fe5027693b48d94fd6e055a09e457137e2e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e17627b88ec19efd9a98f0d189cdbb1a272c74ad9083817de3f819394c1fe567",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c14cb0cf778c7343f0de0c6fcded0a4191120adb500a4fba29a844a423b4d1a3",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/Base.lproj/LaunchScreen.storyboard",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/Base.lproj/LaunchScreen.storyboard",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b01b0e30b288b9d054cf9c19ecc86a028188ad63153ddf0aacd28ac74e4376b5",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/Base.lproj/Main.storyboard",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/Example/DBNumberedSlider/Base.lproj/Main.storyboard",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "071aec3dbd6a194c6e091d1007881a61c9df0eb715a8d3a10afb7d9e26c5b290",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/Example/DBNumberedSlider.xcodeproj/project.pbxproj",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/Example/DBNumberedSlider.xcodeproj/project.pbxproj",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "95eec9adfadb961d45dfd4176069dd4da42ba56034096b9ac8459c43307b2514",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/DBNumberedSlider/Example/DBNumberedSlider.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+    "source": "/Users/runner/work/_temp/air/Natives/external/DBNumberedSlider/Example/DBNumberedSlider.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3f642539cb0a6ef194aaa55c3a349353a941b254560b28c61be7990aa9c5976c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/NRFileManager/NSFileManager+NRFileManager.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/NRFileManager/NSFileManager+NRFileManager.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5e93471b38734bb48d529419ecc0e405bb5b98fbdb23360ab6524a483649f14a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/NRFileManager/NSFileManager+NRFileManager.m",
+    "source": "/Users/runner/work/_temp/air/Natives/external/NRFileManager/NSFileManager+NRFileManager.m",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3d4028aa6f2f2b77f6ecd3251e57e0f2a5fe0626eccf8834447bf76e87d4a52d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/UnzipKit/UnzipKit.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/UnzipKit/UnzipKit.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2a78fc49764d779b978c90baffc8043907027d4f03f8cdece5d8c648b62ec9da",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/UnzipKit/UZKFileInfo.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/UnzipKit/UZKFileInfo.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e81252722307ef5c2b8b48b39735372d300d1c7ed22405b641312c3f061fdb04",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/UnzipKit/UZKArchive.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/UnzipKit/UZKArchive.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d509a50ff971300f598f61b7dafe78095fb7f4cad36426a9f0a8afa825608006",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/fishhook/CODE_OF_CONDUCT.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/fishhook/CODE_OF_CONDUCT.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d24e750bed1c9ec5afe4d321182106cf61e8fddc6036d86e4a111c3b23398e59",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/fishhook/LICENSE",
+    "source": "/Users/runner/work/_temp/air/Natives/external/fishhook/LICENSE",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0d6de56134ac05ffce391c697bb046c83cab012a4670114e1f0847ecf59b2c2e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/fishhook/fishhook.c",
+    "source": "/Users/runner/work/_temp/air/Natives/external/fishhook/fishhook.c",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "55cc25dab04fef77b96b903562fb0850c54f258f2c001266b7ef39701e4ab0c7",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/fishhook/README.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/fishhook/README.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ec83efa3e85eaebe40851a73434fc2c30938d69df7df144e7c628c6d811596b7",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/fishhook/CONTRIBUTING.md",
+    "source": "/Users/runner/work/_temp/air/Natives/external/fishhook/CONTRIBUTING.md",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3cb784194a3d254e29f309d9293d3f820613aac4de7098e04206ff39ba96f766",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/fishhook/fishhook.h",
+    "source": "/Users/runner/work/_temp/air/Natives/external/fishhook/fishhook.h",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5432b81bd302956adcbfc8836af74e47dd38748d5078495cbe1b5bea62180120",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/external/fishhook/fishhook.podspec",
+    "source": "/Users/runner/work/_temp/air/Natives/external/fishhook/fishhook.podspec",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0ab80a53e30534506f3abc00d56fb720758604394a60c935f908ef141d81e633",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libshaderc.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libshaderc.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5889b328650920eac1f3e60345ae0c6d022d3f402e2bbf5fc68a55b76c92e7e5",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libshaderc_impl.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libshaderc_impl.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3c5fa12c3ddb1a2750f73b800cc3ce2145e2879cf8870a3e3e9502cc55e38ede",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libfreetype.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libfreetype.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b751c0ef410848fa20ddfe0ea6d2a86fbee5f664623f1ea44771a4d61f63ae61",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libglslang.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libglslang.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2c2c29c3e3ebde66974c3086432e5494a1a05018eb099368379eda0f5e2410aa",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libmithril.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libmithril.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "22bb6ce93af4b630c1b2fe5f27c2da1b73299793eacc371807bce29fe8b024b0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/liblwjgl_nanovg.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/liblwjgl_nanovg.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "afbce27cc6acfe5702afc8675f9ae40d543ab54a339dc4d73b813c9be06b32ee",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libspirv-cross.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libspirv-cross.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a04e9dfffb854037664c18867c5cb4654073a7013cc6ce664c33b8a376f7aa71",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/liblwjgl_tinyfd.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/liblwjgl_tinyfd.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c1efe5739e6ef17b85bf75f63dfb3c0ff44a1eebedd6ca8a4f523b500b0747ff",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libspirv-cross-c-shared.0.impl.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libspirv-cross-c-shared.0.impl.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "9b7fc5fcd51118d77b13c64c03f74904ab2d5628e1f56976c9b384ac387b29a1",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/liblwjgl_vma.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/liblwjgl_vma.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f1ad4302fde68459ceafd6ad64192d39c775a5b6042afd3f227b36016629568a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libglapi.0.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libglapi.0.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "091b6216406cbe3f6e5569691b8c117eff9ab40a98ebff6ee8cfab22e4d30f6f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libopenal_impl.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libopenal_impl.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "bbb2ae66e1e8bb05d6ba7e5253abbeafd8b65d195b066ebba8ea28db0530416a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libspvc.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libspvc.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a04e9dfffb854037664c18867c5cb4654073a7013cc6ce664c33b8a376f7aa71",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/liblwjgl_stb.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/liblwjgl_stb.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4fdf43399f8f2215fef68d4f51fa3939760f296fd49b1d849ec81d7de6a861cb",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libmetallum_iris.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libmetallum_iris.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a0862434c4f0a62efc5eb382557f7dd0c75ac50b1036a2af7ff1a1a171270fdf",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/liblwjgl_opengl.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/liblwjgl_opengl.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0fd536a2d84cbcf9784cc678e9c8fc03c75726625e7ae86c88359f1380655a01",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libglslang.16.4.0.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libglslang.16.4.0.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2c2c29c3e3ebde66974c3086432e5494a1a05018eb099368379eda0f5e2410aa",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libMoltenVK.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libMoltenVK.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3f7c86723de929d276a136f8dbc43158b061b81cdcd2da48e7fa40aabe7c3543",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libOSMesa.8.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libOSMesa.8.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "081a4895a35fcb534ea34e19cca6b2093cd2b175791dfc1ab384dea0008ce369",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/liblwjgl_spng.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/liblwjgl_spng.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fcd604c627b00e8e2f59a4d6df014b88d62af54eed3175b2ba9919f3fd138466",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libvirgl_test_server.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libvirgl_test_server.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4c0a81dbd79c77e633b42e4d2a47956fea00f4b599a7a2d40640ba5c823502c7",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libMobileGL-gles.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libMobileGL-gles.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "89c7cad82a95f83e671dba2fc4a876daba21fe3cbc44cf334317d64f21c0eb3a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libspirv-cross-c-shared.0.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libspirv-cross-c-shared.0.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "a04e9dfffb854037664c18867c5cb4654073a7013cc6ce664c33b8a376f7aa71",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libSDL3.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libSDL3.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "788ddbbcf8aea82f2bc81b51ffba45c0f1490d647f456af22bac7623d6c6ed3b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libMobileGL.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libMobileGL.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e7a8043b3676edaf1396c01d8997c2335dc5e2bb65e754e0b0a9c31a19b74dba",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libgl4es_114.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libgl4es_114.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "23f44c1ca548ef536b65961731673b794fd2258b7d2892675326b644c0778792",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libvulkan.1.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libvulkan.1.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d80add2f438567f7ae33c944621ea1aebaa5ffed596f3fe6c202aba9e7eb625a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/liblwjgl.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/liblwjgl.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2cc8f20bc357d1415b594557c9d82ea4f99b83460a84b2686bb21af9b6403240",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libglslang.16.dylib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libglslang.16.dylib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2c2c29c3e3ebde66974c3086432e5494a1a05018eb099368379eda0f5e2410aa",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/AltKit.framework/AltKit",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/AltKit.framework/AltKit",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "74e832b5d2047cb2868ededa566ee27b4d9502ec57be24ef4358de6eb3cf3cc6",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/AltKit.framework/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/AltKit.framework/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "92ad94ab8fd390c7baa9b17ff300f7a8a943e8aa62f52262b8151675f571e47e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libEGL.framework/libEGL",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libEGL.framework/libEGL",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1b8f503d302ede6dd10ae992ee3d906b082b4d5511ca613657d1065434098fbe",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libEGL.framework/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libEGL.framework/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "53305111ec38a2412f95bed46196e22d948d7d5418519649e408db5b495c4fdf",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/UnzipKit.framework/UnzipKit",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/UnzipKit.framework/UnzipKit",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "54d0a297e8a1d2d508621af8160d7d4db6050202affecd2181c00ac1a398c870",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/UnzipKit.framework/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/UnzipKit.framework/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "c9d7d64156f11648268c953f67ae27b175883b08d217aaeafef0048d14a465eb",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libGLESv2.framework/libGLESv2",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libGLESv2.framework/libGLESv2",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "eaad1bbdaccaf7c66138623833d5692e311856d8fedcc21a973ab709212d5593",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/libGLESv2.framework/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/libGLESv2.framework/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "43e8ee06b8ce76531974252a71e96ccb94c7eb3b4d28672043088ece4dec2ea2",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/CAltKit.framework/CAltKit",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/CAltKit.framework/CAltKit",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0c57e9dc2bb2dbd1c5117854980e419fcb31a21a1b94353d0b6e6617250163c0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/Frameworks/CAltKit.framework/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/Frameworks/CAltKit.framework/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "993c01301c3a01286ed3f47734befec6df812cf4e7ab240c5e71665ef4086fb5",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/de.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/de.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "65ffa3c586ff92464f66b12ebdd17e26d3e05eb64a81344961adf05a26a7c05b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/he.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/he.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "780e16e072a22acf9b54dd6a14d92620bb034e5802b5182d860bc7d1cace1712",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/ar.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/ar.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ccaefa81d3f4529ed2875c9f6e050046bfa9aa1102cbc0a31071660869478e6f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/el.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/el.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "30306af327d29ecae96dfcddbba1287728a5bc31edbb48a881d3ee62ae5f38f4",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/zh-Hans.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/zh-Hans.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8d85f3decf678e4e2eca30662faeb423283427fb12d4c475ee7854d8215bcc64",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/ja.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/ja.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "510af19a082dae62afa556e744befc0f52c7d200405c2a127b5a3921996cd15d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/fa.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/fa.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0c139a4e9a650666d1f48a674874ce2dde4beb7c3f7ada1936c166792a943f46",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/en.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/en.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fbf3de4bc2b3b9f8df6096866fa11994e8cd3905703798b94740dd335253446c",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/en.lproj/InfoPlist.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/en.lproj/InfoPlist.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b24032dd684473c88d1d903b24bce1f470fa69d5cac5961bb4ed617c8b6ad4fe",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/en.lproj/LaunchScreen.storyboardc/01J-lp-oVM-view-Ze5-6b-2t3.nib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/en.lproj/LaunchScreen.storyboardc/01J-lp-oVM-view-Ze5-6b-2t3.nib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ecfc7e321ccb2a25c661f2400481932ad56db27ddd6fb3e310e6b8cc649fef13",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/en.lproj/LaunchScreen.storyboardc/UIViewController-01J-lp-oVM.nib",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/en.lproj/LaunchScreen.storyboardc/UIViewController-01J-lp-oVM.nib",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "716abbabe890726a52a1a14679c9f23dd28510f170443dec960526c45003915b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/en.lproj/LaunchScreen.storyboardc/Info.plist",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/en.lproj/LaunchScreen.storyboardc/Info.plist",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1f255d5cc53b531e3f29a9406a8df49a958e2bf9443d3e20bd8374f707f7d5c8",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/uk.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/uk.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "1e650b9757ac6bafa1ec1f4ae1f87a658334c790886957193bf489f39fa119e7",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/en-GB.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/en-GB.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b931e8dda9cbb10284f180f9fa710818175596d633a521d4bcdac5fb0fc75e50",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/es.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/es.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b92a9132233d868fc3bf31664bda316adbfceb4c187f81063e01a5c98caf410f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/da.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/da.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "123d73f1056106ba40985d5b842a42f07e75f7989d4a18e8ee570bef4e0d1900",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/en-PT.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/en-PT.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5a35cd7ba34cd223e95e1e478e9c7377018adab50a7a22c1b012949f8c668093",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/et.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/et.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "aa5432c21b1e74b608034c2fe5b845edb81749cc758797bcf6fa2ea8ae78ba39",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/it.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/it.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3b95fa67f84eb0c83c220813959824ae0415c5f73662be1686881d84d22e2e89",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/en-UD.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/en-UD.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "bb47c4f8b4100811a5a4e70cd2b38d33116e3edd04d6876b644514ca46d6d2c9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/sk.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/sk.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0227c504223faf1d640d6d6f001248d3cacacd356b488f367e6dd99cac51bca7",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/sr-Latn.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/sr-Latn.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fb989e3419eef2137e82bd0042a2346f35383bfa0e74951574ae5d0d18edc6cf",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/kk.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/kk.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "27832be2059013d16b97e6859eb25fd8a094bd086fa7c6d7af4b91b528ed86ef",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/la.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/la.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d327f6e9d0ff0117a99f1de7bb11abb2e8c1324ed36a5307db2867f11ada2fc1",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/sr.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/sr.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ac7c1ef092acfaf7d7c7c1bbef5f5145f890574f0ca6f63f21afd4aa8d220546",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/ms.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/ms.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fcb2ef247d26bb3c0e9e6d36118e7a078b471ced3c876a3236c650263490b940",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/ba.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/ba.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "4bd663903dce09c7e6f585323852ea7976ac133cfcb45c86a79d338a53022b1d",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/sv.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/sv.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "b4b30962fc2ab7dbdb1361ea1a354e9bd3eb41f97146b7f654b5beb8c84a455e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/cs.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/cs.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "353e46cbb267a646d538a0b4dd69427d16df0ed33499f590cbb8fc035fa39550",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/km.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/km.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5677777b59342ba2d81b2b69a6a09a4ef2241f1dc754b35ec5090b8c01aa2325",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/lol.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/lol.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "bb3ec2848a03bc6269b7c64a243db13d14773da48dbccf6a051d2383a27a5efc",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/ko.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/ko.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d469b05edf1e6ca7ded782d56ee3835f002654702520894b6b1637f7d21f1ab9",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/fil.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/fil.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "d23baaf44bb082c5381e22538ff1928b443f21a4e24a2a34c80b8e0acbdc4761",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/zh-Hant.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/zh-Hant.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "14e1ab90b373ca89f644681f72631ab999dfdfb0ba7c518a94c27e416b1b3051",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/no.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/no.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "00874cd133213db23f95c17b5e9ab67fdd9abf31e901781e3a8c17c59c02e1be",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/hu.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/hu.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fb989e3419eef2137e82bd0042a2346f35383bfa0e74951574ae5d0d18edc6cf",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/bn-IN.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/bn-IN.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/tr.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/tr.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "89bc9139941756db861223828f89a772e392ea9d86567692325b22a2c0eb5b80",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/pl.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/pl.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2ae42e9904038882574b764e519e7ef87f34876d52d0a0995311582f00591c82",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/pt-BR.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/pt-BR.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "5eca2146d43fb0910dcbec5b992e2063891fc8f371693c14887ce1423b386dbe",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/vi.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/vi.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "33576cf83b9980382f03dfacfda89eb89853698f6fb4e72b8e4915042af639b2",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/lt.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/lt.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "ead03c05e554f839347fd4b87d8814af38c39c3d813554d771a5c793d4c2fac0",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/ru.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/ru.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "f44ad3368a168a261d4ceeec44cf097a2bbd46cc30b0d67c70c216d4f0f53293",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/zh-CN.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/zh-CN.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8296cf415c8b28c7dbb9834196e69937eb62e83b509f537ed716151772532b7a",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/af.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/af.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "fb989e3419eef2137e82bd0042a2346f35383bfa0e74951574ae5d0d18edc6cf",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/tt.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/tt.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "33460f610f0e52993c705d5d2ad334ade533c3992300eefaa47b92e17147db95",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/fr.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/fr.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "45dee39cd7c4c24814b197fef60201da1ff455571f15c2d9497ddfd11ed7c33b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/fi.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/fi.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "0b9933a49730e1507b5d2a096e8501ead9201767246cc81d770e28b240d6329b",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/id.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/id.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "dcbf1a7a1018d12da0acc4a4bf2cb8fd5270be11154b85f2f2e03601770d297f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/nl.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/nl.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "8f3616dd8c3b753af2360387316c50cc15cb007c126eb43b151c860baa821b58",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/th.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/th.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "e4053bf1517fdbc806f66970c33a44b52e9cbd802fad43b622b05e510d350b94",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/az.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/az.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "608e61716e501cbba7864a865fa620e4d96cf6910397ebe6ff29e267415833a8",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/pt.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/pt.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "351df168eecb564463c9580d0c40fed1a7a9c18faaa0d7ea156a2a9343aa3d9f",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/bn.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/bn.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "2d66edc242c3ef5da5f1222fd11ee57410aa6861b36db15a2fd172c56a1b1f09",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/ro.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/ro.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "3931f1436c1e3e6a3025c549ca228e4761565420508671f13d2da73c5a9af967",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/pr.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/pr.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "bfabe59ae050ea00f057d33eb0e3dabcee27ad4fb14638767a093aba0c001538",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/hi.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/hi.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "def3346be13cdecdc6734532459f36e046f47f121a89fa06a73930ba3dd7ae71",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/ca.lproj/Localizable.strings",
+    "source": "/Users/runner/work/_temp/air/Natives/resources/ca.lproj/Localizable.strings",
+    "revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+    "sha256": "41fe8b442c473fee49b2634db08d321faef1f39a79a2a715f3e63673c6d154aa",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/UniversalJIT26.js",
+    "source": "/Users/runner/work/_temp/metallic-scratch/bundle-templates/UniversalJIT26.js",
+    "revision": "711f704da6046427bbd9f0c4706b143dce9849fd",
+    "sha256": "e9828331a815c10c2077df6c66c2a974dfec235d03231aba4e50044c6015ea14",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/UniversalJIT26Extension.js",
+    "source": "/Users/runner/work/_temp/metallic-scratch/bundle-templates/UniversalJIT26Extension.js",
+    "revision": "711f704da6046427bbd9f0c4706b143dce9849fd",
+    "sha256": "650d66c8e185e9608ecb5aa4b9686613ccee5f4d0dbc58438f06ed4595f1905e",
+    "symlink": null
+  },
+  {
+    "destination": "ios-app/Natives/resources/JIT26Script.js",
+    "source": "/Users/runner/work/_temp/metallic-scratch/bundle-templates/JIT26Script.js",
+    "revision": "711f704da6046427bbd9f0c4706b143dce9849fd",
+    "sha256": "650d66c8e185e9608ecb5aa4b9686613ccee5f4d0dbc58438f06ed4595f1905e",
+    "symlink": null
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "SOURCE_SHA": "711f704da6046427bbd9f0c4706b143dce9849fd",
+  "GITHUB_SHA": "6deb4571064a12c93d5166b9a5ed45f8d1c71a77",
+  "GITHUB_WORKFLOW_SHA": "6deb4571064a12c93d5166b9a5ed45f8d1c71a77",
+  "GITHUB_WORKFLOW_REF": "unfilteredpranxu/metallic-renewed/.github/workflows/metallic-restoration-test-ipa.yml@refs/heads/feat/metallic-exact-ui-restoration",
+  "GITHUB_RUN_ID": "40816485445",
+  "AIR_SHA": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+  "ZEROTIER_SHA": "b8e672f54286be8500bc875e153826af7b01d6e6",
+  "NG_GL4ES_SHA": "6e153a1622a8d9ef903f7975aafbef2453571bab"
+}

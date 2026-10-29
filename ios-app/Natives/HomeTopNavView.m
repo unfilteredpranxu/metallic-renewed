@@ -28,6 +28,7 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
 @property (nonatomic, strong) NSArray<UIButton *> *buttons;
 @property (nonatomic, assign) CGFloat lastBarWidth;
 @property(nonatomic) NSInteger lastPresentedDestination;
+@property(nonatomic,copy) UIContentSizeCategory referenceTextCategory;
 @property (nonatomic, strong) NSLayoutConstraint *naturalWidth;
 @property (nonatomic, strong) NSLayoutConstraint *barHeight;
 @property (nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *itemWidths;
@@ -200,8 +201,9 @@ static UIColor *NavAccentColor(void) {
     return CGSizeMake(MAX(842*self.referenceScale,self.naturalWidth.constant),MAX(MAX(48,68*self.referenceScale),self.barHeight.constant));
 }
 - (void)setReferenceScale:(CGFloat)scale {
-    if (fabs(_referenceScale-scale)<0.001 && self.barHeight.constant==MAX(48,68*scale)) return;
-    _referenceScale=scale;
+    UIContentSizeCategory category=self.traitCollection.preferredContentSizeCategory;
+    if (fabs(_referenceScale-scale)<0.001 && [self.referenceTextCategory isEqualToString:category]) return;
+    _referenceScale=scale; self.referenceTextCategory=category;
     NSArray *widths=@[@132,@170,@176,@190,@158];
     for (NSUInteger i=0;i<self.labels.count;i++) {
         self.labels[i].font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:22*scale weight:UIFontWeightMedium]];

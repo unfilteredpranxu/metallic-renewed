@@ -28,6 +28,7 @@
 #import "BottomActionBarView.h"
 #import "HomeActionPanelView.h"
 #import "AmeRootTabController.h"
+#import "HomeTopNavView.h" // Stable named launcher routes shared with the root header.
 #import "LauncherPreferencesViewController.h"
 #import "AccountListViewController.h"
 #import "AMEAssetCrypto.h"

@@ -223,7 +223,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         [self.profileSlot.centerYAnchor constraintEqualToAnchor:self.navigationGroup.centerYAnchor constant:-8],
         self.profileSlotWidth, self.profileSlotHeight,
     ]];
-    UIImageView *logo = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"AppLogo-Current"] ?: [UIImage imageNamed:@"AppIcon-Light60x60"]];
+    UIImageView *logo = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"MetallicChromeTransparent"] ?: [UIImage imageNamed:@"AppLogo-Current"] ?: [UIImage imageNamed:@"AppIcon-Light60x60"]];
     self.brandLogo=logo;
     logo.contentMode = UIViewContentModeScaleAspectFit;
     [logo.widthAnchor constraintEqualToConstant:40].active = YES;

@@ -13,6 +13,22 @@
 #import "ios_uikit_bridge.h"
 #import "utils.h"
 
+// Five description keys are absent from the pinned complete English catalog. Keep existing
+// translations first; fallback only these verified first-party presentation descriptions.
+static NSString *MetallicReferencePreferenceDetail(NSString *key) {
+    NSString *resource=[@"preference.detail." stringByAppendingString:key];
+    NSString *translated=localize(resource,nil);
+    if(translated.length && ![translated isEqualToString:resource])return translated;
+    NSDictionary *fallbacks=@{
+        @"ui_theme":@"Changes apply across the launcher immediately.",
+        @"custom_accent_color":@"Choose the launcher accent color.",
+        @"custom_text_color":@"Choose the launcher text color.",
+        @"multi_threaded":@"Enable multi-threaded downloads.",
+        @"manage_runtime":@"Manage the Java runtimes available to the launcher."
+    };
+    return fallbacks[key] ?: translated;
+}
+
 // Opt-in presentation only. Legacy preference controllers keep stock cells and layout.
 // The public label/accessory getters still expose the SAME values/controls used by the binding code.
 @interface AMERefinedPreferenceCell : UITableViewCell
@@ -308,7 +324,7 @@
     NSString *explanation = nil;
     if (!self.filteredItems && !heading && self.prefDetailVisible && [item[@"hasDetail"] boolValue]
         && (item[@"type"] == self.typePickField || item[@"type"] == self.typeChildPane)) {
-        explanation = localize([NSString stringWithFormat:@"preference.detail.%@", item[@"key"]], nil);
+        explanation = self.usesReferenceTableGeometry ? MetallicReferencePreferenceDetail(item[@"key"]) : localize([NSString stringWithFormat:@"preference.detail.%@", item[@"key"]], nil);
     }
     [(AMERefinedPreferenceCell *)cell configureHeading:heading expanded:expanded first:first last:last
         explanation:explanation destructive:[item[@"destructive"] boolValue]];
@@ -593,7 +609,7 @@
     if (cellStyle != UITableViewCellStyleValue1) {
         cell.detailTextLabel.text = nil;
         if ([item[@"hasDetail"] boolValue] && self.prefDetailVisible) {
-            cell.detailTextLabel.text = localize(([NSString stringWithFormat:@"preference.detail.%@", key]), nil);
+            cell.detailTextLabel.text = self.usesReferenceTableGeometry ? MetallicReferencePreferenceDetail(key) : localize(([NSString stringWithFormat:@"preference.detail.%@", key]), nil);
         }
     }
 

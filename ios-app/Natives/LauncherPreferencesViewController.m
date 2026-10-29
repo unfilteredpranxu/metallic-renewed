@@ -2063,6 +2063,8 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
 @property(nonatomic, strong) UIScrollView *categoryScroll;
 @property(nonatomic, strong) UIButton *categoryMenu;
 @property(nonatomic, strong) UILabel *sectionTitle;
+@property(nonatomic,strong) UIScrollView *referencePageScroll;
+@property(nonatomic,strong) UIView *referenceContent;
 @property(nonatomic,strong) UIStackView *referenceHeading;
 @property(nonatomic,strong) UISearchBar *referenceSearch;
 @property(nonatomic, strong) UILabel *identity;
@@ -2077,6 +2079,32 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = UIColor.clearColor;
+    // Keep the reference composition at normal heights. On short windows the whole header can
+    // scroll above a usable preference-list viewport instead of forcing a negative table height.
+    self.referencePageScroll=[[UIScrollView alloc] init];
+    self.referencePageScroll.translatesAutoresizingMaskIntoConstraints=NO;
+    self.referencePageScroll.contentInsetAdjustmentBehavior=UIScrollViewContentInsetAdjustmentNever;
+    self.referencePageScroll.scrollsToTop=NO;
+    self.referencePageScroll.keyboardDismissMode=UIScrollViewKeyboardDismissModeInteractive;
+    [self.view addSubview:self.referencePageScroll];
+    self.referenceContent=[[UIView alloc] init]; self.referenceContent.translatesAutoresizingMaskIntoConstraints=NO;
+    [self.referencePageScroll addSubview:self.referenceContent];
+    UILayoutGuide *viewport=self.view.safeAreaLayoutGuide;
+    NSLayoutConstraint *preferredHeight=[self.referenceContent.heightAnchor constraintEqualToAnchor:self.referencePageScroll.frameLayoutGuide.heightAnchor];
+    preferredHeight.priority=UILayoutPriorityDefaultLow;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.referencePageScroll.leadingAnchor constraintEqualToAnchor:viewport.leadingAnchor],
+        [self.referencePageScroll.trailingAnchor constraintEqualToAnchor:viewport.trailingAnchor],
+        [self.referencePageScroll.topAnchor constraintEqualToAnchor:viewport.topAnchor],
+        [self.referencePageScroll.bottomAnchor constraintEqualToAnchor:viewport.bottomAnchor],
+        [self.referenceContent.leadingAnchor constraintEqualToAnchor:self.referencePageScroll.contentLayoutGuide.leadingAnchor],
+        [self.referenceContent.trailingAnchor constraintEqualToAnchor:self.referencePageScroll.contentLayoutGuide.trailingAnchor],
+        [self.referenceContent.topAnchor constraintEqualToAnchor:self.referencePageScroll.contentLayoutGuide.topAnchor],
+        [self.referenceContent.bottomAnchor constraintEqualToAnchor:self.referencePageScroll.contentLayoutGuide.bottomAnchor],
+        [self.referenceContent.widthAnchor constraintEqualToAnchor:self.referencePageScroll.frameLayoutGuide.widthAnchor],
+        [self.referenceContent.heightAnchor constraintGreaterThanOrEqualToAnchor:self.referencePageScroll.frameLayoutGuide.heightAnchor], preferredHeight
+    ]];
+
     self.preferences = [[LauncherPreferencesViewController alloc] init];
     self.preferences.referenceContentMode = YES;
     self.preferences.prefSectionsVisible = YES;
@@ -2085,7 +2113,7 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     self.preferences.prefDetailVisible = YES;
     UIView *content = self.preferences.view;
     content.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.view addSubview:content];
+    [self.referenceContent addSubview:content];
     [self.preferences didMoveToParentViewController:self];
     UILabel *eyebrow = [[UILabel alloc] init];
     eyebrow.text = @"METALLIC / PREFERENCES"; eyebrow.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
@@ -2096,24 +2124,25 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     UIStackView *heading = [[UIStackView alloc] initWithArrangedSubviews:@[eyebrow,title]];
     heading.axis = UILayoutConstraintAxisVertical; heading.spacing = 8; heading.translatesAutoresizingMaskIntoConstraints = NO;
     self.referenceHeading=heading;
-    [self.view addSubview:heading];
+    [self.referenceContent addSubview:heading];
     UIButton *help = [UIButton buttonWithType:UIButtonTypeSystem]; help.translatesAutoresizingMaskIntoConstraints = NO;
     [help setImage:[UIImage systemImageNamed:@"questionmark.circle"] forState:UIControlStateNormal];
     help.accessibilityLabel = @"Show or hide setting descriptions";
     UIBarButtonItem *helpItem = [self.preferences drawHelpButton];
     [help addTarget:helpItem.target action:helpItem.action forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:help];
-    [NSLayoutConstraint activateConstraints:@[[help.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-24], [help.centerYAnchor constraintEqualToAnchor:title.centerYAnchor], [help.widthAnchor constraintEqualToConstant:44], [help.heightAnchor constraintEqualToConstant:44]]];
+    [self.referenceContent addSubview:help];
+    [NSLayoutConstraint activateConstraints:@[[help.trailingAnchor constraintEqualToAnchor:self.referenceContent.trailingAnchor constant:-24], [help.centerYAnchor constraintEqualToAnchor:title.centerYAnchor], [help.widthAnchor constraintEqualToConstant:44], [help.heightAnchor constraintEqualToConstant:44]]];
     UISearchBar *search = [self.preferences presentationSearchBar]; self.referenceSearch=search;
+    self.preferences.tableView.tableHeaderView=nil; // One owner for the visible search field.
     [search removeFromSuperview]; search.translatesAutoresizingMaskIntoConstraints = NO;
     search.placeholder = @"Search settings and tools"; search.searchBarStyle = UISearchBarStyleMinimal;
     search.backgroundImage=[[UIImage alloc] init]; search.searchTextField.backgroundColor=UIColor.clearColor;
     search.searchTextField.borderStyle=UITextBorderStyleNone;
-    [self.view addSubview:search];
+    [self.referenceContent addSubview:search];
     self.categoryTitles = @[@"General & Appearance", @"Minecraft & Memory", @"Video & Audio", @"Controls & Input", @"Downloads & Network", @"Accounts & Online", @"Files & Storage", @"Diagnostics & Advanced", @"About & Support", @"Home Customization"];
     NSArray *symbols = @[@"paintpalette",@"memorychip",@"display",@"gamecontroller",@"arrow.down.circle",@"person.2",@"folder",@"wrench.and.screwdriver",@"info.circle",@"rectangle.3.group"];
     self.categoryScroll = [[UIScrollView alloc] init]; self.categoryScroll.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.view addSubview:self.categoryScroll];
+    [self.referenceContent addSubview:self.categoryScroll];
     self.categoryStack = [[UIStackView alloc] init]; self.categoryStack.axis = UILayoutConstraintAxisVertical; self.categoryStack.spacing = 4;
     self.categoryStack.translatesAutoresizingMaskIntoConstraints = NO; [self.categoryScroll addSubview:self.categoryStack];
     NSMutableArray *actions = [NSMutableArray array];
@@ -2134,10 +2163,10 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     self.categoryMenu = [UIButton buttonWithType:UIButtonTypeSystem]; self.categoryMenu.translatesAutoresizingMaskIntoConstraints = NO;
     [self.categoryMenu setTitle:@"Settings sections ▾" forState:UIControlStateNormal];
     self.categoryMenu.menu = [UIMenu menuWithTitle:@"" children:actions]; self.categoryMenu.showsMenuAsPrimaryAction = YES;
-    [self.view addSubview:self.categoryMenu];
+    [self.referenceContent addSubview:self.categoryMenu];
     self.sectionTitle = [[UILabel alloc] init]; self.sectionTitle.font = [UIFont preferredFontForTextStyle:UIFontTextStyleTitle2];
     self.sectionTitle.textColor = AmeUIPrimaryTextColor(); self.sectionTitle.numberOfLines = 0; self.sectionTitle.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.view addSubview:self.sectionTitle];
+    [self.referenceContent addSubview:self.sectionTitle];
     self.soundButton = [UIButton buttonWithType:UIButtonTypeSystem]; self.soundButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.soundButton setTitle:@"Sound & Haptics" forState:UIControlStateNormal];
     [self.soundButton setImage:[UIImage systemImageNamed:@"speaker.wave.2"] forState:UIControlStateNormal];
@@ -2147,12 +2176,12 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     self.soundButton.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     [self.soundButton addTarget:self action:@selector(openSoundHaptics) forControlEvents:UIControlEventTouchUpInside];
     AmeApplyGlassChipStyle(self.soundButton,26,YES);
-    [self.view addSubview:self.soundButton];
+    [self.referenceContent addSubview:self.soundButton];
     self.identity = [[UILabel alloc] init]; self.identity.font = AmeUIFont(AmeUIFontRoleDescription); self.identity.textColor = AmeUISecondaryTextColor();
-    self.identity.numberOfLines = 0; self.identity.translatesAutoresizingMaskIntoConstraints = NO; [self.view addSubview:self.identity];
+    self.identity.numberOfLines = 0; self.identity.translatesAutoresizingMaskIntoConstraints = NO; [self.referenceContent addSubview:self.identity];
     self.sidebarWidth = [self.categoryScroll.widthAnchor constraintEqualToConstant:224];
     self.headingTop = [self.sectionTitle.topAnchor constraintEqualToAnchor:search.bottomAnchor constant:24];
-    UILayoutGuide *g = self.view.safeAreaLayoutGuide;
+    UIView *g = self.referenceContent;
     self.soundHeight = [self.soundButton.heightAnchor constraintEqualToConstant:68];
     self.paneRight = [self.sectionTitle.trailingAnchor constraintEqualToAnchor:g.trailingAnchor constant:-24];
     [NSLayoutConstraint activateConstraints:@[
@@ -2165,7 +2194,7 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
         self.headingTop, [self.sectionTitle.leadingAnchor constraintEqualToAnchor:self.categoryScroll.trailingAnchor constant:24], self.paneRight,
         [self.identity.leadingAnchor constraintEqualToAnchor:self.sectionTitle.leadingAnchor], [self.identity.trailingAnchor constraintEqualToAnchor:self.sectionTitle.trailingAnchor], [self.identity.topAnchor constraintEqualToAnchor:self.sectionTitle.bottomAnchor constant:8],
         [self.soundButton.leadingAnchor constraintEqualToAnchor:self.sectionTitle.leadingAnchor], [self.soundButton.trailingAnchor constraintEqualToAnchor:self.sectionTitle.trailingAnchor], [self.soundButton.topAnchor constraintEqualToAnchor:self.identity.bottomAnchor constant:16], self.soundHeight,
-        [content.leadingAnchor constraintEqualToAnchor:self.sectionTitle.leadingAnchor], [content.trailingAnchor constraintEqualToAnchor:self.sectionTitle.trailingAnchor], [content.topAnchor constraintEqualToAnchor:self.soundButton.bottomAnchor constant:24], [content.bottomAnchor constraintEqualToAnchor:g.bottomAnchor]
+        [content.leadingAnchor constraintEqualToAnchor:self.sectionTitle.leadingAnchor], [content.trailingAnchor constraintEqualToAnchor:self.sectionTitle.trailingAnchor], [content.topAnchor constraintEqualToAnchor:self.soundButton.bottomAnchor constant:24], [content.bottomAnchor constraintEqualToAnchor:g.bottomAnchor], [content.heightAnchor constraintGreaterThanOrEqualToConstant:220]
     ]];
     [self selectCategory:0];
 }
@@ -2193,7 +2222,7 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     }
 
     self.sectionTitle.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle2] scaledFontForFont:[UIFont systemFontOfSize:28*scale weight:UIFontWeightSemibold]];
-    for(NSLayoutConstraint *c in self.view.constraints) {
+    for(NSLayoutConstraint *c in self.referenceContent.constraints) {
         CGFloat value=c.constant;
         if(c.firstItem==self.referenceHeading && c.firstAttribute==NSLayoutAttributeTop)value=20*scale;
         if(c.firstItem==self.referenceHeading && c.firstAttribute==NSLayoutAttributeLeading)value=38*scale;

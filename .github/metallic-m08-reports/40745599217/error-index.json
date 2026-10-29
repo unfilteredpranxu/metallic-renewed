@@ -1,0 +1,22 @@
+[
+  {
+    "kind": "prerequisite",
+    "line": 15751,
+    "diagnostic": "CMake Error: File /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross/cmake/gitversion.in.h does not exist."
+  },
+  {
+    "kind": "prerequisite",
+    "line": 15752,
+    "diagnostic": "CMake Error at /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross/CMakeLists.txt:96 (configure_file):"
+  },
+  {
+    "kind": "prerequisite",
+    "line": 15756,
+    "diagnostic": "CMake Error: File /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross/pkg-config/spirv-cross-c.pc.in does not exist."
+  },
+  {
+    "kind": "prerequisite",
+    "line": 15757,
+    "diagnostic": "CMake Error at /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross/CMakeLists.txt:264 (configure_file):"
+  }
+]

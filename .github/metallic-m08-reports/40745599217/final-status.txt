@@ -1,0 +1,4 @@
+Application source: 692fff39835a0651bef09f6fe33a9598a0f9cd53
+Workflow commit: 955bbafbf49e051a02352329b3fbb5d091ab6434
+Run URL: https://github.com/unfilteredpranxu/metallic-renewed/actions/runs/40745599217
+make all exit: 2

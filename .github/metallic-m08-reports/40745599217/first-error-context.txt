@@ -1,0 +1,37 @@
+FIRST GENUINE PREREQUISITE ERROR — build.log line 15751
+CMake Error: File /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross/cmake/gitversion.in.h does not exist.
+
+Context:
+15731: patch_sfpew_ios: GL version override (else branch, GLSL): PATCHED (getter_version_strings.cpp)
+15732: [dep_sfpew] cmake configure FAILED -- tail:
+15733: -- The CXX compiler identification is AppleClang 17.0.0.17000604
+15734: -- Detecting CXX compiler ABI info
+15735: -- Detecting CXX compiler ABI info - done
+15736: -- Check for working CXX compiler: /usr/bin/c++ - skipped
+15737: -- Detecting CXX compile features
+15738: -- Detecting CXX compile features - done
+15739: -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+15740: -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+15741: -- Found Threads: TRUE
+15742: -- The C compiler identification is AppleClang 17.0.0.17000604
+15743: -- Detecting C compiler ABI info
+15744: -- Detecting C compiler ABI info - done
+15745: -- Check for working C compiler: /usr/bin/cc - skipped
+15746: -- Detecting C compile features
+15747: -- Detecting C compile features - done
+15748: -- SPIRV-Cross: Finding Git version for SPIRV-Cross.
+15749: -- Found Git: /opt/homebrew/bin/git (found version "2.56.0")
+15750: -- SPIRV-Cross: Git hash: 692fff39+
+15751: CMake Error: File /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross/cmake/gitversion.in.h does not exist.
+15752: CMake Error at /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross/CMakeLists.txt:96 (configure_file):
+15753:   configure_file Problem configuring file
+15754: 
+15755: 
+15756: CMake Error: File /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross/pkg-config/spirv-cross-c.pc.in does not exist.
+15757: CMake Error at /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/external/MobileGlues/src/main/cpp/3rdparty/SPIRV-Cross/CMakeLists.txt:264 (configure_file):
+15758:   configure_file Problem configuring file
+15759: 
+15760: 
+15761: -- Configuring incomplete, errors occurred!
+15762: make[1]: *** [dep_sfpew] Error 1
+15763: make: *** [payload] Error 2

@@ -1,0 +1,7 @@
+[
+  {
+    "kind": "compiler",
+    "line": 4404,
+    "diagnostic": "/Users/runner/work/_temp/metallic-scratch/ios-app/Natives/LauncherNewsViewController.m:2170:49: error: use of undeclared identifier 'AMELauncherTabSettings'"
+  }
+]

@@ -1,0 +1,74 @@
+FIRST GENUINE COMPILER ERROR — build.log line 4404
+/Users/runner/work/_temp/metallic-scratch/ios-app/Natives/LauncherNewsViewController.m:2170:49: error: use of undeclared identifier 'AMELauncherTabSettings'
+
+Context:
+4384:       |                                ^
+4385: /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/PLPrefTableViewController.h:46:32: note: insert '_Nullable' if the pointer may be null
+4386:    46 | - (void)tableView:(UITableView *)tableView openChildPaneAtIndexPath:(NSIndexPath *)indexPath;
+4387:       |                                ^
+4388:       |                                 _Nullable
+4389: /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/PLPrefTableViewController.h:46:32: note: insert '_Nonnull' if the pointer should never be null
+4390:    46 | - (void)tableView:(UITableView *)tableView openChildPaneAtIndexPath:(NSIndexPath *)indexPath;
+4391:       |                                ^
+4392:       |                                 _Nonnull
+4393: /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/PLPrefTableViewController.h:46:82: warning: pointer is missing a nullability type specifier (_Nonnull, _Nullable, or _Null_unspecified) [-Wnullability-completeness]
+4394:    46 | - (void)tableView:(UITableView *)tableView openChildPaneAtIndexPath:(NSIndexPath *)indexPath;
+4395:       |                                                                                  ^
+4396: /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/PLPrefTableViewController.h:46:82: note: insert '_Nullable' if the pointer may be null
+4397:    46 | - (void)tableView:(UITableView *)tableView openChildPaneAtIndexPath:(NSIndexPath *)indexPath;
+4398:       |                                                                                  ^
+4399:       |                                                                                   _Nullable
+4400: /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/PLPrefTableViewController.h:46:82: note: insert '_Nonnull' if the pointer should never be null
+4401:    46 | - (void)tableView:(UITableView *)tableView openChildPaneAtIndexPath:(NSIndexPath *)indexPath;
+4402:       |                                                                                  ^
+4403:       |                                                                                   _Nonnull
+4404: /Users/runner/work/_temp/metallic-scratch/ios-app/Natives/LauncherNewsViewController.m:2170:49: error: use of undeclared identifier 'AMELauncherTabSettings'
+4405:  2170 |             self.tabBarController.selectedIndex=AMELauncherTabSettings;
+4406:       |                                                 ^
+4407: 12 warnings and 1 error generated.
+4408: make[3]: *** [CMakeFiles/AngelAuraAmethyst.dir/LauncherNewsViewController.m.o] Error 1
+4409: make[3]: *** Waiting for unfinished jobs....
+4410: 1 warning generated.
+4411: [ 60%] Building C object CMakeFiles/glsl_optimizer.dir/external/LTW/ltw/src/main/tinywrapper/glsl_optimizer/src/compiler/nir/nir_opt_rematerialize_compares.c.o
+4412: [ 60%] Building C object CMakeFiles/glsl_optimizer.dir/external/LTW/ltw/src/main/tinywrapper/glsl_optimizer/src/compiler/nir/nir_lower_system_values.c.o
+4413: In file included from <built-in>:460:
+4414: <command line>:15:9: warning: redefining builtin macro [-Wbuiltin-macro-redefined]
+4415:    15 | #define __STDC_NO_THREADS__ 1
+4416:       |         ^
+4417: In file included from <built-in>:460:
+4418: <command line>:15:9: warning: redefining builtin macro [-Wbuiltin-macro-redefined]
+4419:    15 | #define __STDC_NO_THREADS__ 1
+4420:       |         ^
+4421: 1 warning generated.
+4422: [ 60%] Building C object CMakeFiles/glsl_optimizer.dir/external/LTW/ltw/src/main/tinywrapper/glsl_optimizer/src/compiler/nir/nir_inline_uniforms.c.o
+4423: 1 warning generated.
+4424: In file included from <built-in>:460:
+4425: <command line>:15:9: warning: redefining builtin macro [-Wbuiltin-macro-redefined]
+4426:    15 | #define __STDC_NO_THREADS__ 1
+4427:       |         ^
+4428: [ 61%] Building C object CMakeFiles/glsl_optimizer.dir/external/LTW/ltw/src/main/tinywrapper/glsl_optimizer/src/compiler/nir/nir_dominance.c.o
+4429: In file included from <built-in>:460:
+4430: <command line>:15:9: warning: redefining builtin macro [-Wbuiltin-macro-redefined]
+4431:    15 | #define __STDC_NO_THREADS__ 1
+4432:       |         ^
+4433: make[2]: *** [CMakeFiles/AngelAuraAmethyst.dir/all] Error 2
+4434: make[2]: *** Waiting for unfinished jobs....
+4435: [ 61%] Building C object CMakeFiles/glsl_optimizer.dir/external/LTW/ltw/src/main/tinywrapper/glsl_optimizer/src/compiler/nir/nir_lower_texcoord_replace_late.c.o
+4436: In file included from <built-in>:460:
+4437: <command line>:15:9: warning: redefining builtin macro [-Wbuiltin-macro-redefined]
+4438:    15 | #define __STDC_NO_THREADS__ 1
+4439:       |         ^
+4440: 1 warning generated.
+4441: [ 61%] Building C object CMakeFiles/glsl_optimizer.dir/external/LTW/ltw/src/main/tinywrapper/glsl_optimizer/src/compiler/nir/nir_gs_count_vertices.c.o
+4442: 1 warning generated.
+4443: [ 61%] Building C object CMakeFiles/glsl_optimizer.dir/external/LTW/ltw/src/main/tinywrapper/glsl_optimizer/src/compiler/nir/nir_print.c.o
+4444: In file included from <built-in>:460:
+4445: <command line>:15:9: warning: redefining builtin macro [-Wbuiltin-macro-redefined]
+4446:    15 | #define __STDC_NO_THREADS__ 1
+4447:       |         ^
+4448: In file included from <built-in>:460:
+4449: <command line>:15:9: warning: redefining builtin macro [-Wbuiltin-macro-redefined]
+4450:    15 | #define __STDC_NO_THREADS__ 1
+4451:       |         ^
+4452: 1 warning generated.
+4453: [ 61%] Building C object CMakeFiles/glsl_optimizer.dir/external/LTW/ltw/src/main/tinywrapper/glsl_optimizer/src/compiler/nir/nir_opt_copy_prop_vars.c.o

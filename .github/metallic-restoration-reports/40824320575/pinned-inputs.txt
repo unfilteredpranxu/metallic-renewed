@@ -1,0 +1,11 @@
+Original source: 5b2d5807e240cf9fbe23b9502ebd71259c62bb2a
+Air commit: c4797387ca9a81f31fdcdd2723ec1050ca35fdb3
+ZeroTier commit: b8e672f54286be8500bc875e153826af7b01d6e6
+3644c02540da676b78272fa7c845b433f1ea211e837186200c33c47c56e63543  air/Natives/installer/modpack/ModrinthAPI.h
+d071ce92cf2d5493f58e88156bc81700d09b7a857903f354aceeb08498b61f65  air/Natives/input/ControllerInput.m
+1249ae3106a0522777360c297a0d7c1f0826f993663aef89e9555c64e69c34b1  air/Natives/external/ZeroTierFramework/ios-example-app/zt.framework/zt
+ 4eaec5b586ddd897ebeda896e332a62a9fdab818 Natives/external/AFNetworking (4eaec5b)
+ 4eddc68b5f92247f8afc0f6114d1b92b338749f4 Natives/external/DBNumberedSlider (4eddc68)
+ b8e672f54286be8500bc875e153826af7b01d6e6 Natives/external/ZeroTierFramework (heads/main)
+ 27bedb2ab670cc51d7be06d538b249564b47cfbf Natives/external/fishhook (27bedb2)
+-eba819bcf60aebdf4e70f426c6b918ebbe63d6e0 ThirdParty/ZalithLauncher2

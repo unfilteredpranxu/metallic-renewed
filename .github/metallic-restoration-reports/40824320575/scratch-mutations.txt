@@ -1,0 +1,726 @@
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/.clang-format
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/build_glslang_spirv_tools.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/checkout_glslang_spirv_tools.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/format_all.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/main.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/comp/atomic-decrement.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/comp/atomic-increment.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/frag/globally-coherent-structured-buffer.structured.asm.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/frag/texture-sampling-fp16.asm.invalid.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/lib/export-calls-export.asm.lib
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/lib/global-array.asm.lib
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/lib/multi-export.asm.lib
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/comp/access-chain-load-composite.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/comp/ssbo-array-length.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/flatten/struct.rowmajor.flatten.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/array-lut-no-loop-variable.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/bit-conversions.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/no-return2.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/shader-debug-info-line-directives.line.gV.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/switch-unreachable-break.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/unary-enclose.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/mesh/mesh-shader-basic-lines.spv14.vk.nocompat.mesh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/mesh/mesh-shader-basic-triangle.spv14.vk.nocompat.mesh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/vert/return-array.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/atomic-decrement.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/atomic-increment.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/bitcast_iadd.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/bitcast_sdiv.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/block-name-alias-global.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/buffer-write-relative-addr.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/multiple-entry.asm.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/variable-pointers-2.asm.invalid.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/frag/locations-components.asm.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/frag/texture-sampling-fp16.asm.invalid.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/array-length.msl2.argument.discrete.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/buffer_device_address-packed-vec-and-cast-to-and-from-uvec2.msl23.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/shader_ballot.msl22.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/shared-matrix-array-of-array.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/shared-matrix-nested-struct-array.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/shared-matrix-nested-struct.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/storage-buffer-std140-vector-array.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/struct-packing.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/desktop-only/vert/shader-draw-parameters.desktop.for-tess.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/desktop-only/vert/shader-draw-parameters.desktop.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/frag/bitcasting.1d-as-2d.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/frag/bitcasting.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/frag/shader-debug-info-line-directives.line.gV.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/mesh/mesh-shader-basic-lines.msl3.spv14.vk.nocompat.mesh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/mesh/mesh-shader-basic-triangle.msl3.spv14.vk.nocompat.mesh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tesc/load-control-point-array-of-struct.multi-patch.tesc
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tesc/load-control-point-array-of-struct.tesc
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tesc/struct-output.multi-patch.tesc
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tesc/water_tess.multi-patch.tesc
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tesc/water_tess.tesc
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tese/input-types.tese
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/vert/clip-copy.for-tess.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/vert/clip-copy.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/frag/depth-compare.asm.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/frag/sample-mask-not-array.asm.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/tese/ds-double-gl-in-deref.asm.tese
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/tese/ds-patch-input-fixes.asm.tese
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/tese/ds-patch-inputs.asm.tese
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/vert/array-missing-copies.asm.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/atomic-decrement.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/atomic-increment.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/bitcast_iadd.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/bitcast_iequal.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/bitcast_sdiv.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/multiple-entry.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/specialization-constant-workgroup.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/frag/locations-components.asm.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/frag/out-of-bounds-access.asm.invalid.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/frag/texture-sampling-fp16.asm.vk.invalid.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/frag/texture-sampling-fp16.asm.vk.invalid.frag.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/frag/texture-shadow-lod.asm.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/lib/global-array.asm.lib
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/lib/multi-export.asm.lib
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/comp/cooperative-matrix.vk.nocompat.comp.vk
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/comp/ssbo-array-length.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/comp/struct-packing.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/desktop-only/comp/int64.desktop.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/flatten/struct.rowmajor.flatten.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/frag/shader-debug-info-line-directives.line.gV.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/frag/texture-shadow-lod-bias.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/frag/texture-shadow-lod.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/frag/ubo-load-row-major-workaround.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/geom/geometry-passthrough.geom
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/legacy/fragment/struct-varying.legacy.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/legacy/vert/struct-varying.legacy.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/mesh/mesh-shader-basic-lines.spv14.vk.nocompat.mesh.vk
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/mesh/mesh-shader-basic-points.spv14.vk.nocompat.mesh.vk
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/mesh/mesh-shader-basic-triangle.spv14.vk.nocompat.mesh.vk
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/tesc/water_tess.tesc
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/tese/load-array-of-array.tese
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/vulkan/comp/spec-constant-work-group-size.vk.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl-no-opt/asm/comp/phi-undef-loop.asm.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl-no-opt/comp/integer-dot-product.sm64.fxconly.nofxc.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl-no-opt/mesh/clip-cull-array-load-store-single.sm65.nofxc.fxconly.spv16.mesh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl-no-opt/mesh/clip-cull-array-load-store.sm65.nofxc.fxconly.spv16.mesh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl/asm/frag/globally-coherent-structured-buffer.structured.asm.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl/asm/frag/texture-sampling-fp16.asm.invalid.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl/asm/lib/export-calls-export.asm.lib
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl/asm/lib/global-array.asm.lib
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl/asm/lib/multi-export.asm.lib
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/asm/comp/aliased-struct-divergent-member-name.asm.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/asm/comp/bda-atomic-ptr-cast.spv16.msl23.asm.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/asm/comp/cooperative-matrix-bfloat.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/asm/comp/cooperative-matrix-length.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/asm/comp/cooperative-matrix-load-store.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/asm/comp/cooperative-matrix-muladd.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/asm/comp/cooperative-matrix-workgroup-cast-load-store.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/asm/comp/cooperative-matrix-workgroup-load-store.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/asm/comp/volatile-phys-buf-load-no-forward.asm.msl24.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/asm/vert/pointer-to-pointer.asm.invalid.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/comp/integer-dot-product.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/comp/struct-packing-scalar.nocompat.invalid.vk.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/comp/subgroups.nocompat.vk.msl32.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/packing/struct-size-padding-array-of-array.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/packing/struct-size-padding.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/vert/reversed-depth-viewport-index.emulate-reversed-depth-viewport.msl2.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl-no-opt/vert/reversed-depth-viewport.emulate-reversed-depth-viewport.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl/asm/comp/block-name-alias-global.asm.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl/asm/comp/variable-pointers-2.asm.invalid.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl/asm/frag/texture-sampling-fp16.asm.invalid.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl/comp/struct-packing.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl/desktop-only/vert/shader-draw-parameters.desktop.for-tess.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl/desktop-only/vert/shader-draw-parameters.desktop.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl/vert/clip-copy.for-tess.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-msl/vert/clip-copy.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/cfg-selection-to-unreachable-access-after-merge.vk.nocompat.asm.spv16.comp.vk
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/comp/local-size-id-override.vk.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/comp/local-size-id.vk.invalid.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/comp/nonuniform-bracket-handling.vk.nocompat.asm.comp.vk
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/comp/storage-buffer-basic.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/comp/temorary-access-terminator.vk.nocompat.asm.comp.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/comp/volatile-phys-buf-load-no-forward.nocompat.vk.asm.comp.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/frag/descriptor-heap-hazard-tracking.vk.nocompat.asm.spv16.frag.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/frag/descriptor-heap-hlsl-strides.spv16.asm.vk.nocompat.frag.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/frag/descriptor-heap-multi-stage-chain-typed.vk.spv16.asm.nocompat.frag.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/frag/descriptor-heap-multi-stage-chain-untyped.vk.spv16.asm.nocompat.frag.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/frag/descriptor-heap-nonwritable-nonreadable-alias.vk.nocompat.asm.spv16.frag.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/frag/descriptor-heap-ssbo-atomic.asm.vk.nocompat.spv16.frag.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/frag/descriptor-heap-ssbo-atomic.heap-legacy-mapping.asm.vk.nocompat.spv16.frag.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/frag/descriptor-heap-typed-buffer-pointer.asm.vk.nocompat.spv16.frag.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/frag/descriptor-heap-untyped-array-length.asm.vk.nocompat.spv16.frag.vk
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/asm/loop-header-self-continue-break.asm.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/comp/ext-inst-with-forward-refs.gV.vk.nocompat.comp.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/comp/integer-dot-product.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/comp/loop-resolve-debug-semantics.gV.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/comp/workgroup-size-spec-constant-array.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/comp/workgroup-size-spec-constant-array.spv16.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/comp/workgroup-size-spec-constant-array.vk.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/vulkan/frag/descriptor-heap.heap-legacy-mapping.vk.nocompat.spv16.frag.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-no-opt/vulkan/frag/descriptor-heap.vk.nocompat.spv16.frag.vk
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders/asm/comp/specialization-constant-workgroup.asm.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders/asm/frag/out-of-bounds-access.asm.invalid.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders/asm/frag/texture-sampling-fp16.asm.vk.invalid.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders/asm/frag/texture-sampling-fp16.asm.vk.invalid.frag.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders/asm/frag/texture-shadow-lod.asm.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders/asm/lib/global-array.asm.lib
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders/asm/lib/multi-export.asm.lib
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders/comp/cooperative-matrix.vk.nocompat.comp.vk
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders/frag/texture-shadow-lod-bias.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders/frag/texture-shadow-lod.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders/vulkan/comp/spec-constant-work-group-size.vk.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl-no-opt/asm/comp/phi-undef-loop.asm.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl-no-opt/comp/integer-dot-product.sm64.fxconly.nofxc.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl-no-opt/mesh/clip-cull-array-load-store-single.sm65.nofxc.fxconly.spv16.mesh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl-no-opt/mesh/clip-cull-array-load-store.sm65.nofxc.fxconly.spv16.mesh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl/asm/frag/globally-coherent-structured-buffer.structured.asm.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl/asm/frag/texture-sampling-fp16.asm.invalid.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl/asm/lib/export-calls-export.asm.lib
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl/asm/lib/global-array.asm.lib
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl/asm/lib/multi-export.asm.lib
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl/asm/vert/spec-constant-op-composite.asm.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl/frag/bit-conversions.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl/frag/bvec-operations.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl/frag/tex-sampling.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-hlsl/frag/various-glsl-ops.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/asm/comp/bda-atomic-ptr-cast.spv16.msl23.asm.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/asm/comp/cooperative-matrix-bfloat.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/asm/comp/cooperative-matrix-length.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/asm/comp/cooperative-matrix-load-store.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/asm/comp/cooperative-matrix-muladd.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/asm/comp/cooperative-matrix-workgroup-cast-load-store.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/asm/comp/cooperative-matrix-workgroup-load-store.asm.msl31.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/asm/comp/volatile-phys-buf-load-no-forward.asm.msl24.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/asm/vert/pointer-to-pointer.asm.invalid.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/comp/integer-dot-product.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/comp/subgroups.nocompat.vk.msl32.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/vert/reversed-depth-viewport-index.emulate-reversed-depth-viewport.msl2.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl-no-opt/vert/reversed-depth-viewport.emulate-reversed-depth-viewport.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl/asm/comp/variable-pointers-2.asm.invalid.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl/asm/frag/texture-sampling-fp16.asm.invalid.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl/asm/vert/spec-constant-op-composite.asm.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl/desktop-only/vert/shader-draw-parameters.desktop.for-tess.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl/desktop-only/vert/shader-draw-parameters.desktop.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl/vert/clip-copy.for-tess.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-msl/vert/clip-copy.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/asm/cfg-selection-to-unreachable-access-after-merge.vk.nocompat.asm.spv16.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/asm/comp/volatile-phys-buf-load-no-forward.nocompat.vk.asm.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/asm/frag/descriptor-heap-hazard-tracking.vk.nocompat.asm.spv16.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/asm/frag/descriptor-heap-hlsl-strides.spv16.asm.vk.nocompat.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/asm/frag/descriptor-heap-multi-stage-chain-typed.vk.spv16.asm.nocompat.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/asm/frag/descriptor-heap-multi-stage-chain-untyped.vk.spv16.asm.nocompat.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/asm/frag/descriptor-heap-nonwritable-nonreadable-alias.vk.nocompat.asm.spv16.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/asm/frag/descriptor-heap-ssbo-atomic.asm.vk.nocompat.spv16.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/asm/frag/descriptor-heap-ssbo-atomic.heap-legacy-mapping.asm.vk.nocompat.spv16.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/asm/frag/descriptor-heap-typed-buffer-pointer.asm.vk.nocompat.spv16.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/asm/frag/descriptor-heap-untyped-array-length.asm.vk.nocompat.spv16.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/comp/integer-dot-product.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/vulkan/frag/descriptor-heap.heap-legacy-mapping.vk.nocompat.spv16.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders-no-opt/vulkan/frag/descriptor-heap.vk.nocompat.spv16.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/asm/frag/out-of-bounds-access.asm.invalid.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/asm/frag/texture-sampling-fp16.asm.vk.invalid.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/asm/frag/texture-shadow-lod.asm.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/asm/lib/global-array.asm.lib
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/asm/lib/multi-export.asm.lib
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/asm/vert/spec-constant-op-composite.asm.vk.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/comp/cooperative-matrix.vk.nocompat.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/frag/ground.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/frag/texture-shadow-lod-bias.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/frag/texture-shadow-lod.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/vert/ground.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/shaders/vulkan/arm/.conv.bash
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv.hpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_cfg.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_cfg.hpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_common.hpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_cross.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_cross.hpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_cross_parsed_ir.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_cross_parsed_ir.hpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_glsl.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_glsl.hpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_hlsl.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_msl.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_msl.hpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/spirv_parser.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/test_shaders.py
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/test_shaders.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/update_test_shaders.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/.github/workflows/continuous_deployment.yml
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/.github/workflows/continuous_integration.yml
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/.github/workflows/reuse-compliance.yml
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/.github/workflows/scorecard.yml
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/.gitignore
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/.gn
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Android.mk
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/BUILD.gn
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/CHANGES.md
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/CMakeLists.txt
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/CONTRIBUTING.md
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/DEPS
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/LICENSES/AML-glslang.txt
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/LICENSES/Apache-2.0.txt
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/LICENSES/BSD-2-Clause.txt
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/LICENSES/BSD-3-Clause.txt
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/LICENSES/Bison-exception-2.2.txt
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/LICENSES/GPL-3.0-or-later.txt
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/LICENSES/MIT-Khronos-old.txt
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/LICENSES/MIT.txt
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/README.md
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/REUSE.toml
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/CMakeLists.txt
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/GLSL.ext.EXT.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/GLSL.ext.KHR.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/GLSL.ext.NV.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/GlslangToSpv.cpp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/NonSemanticShaderDebugInfo.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/SpvBuilder.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/SpvBuilder.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/SpvPostProcess.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/disassemble.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/doc.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/hex_float.h
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/spirv.hpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/spirv.hpp11
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/SPIRV/spvIR.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/StandAlone/DirStackFileIncluder.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/StandAlone/StandAlone.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/320.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/cppBad.vert.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/cppSimple.vert.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.attribute.nonident.negative.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.buffer.interlocked.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.buffer.load.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.buffer.load2.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.buffer.load3.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.buffer.load4.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.buffer.store.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.buffer.store2.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.buffer.store3.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.buffer.store4.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.do.nested.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.for.nested.error.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.format.rwtexture.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.if.nested.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.include.system.unresolved.vert.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.include.system.vert.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.inoutquals.nonident.negative.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.nested.name.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.numthreads.negative.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.params.default.nonident.negative.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.ternary.conversion.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.ternary.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.ternary.simple.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/hlsl.while.nested.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/include.system.vert.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/negativeWorkGroupSize.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/preprocess.inactive_stringify.vert.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/rayQuery-opacityMicromap.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/rayQuery-opacityMicromapRayQueryMode.Error.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/rayQuery-opacityMicromapRayQueryMode.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/rayQuery-opacityMicromapRayQueryMode.rgen.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/rayQuery-opacityMicromapRayQueryModeDefault.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/rayQuery-opacityMicromapRayQueryModeForce2State.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/rayQuery-opacityMicromapRayQueryModeNonConst.Error.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/rayQuery-opacityMicromapRayQueryModeRead.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/rayQuery-opacityMicromapRayQueryModeTrue.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.atomic.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.bfloat16_error.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.bitops.int8int16.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.bufferhandle22.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.bufferhandle26.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.computeShaderDerivatives.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.computeShaderDerivatives.mesh.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.computeShaderDerivatives2.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.computeShaderDerivativesNoLayout.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.computeShaderDerivativesSpec.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.computeShaderDerivativesSpec2.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.coopmat2_decode_vector.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.coopmat2_decode_vector_b.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.coopmat2_decode_vector_error.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.coopmatKHR_constructor.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.bufferref.glsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.const_params.glsl.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.const_variables.glsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.continued.glsl.vert.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.declaration.glsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.glsl.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.glsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.glsl.geom.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.glsl.tesc.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.glsl.tese.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.glsl.vert.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.hlsl.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.hlsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.hlsl.geom.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.hlsl.tesc.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.hlsl.tese.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.hlsl.vert.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.implicit_br.glsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.include.glsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.interface_bool.glsl.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.macro.include.glsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.multiline.glsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.non_ascii.glsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.sampler_type.glsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.scalar_types.glsl.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.debuginfo.ubo.glsl.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.derivative.float16.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.descriptorHeap.AtomicImage.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.descriptorHeap.Buffer.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.descriptorHeap.BufferQualifiers.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.descriptorHeap.BufferStruct.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.descriptorHeap.CombinedSampler.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.descriptorHeap.ImageQualifiers.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.descriptorHeap.PushConstant.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.descriptorHeap.Stride.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.descriptorHeap.heaps.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.descriptorHeap.nonuniform.frag.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.descriptorHeap.valid.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.es320.texture.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.ext.hitobject-allops.rchit.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.ext.hitobject-allops.rgen.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.ext.hitobject-allops.rmiss.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.ext.small_types.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.float16.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floate2m1.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floate2m1.const.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floate2m3.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floate2m3.const.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floate3m2.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floate3m2.const.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floatmxint8.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floatmxint8.const.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floatocperrors.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floatocperrors.vert.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floatue8m0.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.floatue8m0.const.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.glsl.register.autoassign.relaxSetBindingLimits.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.intrinsicsStringConstructorError.vert.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.khrComputeShaderDerivatives.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.khrComputeShaderDerivatives.mesh.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.khrComputeShaderDerivatives.task.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.khrComputeShaderDerivatives2.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.khrComputeShaderDerivativesBadSize.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.khrComputeShaderDerivativesBoth.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.khrComputeShaderDerivativesLayoutOrder.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.khrComputeShaderDerivativesMissingLayout.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.khrComputeShaderDerivativesNoLayout.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.layoutQualifierExpression.error.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.longVectorArrayLength.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.longVectorBadParams.constructors.as.type.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.longVectorBadParams.constructors.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.longVectorBadParams.decls.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.longVectorFixedArrayLength.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.longVectorLength.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.longVectorLiteral234.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.precise.dot.vert.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.relaxSetBindingLimits.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.relaxSetBindingLimits.negative.error.frag.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.shader.abort.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.structuredDescriptorHeap.AccelerationStructure.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.structuredDescriptorHeap.Buffer.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.structuredDescriptorHeap.BufferReference.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.structuredDescriptorHeap.LayoutQualifiers.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.structuredDescriptorHeap.MatrixLayout.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.structuredDescriptorHeap.Offset.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.tensorARM.all_accesses.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.tensorARM.descriptorHeap.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.tensorARM.read.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.tensorARM.unrequested_extension_types.comp.out
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/spv.texture_implicit.comp.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/validation_fails.txt
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/baseResults/vulkan.vert.out
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/bump
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/glslangValidator
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.attribute.nonident.negative.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.buffer.interlocked.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.buffer.load.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.buffer.load2.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.buffer.load3.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.buffer.load4.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.buffer.store.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.buffer.store2.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.buffer.store3.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.buffer.store4.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.do.nested.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.for.nested.error.frag
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.format.rwtexture.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.if.nested.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.include.system.unresolved.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.include.system.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.inoutquals.nonident.negative.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.nested.name.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.numthreads.negative.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.params.default.nonident.negative.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.ternary.conversion.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.ternary.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.ternary.simple.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/hlsl.while.nested.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/include.system.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/negativeWorkGroupSize.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/preprocess.inactive_stringify.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/rayQuery-opacityMicromap.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/rayQuery-opacityMicromapRayQueryMode.Error.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/rayQuery-opacityMicromapRayQueryMode.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/rayQuery-opacityMicromapRayQueryMode.rgen
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/rayQuery-opacityMicromapRayQueryModeDefault.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/rayQuery-opacityMicromapRayQueryModeForce2State.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/rayQuery-opacityMicromapRayQueryModeNonConst.Error.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/rayQuery-opacityMicromapRayQueryModeRead.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/rayQuery-opacityMicromapRayQueryModeTrue.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/runtests
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.atomic.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.atomicCounter.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.bfloat16_error.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.bitops.int8int16.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.bufferhandle26.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.computeShaderDerivatives.mesh
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.computeShaderDerivativesNoLayout.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.coopmat2_decode_vector.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.coopmat2_decode_vector_b.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.coopmat2_decode_vector_error.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.coopmatKHR_constructor.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.debuginfo.continued.glsl.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.debuginfo.macro.include.glsl.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.debuginfo.macro.include.glsl.h
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.derivative.float16.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.descriptorHeap.BufferQualifiers.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.descriptorHeap.BufferStruct.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.descriptorHeap.CombinedSampler.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.descriptorHeap.ImageQualifiers.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.descriptorHeap.Stride.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.descriptorHeap.heaps.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.descriptorHeap.nonuniform.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.es320.texture.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.ext.hitobject-allops.rchit
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.ext.hitobject-allops.rgen
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.ext.hitobject-allops.rmiss
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.ext.small_types.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floate2m1.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floate2m1.const.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floate2m3.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floate2m3.const.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floate3m2.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floate3m2.const.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floatmxint8.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floatmxint8.const.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floatocperrors.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floatocperrors.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floatue8m0.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.floatue8m0.const.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.glsl.register.autoassign.relaxSetBindingLimits.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.intrinsicsStringConstructorError.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.khrComputeShaderDerivatives.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.khrComputeShaderDerivatives.mesh
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.khrComputeShaderDerivatives.task
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.khrComputeShaderDerivatives2.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.khrComputeShaderDerivativesBadSize.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.khrComputeShaderDerivativesBoth.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.khrComputeShaderDerivativesLayoutOrder.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.khrComputeShaderDerivativesMissingLayout.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.khrComputeShaderDerivativesNoLayout.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.layoutQualifierExpression.error.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.longVectorArrayLength.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.longVectorBadParams.constructors.as.type.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.longVectorBadParams.constructors.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.longVectorBadParams.decls.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.longVectorFixedArrayLength.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.longVectorLength.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.longVectorLiteral234.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.precise.dot.vert
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.relaxSetBindingLimits.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.relaxSetBindingLimits.negative.error.frag
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.shader.abort.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.structuredDescriptorHeap.AccelerationStructure.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.structuredDescriptorHeap.Buffer.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.structuredDescriptorHeap.BufferReference.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.structuredDescriptorHeap.LayoutQualifiers.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.structuredDescriptorHeap.MatrixLayout.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.structuredDescriptorHeap.Offset.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.tensorARM.all_accesses.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.tensorARM.declare.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.tensorARM.descriptorHeap.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.tensorARM.unrequested_extension_types.comp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/spv.texture_implicit.comp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/validate-shaders.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/vulkan.vert
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/Test/web.runtests
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/build_info.py
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/build_overrides/build.gni
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/build_overrides/glslang.gni
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/gen_extension_headers.py
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang-lvalue-nullguard.patch
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang-pool-zero-and-size-guards.patch
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/CInterface/glslang_c_interface.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/HLSL/hlslGrammar.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/HLSL/hlslParseHelper.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/HLSL/hlslParseHelper.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/HLSL/hlslScanContext.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/Include/BaseTypes.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/Include/InfoSink.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/Include/PoolAlloc.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/Include/Types.h
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/Include/defer.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/Include/glslang_c_shader_types.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/Include/intermediate.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/Constant.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/Initialize.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/Intermediate.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/ParseContextBase.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/ParseHelper.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/ParseHelper.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/PoolAlloc.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/Scan.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/ShaderLang.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/SpirvIntrinsics.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/SymbolTable.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/Versions.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/Versions.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/glslang.y
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/glslang_tab.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/glslang_tab.cpp.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/intermOut.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/iomapper.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/iomapper.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/linkValidate.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/localintermediate.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/parseVersions.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/preprocessor/Pp.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/preprocessor/PpContext.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/preprocessor/PpContext.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/preprocessor/PpScanner.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/preprocessor/PpTokens.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/MachineIndependent/propagateNoContraction.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/Public/ShaderLang.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/glslang/updateGrammar
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/gn_scripts/glslang_overrides_with_defaults.gni
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/gtests/CMakeLists.txt
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/gtests/Discard.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/gtests/Hlsl.FromFile.cpp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/gtests/InvertY.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/gtests/Spv.FromFile.cpp
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/gtests/SpvDebugInfoTest.cpp
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/gtests/TestFixture.h
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/known_good.json
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/android-ndk-build-nohlsl/build-docker.sh
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/android-ndk-build-nohlsl/build.sh
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/android-ndk-build-nohlsl/continuous.cfg
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/android-ndk-build-nohlsl/presubmit.cfg
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/android-ndk-build/build-docker.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/android-ndk-build/build.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/license-check/build.sh
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-clang-cmake-nohlsl/build-docker.sh
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-clang-cmake-nohlsl/build.sh
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-clang-cmake-nohlsl/shared/continuous.cfg
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-clang-cmake-nohlsl/shared/presubmit.cfg
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-clang-cmake-nohlsl/static/continuous.cfg
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-clang-cmake-nohlsl/static/presubmit.cfg
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-clang-cmake/build-docker.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-clang-cmake/build.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-gcc-cmake/build-docker.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-gcc-cmake/build.sh
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-gcc-gn-nohlsl/build.sh
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-gcc-gn-nohlsl/continuous.cfg
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-gcc-gn-nohlsl/presubmit.cfg
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-gcc-gn/build.sh
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-gcc-gn/continuous.cfg
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/linux-gcc-gn/presubmit.cfg
+D	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/kokoro/scripts/linux/build-docker-gn.sh
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/license-checker.cfg
+M	ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/glslang/update_glslang_sources.py
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/.clang-format
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/build_glslang_spirv_tools.sh
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/checkout_glslang_spirv_tools.sh
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/format_all.sh
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/main.cpp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/comp/atomic-decrement.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/comp/atomic-increment.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/frag/globally-coherent-structured-buffer.structured.asm.frag
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/frag/texture-sampling-fp16.asm.invalid.frag
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/lib/export-calls-export.asm.lib
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/lib/global-array.asm.lib
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/asm/lib/multi-export.asm.lib
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/comp/access-chain-load-composite.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/comp/ssbo-array-length.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/flatten/struct.rowmajor.flatten.vert
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/array-lut-no-loop-variable.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/bit-conversions.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/no-return2.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/shader-debug-info-line-directives.line.gV.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/switch-unreachable-break.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/frag/unary-enclose.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/mesh/mesh-shader-basic-lines.spv14.vk.nocompat.mesh
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/mesh/mesh-shader-basic-triangle.spv14.vk.nocompat.mesh
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-hlsl/vert/return-array.vert
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/atomic-decrement.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/atomic-increment.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/bitcast_iadd.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/bitcast_sdiv.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/block-name-alias-global.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/buffer-write-relative-addr.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/multiple-entry.asm.comp
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/comp/variable-pointers-2.asm.invalid.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/frag/locations-components.asm.frag
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/asm/frag/texture-sampling-fp16.asm.invalid.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/array-length.msl2.argument.discrete.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/buffer_device_address-packed-vec-and-cast-to-and-from-uvec2.msl23.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/shader_ballot.msl22.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/shared-matrix-array-of-array.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/shared-matrix-nested-struct-array.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/shared-matrix-nested-struct.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/storage-buffer-std140-vector-array.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/comp/struct-packing.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/desktop-only/vert/shader-draw-parameters.desktop.for-tess.vert
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/desktop-only/vert/shader-draw-parameters.desktop.vert
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/frag/bitcasting.1d-as-2d.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/frag/bitcasting.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/frag/shader-debug-info-line-directives.line.gV.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/mesh/mesh-shader-basic-lines.msl3.spv14.vk.nocompat.mesh
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/mesh/mesh-shader-basic-triangle.msl3.spv14.vk.nocompat.mesh
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tesc/load-control-point-array-of-struct.multi-patch.tesc
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tesc/load-control-point-array-of-struct.tesc
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tesc/struct-output.multi-patch.tesc
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tesc/water_tess.multi-patch.tesc
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tesc/water_tess.tesc
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/tese/input-types.tese
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/vert/clip-copy.for-tess.vert
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-msl/vert/clip-copy.vert
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/frag/depth-compare.asm.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/frag/sample-mask-not-array.asm.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/tese/ds-double-gl-in-deref.asm.tese
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/tese/ds-patch-input-fixes.asm.tese
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/tese/ds-patch-inputs.asm.tese
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders-ue4/asm/vert/array-missing-copies.asm.vert
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/atomic-decrement.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/atomic-increment.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/bitcast_iadd.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/bitcast_iequal.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/bitcast_sdiv.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/multiple-entry.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/comp/specialization-constant-workgroup.asm.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/frag/locations-components.asm.frag
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/frag/out-of-bounds-access.asm.invalid.frag
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/frag/texture-sampling-fp16.asm.vk.invalid.frag
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/frag/texture-sampling-fp16.asm.vk.invalid.frag.vk
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/frag/texture-shadow-lod.asm.frag
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/lib/global-array.asm.lib
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/asm/lib/multi-export.asm.lib
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/comp/cooperative-matrix.vk.nocompat.comp.vk
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/comp/ssbo-array-length.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/comp/struct-packing.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/desktop-only/comp/int64.desktop.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/flatten/struct.rowmajor.flatten.vert
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/frag/shader-debug-info-line-directives.line.gV.frag
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/frag/texture-shadow-lod-bias.frag
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/frag/texture-shadow-lod.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/frag/ubo-load-row-major-workaround.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/geom/geometry-passthrough.geom
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/legacy/fragment/struct-varying.legacy.frag
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/legacy/vert/struct-varying.legacy.vert
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/mesh/mesh-shader-basic-lines.spv14.vk.nocompat.mesh.vk
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/mesh/mesh-shader-basic-points.spv14.vk.nocompat.mesh.vk
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/mesh/mesh-shader-basic-triangle.spv14.vk.nocompat.mesh.vk
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/tesc/water_tess.tesc
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/tese/load-array-of-array.tese
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/opt/shaders/vulkan/comp/spec-constant-work-group-size.vk.comp
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl-no-opt/asm/comp/phi-undef-loop.asm.comp
+ D ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl-no-opt/comp/integer-dot-product.sm64.fxconly.nofxc.comp
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl-no-opt/mesh/clip-cull-array-load-store-single.sm65.nofxc.fxconly.spv16.mesh
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl-no-opt/mesh/clip-cull-array-load-store.sm65.nofxc.fxconly.spv16.mesh
+ M ios-app/Natives/external/MobileGlues/MobileGlues-cpp/3rdparty/SPIRV-Cross/reference/shaders-hlsl/asm/frag/globally-coherent-structured-buffer.structured.asm.frag

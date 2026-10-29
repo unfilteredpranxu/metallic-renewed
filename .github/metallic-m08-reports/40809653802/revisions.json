@@ -1,0 +1,10 @@
+{
+  "SOURCE_SHA": "692fff39835a0651bef09f6fe33a9598a0f9cd53",
+  "GITHUB_SHA": "a6379ea13a6fbdb2027082d98510914fd5fadc58",
+  "GITHUB_WORKFLOW_SHA": "a6379ea13a6fbdb2027082d98510914fd5fadc58",
+  "GITHUB_WORKFLOW_REF": "unfilteredpranxu/metallic-renewed/.github/workflows/metallic-m08-test-ipa.yml@refs/heads/feat/renewed-ui-polish",
+  "GITHUB_RUN_ID": "40809653802",
+  "AIR_SHA": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+  "ZEROTIER_SHA": "b8e672f54286be8500bc875e153826af7b01d6e6",
+  "NG_GL4ES_SHA": "6e153a1622a8d9ef903f7975aafbef2453571bab"
+}

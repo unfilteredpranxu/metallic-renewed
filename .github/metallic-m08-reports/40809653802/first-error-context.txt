@@ -1,0 +1,1 @@
+No genuine diagnostic matched; inspect full log and exit status.

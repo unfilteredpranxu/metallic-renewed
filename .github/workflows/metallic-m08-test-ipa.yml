@@ -559,7 +559,13 @@ jobs:
                 assert symbol in defined,f'Missing statically linked ZeroTier API: {symbol}'
             signed=subprocess.run(['ldid','-e',str(exe)],capture_output=True,check=True)
             (diag/'ipa-entitlements.plist').write_bytes(signed.stdout)
-            assert plistlib.loads(signed.stdout)==plistlib.loads((root/'ios-app/entitlements.sideload.xml').read_bytes()),'Packaged entitlements differ from original signing recipe'
+            # The original signing-recipe XML begins with a DOCTYPE instead of an XML declaration.
+            # Python plistlib rejects that otherwise valid Apple plist. Normalize a comparison
+            # copy only; never edit the original entitlements, executable or signature.
+            expected_entitlements=(root/'ios-app/entitlements.sideload.xml').read_bytes()
+            if expected_entitlements.lstrip().startswith(b'<!DOCTYPE plist'):
+                expected_entitlements=b'<?xml version="1.0" encoding="UTF-8"?>\n'+expected_entitlements
+            assert plistlib.loads(signed.stdout)==plistlib.loads(expected_entitlements),'Packaged entitlements differ from original signing recipe'
             with (diag/'codesign-evidence.txt').open('w') as log:
                 for args in [['codesign','-dv','--verbose=4',str(exe)],['codesign','--verify','--verbose=4',str(exe)]]:
                     proc=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT);log.write(f'\nCommand exit: {proc.returncode}\n')

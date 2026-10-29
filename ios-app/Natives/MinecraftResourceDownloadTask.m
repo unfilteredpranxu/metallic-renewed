@@ -1,5 +1,6 @@
 #include <CommonCrypto/CommonDigest.h>
 #include <sys/time.h>
+#import "PLDownloadFileCommit.h"
 
 #import "authenticator/BaseAuthenticator.h"
 #import "installer/modpack/ModpackAPI.h"
@@ -250,6 +251,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
                                                            cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
                                                        timeoutInterval:30.0];
 
+    NSString *stagingPath = [path stringByAppendingFormat:@".metallic-%@.part", NSUUID.UUID.UUIDString];
     __block int64_t lastCompleted = 0;
     __weak MinecraftResourceDownloadTask *weakSelf = self;
     NSURLSessionDownloadTask *task = [self.manager downloadTaskWithRequest:request progress:^(NSProgress * _Nonnull downloadProgress) {
@@ -263,17 +265,19 @@ static const NSUInteger kMCStageIndexVerify = 5;
         }
     } destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
         [NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
-        [NSFileManager.defaultManager removeItemAtPath:path error:nil];
-        return [NSURL fileURLWithPath:path];
+        return [NSURL fileURLWithPath:stagingPath];
     } completionHandler:^(NSURLResponse * _Nonnull response, NSURL * _Nullable filePath, NSError * _Nullable error) {
         @autoreleasepool {
+        if (!error && !weakSelf.progress.cancelled) {
+            error = [weakSelf mc_publishStagedFile:filePath.path toPath:path size:size sha:sha altName:altName];
+        }
+        [NSFileManager.defaultManager removeItemAtPath:stagingPath error:nil];
             int64_t expected = (size > 0 ? size : 1);
             int64_t remaining = expected - lastCompleted;
 
             if (weakSelf.progress.cancelled) {
                 // ignore
             } else if (error != nil) {
-                [NSFileManager.defaultManager removeItemAtPath:path error:nil];
                 if (retryCount + 1 < attemptCount) {
                     item.retryCount = retryCount + 1;
                     if (lastCompleted > 0) {
@@ -288,34 +292,6 @@ static const NSUInteger kMCStageIndexVerify = 5;
                     });
                 } else {
                     [weakSelf finishDownloadWithError:error file:name];
-                    [weakSelf mc_recordStageFileFinishedAtPath:path];
-                    if (remaining > 0) {
-                        @synchronized (weakSelf) {
-                            weakSelf.progress.completedUnitCount += remaining;
-                        }
-                    }
-                }
-            } else if (sha.length > 0 && ![weakSelf checkSHAIgnorePref:sha forFile:path altName:altName logSuccess:YES]) {
-                [NSFileManager.defaultManager removeItemAtPath:path error:nil];
-                if (retryCount + 1 < attemptCount) {
-                    item.retryCount = retryCount + 1;
-                    if (lastCompleted > 0) {
-                        @synchronized (weakSelf) {
-                            if (weakSelf.progress.completedUnitCount >= lastCompleted) {
-                                weakSelf.progress.completedUnitCount -= lastCompleted;
-                            }
-                        }
-                    }
-                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                        [weakSelf enqueueDownloadItem:item];
-                    });
-                } else {
-                    @synchronized (weakSelf.failedFiles) {
-                        [weakSelf.failedFiles addObject:@{
-                            @"name": path.lastPathComponent ?: @"unknown",
-                            @"error": @"SHA1 mismatch"
-                        }];
-                    }
                     [weakSelf mc_recordStageFileFinishedAtPath:path];
                     if (remaining > 0) {
                         @synchronized (weakSelf) {
@@ -340,6 +316,26 @@ static const NSUInteger kMCStageIndexVerify = 5;
         task.taskDescription = self.currentDownloadTaskItem.taskId;
     }
     [task resume];
+}
+
+
+// All caller-supplied final paths are preserved. A same-directory POSIX rename is atomic;
+// failed transfer, length/hash validation, cancellation or disk errors leave the old file intact.
+- (NSError *)mc_publishStagedFile:(NSString *)staged toPath:(NSString *)path size:(NSUInteger)size sha:(NSString *)sha altName:(NSString *)altName {
+    NSError *error = nil;
+    NSDictionary *attributes = staged.length ? [NSFileManager.defaultManager attributesOfItemAtPath:staged error:&error] : nil;
+    if (!attributes) return error ?: [NSError errorWithDomain:NSCocoaErrorDomain code:NSFileNoSuchFileError userInfo:@{NSLocalizedDescriptionKey:@"Downloaded staging file is missing."}];
+    if ((size > 0 && attributes.fileSize != size) || (sha.length > 0 && ![self checkSHAIgnorePref:sha forFile:staged altName:altName logSuccess:YES])) {
+        NSLog(@"[Metallic Download] Integrity rejected %@: expected bytes=%llu actual=%llu hash supplied=%d", path.lastPathComponent, (unsigned long long)size, attributes.fileSize, sha.length>0);
+        return [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCannotDecodeContentData userInfo:@{NSLocalizedDescriptionKey:@"Downloaded file failed length or SHA-1 verification."}];
+    }
+    if (self.progress.cancelled) return [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil];
+    if (PLDownloadCommitStagedFile(staged.fileSystemRepresentation, path.fileSystemRepresentation) != 0) {
+        int failure = errno;
+        NSLog(@"[Metallic Download] Final placement failed %@: errno=%d", path.lastPathComponent, failure);
+        return [NSError errorWithDomain:NSPOSIXErrorDomain code:failure userInfo:@{NSLocalizedDescriptionKey:@"Verified download could not be placed in its destination."}];
+    }
+    return nil;
 }
 
 - (void)taskDidFinish {
@@ -428,8 +424,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
             if (success) success();
             return nil;
         } else {
-            NSLog(@"[MCDL] Removing corrupted or truncated existing file: %@", path.lastPathComponent);
-            [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+            NSLog(@"[MCDL] Replacing invalid existing file only after verified staging: %@", path.lastPathComponent);
         }
     } else if (![self checkAccessWithDialog:YES]) {
         return nil;
@@ -469,6 +464,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:replacedURL]
                                                            cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
                                                        timeoutInterval:30.0];
+    NSString *stagingPath = [path stringByAppendingFormat:@".metallic-%@.part", NSUUID.UUID.UUIDString];
     __block int64_t lastCompleted = 0;
     __weak MinecraftResourceDownloadTask *weakSelf = self;
     __block NSURLSessionDownloadTask *task = [self.manager downloadTaskWithRequest:request progress:^(NSProgress * _Nonnull downloadProgress) {
@@ -484,8 +480,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
         @autoreleasepool {
             if (!weakSelf) {
                 [NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
-                [NSFileManager.defaultManager removeItemAtPath:path error:nil];
-                return [NSURL fileURLWithPath:path];
+                return [NSURL fileURLWithPath:stagingPath];
             }
             if (!size && task) {
                 [weakSelf addDownloadTaskToProgress:task size:response.expectedContentLength];
@@ -494,19 +489,21 @@ static const NSUInteger kMCStageIndexVerify = 5;
                 }
             }
             [NSFileManager.defaultManager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:nil];
-            [NSFileManager.defaultManager removeItemAtPath:path error:nil];
-            return [NSURL fileURLWithPath:path];
+            return [NSURL fileURLWithPath:stagingPath];
         }
     } completionHandler:^(NSURLResponse * _Nonnull response, NSURL * _Nullable filePath, NSError * _Nullable error) {
         @autoreleasepool {
+        if (!error && !weakSelf.progress.cancelled) {
+            error = [weakSelf mc_publishStagedFile:filePath.path toPath:path size:size sha:sha altName:altName];
+        }
+        [NSFileManager.defaultManager removeItemAtPath:stagingPath error:nil];
         int64_t expected = (size > 0 ? size : 1);
         int64_t remaining = expected - lastCompleted;
 
         if (self.progress.cancelled) {
             // Ignore any further errors
         } else if (error != nil) {
-            // Remove any partially written corrupted file
-            [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+            // The staging file was removed; an existing destination is untouched.
             if (retryCount + 1 < attemptCount) {
                 NSInteger nextRetry = retryCount + 1;
                 NSLog(@"[MCDL] Retrying %@ (attempt %ld/%ld)", name, (long)(nextRetry + 1), (long)attemptCount);
@@ -534,44 +531,6 @@ static const NSUInteger kMCStageIndexVerify = 5;
                 });
             } else {
                 [weakSelf finishDownloadWithError:error file:name];
-                [weakSelf mc_recordStageFileFinishedAtPath:path];
-                if (remaining > 0) {
-                    @synchronized (weakSelf) {
-                        weakSelf.progress.completedUnitCount += remaining;
-                    }
-                }
-            }
-        } else if (sha.length > 0 && ![self checkSHAIgnorePref:sha forFile:path altName:altName logSuccess:YES]) {
-            // Delete the corrupted file.
-            [NSFileManager.defaultManager removeItemAtPath:path error:nil];
-            if (retryCount + 1 < attemptCount) {
-                NSInteger nextRetry = retryCount + 1;
-                NSLog(@"[MCDL] SHA1 mismatch, retrying %@ (attempt %ld/%ld)", name, (long)(nextRetry + 1), (long)attemptCount);
-
-                if (lastCompleted > 0) {
-                    @synchronized (weakSelf) {
-                        if (weakSelf.progress.completedUnitCount >= lastCompleted) {
-                            weakSelf.progress.completedUnitCount -= lastCompleted;
-                        }
-                    }
-                }
-
-                // Reduce the retry delay for SHA failures to 0.3 seconds.
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                    NSURLSessionDownloadTask *retryTask = [weakSelf createDownloadTask:url size:size sha:sha altName:altName toPath:path retryCount:nextRetry success:success];
-                    if (retryTask) {
-                        [weakSelf enqueueSingleDownloadTask:retryTask];
-                    }
-                });
-            } else {
-                @synchronized(weakSelf.failedFiles) {
-                    [weakSelf.failedFiles addObject:@{
-                        @"name": path.lastPathComponent ?: @"unknown",
-                        @"error": @"SHA1 mismatch"
-                    }];
-                }
-                NSLog(@"[MCDL] SHA1 mismatch for '%@', added to failedFiles (total failed: %lu), other downloads will continue",
-                      path.lastPathComponent, (unsigned long)weakSelf.failedFiles.count);
                 [weakSelf mc_recordStageFileFinishedAtPath:path];
                 if (remaining > 0) {
                     @synchronized (weakSelf) {
@@ -736,8 +695,7 @@ static const NSUInteger kMCStageIndexVerify = 5;
             if (success) success();
             return nil;
         } else {
-            NSLog(@"[MCDL] Removing corrupted or truncated existing file: %@", path.lastPathComponent);
-            [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+            NSLog(@"[MCDL] Replacing invalid existing file only after verified staging: %@", path.lastPathComponent);
         }
     } else if (![self checkAccessWithDialog:YES]) {
         return nil;

@@ -1,4 +1,5 @@
 #import "utils.h"
+#import "PLDownloadProgressMath.h"
 #import "PLTaskProgressViewController.h"
 #import "DownloadTaskItem.h"
 #import "DownloadTaskManager.h"
@@ -108,6 +109,10 @@ static NSString *PLFormatDuration(NSTimeInterval seconds) {
     layer.colors = @[(id)[UIColor tertiarySystemFillColor].CGColor,
                      (id)accentColor().CGColor,
                      (id)[UIColor tertiarySystemFillColor].CGColor];
+    if (UIAccessibilityIsReduceMotionEnabled() || NSProcessInfo.processInfo.lowPowerModeEnabled) {
+        [layer removeAnimationForKey:@"plFlowAnimation"];
+        return; // Static material remains a visible indeterminate indicator.
+    }
     if (![layer animationForKey:@"plFlowAnimation"]) {
         CABasicAnimation *flow = [CABasicAnimation animationWithKeyPath:@"locations"];
         flow.fromValue = @[@(-0.8), @(-0.4), @(0.0)];
@@ -1143,29 +1148,15 @@ static __weak PLTaskProgressViewController *PLTaskProgressActiveInstance = nil;
     }
 }
 
-/// 全部阶段加权汇总进度（每阶段等权；Skipped 计满；不确定的运行中阶段按半程估算）
+// Indeterminate work stays indeterminate; never invent a half-stage or early100%.
 - (double)overallProgressForTask:(DownloadTaskItem *)task {
-    if (task.stages.count == 0) {
-        return task.progress; // 可能为 -1（不确定），由调用方处理
-    }
-    double sum = 0.0;
+    _Static_assert(PLTaskStageStatusRunning==1 && PLTaskStageStatusCompleted==2 && PLTaskStageStatusSkipped==4, "Progress status contract");
+    double sum = 0.0; BOOL indeterminate = NO;
     for (PLTaskStage *stage in task.stages) {
-        switch (stage.status) {
-            case PLTaskStageStatusCompleted:
-            case PLTaskStageStatusSkipped:
-                sum += 1.0;
-                break;
-            case PLTaskStageStatusRunning: {
-                double p = stage.progress;
-                sum += (p >= 0.0) ? MIN(1.0, MAX(0.0, p)) : 0.5;
-                break;
-            }
-            default:
-                // Pending / Failed 不计入
-                break;
-        }
+        double contribution = PLDownloadStageContribution((int)stage.status, stage.progress);
+        if (contribution < 0.0) indeterminate = YES; else sum += contribution;
     }
-    return sum / (double)task.stages.count;
+    return PLDownloadOverallProgress(sum, task.stages.count, indeterminate, task.progress, task.state==DownloadTaskStateCompleted);
 }
 
 /// 实时速率：优先汇总运行中阶段的上报速率，回退任务级 speed

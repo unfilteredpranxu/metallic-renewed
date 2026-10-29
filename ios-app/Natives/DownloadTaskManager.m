@@ -1048,10 +1048,12 @@ static const NSTimeInterval kUIProgressNotifyThrottleInterval = 0.2;
     [self.lock lock];
     DownloadTaskItem *item = self.tasks[taskId];
     PLTaskStage *stage = [self stageForItem:item atIndex:index];
+    BOOL changed = stage && stage.status != status;
     if (stage) stage.status = status;
     [self.lock unlock];
 
     if (stage) {
+        if (changed) NSLog(@"[Metallic Download] task=%@ stage=%lu status=%ld progress=%.3f files=%ld/%ld bytes=%lld/%lld", taskId, (unsigned long)index, (long)status, stage.progress, (long)stage.completedFileCount, (long)stage.totalFileCount, (long long)item.downloadedSize, (long long)item.totalSize);
         [self postUpdateForTask:item];
         [self schedulePersistSnapshot];
     } else if (item) {

@@ -1,0 +1,220 @@
+
+Frameworks/libnggl4es.dylib arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/libnggl4es.dylib:
+	@rpath/libnggl4es.dylib (compatibility version 0.0.0, current version 0.0.0)
+	@rpath/libspirv-cross-c-shared.0.impl.dylib (compatibility version 0.0.0, current version 0.68.0)
+	@rpath/libEGL.framework/libEGL (compatibility version 0.0.0, current version 0.0.0)
+	@rpath/libGLESv2.framework/libGLESv2 (compatibility version 0.0.0, current version 0.0.0)
+	/System/Library/Frameworks/Metal.framework/Metal (compatibility version 1.0.0, current version 370.64.2)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 4201.0.0)
+	/System/Library/Frameworks/QuartzCore.framework/QuartzCore (compatibility version 1.2.0, current version 1193.47.2)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2000.67.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+
+Frameworks/libSimpleFPEWrapper.dylib arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/libSimpleFPEWrapper.dylib:
+	@rpath/libSimpleFPEWrapper.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2000.67.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+
+Frameworks/libMoltenVK.dylib arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/libMoltenVK.dylib:
+	@rpath/MoltenVK.framework/MoltenVK (compatibility version 1.0.0, current version 1.0.0)
+	/System/Library/Frameworks/IOSurface.framework/IOSurface (compatibility version 1.0.0, current version 1.0.0)
+	/System/Library/Frameworks/UIKit.framework/UIKit (compatibility version 1.0.0, current version 7082.1.111)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 2048.1.101)
+	/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics (compatibility version 64.0.0, current version 1774.0.1)
+	/System/Library/Frameworks/Metal.framework/Metal (compatibility version 1.0.0, current version 341.16.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 1600.151.0)
+	/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit (compatibility version 1.0.0, current version 275.0.0)
+	/System/Library/Frameworks/QuartzCore.framework/QuartzCore (compatibility version 1.2.0, current version 1.11.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1336.0.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 2048.1.101)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+
+Frameworks/libopenal.dylib arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/libopenal.dylib:
+	@rpath/libopenal.dylib (compatibility version 0.0.0, current version 0.0.0)
+	@rpath/libopenal_impl.dylib (compatibility version 1.0.0, current version 1.20.1, reexport)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+
+Frameworks/libopenal_impl.dylib arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/libopenal_impl.dylib:
+	@rpath/libopenal_impl.dylib (compatibility version 1.0.0, current version 1.20.1)
+	/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox (compatibility version 1.0.0, current version 1000.0.0)
+	/System/Library/Frameworks/CoreAudio.framework/CoreAudio (compatibility version 1.0.0, current version 1.0.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 1770.255.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1292.60.1)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 904.4.0)
+
+AngelAuraAmethyst arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/AngelAuraAmethyst:
+	@rpath/libAFNetworking.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/liblzma.5.dylib (compatibility version 6.0.0, current version 6.3.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2000.67.0)
+	@rpath/AltKit.framework/AltKit (compatibility version 0.0.0, current version 0.0.0)
+	/System/Library/Frameworks/AuthenticationServices.framework/AuthenticationServices (compatibility version 1.0.0, current version 623.1.14)
+	/System/Library/Frameworks/AVFoundation.framework/AVFoundation (compatibility version 1.0.0, current version 2.0.0)
+	@rpath/CAltKit.framework/CAltKit (compatibility version 0.0.0, current version 0.0.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 4201.0.0)
+	/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics (compatibility version 64.0.0, current version 1965.2.3)
+	/System/Library/Frameworks/CoreImage.framework/CoreImage (compatibility version 1.0.0, current version 7.0.0)
+	/System/Library/Frameworks/CoreMedia.framework/CoreMedia (compatibility version 1.0.0, current version 3290.6.1)
+	/System/Library/Frameworks/ImageIO.framework/ImageIO (compatibility version 1.0.0, current version 1.0.0)
+	/System/Library/Frameworks/CoreMotion.framework/CoreMotion (compatibility version 1.0.0, current version 3064.0.10)
+	/System/Library/Frameworks/GameController.framework/GameController (compatibility version 1.0.0, current version 13.2.8)
+	/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit (compatibility version 1.0.0, current version 275.0.0)
+	/System/Library/Frameworks/QuartzCore.framework/QuartzCore (compatibility version 1.2.0, current version 1193.47.2)
+	/System/Library/Frameworks/UIKit.framework/UIKit (compatibility version 1.0.0, current version 9126.2.4)
+	/System/Library/Frameworks/UniformTypeIdentifiers.framework/UniformTypeIdentifiers (compatibility version 1.0.0, current version 709.0.0)
+	@rpath/UnzipKit.framework/UnzipKit (compatibility version 1.0.0, current version 1.0.0)
+	/System/Library/Frameworks/WebKit.framework/WebKit (compatibility version 1.0.0, current version 623.1.14)
+	/System/Library/Frameworks/SafariServices.framework/SafariServices (compatibility version 1.0.0, current version 1.0.0, weak)
+	/usr/lib/libresolv.9.dylib (compatibility version 1.0.0, current version 1.0.0)
+	/System/Library/Frameworks/CoreServices.framework/CoreServices (compatibility version 1.0.0, current version 1226.0.0)
+	/System/Library/Frameworks/Security.framework/Security (compatibility version 1.0.0, current version 61901.60.40)
+	/System/Library/Frameworks/SystemConfiguration.framework/SystemConfiguration (compatibility version 1.0.0, current version 1385.60.3)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 4201.0.0)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+	/System/Library/Frameworks/Combine.framework/Combine (compatibility version 1.0.0, current version 3023.0.0)
+	/System/Library/Frameworks/SwiftUI.framework/SwiftUI (compatibility version 1.0.0, current version 7.2.5)
+	/usr/lib/swift/libswiftCore.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/swift/libswiftCoreFoundation.dylib (compatibility version 1.0.0, current version 120.100.0, weak)
+	/usr/lib/swift/libswiftCoreImage.dylib (compatibility version 1.0.0, current version 2.2.0, weak)
+	/usr/lib/swift/libswiftDarwin.dylib (compatibility version 1.0.0, current version 347.40.2, weak)
+	/usr/lib/swift/libswiftDispatch.dylib (compatibility version 1.0.0, current version 56.0.0, weak)
+	/usr/lib/swift/libswiftMetal.dylib (compatibility version 1.0.0, current version 370.64.2, weak)
+	/usr/lib/swift/libswiftOSLog.dylib (compatibility version 1.0.0, current version 10.0.0, weak)
+	/usr/lib/swift/libswiftObjectiveC.dylib (compatibility version 1.0.0, current version 951.1.0)
+	/usr/lib/swift/libswiftQuartzCore.dylib (compatibility version 1.0.0, current version 5.0.0, weak)
+	/usr/lib/swift/libswiftSpatial.dylib (compatibility version 1.0.0, current version 1.0.0, weak)
+	/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib (compatibility version 1.0.0, current version 879.2.4, weak)
+	/usr/lib/swift/libswiftXPC.dylib (compatibility version 1.0.0, current version 105.0.14, weak)
+	/usr/lib/swift/libswiftos.dylib (compatibility version 1.0.0, current version 1076.40.2, weak)
+	/usr/lib/swift/libswiftsimd.dylib (compatibility version 1.0.0, current version 23.0.0, weak)
+	@rpath/libswift_Concurrency.dylib (compatibility version 1.0.0, current version 0.0.0, weak)
+	/usr/lib/swift/libswiftFoundation.dylib (compatibility version 1.0.0, current version 1.0.0)
+	/usr/lib/swift/libswiftUIKit.dylib (compatibility version 1.0.0, current version 1.0.0, weak)
+
+Frameworks/libmetallum.dylib arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/libmetallum.dylib:
+	libmetallum.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 4201.0.0)
+	/System/Library/Frameworks/Metal.framework/Metal (compatibility version 1.0.0, current version 370.64.2)
+	/System/Library/Frameworks/QuartzCore.framework/QuartzCore (compatibility version 1.2.0, current version 1193.47.2)
+	/System/Library/Frameworks/UIKit.framework/UIKit (compatibility version 1.0.0, current version 9126.2.4)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+	/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics (compatibility version 64.0.0, current version 1965.2.3)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2000.67.0)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/usr/lib/swift/libswiftCore.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/swift/libswiftCoreFoundation.dylib (compatibility version 1.0.0, current version 120.100.0, weak)
+	/usr/lib/swift/libswiftCoreImage.dylib (compatibility version 1.0.0, current version 2.2.0, weak)
+	/usr/lib/swift/libswiftDarwin.dylib (compatibility version 1.0.0, current version 347.40.2, weak)
+	/usr/lib/swift/libswiftDispatch.dylib (compatibility version 1.0.0, current version 56.0.0)
+	/usr/lib/swift/libswiftMetal.dylib (compatibility version 1.0.0, current version 370.64.2, weak)
+	/usr/lib/swift/libswiftOSLog.dylib (compatibility version 1.0.0, current version 10.0.0, weak)
+	/usr/lib/swift/libswiftObjectiveC.dylib (compatibility version 1.0.0, current version 951.1.0)
+	/usr/lib/swift/libswiftQuartzCore.dylib (compatibility version 1.0.0, current version 5.0.0, weak)
+	/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib (compatibility version 1.0.0, current version 879.2.4, weak)
+	/usr/lib/swift/libswiftXPC.dylib (compatibility version 1.0.0, current version 105.0.14, weak)
+	/usr/lib/swift/libswiftos.dylib (compatibility version 1.0.0, current version 1076.40.2, weak)
+	/usr/lib/swift/libswiftsimd.dylib (compatibility version 1.0.0, current version 23.0.0, weak)
+	/usr/lib/swift/libswiftFoundation.dylib (compatibility version 1.0.0, current version 1.0.0)
+	/usr/lib/swift/libswiftUIKit.dylib (compatibility version 1.0.0, current version 1.0.0, weak)
+	/usr/lib/swift/libswiftCoreGraphics.dylib (compatibility version 1.0.0, current version 120.100.0)
+
+Frameworks/libEGL.framework/libEGL arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/libEGL.framework/libEGL:
+	@rpath/libEGL.framework/libEGL (compatibility version 0.0.0, current version 0.0.0)
+	/System/Library/Frameworks/Metal.framework/Metal (compatibility version 1.0.0, current version 367.8.0)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 3208.0.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 3208.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1351.0.0)
+
+Frameworks/libGLESv2.framework/libGLESv2 arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/libGLESv2.framework/libGLESv2:
+	@rpath/libGLESv2.framework/libGLESv2 (compatibility version 0.0.0, current version 0.0.0)
+	/System/Library/Frameworks/Metal.framework/Metal (compatibility version 1.0.0, current version 367.8.0, weak)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 3208.0.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 3208.0.0)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit (compatibility version 1.0.0, current version 275.0.0)
+	/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics (compatibility version 64.0.0, current version 1889.2.7)
+	/System/Library/Frameworks/IOSurface.framework/IOSurface (compatibility version 1.0.0, current version 1.0.0)
+	/System/Library/Frameworks/QuartzCore.framework/QuartzCore (compatibility version 1.2.0, current version 1.11.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1351.0.0)
+
+Frameworks/AltKit.framework/AltKit arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/AltKit.framework/AltKit:
+	@rpath/AltKit.framework/AltKit (compatibility version 0.0.0, current version 0.0.0)
+	@rpath/CAltKit.framework/CAltKit (compatibility version 0.0.0, current version 0.0.0)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 1953.1.0)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1319.0.0)
+	/System/Library/Frameworks/UIKit.framework/UIKit (compatibility version 1.0.0, current version 6109.1.108)
+	/usr/lib/swift/libswiftDataDetection.dylib (compatibility version 1.0.0, current version 727.0.0, weak)
+	/usr/lib/swift/libswiftFileProvider.dylib (compatibility version 1.0.0, current version 730.40.50, weak)
+	@rpath/libswiftCore.dylib (compatibility version 1.0.0, current version 5.7.1)
+	@rpath/libswiftCoreFoundation.dylib (compatibility version 1.0.0, current version 120.100.0, weak)
+	@rpath/libswiftCoreImage.dylib (compatibility version 1.0.0, current version 2.0.0, weak)
+	@rpath/libswiftDarwin.dylib (compatibility version 1.0.0, current version 0.0.0, weak)
+	@rpath/libswiftDispatch.dylib (compatibility version 1.0.0, current version 17.0.0)
+	@rpath/libswiftMetal.dylib (compatibility version 1.0.0, current version 306.2.5, weak)
+	@rpath/libswiftNetwork.dylib (compatibility version 1.0.0, current version 3013.42.1, weak)
+	@rpath/libswiftObjectiveC.dylib (compatibility version 1.0.0, current version 6.0.0)
+	@rpath/libswiftQuartzCore.dylib (compatibility version 1.0.0, current version 3.0.0, weak)
+	@rpath/libswiftUIKit.dylib (compatibility version 1.0.0, current version 6109.1.108, weak)
+	@rpath/libswiftFoundation.dylib (compatibility version 1.0.0, current version 1.0.0)
+	@rpath/libswiftCoreGraphics.dylib (compatibility version 1.0.0, current version 120.100.0, weak)
+
+Frameworks/CAltKit.framework/CAltKit arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/CAltKit.framework/CAltKit:
+	@rpath/CAltKit.framework/CAltKit (compatibility version 0.0.0, current version 0.0.0)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 1953.1.0)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1319.0.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 1953.1.0)
+
+Frameworks/UnzipKit.framework/UnzipKit arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/UnzipKit.framework/UnzipKit:
+	@rpath/UnzipKit.framework/UnzipKit (compatibility version 1.0.0, current version 1.0.0)
+	/usr/lib/libz.1.dylib (compatibility version 1.0.0, current version 1.2.11)
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 1452.23.0)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1252.50.4)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 1452.23.0)
+
+Frameworks/libspirv-cross-c-shared.0.dylib arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/Frameworks/libspirv-cross-c-shared.0.dylib:
+	/tmp/libspirv-cross-c-shared.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2000.67.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+
+java_runtimes/java-8-openjdk/lib/server/libjvm.dylib arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/java_runtimes/java-8-openjdk/lib/server/libjvm.dylib:
+	@rpath/libjvm.dylib (compatibility version 1.0.0, current version 1.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2100.43.0)
+
+java_runtimes/java-17-openjdk/lib/server/libjvm.dylib arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/java_runtimes/java-17-openjdk/lib/server/libjvm.dylib:
+	@rpath/libjvm.dylib (compatibility version 1.0.0, current version 1.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2100.43.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 4424.1.101)
+
+java_runtimes/java-21-openjdk/lib/server/libjvm.dylib arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/java_runtimes/java-21-openjdk/lib/server/libjvm.dylib:
+	@rpath/libjvm.dylib (compatibility version 1.0.0, current version 1.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2100.43.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 4424.1.101)
+
+java_runtimes/java-25-openjdk/lib/server/libjvm.dylib arm64
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/java_runtimes/java-25-openjdk/lib/server/libjvm.dylib:
+	@rpath/libjvm.dylib (compatibility version 1.0.0, current version 1.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2100.43.0)
+	/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation (compatibility version 150.0.0, current version 4424.1.101)

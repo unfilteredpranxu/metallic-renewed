@@ -1,0 +1,5 @@
+2026-10-29 10:10:50.446 test[4590:18184] [Metallic Download] Integrity rejected final.jar: expected bytes=4 actual=3 hash supplied=1
+2026-10-29 10:10:50.446 test[4590:18184] [MCDL] SHA1 failed for staged.part (expected: bad, got: a9993e364706816aba3e25717850c26c9cd0d89d)
+2026-10-29 10:10:50.446 test[4590:18184] [Metallic Download] Integrity rejected final.jar: expected bytes=3 actual=3 hash supplied=1
+2026-10-29 10:10:50.449 test[4590:18184] [Metallic Download] Final placement failed BECE5B77-F52E-4A5D-8B7D-2C1FFFA13C8E: errno=21
+PASS actual staged publication: length/SHA/cancel/retry/missing/placement failure

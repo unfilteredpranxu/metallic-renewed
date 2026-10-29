@@ -1,0 +1,11 @@
+{
+  "source_sha": "ca899d41732e3e09f620056379b62eef1e673cf9",
+  "air_sha": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+  "terracotta_sha256": "3f438c8cc07d86cf27d7c0db94cbffb1ef7ce1af65beaf314783d541908d60f9",
+  "terracotta_archive_bytes": 19465120,
+  "terracotta_stage": "scratch-only; no replacement",
+  "gles3_gl32_sha256": "deef55d4ff0f73049bc678376b4bf732bccabc127791fa87fdb4a76af8a62478",
+  "ltw_include_path": "scratch-only symlink or matching existing directory",
+  "deployment_target": "UNCHANGED (iOS 14 source target; Terracotta contains iOS 18.5 objects)",
+  "older_os_compatibility": "UNVERIFIED; test IPA only"
+}

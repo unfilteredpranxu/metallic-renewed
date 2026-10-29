@@ -1,0 +1,21 @@
+{
+  "application_sha": "ca899d41732e3e09f620056379b62eef1e673cf9",
+  "workflow_sha": "9bac3efecfdcd9e7e005882607ecb6ad5d8b9b58",
+  "filename": "com.tokyxkai.metallic-1.2.0-ios.ipa",
+  "size_bytes": 263042152,
+  "sha256": "1f26ec7b996ca89fce452e0cec0e12989489fb02183122dc68e8a54b3cc57d76",
+  "display_name": "Metallic",
+  "bundle_identifier": "com.tokyxkai.metallic",
+  "executable": "AngelAuraAmethyst",
+  "icon_verification": "PASS: unchanged M08 artwork hashes + unchanged packaged icon configuration + compiled Assets.car and primary PNGs",
+  "java_runtimes": [
+    8,
+    17,
+    21,
+    25
+  ],
+  "sound_assets": "PASS: eight exact original WAVs",
+  "license": "PASS: packaged source/credits/GPL text",
+  "zip_integrity": "PASS",
+  "signing": "Existing ldid sideload entitlements; no provisioning supplied. Installation/resigning and physical JIT/gameplay still require testing."
+}

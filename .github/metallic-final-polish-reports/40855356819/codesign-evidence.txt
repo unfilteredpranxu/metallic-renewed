@@ -1,0 +1,31 @@
+Executable=/Users/runner/work/_temp/metallic-native-build/ipa-inspection/AngelAuraAmethyst
+Identifier=AngelAuraAmethyst
+Format=Mach-O thin (arm64)
+CodeDirectory v=20400 size=175722 flags=0x0(none) hashes=5481+7 location=embedded
+VersionPlatform=2
+VersionMin=917504
+VersionSDK=1704448
+Hash type=sha256 size=32
+CandidateCDHash sha1=6614fda4c65dc10cb852e526a21ec337f3a9e04f
+CandidateCDHashFull sha1=6614fda4c65dc10cb852e526a21ec337f3a9e04f
+CandidateCDHash sha256=eb9d43b22c65c5e0bc3e9b9aad74baee1076cbb8
+CandidateCDHashFull sha256=eb9d43b22c65c5e0bc3e9b9aad74baee1076cbb832503bbbe2483947d81a0b7e
+Hash choices=sha1,sha256
+CMSDigest=b3d12d0c36fb38545c69efde69a34b32471272d69e92a554793cad639407915a
+CMSDigestType=2
+Executable Segment base=0
+Executable Segment limit=12271616
+Executable Segment flags=0x11
+Page size=4096
+CDHash=eb9d43b22c65c5e0bc3e9b9aad74baee1076cbb8
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/AngelAuraAmethyst: no signature
+Info.plist=not bound
+TeamIdentifier=not set
+Sealed Resources=none
+Internal requirements count=1 size=136
+/Users/runner/work/_temp/metallic-native-build/ipa-inspection/AngelAuraAmethyst: code object is not signed at all
+In architecture: arm64
+
+Command exit: 0
+
+Command exit: 1

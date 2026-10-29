@@ -356,7 +356,9 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
             if(root.selectedIndex==AMELauncherTabHome) [[root ameHomePresentationIn:nav] performExistingHomeAction:action];
         });
     };
-    if(self.transitionCoordinator.isAnimated) [self.transitionCoordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) { open(); }]; else open();
+    id<UIViewControllerTransitionCoordinator> transition=self.transitionCoordinator;
+    if(transition.isAnimated && [transition animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) { open(); }])return;
+    open();
 }
 
 - (void)ameApplyReferenceThemeIndex:(NSInteger)index {

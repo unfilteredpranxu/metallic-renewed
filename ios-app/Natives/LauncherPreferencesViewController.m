@@ -2073,6 +2073,7 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
 @property(nonatomic, strong) NSLayoutConstraint *headingTop;
 @property(nonatomic, strong) UIButton *soundButton;
 @property(nonatomic, strong) NSLayoutConstraint *soundHeight;
+@property(nonatomic,strong) NSLayoutConstraint *soundCollapsedHeight;
 @property(nonatomic, strong) NSLayoutConstraint *paneRight;
 @end
 @implementation MetallicSettingsContainerViewController
@@ -2174,6 +2175,7 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     self.soundButton.contentEdgeInsets = UIEdgeInsetsMake(12,20,12,20);
     self.soundButton.tintColor = AmeUIPrimaryTextColor();
     self.soundButton.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+    self.soundButton.titleLabel.numberOfLines=0; self.soundButton.titleLabel.adjustsFontForContentSizeCategory=YES;
     [self.soundButton addTarget:self action:@selector(openSoundHaptics) forControlEvents:UIControlEventTouchUpInside];
     AmeApplyGlassChipStyle(self.soundButton,26,YES);
     [self.referenceContent addSubview:self.soundButton];
@@ -2182,7 +2184,8 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     self.sidebarWidth = [self.categoryScroll.widthAnchor constraintEqualToConstant:224];
     self.headingTop = [self.sectionTitle.topAnchor constraintEqualToAnchor:search.bottomAnchor constant:24];
     UIView *g = self.referenceContent;
-    self.soundHeight = [self.soundButton.heightAnchor constraintEqualToConstant:68];
+    self.soundHeight = [self.soundButton.heightAnchor constraintGreaterThanOrEqualToConstant:68];
+    self.soundCollapsedHeight=[self.soundButton.heightAnchor constraintEqualToConstant:0];
     self.paneRight = [self.sectionTitle.trailingAnchor constraintEqualToAnchor:g.trailingAnchor constant:-24];
     [NSLayoutConstraint activateConstraints:@[
         [heading.topAnchor constraintEqualToAnchor:g.topAnchor constant:8], [heading.leadingAnchor constraintEqualToAnchor:g.leadingAnchor constant:24],
@@ -2242,7 +2245,19 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     }
     if(![self.referenceSearch viewWithTag:kAmeGlassBackdropTag]) AmeApplyGlassChipStyle(self.referenceSearch,31*scale,YES);
     self.paneRight.constant = wide ? -216*scale : -24;
-    self.soundHeight.constant = self.soundButton.hidden ? 0 : MAX(44,88*scale);
+    if(self.soundButton.hidden) { self.soundHeight.active=NO; self.soundCollapsedHeight.active=YES; }
+    else { self.soundCollapsedHeight.active=NO; self.soundHeight.active=YES; }
+    self.soundButton.titleLabel.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:24*scale]];
+    CGFloat soundMinimum=MAX(44,88*scale);
+    if(self.soundButton.bounds.size.width>0) {
+        UIEdgeInsets padding=self.soundButton.contentEdgeInsets;
+        CGFloat titleWidth=MAX(1,self.soundButton.bounds.size.width-padding.left-padding.right-self.soundButton.currentImage.size.width-8);
+        NSString *title=self.soundButton.currentTitle ?: @"";
+        CGRect text=[title boundingRectWithSize:CGSizeMake(titleWidth,CGFLOAT_MAX) options:NSStringDrawingUsesLineFragmentOrigin|NSStringDrawingUsesFontLeading attributes:@{NSFontAttributeName:self.soundButton.titleLabel.font} context:nil];
+        soundMinimum=MAX(soundMinimum,ceil(text.size.height)+padding.top+padding.bottom);
+        if(fabs(self.soundButton.titleLabel.preferredMaxLayoutWidth-titleWidth)>.1)self.soundButton.titleLabel.preferredMaxLayoutWidth=titleWidth;
+    }
+    if(fabs(self.soundHeight.constant-soundMinimum)>.1)self.soundHeight.constant=soundMinimum;
     self.categoryScroll.hidden = !wide; self.categoryMenu.hidden = wide;
     // Compact sections use the same destinations; their menu remains above the content.
     self.categoryMenu.alpha = wide ? 0 : 1;
@@ -2279,8 +2294,8 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
             });
         };
         id<UIViewControllerTransitionCoordinator> transition = tabs.transitionCoordinator;
-        if (transition) [transition animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) { open(); }];
-        else open();
+        if (transition && [transition animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) { open(); }]) return;
+        open();
         return;
     }
     self.sectionTitle.text = self.categoryTitles[index];

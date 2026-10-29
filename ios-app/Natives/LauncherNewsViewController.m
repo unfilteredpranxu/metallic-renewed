@@ -1560,7 +1560,7 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
         [button addSubview:labels];
         NSLayoutConstraint *width=[button.widthAnchor constraintEqualToConstant:330*scale]; width.identifier=@"referenceInstanceWidth"; width.active=YES; objc_setAssociatedObject(button,"referenceInstanceWidth",width,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         NSLayoutConstraint *height=[button.heightAnchor constraintGreaterThanOrEqualToConstant:172*scale]; height.identifier=@"referenceInstanceHeight"; height.active=YES;
-        [NSLayoutConstraint activateConstraints:@[[labels.leadingAnchor constraintEqualToAnchor:button.leadingAnchor constant:16], [labels.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:-16], [labels.centerYAnchor constraintEqualToAnchor:button.centerYAnchor]]];
+        [NSLayoutConstraint activateConstraints:@[[labels.leadingAnchor constraintEqualToAnchor:button.leadingAnchor constant:16], [labels.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:-16], [labels.centerYAnchor constraintEqualToAnchor:button.centerYAnchor], [labels.topAnchor constraintGreaterThanOrEqualToAnchor:button.topAnchor constant:12], [labels.bottomAnchor constraintLessThanOrEqualToAnchor:button.bottomAnchor constant:-12]]];
         if ([name isEqualToString:selected]) {
             UIImageView *mark=[[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"checkmark.circle.fill"]]; mark.tintColor=UIColor.systemBlueColor; mark.translatesAutoresizingMaskIntoConstraints=NO;
             [button addSubview:mark]; [NSLayoutConstraint activateConstraints:@[[mark.topAnchor constraintEqualToAnchor:button.topAnchor constant:16], [mark.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:-16], [mark.widthAnchor constraintEqualToConstant:22], [mark.heightAnchor constraintEqualToConstant:22]]];
@@ -2170,10 +2170,19 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
         case 5: [self openDownloadCenterModal]; break;
         case 6: [self bottomBarExecuteJarTapped]; break;
         case 7: {
-            self.tabBarController.selectedIndex=AMELauncherTabSettings;
-            UINavigationController *nav=(UINavigationController *)self.tabBarController.selectedViewController;
-            MetallicSettingsContainerViewController *settings=(MetallicSettingsContainerViewController *)nav.viewControllers.firstObject;
+            // A tab switch may be deferred during a UIKit transition. Resolve the stable owner,
+            // never cast whichever controller happens to remain selected in this event cycle.
+            UITabBarController *tabs=self.tabBarController;
+            if(tabs.viewControllers.count<=AMELauncherTabSettings)break;
+            UIViewController *owner=tabs.viewControllers[AMELauncherTabSettings];
+            if(![owner isKindOfClass:UINavigationController.class])break;
+            UINavigationController *nav=(UINavigationController *)owner;
+            UIViewController *first=nav.viewControllers.firstObject;
+            if(![first isKindOfClass:MetallicSettingsContainerViewController.class])break;
+            [nav popToRootViewControllerAnimated:NO];
+            MetallicSettingsContainerViewController *settings=(MetallicSettingsContainerViewController *)first;
             [settings loadViewIfNeeded]; [settings selectCategory:8];
+            tabs.selectedIndex=AMELauncherTabSettings;
             break;
         }
         default: break;

@@ -87,12 +87,15 @@ static UIColor *NavAccentColor(void) {
     NSArray<NSString *> *symbols = @[
         @"house", @"square.stack.3d.up", @"arrow.down.circle", @"paintpalette", @"slider.horizontal.3"
     ];
+    NSString *downloads=MetallicPresentationText(@"tab.download",@"Downloads");
+    // The authoritative English catalog uses the singular action; this destination is a catalogue.
+    if ([AmeLauncherEffectiveLanguageCode() hasPrefix:@"en"] && [downloads isEqualToString:@"Download"]) downloads=@"Downloads";
     NSArray<NSString *> *titles = @[
-        localize(@"tab.home", @"Home"),
-        localize(@"tab.instances", @"Instances"),
-        localize(@"tab.download", @"Downloads"),
+        MetallicPresentationText(@"tab.home", @"Home"),
+        MetallicPresentationText(@"tab.instances", @"Instances"),
+        downloads,
         MetallicPresentationText(@"renewed.appearance.title", @"Appearance"),
-        localize(@"tab.settings", @"Settings")
+        MetallicPresentationText(@"tab.settings", @"Settings")
     ];
 
     self.itemWidths = [NSMutableArray array]; self.itemHeights = [NSMutableArray array];

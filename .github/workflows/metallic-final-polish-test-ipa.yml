@@ -65,6 +65,7 @@ jobs:
       shell: bash
       working-directory: original
       run: |
+        exec > >(tee "$RUNNER_TEMP/metallic-native-build/test-gate.log") 2>&1
         set -euo pipefail
         xcrun clang -std=c11 -Wall -Wextra -Werror tests/metallic_download_safety_test.c -o "$RUNNER_TEMP/metallic-download-safety"
         "$RUNNER_TEMP/metallic-download-safety" | tee "$RUNNER_TEMP/metallic-native-build/download-policy-tests.txt"
@@ -692,19 +693,20 @@ jobs:
       actions: read
       contents: read
     steps:
-    - name: Read complete diagnostics from the latest failed build
-      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-      with:
-        name: metallic-m08-diagnostics-40809653802
-        path: diagnostics
-        run-id: '40809653802'
-        github-token: ${{ github.token }}
+    - name: Read exact failed macOS test job log
+      env:
+        GH_TOKEN: ${{ github.token }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p diagnostics
+        gh api repos/unfilteredpranxu/metallic-renewed/actions/jobs/123381556189/logs > diagnostics/failed-test-job.log
     - name: Record diagnostic provenance
       if: always()
       shell: bash
       run: |-
         mkdir -p diagnostics
-        printf '%s\n' '{"origin_run_id":"40739263905","mode":"prior-diagnostics"}' > diagnostics/bridge-origin.json
+        printf '%s\n' '{"origin_run_id":"40854377244","mode":"prior-diagnostics"}' > diagnostics/bridge-origin.json
     - name: Retain retrieved diagnostic evidence
       if: always()
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

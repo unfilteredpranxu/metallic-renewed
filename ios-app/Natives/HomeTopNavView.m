@@ -2,6 +2,7 @@
 #import <dlfcn.h>
 #import "ios_uikit_bridge.h"
 #import "HomeTopNavView.h"
+#import "LauncherPreferences.h"
 #import "BackgroundManager.h"
 #import "UIKit+GlassSurface.h"   // AmeApplyGlassChipStyle / AmeGlassEffect (system Liquid Glass on iOS 26+)
 #import "utils.h"                // localize()

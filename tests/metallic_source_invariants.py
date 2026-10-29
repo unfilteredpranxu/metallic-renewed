@@ -70,3 +70,19 @@ for key in ['home_tiles_config','ameHomeCardLayout']:
  assert key in s # Retired storage is retained, not migrated/deleted.
 print('PASS legacy feed stays empty independently of persisted configuration; feed loaders inert')
 subprocess.run(['git','diff','--check'],check=True)
+
+# The presentation map must keep all original option identities, independent of label/layout edits.
+def category_map_body(text):
+ a=text.index('    NSMutableArray<NSIndexPath *> *rows = [NSMutableArray array];')
+ b=text.index('    if (index==0) {',a)
+ return text[a:b]
+assert category_map_body(old('LauncherPreferencesViewController.m'))==category_map_body(current('LauncherPreferencesViewController.m'))
+for name,allowed_methods in {
+ 'MinecraftResourceDownloadTask.m':['startDownloadingItem:', 'retryCount:(NSInteger)retryCount success:', 'queueOrVerifyItemWithURL:'],
+ 'DownloadTaskManager.m':['stageAtIndex:(NSUInteger)index\n                 status:']
+}.items():
+ before,after=rawmethods(old(name)),rawmethods(current(name))
+ changed=[key for key,value in before.items() if after.get(key)!=value]
+ assert len(changed)==len(allowed_methods),(name,changed)
+ assert all(any(token in key for token in allowed_methods) for key in changed),(name,changed)
+print('PASS ten-category option mapping; all download methods except the3 authorized file paths and1 diagnostic method byte-identical')

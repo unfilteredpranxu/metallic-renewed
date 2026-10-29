@@ -1,0 +1,39 @@
+{
+  "run_url": "https://github.com/unfilteredpranxu/metallic-renewed/actions/runs/40857174406",
+  "ipa_artifact_url": "https://github.com/unfilteredpranxu/metallic-renewed/actions/runs/40857174406/artifacts/12889818898",
+  "artifact_name": "metallic-final-polish-full-test-ipa-40857174406",
+  "ipa": {
+    "application_sha": "25e7bbdf2f057675f2974f104ef52c2a32dad3af",
+    "workflow_sha": "3ea7e27cd5208db480868292eab6c0c33dafcd74",
+    "filename": "com.tokyxkai.metallic-1.2.0-ios.ipa",
+    "size_bytes": 263040302,
+    "sha256": "17ef2b08703519e1fa9cb20f425394b140326a9f6c0f538b25f6b41ac315df5c",
+    "display_name": "Metallic",
+    "bundle_identifier": "com.tokyxkai.metallic",
+    "executable": "AngelAuraAmethyst",
+    "icon_verification": "PASS: unchanged M08 artwork hashes + unchanged packaged icon configuration + compiled Assets.car and primary PNGs",
+    "java_runtimes": [
+      8,
+      17,
+      21,
+      25
+    ],
+    "sound_assets": "PASS: eight exact original WAVs",
+    "source_commit_embedded": "25e7bbd",
+    "transparent_header_asset": "PASS: present in actual Assets.car",
+    "license": "PASS: packaged source/credits/GPL text",
+    "zip_integrity": "PASS",
+    "signing": "Existing ldid sideload entitlements; no provisioning supplied. Installation/resigning and physical JIT/gameplay still require testing."
+  },
+  "status": {
+    "static_source": "PASS",
+    "native_compilation": "PASS",
+    "macOS_file_policy_tests": "PASS",
+    "archived_payload": "PASS",
+    "simulator": "NOT TESTED",
+    "physical_device_new_candidate": "NOT TESTED",
+    "network_stall_root_cause": "UNCONFIRMED; proven progress-display defect corrected",
+    "network_throughput": "NOT MEASURED",
+    "older_iOS": "UNVERIFIED; existing deployment14 and Terracotta18.5 metadata unchanged"
+  }
+}

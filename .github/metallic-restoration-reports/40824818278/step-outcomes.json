@@ -1,0 +1,31 @@
+{
+  "source": {
+    "outputs": {},
+    "outcome": "success",
+    "conclusion": "success"
+  },
+  "build": {
+    "outputs": {},
+    "outcome": "success",
+    "conclusion": "success"
+  },
+  "ipa": {
+    "outputs": {},
+    "outcome": "success",
+    "conclusion": "success"
+  },
+  "integrity": {
+    "outputs": {},
+    "outcome": "success",
+    "conclusion": "success"
+  },
+  "upload_ipa": {
+    "outputs": {
+      "artifact-id": "12876940683",
+      "artifact-digest": "09059f564de2560426bb3994db988abe9e179aacd7a3d49864a65a6d76dcb909",
+      "artifact-url": "https://github.com/unfilteredpranxu/metallic-renewed/actions/runs/40824818278/artifacts/12876940683"
+    },
+    "outcome": "success",
+    "conclusion": "success"
+  }
+}

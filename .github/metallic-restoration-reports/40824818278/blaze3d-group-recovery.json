@@ -1,0 +1,8 @@
+{
+  "application_sha": "1ef481898d102978c7ccc428d4cad903a93d10c2",
+  "source_revision": "c4797387ca9a81f31fdcdd2723ec1050ca35fdb3",
+  "classes": 129,
+  "class_bytes": 557034,
+  "manifest_sha256": "e75a6db6afb8daf6d9aeb885c0c5fde77232e4c5a2a01a825986a84df1c2dbf0",
+  "archive_role": "Scratch-only shader packaging input; original M08 pack_shader_glslang.py unchanged"
+}

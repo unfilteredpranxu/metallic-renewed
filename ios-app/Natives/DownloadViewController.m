@@ -411,6 +411,9 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
 #pragma mark - DownloadViewController
 
 @interface DownloadViewController () <UICollectionViewDataSource, UICollectionViewDelegate, UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate, ModVersionViewControllerDelegate, ShaderVersionViewControllerDelegate, AssetVersionViewControllerDelegate>
+@property(nonatomic,strong) NSLayoutConstraint *referenceSearchTop;
+@property(nonatomic,strong) NSLayoutConstraint *referenceSidebarTop;
+@property(nonatomic,strong) NSLayoutConstraint *referenceSidebarHeight;
 
 @property (nonatomic, strong) UILayoutGuide *catalogueWorkspace;
 @property (nonatomic, strong) UIScrollView *catalogueChrome;
@@ -860,12 +863,13 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
     self.importModpackButton.translatesAutoresizingMaskIntoConstraints = NO;
     NSLayoutConstraint *filterWidth = [self.filterButton.widthAnchor constraintEqualToConstant:44];
     filterWidth.priority = 999;
+    self.referenceSearchTop=[self.searchBar.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:52];
     [NSLayoutConstraint activateConstraints:@[
-        [self.searchBar.topAnchor constraintEqualToAnchor:self.catalogueHeader.bottomAnchor constant:8],
+        self.referenceSearchTop,
         [self.searchBar.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:8],
         [self.searchBar.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-8],
         [self.searchBar.heightAnchor constraintGreaterThanOrEqualToConstant:52],
-        [self.catalogueControls.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:4],
+        [self.catalogueControls.topAnchor constraintEqualToAnchor:self.searchBar.bottomAnchor constant:14],
         [self.catalogueControls.leadingAnchor constraintEqualToAnchor:self.filterSidebarContainer.trailingAnchor constant:12],
         [self.catalogueControls.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16],
         [self.catalogueControls.heightAnchor constraintGreaterThanOrEqualToConstant:44],
@@ -914,7 +918,9 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
     if (![layout isKindOfClass:UICollectionViewFlowLayout.class]) return;
     CGFloat width = MAX(0, self.versionCollectionView.bounds.size.width - layout.sectionInset.left - layout.sectionInset.right);
     if (width < 1) return; // A zero-width transition frame is not a valid self-sizing estimate.
-    CGSize size = CGSizeMake(width, 96);
+    CGFloat scale=self.view.bounds.size.width>=900?self.view.bounds.size.width/1536.0:.72;
+    layout.minimumLineSpacing=12*scale; layout.sectionInset=UIEdgeInsetsZero;
+    CGSize size = CGSizeMake(width, MAX(72,104*scale));
     if (!CGSizeEqualToSize(layout.estimatedItemSize, size)) {
         layout.itemSize = size;
         layout.estimatedItemSize = size;
@@ -1199,10 +1205,12 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
     [self.view addSubview:self.filterSidebarContainer];
     self.sidebarWidthConstraint = [self.filterSidebarContainer.widthAnchor constraintEqualToConstant:0];
     self.sidebarLeadingConstraint = [self.filterSidebarContainer.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor];
+    self.referenceSidebarTop=[self.filterSidebarContainer.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:52];
+    self.referenceSidebarHeight=[self.filterSidebarContainer.heightAnchor constraintEqualToConstant:455];
     [NSLayoutConstraint activateConstraints:@[
-        [self.filterSidebarContainer.topAnchor constraintEqualToAnchor:self.catalogueHeader.bottomAnchor constant:12],
+        self.referenceSidebarTop, self.referenceSidebarHeight,
         self.sidebarLeadingConstraint, self.sidebarWidthConstraint,
-        [self.filterSidebarContainer.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12]
+        [self.filterSidebarContainer.bottomAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12]
     ]];
     UIScrollView *scroll = [[UIScrollView alloc] init];
     scroll.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1210,7 +1218,7 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
     [self.filterSidebarContainer addSubview:scroll];
     UIStackView *rail = [[UIStackView alloc] init];
     rail.axis = UILayoutConstraintAxisVertical;
-    rail.spacing = 8;
+    rail.spacing = 4;
     rail.translatesAutoresizingMaskIntoConstraints = NO;
     [scroll addSubview:rail];
     NSArray<NSString *> *icons = @[@"cube", @"puzzlepiece.extension", @"sun.max", @"photo.stack", @"doc.text", @"shippingbox", @"globe"];
@@ -1269,7 +1277,7 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
         [rail.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-10],
         [rail.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor constant:10],
         [rail.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor constant:-10],
-        [rail.widthAnchor constraintEqualToConstant:176]
+        [rail.widthAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.widthAnchor constant:-20]
     ]];
 }
 
@@ -5957,8 +5965,15 @@ static NSString *PLSha1FromPrimaryFile(NSDictionary *primaryFile) {
     self.catalogueLayoutConfigured = YES;
     self.catalogueWide = wide;
     self.filterSidebarContainer.hidden = !wide;
-    CGFloat sidebarWidth = wide ? 196 : 0;
-    CGFloat sidebarLeading = wide ? 16 : 0;
+    CGFloat scale=wide ? self.view.bounds.size.width/1536.0 : .72;
+    self.catalogueHeader.hidden=wide;
+    self.referenceSearchTop.constant=wide?52*scale:60;
+    self.referenceSidebarTop.constant=self.referenceSearchTop.constant;
+    CGFloat available=MAX(0,self.view.safeAreaLayoutGuide.layoutFrame.size.height-self.referenceSidebarTop.constant-12);
+    CGFloat sidebarHeight=MIN(available,(index==0?455:740)*scale);
+    if (fabs(self.referenceSidebarHeight.constant-sidebarHeight)>.1) self.referenceSidebarHeight.constant=sidebarHeight;
+    CGFloat sidebarWidth = wide ? 232*scale : 0;
+    CGFloat sidebarLeading = wide ? 38*scale : 0;
     if (self.sidebarWidthConstraint.constant != sidebarWidth) self.sidebarWidthConstraint.constant = sidebarWidth;
     if (self.sidebarLeadingConstraint.constant != sidebarLeading) self.sidebarLeadingConstraint.constant = sidebarLeading;
     self.categoryMenuButton.hidden = wide;
@@ -5980,6 +5995,16 @@ static NSString *PLSha1FromPrimaryFile(NSDictionary *primaryFile) {
     self.importModpackButton.hidden = index != 5;
     CGFloat importWidth = index == 5 ? 44 : 0;
     if (self.importModpackButtonWidthConstraint.constant != importWidth) self.importModpackButtonWidthConstraint.constant = importWidth;
+    NSArray *results=@[self.searchBar,self.catalogueControls,self.versionCollectionView,self.modTableView,self.shaderTableView,self.modpackTableView,self.resourcepackTableView,self.datapackTableView,self.worldTableView];
+    for (NSLayoutConstraint *constraint in self.view.constraints) {
+        if (![results containsObject:constraint.firstItem]) continue;
+        CGFloat value=constraint.constant;
+        if (constraint.firstAttribute==NSLayoutAttributeLeading && constraint.secondItem==self.filterSidebarContainer) value=wide?32*scale:8;
+        if (constraint.firstAttribute==NSLayoutAttributeTrailing && constraint.secondItem==self.view.safeAreaLayoutGuide) value=wide?-38*scale:-8;
+        if (constraint.firstAttribute==NSLayoutAttributeTop && constraint.secondItem==self.catalogueControls) value=20*scale;
+        if (fabs(constraint.constant-value)>.1)constraint.constant=value;
+    }
+    for (UIButton *category in self.categoryButtons) category.titleLabel.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:20*scale]];
     if (changed) [self renewedRefreshCategoryControls];
 }
 

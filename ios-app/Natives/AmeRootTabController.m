@@ -25,6 +25,7 @@
 #import "TerracottaViewController.h"
 #import "HomeTopNavView.h"
 #import "HomeActionPanelView.h"
+#import "LauncherNewsViewController.h"
 #import "BackgroundSettingsViewController.h"
 #import "UIKit+GlassSurface.h"
 #import "BottomActionBarView.h"   // AmePinkGlassButton
@@ -36,6 +37,10 @@ NSString * const AmeTabTappedNotification = @"AmeTabTapped";   // ★ [ROOTTAB]
 @property (nonatomic, strong) HomeTopNavView *topNav;
 @property (nonatomic, strong) UIView *navigationGroup;
 @property (nonatomic, strong) UIView *brandView;
+@property (nonatomic, strong) UIButton *themeButton;
+@property (nonatomic, strong) UILabel *brandLabel;
+@property (nonatomic, strong) UIImageView *brandLogo;
+@property (nonatomic, strong) NSDictionary<NSString *,NSLayoutConstraint *> *headerMetrics;
 @property (nonatomic, assign) NSUInteger pendingSelection;
 @property (nonatomic, assign) BOOL waitingForTransition;
 @property (nonatomic, strong) UILayoutGuide *profileSlot;
@@ -138,18 +143,36 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     }];
     self.aiAction = ai;
     self.toolsMenu = [UIMenu menuWithTitle:@"Tools" children:@[ai]];
+    UIAction *jar=[UIAction actionWithTitle:@"Execute JAR" image:[UIImage systemImageNamed:@"doc"] identifier:nil handler:^(__kindof UIAction *action) { [toolsWeakSelf ameForwardHomeOverflow:6]; }];
+    UIAction *downloads=[UIAction actionWithTitle:@"Download Center" image:[UIImage systemImageNamed:@"arrow.down.circle"] identifier:nil handler:^(__kindof UIAction *action) { [toolsWeakSelf ameForwardHomeOverflow:5]; }];
+    self.topNav.moreMenu=[UIMenu menuWithTitle:@"More" children:@[jar,downloads,ai]];
     self.pendingSelection = NSNotFound;
     self.profileSlot = [[UILayoutGuide alloc] init];
     [self.navigationGroup addLayoutGuide:self.profileSlot];
     self.profileSlotWidth = [self.profileSlot.widthAnchor constraintEqualToConstant:56];
     self.profileSlotHeight = [self.profileSlot.heightAnchor constraintEqualToConstant:56];
-    UIButton *theme = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *theme = [UIButton buttonWithType:UIButtonTypeSystem]; self.themeButton=theme;
     theme.translatesAutoresizingMaskIntoConstraints = NO;
     theme.accessibilityLabel = @"Theme and appearance";
     [theme setImage:[UIImage systemImageNamed:@"moon.fill"] forState:UIControlStateNormal];
     theme.tintColor = AmeUIPrimaryTextColor();
     AmeApplyGlassChipStyle(theme, 26, YES);
-    [theme addTarget:self action:@selector(ameOpenAppearance) forControlEvents:UIControlEventTouchUpInside];
+    __weak typeof(self) themeOwner=self;
+    theme.showsMenuAsPrimaryAction=YES;
+    UIDeferredMenuElement *themeChoices=[UIDeferredMenuElement elementWithProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
+        AmeRootTabController *root=themeOwner;
+        UINavigationController *nav=(UINavigationController *)root.viewControllers[AMELauncherTabSettings];
+        MetallicSettingsContainerViewController *settings=(MetallicSettingsContainerViewController *)nav.viewControllers.firstObject;
+        [settings loadViewIfNeeded];
+        NSArray *keys=@[@"auto",@"light",@"dark"],*names=@[@"System",@"Light",@"Dark"];
+        id current=settings.preferences.getPreference(@"general",@"ui_theme"); NSMutableArray *actions=[NSMutableArray array];
+        for(NSUInteger i=0;i<keys.count;i++) {
+            UIAction *action=[UIAction actionWithTitle:names[i] image:nil identifier:nil handler:^(__kindof UIAction *a) { [themeOwner ameApplyReferenceThemeIndex:i]; }];
+            action.state=[current isEqual:keys[i]]?UIMenuElementStateOn:UIMenuElementStateOff; [actions addObject:action];
+        }
+        completion(actions);
+    }];
+    theme.menu=[UIMenu menuWithTitle:@"Theme" children:@[themeChoices]];
     [self.navigationGroup addSubview:theme];
     UIScrollView *navigationScroll = [[UIScrollView alloc] init];
     navigationScroll.translatesAutoresizingMaskIntoConstraints = NO;
@@ -158,15 +181,23 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     [self.navigationGroup addSubview:navigationScroll];
     [navigationScroll addSubview:self.topNav];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
-    NSLayoutConstraint *preferredWidth = [navigationScroll.widthAnchor constraintEqualToAnchor:safe.widthAnchor multiplier:0.64];
+    NSLayoutConstraint *preferredWidth = [navigationScroll.widthAnchor constraintEqualToConstant:938*.8];
     preferredWidth.priority = UILayoutPriorityDefaultHigh;
     NSLayoutConstraint *fillsViewport = [self.topNav.widthAnchor constraintEqualToAnchor:navigationScroll.frameLayoutGuide.widthAnchor];
     fillsViewport.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *headerTop = [self.navigationGroup.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:52*.8];
+    NSLayoutConstraint *headerRight = [self.navigationGroup.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-20];
+    NSLayoutConstraint *headerHeight = [self.navigationGroup.heightAnchor constraintEqualToConstant:60];
+    NSLayoutConstraint *themeGap = [theme.leadingAnchor constraintEqualToAnchor:navigationScroll.trailingAnchor constant:16];
+    NSLayoutConstraint *themeWidth = [theme.widthAnchor constraintEqualToConstant:52];
+    NSLayoutConstraint *themeHeight = [theme.heightAnchor constraintEqualToConstant:52];
+    NSLayoutConstraint *profileGap = [self.profileSlot.leadingAnchor constraintEqualToAnchor:theme.trailingAnchor constant:16];
+    self.headerMetrics=@{@"top":headerTop,@"right":headerRight,@"height":headerHeight,@"bar":preferredWidth,@"themeGap":themeGap,@"themeW":themeWidth,@"themeH":themeHeight,@"profileGap":profileGap};
     [NSLayoutConstraint activateConstraints:@[
-        [self.navigationGroup.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8],
-        [self.navigationGroup.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-20],
+        headerTop,
+        headerRight,
         [self.navigationGroup.leadingAnchor constraintGreaterThanOrEqualToAnchor:safe.leadingAnchor constant:8],
-        [self.navigationGroup.heightAnchor constraintEqualToConstant:60],
+        headerHeight,
         [navigationScroll.leadingAnchor constraintEqualToAnchor:self.navigationGroup.leadingAnchor],
         [navigationScroll.topAnchor constraintEqualToAnchor:self.navigationGroup.topAnchor],
         [navigationScroll.bottomAnchor constraintEqualToAnchor:self.navigationGroup.bottomAnchor], preferredWidth,
@@ -175,19 +206,20 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         [self.topNav.topAnchor constraintEqualToAnchor:navigationScroll.contentLayoutGuide.topAnchor],
         [self.topNav.bottomAnchor constraintEqualToAnchor:navigationScroll.contentLayoutGuide.bottomAnchor],
         [self.topNav.heightAnchor constraintEqualToAnchor:navigationScroll.frameLayoutGuide.heightAnchor], fillsViewport,
-        [theme.leadingAnchor constraintEqualToAnchor:navigationScroll.trailingAnchor constant:16],
+        themeGap,
         [theme.centerYAnchor constraintEqualToAnchor:self.navigationGroup.centerYAnchor],
-        [theme.widthAnchor constraintEqualToConstant:52], [theme.heightAnchor constraintEqualToConstant:52],
-        [self.profileSlot.leadingAnchor constraintEqualToAnchor:theme.trailingAnchor constant:16],
+        themeWidth, themeHeight,
+        profileGap,
         [self.profileSlot.trailingAnchor constraintEqualToAnchor:self.navigationGroup.trailingAnchor],
         [self.profileSlot.centerYAnchor constraintEqualToAnchor:self.navigationGroup.centerYAnchor constant:-8],
         self.profileSlotWidth, self.profileSlotHeight,
     ]];
     UIImageView *logo = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"AppLogo-Current"] ?: [UIImage imageNamed:@"AppIcon-Light60x60"]];
+    self.brandLogo=logo;
     logo.contentMode = UIViewContentModeScaleAspectFit;
     [logo.widthAnchor constraintEqualToConstant:40].active = YES;
     [logo.heightAnchor constraintEqualToConstant:40].active = YES;
-    UILabel *wordmark = [[UILabel alloc] init];
+    UILabel *wordmark = [[UILabel alloc] init]; self.brandLabel=wordmark;
     wordmark.attributedText = [[NSAttributedString alloc] initWithString:@"METALLIC" attributes:@{NSKernAttributeName:@3, NSFontAttributeName:[UIFont systemFontOfSize:18 weight:UIFontWeightSemibold], NSForegroundColorAttributeName:AmeUIPrimaryTextColor()}];
     UIStackView *brand = [[UIStackView alloc] initWithArrangedSubviews:@[logo,wordmark]];
     brand.spacing = 12; brand.alignment = UIStackViewAlignmentCenter; brand.translatesAutoresizingMaskIntoConstraints = NO;
@@ -305,6 +337,39 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     ];
 }
 
+- (LauncherNewsViewController *)ameHomePresentationIn:(UIViewController *)owner {
+    if([owner isKindOfClass:LauncherNewsViewController.class])return (LauncherNewsViewController *)owner;
+    for(UIViewController *child in owner.childViewControllers) { LauncherNewsViewController *home=[self ameHomePresentationIn:child]; if(home)return home; }
+    return nil;
+}
+- (void)ameForwardHomeOverflow:(NSInteger)action {
+    if(self.presentedViewController)return;
+    __weak typeof(self) weakSelf=self;
+    void (^open)(void)=^{
+        AmeRootTabController *root=weakSelf; if(!root)return;
+        UINavigationController *nav=(UINavigationController *)root.viewControllers[AMELauncherTabHome];
+        [nav popToRootViewControllerAnimated:NO]; root.selectedIndex=AMELauncherTabHome; [nav.topViewController loadViewIfNeeded];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if(root.selectedIndex==AMELauncherTabHome) [[root ameHomePresentationIn:nav] performExistingHomeAction:action];
+        });
+    };
+    if(self.transitionCoordinator.isAnimated) [self.transitionCoordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) { open(); }]; else open();
+}
+
+- (void)ameApplyReferenceThemeIndex:(NSInteger)index {
+    UINavigationController *nav=(UINavigationController *)self.viewControllers[AMELauncherTabSettings];
+    MetallicSettingsContainerViewController *settings=(MetallicSettingsContainerViewController *)nav.viewControllers.firstObject;
+    [settings loadViewIfNeeded];
+    LauncherPreferencesViewController *prefs=settings.preferences;
+    NSDictionary *item=nil;
+    for(NSDictionary *row in prefs.prefContents.firstObject) if([row[@"key"] isEqual:@"ui_theme"]) {item=row;break;}
+    NSArray *keys=@[@"auto",@"light",@"dark"];
+    if(!item || index<0 || index>=(NSInteger)keys.count)return;
+    BOOL (^enabled)(void)=item[@"enableCondition"]; if(enabled&&!enabled())return;
+    prefs.setPreference(@"general",@"ui_theme",keys[index]);
+    void (^action)(NSString *)=item[@"action"]; if(action)action(keys[index]);
+}
+
 - (void)ameOpenAppearance {
     if (self.presentedViewController) return;
     UINavigationController *nav = (UINavigationController *)self.viewControllers[AMELauncherTabSettings];
@@ -313,18 +378,8 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         [settings loadViewIfNeeded];
         BackgroundSettingsViewController *appearance = [[BackgroundSettingsViewController alloc] initWithStyle:UITableViewStyleInsetGrouped];
         appearance.launcherPresentation = YES;
-        __weak LauncherPreferencesViewController *owner = settings.preferences;
-        appearance.themeSelection = ^(NSInteger index) {
-            LauncherPreferencesViewController *prefs = owner;
-            NSDictionary *item = nil;
-            for (NSDictionary *row in prefs.prefContents.firstObject) if ([row[@"key"] isEqual:@"ui_theme"]) { item = row; break; }
-            NSArray *keys = @[@"auto", @"light", @"dark"];
-            if (!item || index < 0 || index >= (NSInteger)keys.count) return;
-            BOOL (^enabled)(void) = item[@"enableCondition"];
-            if (enabled && !enabled()) return;
-            prefs.setPreference(@"general", @"ui_theme", keys[index]);
-            void (^action)(NSString *) = item[@"action"]; if (action) action(keys[index]);
-        };
+        __weak typeof(self) themeOwner=self;
+        appearance.themeSelection=^(NSInteger index) { [themeOwner ameApplyReferenceThemeIndex:index]; };
         NSString *value = settings.preferences.getPreference(@"general", @"ui_theme");
         appearance.themeIndex = [@[@"auto", @"light", @"dark"] indexOfObject:value];
         MetallicAppearanceContainerViewController *page = [[MetallicAppearanceContainerViewController alloc] init];
@@ -370,9 +425,27 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
 }
 
 
+- (CGFloat)launcherHeaderReservation {
+    CGFloat width=self.view.bounds.size.width,scale=width>=900 ? width/1536.0 : .72;
+    return MAX(76,MAX(self.view.safeAreaInsets.top+8,52*scale)+MAX(MAX(48,68*scale),self.topNav.intrinsicContentSize.height)-self.view.safeAreaInsets.top+8);
+}
+- (void)ameLayoutReferenceHeader {
+    CGFloat width=self.view.bounds.size.width,scale=width>=900 ? width/1536.0 : .72;
+    self.topNav.referenceScale=scale;
+    NSDictionary *values=@{@"top":@(MAX(self.view.safeAreaInsets.top+8,52*scale)),@"right":@(-38*scale),@"height":@(MAX(MAX(48,68*scale),self.topNav.intrinsicContentSize.height)),@"bar":@(938*scale),@"themeGap":@(16*scale),@"themeW":@(MAX(44,58*scale)),@"themeH":@(MAX(44,58*scale)),@"profileGap":@(24*scale)};
+    for (NSString *key in values) { NSLayoutConstraint *c=self.headerMetrics[key]; CGFloat value=[values[key] doubleValue]; if (fabs(c.constant-value)>.1)c.constant=value; }
+    self.profileSlotWidth.constant=51*scale;
+    self.brandLabel.attributedText=[[NSAttributedString alloc] initWithString:@"METALLIC" attributes:@{NSKernAttributeName:@(4*scale),NSFontAttributeName:[UIFont systemFontOfSize:22*scale weight:UIFontWeightSemibold],NSForegroundColorAttributeName:AmeUIPrimaryTextColor()}];
+    for (NSUInteger i=1;i<self.viewControllers.count;i++) {
+        UIViewController *page=self.viewControllers[i]; UIEdgeInsets inset=page.additionalSafeAreaInsets; CGFloat top=[self launcherHeaderReservation];
+        if (fabs(inset.top-top)>.1) { inset.top=top; page.additionalSafeAreaInsets=inset; }
+    }
+}
+
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     self.brandView.hidden = CGRectGetMaxX(self.brandView.frame) + 16 > CGRectGetMinX(self.navigationGroup.frame);
+    [self ameLayoutReferenceHeader];
     [self.view bringSubviewToFront:self.brandView];
     [self.view bringSubviewToFront:self.navigationGroup];
     if (self.navigationProfilePanel.superview == self.view) [self.view bringSubviewToFront:self.navigationProfilePanel];
@@ -495,7 +568,7 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
         if (!self.waitingForTransition) {
             self.waitingForTransition = YES;
             __weak typeof(self) weakSelf = self;
-            [coordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+            BOOL registered=[coordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
                 dispatch_async(dispatch_get_main_queue(), ^{
                     AmeRootTabController *root = weakSelf;
                     root.waitingForTransition = NO;
@@ -503,8 +576,9 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
                     if (next != NSNotFound) root.selectedIndex = next;
                 });
             }];
-        }
-        return;
+            if(registered)return;
+            self.waitingForTransition=NO; self.pendingSelection=NSNotFound;
+        } else return;
     }
     NSLog(@"[MetallicNavigation] selection %lu -> %lu", (unsigned long)self.selectedIndex, (unsigned long)selectedIndex);
     [super setSelectedIndex:selectedIndex];

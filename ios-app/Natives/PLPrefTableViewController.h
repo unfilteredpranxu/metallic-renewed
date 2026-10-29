@@ -31,6 +31,13 @@ typedef void (^SetPreferenceBlock)(NSString *, NSString *, id);
 - (void)refreshRefinedSettingsPresentation;
 - (UISearchBar *)presentationSearchBar;
 - (void)endPresentationSearch;
+/// UI-only ordering of original (section,row) identities; never changes preference descriptors.
+@property(nonatomic, copy, nullable) NSArray<NSArray<NSIndexPath *> *> *presentationRows;
+- (NSIndexPath *)sourceIndexPathForDisplayIndexPath:(NSIndexPath *)indexPath;
+- (nullable NSIndexPath *)displayIndexPathForSourceIndexPath:(NSIndexPath *)indexPath;
+- (NSDictionary *)preferenceItemAtDisplayIndexPath:(NSIndexPath *)indexPath;
+- (NSString *)preferenceSectionAtDisplayIndexPath:(NSIndexPath *)indexPath;
+- (BOOL)usesReferenceTableGeometry;
 - (UIBarButtonItem *)drawHelpButton;
 - (void)initViewCreation;
 

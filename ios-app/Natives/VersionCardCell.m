@@ -42,6 +42,7 @@
 @interface VersionCardCell ()
 // 容器视图：整张卡片的圆角背景（毛玻璃 + 半透明）
 @property (nonatomic, strong) UIView *cardContainer;
+@property(nonatomic,strong) NSLayoutConstraint *referenceMinimum;
 // 左侧类型图标容器（带圆角与类型色背景）
 @property (nonatomic, strong) UIView *iconContainer;
 // 顶行水平 stack：装 versionLabel + typeLabel，自动处理间距与裁剪
@@ -138,6 +139,7 @@
         self.isAccessibilityElement = YES;
         self.accessibilityTraits = UIAccessibilityTraitButton;
         self.accessibilityHint = localize(@"renewed.downloads.install_options", @"Choose installation options");
+        self.referenceMinimum=[self.cardContainer.heightAnchor constraintGreaterThanOrEqualToConstant:80]; self.referenceMinimum.active=YES;
         [self renewedApplyPresentation];
     }
     return self;
@@ -146,7 +148,7 @@
 - (void)configureWithVersionId:(NSString *)versionId
                           date:(NSString *)date
                           type:(NSString *)type {
-    self.versionLabel.text = versionId;
+    self.versionLabel.text = [versionId hasPrefix:@"Minecraft "] ? versionId : [@"Minecraft " stringByAppendingString:versionId ?: @""];
     self.dateLabel.text = date;
 
     // 类型 → 图标 + 配色映射（参照 ZL2 的 VersionIconPreview 按版本类型切换图标）：
@@ -236,6 +238,7 @@
     NSInteger lines = 0; // Self-sizing rows preserve full version/type text at every font size.
     self.versionLabel.numberOfLines = lines;
     self.typeLabel.numberOfLines = lines;
+    self.dateLabel.hidden=YES; // Date remains in the native data and VoiceOver metadata, not the reference row.
     self.installedBadge.backgroundColor = AmeUIAccentColor();
     self.typeLabel.backgroundColor = UIColor.clearColor;
     self.typeLabel.textColor = AmeUISecondaryTextColor();
@@ -254,10 +257,31 @@
 - (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)attributes {
     UICollectionViewLayoutAttributes *fitted = [attributes copy];
     if (attributes.size.width <= 0) return fitted;
+    [self updateReferenceRowGeometry];
     CGSize size = [self.contentView systemLayoutSizeFittingSize:CGSizeMake(attributes.size.width, UILayoutFittingCompressedSize.height)
         withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
-    fitted.size = CGSizeMake(attributes.size.width, MAX(88, ceil(size.height)));
+    CGFloat scale=self.window.bounds.size.width>=900?self.window.bounds.size.width/1536.0:.72;
+    fitted.size = CGSizeMake(attributes.size.width, MAX(MAX(72,104*scale), ceil(size.height)));
     return fitted;
+}
+
+- (void)updateReferenceRowGeometry {
+    CGFloat viewport=self.window.bounds.size.width; if(viewport<=0)viewport=UIScreen.mainScreen.bounds.size.width;
+    CGFloat scale=viewport>=900?viewport/1536.0:.72;
+    self.versionLabel.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:24*scale weight:UIFontWeightSemibold]];
+    self.typeLabel.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:20*scale]];
+    self.iconImageView.image=[UIImage systemImageNamed:@"cube"]; self.iconImageView.tintColor=AmeUISecondaryTextColor();
+    self.iconContainer.backgroundColor=UIColor.clearColor; self.iconImageView.contentMode=UIViewContentModeScaleAspectFit;
+    self.cardContainer.layer.cornerRadius=26*scale; self.referenceMinimum.constant=MAX(72,104*scale);
+    self.topRowStack.spacing=8*scale;
+    for(NSLayoutConstraint *c in self.contentView.constraints) {
+        if(c.firstItem==self.cardContainer && (c.firstAttribute==NSLayoutAttributeTop||c.firstAttribute==NSLayoutAttributeBottom))c.constant=0;
+    }
+    for(NSLayoutConstraint *c in self.cardContainer.constraints) {
+        if(c.firstItem==self.iconContainer && c.firstAttribute==NSLayoutAttributeLeading)c.constant=14*scale;
+        if(c.firstItem==self.topRowStack && c.firstAttribute==NSLayoutAttributeLeading)c.constant=16*scale;
+        if(c.firstItem==self.chevronView && c.firstAttribute==NSLayoutAttributeTrailing)c.constant=-32*scale;
+    }
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {

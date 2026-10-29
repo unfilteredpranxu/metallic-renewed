@@ -28,6 +28,7 @@
 #import "BottomActionBarView.h"
 #import "HomeActionPanelView.h"
 #import "AmeRootTabController.h"
+#import "LauncherPreferencesViewController.h"
 #import "AccountListViewController.h"
 #import "AMEAssetCrypto.h"
 #import "DownloadViewController.h"
@@ -1303,8 +1304,23 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
 // MARK: - LauncherNewsViewController
 
 // M4 overview is supplementary presentation, not a replacement for the saved tile collection.
+@interface MetallicReferenceTextButton : UIButton
+@end
+@implementation MetallicReferenceTextButton
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
+    CGFloat x=MAX(0,(44-self.bounds.size.width)/2),y=MAX(0,(44-self.bounds.size.height)/2);
+    return CGRectContainsPoint(CGRectInset(self.bounds,-x,-y),point);
+}
+@end
+
 @interface AMERenewedHomeHeader : UICollectionReusableView
 @property (nonatomic, strong) UIStackView *rootStack;
+@property (nonatomic, strong) UIStackView *heroContent;
+@property (nonatomic, strong) UIStackView *statusContent;
+@property (nonatomic, strong) NSLayoutConstraint *heroMinimumHeight;
+@property (nonatomic, strong) NSLayoutConstraint *statusMinimumHeight;
+@property (nonatomic, strong) NSArray<UILabel *> *referenceCaptions;
+@property (nonatomic, strong) UIImageView *referenceIdentityIcon;
 @property (nonatomic, strong) UIStackView *mainRow;
 @property (nonatomic, strong) UIStackView *instanceRow;
 @property (nonatomic, strong) UIStackView *launchRow;
@@ -1348,9 +1364,9 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
 }
 
 - (UIButton *)action:(NSInteger)action title:(NSString *)title primary:(BOOL)primary {
-    AmePinkGlassButton *button = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
+    UIButton *button = primary ? [AmePinkGlassButton buttonWithType:UIButtonTypeSystem] : [MetallicReferenceTextButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.ameRole = primary ? AmeGlassButtonRolePrimary : AmeGlassButtonRoleSecondary;
+    if (primary) ((AmePinkGlassButton *)button).ameRole = AmeGlassButtonRoleSecondary;
     [button setTitle:title forState:UIControlStateNormal];
     button.titleLabel.numberOfLines = 0;
     button.titleLabel.textAlignment = NSTextAlignmentCenter;
@@ -1430,7 +1446,7 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
 
     self.hero = [[UIView alloc] init];
     self.hero.translatesAutoresizingMaskIntoConstraints = NO;
-    UIStackView *hero = [self panel:self.hero];
+    UIStackView *hero = [self panel:self.hero]; self.heroContent=hero;
     self.selectedHeading = AMEHomeLabel(MetallicPresentationText(@"renewed.home.selected", @"SELECTED INSTANCE"), AmeUIFontRoleStatus);
     self.selectedHeading.textColor = AmeUISecondaryTextColor();
     UIImageView *identityIcon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"gamecontroller"]];
@@ -1461,37 +1477,41 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     self.launchRow.axis = UILayoutConstraintAxisVertical;
     self.launchRow.spacing = 12;
     [self.playButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    for (UIView *view in @[selected, self.profileTitle, self.versionText, self.launchRow, self.discoverButton, self.chooseButton]) {
-        [hero addArrangedSubview:view];
-    }
+    [selected removeArrangedSubview:self.selectedHeading]; [self.selectedHeading removeFromSuperview];
+    UIStackView *selectedText=[[UIStackView alloc] initWithArrangedSubviews:@[self.selectedHeading,self.profileTitle]];
+    selectedText.axis=UILayoutConstraintAxisVertical; selectedText.spacing=12;
+    [selected addArrangedSubview:selectedText];
+    self.referenceIdentityIcon=identityIcon;
+    [account setTitle:@"" forState:UIControlStateNormal]; [account setImage:[UIImage systemImageNamed:@"person.crop.circle"] forState:UIControlStateNormal];
+    account.accessibilityLabel=@"Account";
+    UIView *separator=[[UIView alloc] init]; separator.backgroundColor=AmeUIBorderColor();
+    [separator.heightAnchor constraintEqualToConstant:1].active=YES;
+    self.launchRow.alignment=UIStackViewAlignmentCenter;
+    [self.playButton setImage:[UIImage systemImageNamed:@"play.fill"] forState:UIControlStateNormal];
+    self.chooseButton.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;
+    for (UIView *view in @[selected,self.versionText,separator,self.launchRow,self.discoverButton,self.chooseButton]) [hero addArrangedSubview:view];
+    self.referenceCaptions=@[eyebrow];
+
 
     self.status = [[UIView alloc] init];
     self.status.translatesAutoresizingMaskIntoConstraints = NO;
-    UIStackView *status = [self panel:self.status];
+    UIStackView *status = [self panel:self.status]; self.statusContent=status;
     [status addArrangedSubview:AMEHomeLabel(MetallicPresentationText(@"renewed.home.status", @"MY METALLIC"), AmeUIFontRoleStatus)];
     NSString *launcher = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
-    [status addArrangedSubview:AMEHomeLabel([launcher isKindOfClass:NSString.class] && launcher.length ? [NSString stringWithFormat:@"Metallic %@", launcher] : @"Metallic", AmeUIFontRoleDescription)];
+    (void)launcher; // Actual application metadata remains in System details.
     self.minecraftStatus = [self statusRow:@"Minecraft" symbol:@"cube" inStack:status];
-    self.javaStatus = [self statusRow:MetallicPresentationText(@"renewed.home.java_preference", @"Java preference") symbol:@"cpu" inStack:status];
+    self.javaStatus = [self statusRow:MetallicPresentationText(@"renewed.home.java_preference", @"Java runtime") symbol:@"cup.and.saucer" inStack:status];
     self.jitStatus = [self statusRow:@"JIT" symbol:@"bolt" inStack:status];
     self.downloadStatus = [self statusRow:localize(@"tab.download", @"Downloads") symbol:@"arrow.down.circle" inStack:status];
-    [status addArrangedSubview:[self action:5 title:localize(@"i18n_str_136", @"Download Center") primary:NO]];
-    UIButton *utilities = [self action:6 title:@"More…" primary:NO];
-    [utilities removeTarget:self action:@selector(actionTapped:) forControlEvents:UIControlEventTouchUpInside];
-    utilities.showsMenuAsPrimaryAction = YES;
-    __weak typeof(self) weakHeader = self;
-    NSMutableArray *utilityActions = [NSMutableArray array];
-    for (NSDictionary *entry in @[@{@"title":@"Execute JAR", @"action":@6}, @{@"title":@"Download Center", @"action":@5}]) {
-        [utilityActions addObject:[UIAction actionWithTitle:entry[@"title"] image:nil identifier:nil handler:^(__kindof UIAction *action) {
-            if (weakHeader.onAction) weakHeader.onAction([entry[@"action"] integerValue]);
-        }]];
-    }
-    utilities.menu = [UIMenu menuWithTitle:@"" children:utilityActions];
-    [hero addArrangedSubview:utilities];
+    [status addArrangedSubview:[self action:7 title:@"System details" primary:NO]];
+    self.chooseButton.accessibilityHint = @"Choose a Minecraft instance using the existing version picker.";
     self.mainRow = [[UIStackView alloc] initWithArrangedSubviews:@[self.hero, self.status]];
     self.mainRow.axis = UILayoutConstraintAxisVertical;
-    self.mainRow.spacing = 20;
-    self.heroRatio = [self.hero.widthAnchor constraintEqualToAnchor:self.status.widthAnchor multiplier:2.4];
+    self.mainRow.spacing = 30; self.mainRow.alignment=UIStackViewAlignmentTop;
+    self.heroRatio = [self.hero.widthAnchor constraintEqualToAnchor:self.status.widthAnchor multiplier:1068.0/364.0];
+    self.heroMinimumHeight=[self.hero.heightAnchor constraintGreaterThanOrEqualToConstant:408];
+    self.statusMinimumHeight=[self.status.heightAnchor constraintGreaterThanOrEqualToConstant:448];
+    self.heroMinimumHeight.active=self.statusMinimumHeight.active=YES;
     [self.rootStack addArrangedSubview:self.mainRow];
 
     UILabel *instances = AMEHomeLabel(MetallicPresentationText(@"renewed.home.instances", @"Your Instances"), AmeUIFontRoleSectionHeading);
@@ -1518,35 +1538,75 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
 
 - (void)showProfiles:(NSDictionary *)versions selected:(NSString *)selected {
     if ([self.profileVersions isEqualToDictionary:versions] && [self.selectedName isEqualToString:selected]) return;
-    self.profileVersions = [versions copy];
-    self.selectedName = [selected copy];
-    NSArray *sorted = [[versions allKeys] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
-    self.profileNames = [sorted subarrayWithRange:NSMakeRange(0, MIN((NSUInteger)3, sorted.count))];
+    self.profileVersions=[versions copy]; self.selectedName=[selected copy];
+    NSArray *all=[[versions allKeys] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
+    self.profileNames=[all subarrayWithRange:NSMakeRange(0,MIN((NSUInteger)3,all.count))];
     for (UIView *view in self.instanceRow.arrangedSubviews) { [self.instanceRow removeArrangedSubview:view]; [view removeFromSuperview]; }
-    for (NSUInteger i = 0; i < self.profileNames.count; i++) {
-        NSString *name = self.profileNames[i];
-        AmePinkGlassButton *button = [AmePinkGlassButton buttonWithType:UIButtonTypeSystem];
-        button.translatesAutoresizingMaskIntoConstraints = NO;
-        button.ameRole = AmeGlassButtonRoleNavigation;
-        button.selected = [name isEqualToString:selected];
-        button.tag = i;
-        objc_setAssociatedObject(button, "renewedProfileName", name, OBJC_ASSOCIATION_COPY_NONATOMIC);
-        button.titleLabel.numberOfLines = 0;
-        button.titleLabel.textAlignment = NSTextAlignmentCenter;
-        button.contentEdgeInsets = UIEdgeInsetsMake(16, 12, 16, 12);
-        [button setTitle:[NSString stringWithFormat:@"%@%@\nMinecraft %@", button.selected ? @"✓ " : @"", name, [versions[name] length] ? versions[name] : MetallicPresentationText(@"renewed.home.not_configured", @"Not configured")] forState:UIControlStateNormal];
-        button.accessibilityLabel = [NSString stringWithFormat:@"%@, Minecraft %@", name, [versions[name] length] ? versions[name] : MetallicPresentationText(@"renewed.home.not_configured", @"Not configured")];
-        [button.heightAnchor constraintGreaterThanOrEqualToConstant:100].active = YES;
+    CGFloat scale=self.bounds.size.width>=900?self.bounds.size.width/1536.0:.72;
+    for (NSString *name in self.profileNames) {
+        UIButton *button=[MetallicReferenceTextButton buttonWithType:UIButtonTypeSystem];
+        button.translatesAutoresizingMaskIntoConstraints=NO; button.layer.cornerRadius=24*scale; button.clipsToBounds=YES;
+        button.backgroundColor=UIColor.secondarySystemBackgroundColor;
+        objc_setAssociatedObject(button,"renewedProfileName",name,OBJC_ASSOCIATION_COPY_NONATOMIC);
+        UILabel *edition=AMEHomeLabel(@"MINECRAFT",AmeUIFontRoleStatus); edition.textAlignment=NSTextAlignmentCenter;
+        UILabel *version=AMEHomeLabel([versions[name] length]?versions[name]:MetallicPresentationText(@"renewed.home.not_configured",@"Not configured"),AmeUIFontRoleCardTitle); version.textAlignment=NSTextAlignmentCenter;
+        UILabel *description=AMEHomeLabel(@"Minecraft Java Edition",AmeUIFontRoleDescription); description.textAlignment=NSTextAlignmentCenter;
+        UILabel *profile=AMEHomeLabel(name,AmeUIFontRoleStatus); profile.textAlignment=NSTextAlignmentCenter;
+        UIStackView *labels=[[UIStackView alloc] initWithArrangedSubviews:@[edition,version,description,profile]];
+        labels.axis=UILayoutConstraintAxisVertical; labels.spacing=12*scale; labels.translatesAutoresizingMaskIntoConstraints=NO; labels.userInteractionEnabled=NO;
+        [button addSubview:labels];
+        NSLayoutConstraint *width=[button.widthAnchor constraintEqualToConstant:330*scale]; width.identifier=@"referenceInstanceWidth"; width.active=YES; objc_setAssociatedObject(button,"referenceInstanceWidth",width,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        NSLayoutConstraint *height=[button.heightAnchor constraintGreaterThanOrEqualToConstant:172*scale]; height.identifier=@"referenceInstanceHeight"; height.active=YES;
+        [NSLayoutConstraint activateConstraints:@[[labels.leadingAnchor constraintEqualToAnchor:button.leadingAnchor constant:16], [labels.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:-16], [labels.centerYAnchor constraintEqualToAnchor:button.centerYAnchor]]];
+        if ([name isEqualToString:selected]) {
+            UIImageView *mark=[[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"checkmark.circle.fill"]]; mark.tintColor=UIColor.systemBlueColor; mark.translatesAutoresizingMaskIntoConstraints=NO;
+            [button addSubview:mark]; [NSLayoutConstraint activateConstraints:@[[mark.topAnchor constraintEqualToAnchor:button.topAnchor constant:16], [mark.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:-16], [mark.widthAnchor constraintEqualToConstant:22], [mark.heightAnchor constraintEqualToConstant:22]]];
+        }
+        button.accessibilityLabel=[NSString stringWithFormat:@"%@, Minecraft %@",name,versions[name]];
+        button.accessibilityTraits=UIAccessibilityTraitButton|([name isEqualToString:selected]?UIAccessibilityTraitSelected:0);
         [button addTarget:self action:@selector(profileTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.instanceRow addArrangedSubview:button];
     }
-    self.emptyInstances.hidden = self.profileNames.count != 0;
-    self.instanceRow.hidden = self.profileNames.count == 0;
+    UIView *space=[[UIView alloc] init]; space.tag=745901; [self.instanceRow addArrangedSubview:space];
+    self.emptyInstances.hidden=self.profileNames.count!=0; self.instanceRow.hidden=self.profileNames.count==0;
 }
 
+
 - (void)configureWidth:(CGFloat)width {
+    CGFloat scale=width>=900 ? width/1536.0 : .72;
+    self.directionalLayoutMargins=NSDirectionalEdgeInsetsMake(16*scale,38*scale,24*scale,38*scale);
+    self.rootStack.spacing=46*scale; self.mainRow.spacing=30*scale;
+    self.heroMinimumHeight.constant=408*scale; self.statusMinimumHeight.constant=448*scale;
+    self.hero.layer.cornerRadius=self.status.layer.cornerRadius=32*scale;
+    self.welcome.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleLargeTitle] scaledFontForFont:[UIFont systemFontOfSize:44*scale weight:UIFontWeightBold]];
+    self.profileTitle.font=self.welcome.font;
+    self.versionText.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:20*scale]];
+    self.selectedHeading.font=[UIFont systemFontOfSize:16*scale weight:UIFontWeightMedium];
+    self.referenceCaptions.firstObject.font=[UIFont systemFontOfSize:16*scale weight:UIFontWeightMedium];
+    self.accountText.font=[UIFont systemFontOfSize:20*scale];
+    self.playButton.titleLabel.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:[UIFont systemFontOfSize:24*scale weight:UIFontWeightSemibold]];
+    self.chooseButton.titleLabel.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:20*scale]];
+    for (UIView *row in self.statusContent.arrangedSubviews) {
+        if([row isKindOfClass:UILabel.class]) ((UILabel *)row).font=[UIFont systemFontOfSize:16*scale weight:UIFontWeightMedium];
+        if([row isKindOfClass:UIStackView.class]) for(UIView *child in ((UIStackView *)row).arrangedSubviews) {
+            if([child isKindOfClass:UIStackView.class]) {
+                NSArray *labels=((UIStackView *)child).arrangedSubviews;
+                if(labels.count>=2) { ((UILabel *)labels[0]).font=[UIFont systemFontOfSize:16*scale]; ((UILabel *)labels[1]).font=[UIFont systemFontOfSize:20*scale]; }
+            }
+        }
+    }
+    self.heroContent.spacing=0; self.statusContent.spacing=26*scale;
+    NSArray *heroViews=self.heroContent.arrangedSubviews;
+    if (heroViews.count>=6) {
+        [self.heroContent setCustomSpacing:32*scale afterView:heroViews[0]];
+        [self.heroContent setCustomSpacing:29*scale afterView:heroViews[1]];
+        [self.heroContent setCustomSpacing:28*scale afterView:heroViews[2]];
+        [self.heroContent setCustomSpacing:40*scale afterView:self.launchRow];
+    }
+    [self.rootStack setCustomSpacing:32*scale afterView:self.mainRow];
     BOOL accessibilityText = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
     BOOL wide = width >= 820 && !accessibilityText;
+    self.mainRow.alignment=wide ? UIStackViewAlignmentTop : UIStackViewAlignmentFill;
     if (self.mainRow.axis != (wide ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical)) {
         self.heroRatio.active = NO;
         self.mainRow.axis = wide ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
@@ -1554,7 +1614,16 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     }
     self.launchRow.axis = width >= 520 && !accessibilityText ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
     self.instanceRow.axis = width >= 700 && !accessibilityText ? UILayoutConstraintAxisHorizontal : UILayoutConstraintAxisVertical;
-    self.instanceRow.distribution = width >= 700 && !accessibilityText ? UIStackViewDistributionFillEqually : UIStackViewDistributionFill;
+    self.instanceRow.distribution = UIStackViewDistributionFill;
+    BOOL horizontal=self.instanceRow.axis==UILayoutConstraintAxisHorizontal;
+    for (UIView *tile in self.instanceRow.arrangedSubviews) {
+        if(tile.tag==745901) {tile.hidden=!horizontal; continue;}
+        NSLayoutConstraint *referenceWidth=objc_getAssociatedObject(tile,"referenceInstanceWidth"); referenceWidth.active=horizontal; referenceWidth.constant=330*scale;
+        for(NSLayoutConstraint *c in [tile.constraints copy]) {
+            if([c.identifier isEqualToString:@"referenceInstanceHeight"]) c.constant=172*scale;
+        }
+    }
+    self.instanceRow.spacing=42*scale;
 }
 
 - (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)attributes {
@@ -1588,6 +1657,9 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
 @interface LauncherNewsViewController () <UICollectionViewDataSource, UICollectionViewDelegate, UIGestureRecognizerDelegate>   // ★ [EDIT2] 手势代理
 
 @property (nonatomic, strong) AMERenewedHomeHeader *renewedOverview;
+@property(nonatomic,strong) NSLayoutConstraint *referenceHomeTop;
+@property(nonatomic,strong) NSLayoutConstraint *referenceHomeHeight;
+@property(nonatomic,strong) NSArray<NSLayoutConstraint *> *referenceCustomizeGeometry;
 @property (nonatomic, copy) NSDictionary<NSString *, NSString *> *renewedProfileVersions;
 @property (nonatomic, copy) NSString *renewedProfileSelection;
 @property (nonatomic, assign) BOOL renewedLaunchDispatchPending;
@@ -1752,6 +1824,7 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     
     [self setupHeader];
     [self setupCollectionView];
+    [self setupReferenceHomeHeaderGeometry];
     [self setupHomeLogo];   // responsive transparent emblem replaces old blob
     [self applyHomeSafeAreaInsets];   // ★ [HOME6] 首次按实时安全区铺一次(竖/横通用)
     [self updateSkinDisplay];
@@ -2077,6 +2150,8 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     [self renewedReloadProfiles];
 }
 
+- (void)performExistingHomeAction:(NSInteger)action { [self renewedOverviewAction:action]; }
+
 - (void)renewedOverviewAction:(NSInteger)action {
     if (self.homeEditing) return;
     switch (action) {
@@ -2091,6 +2166,13 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
         case 4: [self handleShortcutAction:kShortcutActionVersions]; break;
         case 5: [self openDownloadCenterModal]; break;
         case 6: [self bottomBarExecuteJarTapped]; break;
+        case 7: {
+            self.tabBarController.selectedIndex=AMELauncherTabSettings;
+            UINavigationController *nav=(UINavigationController *)self.tabBarController.selectedViewController;
+            MetallicSettingsContainerViewController *settings=(MetallicSettingsContainerViewController *)nav.viewControllers.firstObject;
+            [settings loadViewIfNeeded]; [settings selectCategory:8];
+            break;
+        }
         default: break;
     }
 }
@@ -2272,13 +2354,15 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
     self.topbarDownloadBadgeLabel.hidden = YES;
     // The badge is added to the profile panel's badge layer when the panel is created.
 
+    self.referenceHomeTop = [self.headerView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:kHomeNavReserve];
+    self.referenceHomeHeight = [self.headerView.heightAnchor constraintEqualToConstant:38*.8];
     // 公共约束(与朝向无关;不含任何会被两套约束重复钉住的属性)
     [NSLayoutConstraint activateConstraints:@[
         // Start below the root nav bar (HomeTopNavView) instead of underneath it.
-        [self.headerView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:kHomeNavReserve],
+        self.referenceHomeTop,
         [self.headerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.headerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.headerView.heightAnchor constraintEqualToConstant:kHome6HeaderHeight],
+        self.referenceHomeHeight,
 
         [self.headerTitleLabel.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
         // ★ [NORIGHT] 标题右界改让给 JIT pill(原来直接让给「⚙自定义」)
@@ -2327,6 +2411,27 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 
 // MARK: - Responsive Transparent Emblem Logo
 
+- (void)setupReferenceHomeHeaderGeometry {
+    NSArray *buttons=@[self.customizeButton,self.homeEditDoneButton];
+    for(UIView *host in @[self.headerView,self.view]) for(NSLayoutConstraint *c in [host.constraints copy]) {
+        if([buttons containsObject:c.firstItem]||[buttons containsObject:c.secondItem]) [NSLayoutConstraint deactivateConstraints:@[c]];
+    }
+    NSPredicate *keep=[NSPredicate predicateWithBlock:^BOOL(NSLayoutConstraint *c,NSDictionary *bindings) { return ![buttons containsObject:c.firstItem]&&![buttons containsObject:c.secondItem]; }];
+    self.headerPortraitConstraints=[self.headerPortraitConstraints filteredArrayUsingPredicate:keep];
+    self.headerLandscapeConstraints=[self.headerLandscapeConstraints filteredArrayUsingPredicate:keep];
+    NSMutableArray *geometry=[NSMutableArray array];
+    for(UIButton *button in buttons) {
+        [button removeFromSuperview]; [self.view addSubview:button];
+        if(button==self.customizeButton) { [button setTitle:@"" forState:UIControlStateNormal]; [button setImage:[UIImage systemImageNamed:@"slider.horizontal.3"] forState:UIControlStateNormal]; button.accessibilityLabel=@"Customize Home"; }
+        else button.accessibilityLabel=@"Done editing Home";
+        NSLayoutConstraint *y=[button.centerYAnchor constraintEqualToAnchor:self.collectionView.topAnchor constant:60*.8];
+        NSLayoutConstraint *right=[button.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-38*.8];
+        [geometry addObjectsFromArray:@[y,right]];
+        [NSLayoutConstraint activateConstraints:@[y,right,[button.widthAnchor constraintGreaterThanOrEqualToConstant:44],[button.heightAnchor constraintEqualToConstant:44]]];
+    }
+    self.referenceCustomizeGeometry=geometry;
+}
+
 - (void)setupHomeLogo {
     self.collectionView.hidden = NO;
     self.collectionView.userInteractionEnabled = YES;
@@ -2344,6 +2449,16 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     UIEdgeInsets safe = self.view.safeAreaInsets;
+    CGFloat scale=self.view.bounds.size.width>=900?self.view.bounds.size.width/1536.0:.72;
+    CGFloat reservation=[self.tabBarController isKindOfClass:AmeRootTabController.class]?[(AmeRootTabController *)self.tabBarController launcherHeaderReservation]:kHomeNavReserve;
+    if(fabs(self.referenceHomeTop.constant-reservation)>.1)self.referenceHomeTop.constant=reservation;
+    if(fabs(self.referenceHomeHeight.constant-38*scale)>.1)self.referenceHomeHeight.constant=38*scale;
+    for(NSLayoutConstraint *c in self.referenceCustomizeGeometry)c.constant=c.firstAttribute==NSLayoutAttributeCenterY?60*scale:-38*scale;
+    for(UIButton *button in @[self.customizeButton,self.homeEditDoneButton]) {
+        [button viewWithTag:kAmeGlassBackdropTag].hidden=YES; button.backgroundColor=UIColor.clearColor; button.layer.borderWidth=0;
+        [self.view bringSubviewToFront:button];
+    }
+    self.homeLogoImageView.hidden = [self.tabBarController isKindOfClass:AmeRootTabController.class];
     self.homeLogoImageView.frame = CGRectMake(MAX(safe.left, kHome6HeaderPadH), 6, 32, 32);
     self.norightLaunchCapsule.hidden = YES; // One visible launch entry, in the scrolling hero.
     self.renewedOverview.userInteractionEnabled = !self.homeEditing;

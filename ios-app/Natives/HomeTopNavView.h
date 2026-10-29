@@ -43,4 +43,6 @@ static inline NSInteger AMEPrimaryDestinationForTab(NSInteger tab) {
 // Remains an INTERNAL index for legacy notification/caller compatibility.
 @property (nonatomic, assign) NSInteger selectedIndex;
 @property (nonatomic, assign) BOOL appearanceActive;
+@property (nonatomic, assign) CGFloat referenceScale;
+@property(nonatomic, strong) UIMenu *moreMenu;
 @end

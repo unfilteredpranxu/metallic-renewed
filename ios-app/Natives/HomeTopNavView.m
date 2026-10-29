@@ -18,6 +18,8 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
 
 @interface HomeTopNavView ()
 @property (nonatomic, strong) UIView *bar;
+@property(nonatomic,strong) UIScrollView *destinationScroll;
+@property(nonatomic,strong) UIButton *moreButton;
 @property (nonatomic, strong) UIStackView *stack;
 @property (nonatomic, strong) UIVisualEffectView *selector;   // the sliding "liquid" capsule
 @property (nonatomic, strong) NSArray<UIView *> *items;
@@ -25,18 +27,23 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
 @property (nonatomic, strong) NSArray<UILabel *> *labels;
 @property (nonatomic, strong) NSArray<UIButton *> *buttons;
 @property (nonatomic, assign) CGFloat lastBarWidth;
+@property(nonatomic) NSInteger lastPresentedDestination;
 @property (nonatomic, strong) NSLayoutConstraint *naturalWidth;
+@property (nonatomic, strong) NSLayoutConstraint *barHeight;
+@property (nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *itemWidths;
+@property (nonatomic, strong) NSMutableArray<NSLayoutConstraint *> *itemHeights;
 @end
 
 @implementation HomeTopNavView
 
 static UIColor *NavAccentColor(void) {
-    return AmeUIAccentColor();   // follows the theme color chosen in Settings (default pink)
+    return AmeUIPrimaryTextColor(); // The reference uses neutral text; selection comes from the translucent capsule.
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
+        _referenceScale = 0.8;
         [self build];
         self.selectedIndex = 0;
         [self themeChanged:nil];
@@ -87,6 +94,7 @@ static UIColor *NavAccentColor(void) {
         localize(@"tab.settings", @"Settings")
     ];
 
+    self.itemWidths = [NSMutableArray array]; self.itemHeights = [NSMutableArray array];
     NSMutableArray<UIView *> *items = [NSMutableArray array];
     NSMutableArray<UIImageView *> *icons = [NSMutableArray array];
     NSMutableArray<UILabel *> *labels = [NSMutableArray array];
@@ -122,8 +130,12 @@ static UIColor *NavAccentColor(void) {
         [hit addTarget:self action:@selector(tapped:) forControlEvents:UIControlEventTouchUpInside];
         [item addSubview:hit];
 
+        NSArray *referenceWidths = @[@132,@170,@176,@190,@158];
+        NSLayoutConstraint *itemWidth = [item.widthAnchor constraintEqualToConstant:[referenceWidths[index] doubleValue]*self.referenceScale];
+        NSLayoutConstraint *itemHeight = [item.heightAnchor constraintEqualToConstant:44];
+        [self.itemWidths addObject:itemWidth]; [self.itemHeights addObject:itemHeight];
         [NSLayoutConstraint activateConstraints:@[
-            [item.heightAnchor constraintEqualToConstant:kNavBarHeight - 2.0 * kNavBarPad],
+            itemHeight, itemWidth,
             [content.leadingAnchor constraintGreaterThanOrEqualToAnchor:item.leadingAnchor constant:kNavItemPadH],
             [content.trailingAnchor constraintLessThanOrEqualToAnchor:item.trailingAnchor constant:-kNavItemPadH],
             [content.centerYAnchor constraintEqualToAnchor:item.centerYAnchor],
@@ -146,31 +158,66 @@ static UIColor *NavAccentColor(void) {
     self.buttons = buttons;
 
     self.naturalWidth = [self.widthAnchor constraintGreaterThanOrEqualToConstant:[self intrinsicContentSize].width];
-    self.naturalWidth.active = YES;
+    self.naturalWidth.priority=UILayoutPriorityDefaultLow; self.naturalWidth.active = YES;
+    [self setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     self.stack = [[UIStackView alloc] initWithArrangedSubviews:items];
     self.stack.translatesAutoresizingMaskIntoConstraints = NO;
     self.stack.axis = UILayoutConstraintAxisHorizontal;
     self.stack.alignment = UIStackViewAlignmentCenter;
     self.stack.spacing = 0.0;
     self.stack.distribution = UIStackViewDistributionFill;
-    [self.bar addSubview:self.stack];
+    self.destinationScroll=[[UIScrollView alloc] init]; self.destinationScroll.translatesAutoresizingMaskIntoConstraints=NO;
+    self.destinationScroll.showsHorizontalScrollIndicator=NO; self.destinationScroll.contentInsetAdjustmentBehavior=UIScrollViewContentInsetAdjustmentNever;
+    [self.bar addSubview:self.destinationScroll]; [self.destinationScroll addSubview:self.selector]; [self.destinationScroll addSubview:self.stack];
+    self.moreButton=[UIButton buttonWithType:UIButtonTypeSystem]; self.moreButton.translatesAutoresizingMaskIntoConstraints=NO;
+    [self.moreButton setImage:[UIImage systemImageNamed:@"ellipsis"] forState:UIControlStateNormal]; self.moreButton.tintColor=AmeUIPrimaryTextColor();
+    self.moreButton.accessibilityLabel=@"More launcher actions"; self.moreButton.showsMenuAsPrimaryAction=YES;
+    [self.bar addSubview:self.moreButton];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.moreButton.trailingAnchor constraintEqualToAnchor:self.bar.trailingAnchor constant:-16], [self.moreButton.centerYAnchor constraintEqualToAnchor:self.bar.centerYAnchor],
+        [self.moreButton.widthAnchor constraintEqualToConstant:44], [self.moreButton.heightAnchor constraintEqualToConstant:44],
+        [self.destinationScroll.leadingAnchor constraintEqualToAnchor:self.bar.leadingAnchor constant:6], [self.destinationScroll.trailingAnchor constraintEqualToAnchor:self.moreButton.leadingAnchor constant:-8],
+        [self.destinationScroll.topAnchor constraintEqualToAnchor:self.bar.topAnchor], [self.destinationScroll.bottomAnchor constraintEqualToAnchor:self.bar.bottomAnchor],
+        [self.stack.topAnchor constraintEqualToAnchor:self.destinationScroll.contentLayoutGuide.topAnchor], [self.stack.bottomAnchor constraintEqualToAnchor:self.destinationScroll.contentLayoutGuide.bottomAnchor], [self.stack.heightAnchor constraintEqualToAnchor:self.destinationScroll.frameLayoutGuide.heightAnchor]
+    ]];
 
+    self.barHeight = [self.bar.heightAnchor constraintEqualToConstant:kNavBarHeight];
     [NSLayoutConstraint activateConstraints:@[
         [self.bar.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
         [self.bar.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         [self.bar.topAnchor constraintEqualToAnchor:self.topAnchor],
         [self.bar.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-        [self.bar.heightAnchor constraintEqualToConstant:kNavBarHeight],
-        [self.stack.leadingAnchor constraintEqualToAnchor:self.bar.leadingAnchor constant:kNavBarPad],
-        [self.stack.trailingAnchor constraintEqualToAnchor:self.bar.trailingAnchor constant:-kNavBarPad],
-        [self.stack.centerYAnchor constraintEqualToAnchor:self.bar.centerYAnchor]
+        self.barHeight,
+        [self.stack.leadingAnchor constraintEqualToAnchor:self.destinationScroll.contentLayoutGuide.leadingAnchor],
+        [self.stack.trailingAnchor constraintEqualToAnchor:self.destinationScroll.contentLayoutGuide.trailingAnchor],
+        [self.stack.centerYAnchor constraintEqualToAnchor:self.destinationScroll.centerYAnchor]
     ]];
 }
 
+- (void)setMoreMenu:(UIMenu *)menu { _moreMenu=menu; self.moreButton.menu=menu; }
+
 - (CGSize)intrinsicContentSize {
-    CGFloat width = 2 * kNavBarPad;
-    for (UILabel *label in self.labels) width += ceil(label.intrinsicContentSize.width) + 24 + 7 + 2 * kNavItemPadH;
-    return CGSizeMake(width, kNavBarHeight);
+    return CGSizeMake(MAX(842*self.referenceScale,self.naturalWidth.constant),MAX(MAX(48,68*self.referenceScale),self.barHeight.constant));
+}
+- (void)setReferenceScale:(CGFloat)scale {
+    if (fabs(_referenceScale-scale)<0.001 && self.barHeight.constant==MAX(48,68*scale)) return;
+    _referenceScale=scale;
+    NSArray *widths=@[@132,@170,@176,@190,@158];
+    for (NSUInteger i=0;i<self.labels.count;i++) {
+        self.labels[i].font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:22*scale weight:UIFontWeightMedium]];
+        self.icons[i].image = [UIImage systemImageNamed:@[@"house",@"square.stack.3d.up",@"arrow.down.circle",@"paintpalette",@"slider.horizontal.3"][i] withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:24*scale weight:UIImageSymbolWeightRegular]];
+        for (NSLayoutConstraint *c in self.icons[i].constraints) if (c.firstAttribute==NSLayoutAttributeWidth || c.firstAttribute==NSLayoutAttributeHeight) c.constant=24*scale;
+        self.itemWidths[i].constant=MAX(MAX(44,[widths[i] doubleValue]*scale),self.labels[i].intrinsicContentSize.width+47*scale);
+        self.itemHeights[i].constant=MAX(MAX(44,56*scale),self.labels[i].font.lineHeight+8*scale);
+    }
+    CGFloat contentHeight=44,contentWidth=12*scale;
+    for(NSLayoutConstraint *width in self.itemWidths)contentWidth+=width.constant;
+    for(UILabel *label in self.labels)contentHeight=MAX(contentHeight,label.font.lineHeight+8*scale);
+    self.barHeight.constant=MAX(MAX(48,68*scale),contentHeight+6*scale);
+    self.naturalWidth.constant=MAX(842*scale,contentWidth);
+    self.bar.layer.cornerRadius=self.barHeight.constant/2;
+    [self.moreButton setPreferredSymbolConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:24*scale weight:UIImageSymbolWeightMedium] forImageInState:UIControlStateNormal];
+    [self invalidateIntrinsicContentSize]; self.lastBarWidth=-1; [self setNeedsLayout];
 }
 
 - (void)layoutSubviews {
@@ -193,7 +240,7 @@ static UIColor *NavAccentColor(void) {
     self.selector.hidden = (index == NSNotFound);
     if (index == NSNotFound) return;
     UIView *item = self.items[index];
-    CGRect target = [self.bar convertRect:item.bounds fromView:item];
+    CGRect target = [self.destinationScroll convertRect:item.bounds fromView:item];
     self.selector.layer.cornerRadius = target.size.height / 2.0;
 
     void (^place)(void) = ^{
@@ -214,7 +261,9 @@ static UIColor *NavAccentColor(void) {
 }
 
 - (void)setSelectedIndex:(NSInteger)index {
-    BOOL changed = (_selectedIndex != index);
+    NSInteger destination=self.appearanceActive?AMEPrimaryDestinationAppearance:AMEPrimaryDestinationForTab(index);
+    BOOL changed = (_selectedIndex != index) || self.lastPresentedDestination!=destination;
+    self.lastPresentedDestination=destination;
     _selectedIndex = index;
     for (NSInteger i = 0; i < (NSInteger)self.icons.count; i++) {
         BOOL selected = (i == (self.appearanceActive ? AMEPrimaryDestinationAppearance : AMEPrimaryDestinationForTab(index)));
@@ -224,6 +273,7 @@ static UIColor *NavAccentColor(void) {
         self.buttons[i].accessibilityTraits = UIAccessibilityTraitButton | (selected ? UIAccessibilityTraitSelected : 0);
     }
     [self placeSelectorAnimated:changed];
+    if(changed && destination!=NSNotFound) { [self.destinationScroll layoutIfNeeded]; CGRect target=[self.destinationScroll convertRect:self.items[destination].bounds fromView:self.items[destination]]; [self.destinationScroll scrollRectToVisible:target animated:!UIAccessibilityIsReduceMotionEnabled()]; }
 }
 
 - (void)themeChanged:(NSNotification *)notification {
@@ -237,12 +287,10 @@ static UIColor *NavAccentColor(void) {
     [manager applyInterfaceAppearanceToMaterial:backdrop inView:self.bar];
     self.selector.alpha = manager.uiEffect == BackgroundUIEffectBlur ? manager.interfaceBlurIntensity : 0.0;
     if ([notification.name isEqualToString:UIContentSizeCategoryDidChangeNotification]) {
-        for (UILabel *label in self.labels) label.font = AmeUINavigationFont();
-        self.naturalWidth.constant = [self intrinsicContentSize].width;
-        [self invalidateIntrinsicContentSize];
-        // Text width can change without the outer bar width changing.
-        self.lastBarWidth = -1.0;
-        [self setNeedsLayout];
+        CGFloat scale=self.referenceScale;
+        _referenceScale=-1; // Refit the existing controls after text metrics change.
+        self.referenceScale=scale;
+        [self.superview setNeedsLayout];
     }
     self.selectedIndex = _selectedIndex;
 }

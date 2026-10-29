@@ -7,6 +7,10 @@
 @interface AMEProfileImageView : UIImageView
 @end
 @implementation AMEProfileImageView
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
+    CGFloat x=MAX(0,(44-self.bounds.size.width)/2),y=MAX(0,(44-self.bounds.size.height)/2);
+    return CGRectContainsPoint(CGRectInset(self.bounds,-x,-y),point);
+}
 - (BOOL)accessibilityActivate {
     HomeActionPanelView *panel = (HomeActionPanelView *)self.superview;
     if (![panel isKindOfClass:HomeActionPanelView.class] || !panel.userInteractionEnabled) return NO;
@@ -21,11 +25,11 @@ static inline BOOL AmeIsPad(void) {
 }
 
 static inline CGFloat AmeCollapsedSize(void) {
-    return AmeIsPad() ? 56.0 : 46.0;
+    return 44.0;
 }
 
 static inline CGFloat AmeAvatarSize(void) {
-    return AmeIsPad() ? 48.0 : 44.0;
+    return 32.0;
 }
 
 static inline CGFloat AmeAvatarPadding(void) {

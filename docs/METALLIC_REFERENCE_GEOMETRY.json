@@ -1,0 +1,156 @@
+{
+  "reference_pixels": [
+    1536,
+    1067
+  ],
+  "status": "Measured target anchors; actual UIKit captures still required",
+  "shared_header": {
+    "capsule": [
+      411,
+      52,
+      938,
+      68
+    ],
+    "theme": [
+      1366,
+      56,
+      58,
+      58
+    ],
+    "profile_center": [
+      1470,
+      85
+    ],
+    "brand": [
+      38,
+      64,
+      190,
+      46
+    ]
+  },
+  "home": {
+    "eyebrow": [
+      38,
+      184
+    ],
+    "welcome": [
+      38,
+      226
+    ],
+    "hero": [
+      38,
+      314,
+      1068,
+      408
+    ],
+    "status": [
+      1136,
+      314,
+      364,
+      448
+    ],
+    "instances_heading": [
+      38,
+      798
+    ],
+    "instance_card": [
+      48,
+      872,
+      330,
+      172
+    ]
+  },
+  "downloads": {
+    "rail": [
+      38,
+      180,
+      232,
+      455
+    ],
+    "search": [
+      302,
+      180,
+      1196,
+      67
+    ],
+    "type_filter": [
+      302,
+      265,
+      142,
+      55
+    ],
+    "sort": [
+      460,
+      265,
+      102,
+      55
+    ],
+    "first_result": [
+      302,
+      341,
+      1196,
+      104
+    ],
+    "result_gap": 12
+  },
+  "appearance": {
+    "pane": [
+      148,
+      128,
+      1240
+    ],
+    "theme_bottom": 292,
+    "glass": [
+      148,
+      318,
+      1240,
+      505
+    ],
+    "intro": [
+      148,
+      849,
+      1240
+    ]
+  },
+  "settings": {
+    "eyebrow": [
+      38,
+      150
+    ],
+    "title": [
+      38,
+      190
+    ],
+    "search": [
+      38,
+      272,
+      1462,
+      62
+    ],
+    "sidebar": [
+      48,
+      364,
+      252
+    ],
+    "main_heading": [
+      352,
+      375
+    ],
+    "sound_card": [
+      352,
+      431,
+      968,
+      87
+    ],
+    "preference_group": [
+      352,
+      543,
+      968
+    ]
+  },
+  "runtime_validation": "PENDING: same-geometry capture and comparison; geometry does not establish pixel-perfect fidelity",
+  "user_overrides": {
+    "launch_intro": "Omitted completely per user: No intro.",
+    "more_menu": "Fixed top-right ellipsis inside capsule; existing Execute JAR, Download Center, Tools/AI actions."
+  }
+}

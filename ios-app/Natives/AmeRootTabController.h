@@ -25,4 +25,5 @@ extern NSString * const AmeTabTappedNotification;
 + (instancetype)tabControllerWithHomeViewController:(UIViewController *)home;
 /// Adopt the existing Home profile UI without changing its actions or data ownership.
 - (void)installNavigationProfilePanel:(HomeActionPanelView *)panel;
+- (CGFloat)launcherHeaderReservation;
 @end

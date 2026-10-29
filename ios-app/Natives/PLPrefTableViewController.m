@@ -16,6 +16,7 @@
 // Opt-in presentation only. Legacy preference controllers keep stock cells and layout.
 // The public label/accessory getters still expose the SAME values/controls used by the binding code.
 @interface AMERefinedPreferenceCell : UITableViewCell
+@property(nonatomic,strong) NSLayoutConstraint *referenceRowMinimum;
 @property(nonatomic, strong) UILabel *nameLabel;
 @property(nonatomic, strong) UILabel *valueLabel;
 @property(nonatomic, strong) UILabel *explanationLabel;
@@ -60,7 +61,7 @@
     self.disclosure.isAccessibilityElement = NO;
     self.surface = [[UIView alloc] init];
     self.surface.translatesAutoresizingMaskIntoConstraints = NO;
-    self.surface.layer.cornerRadius = 16;
+    self.surface.layer.cornerRadius = 26;
     self.surface.layer.cornerCurve = kCACornerCurveContinuous;
     self.surface.clipsToBounds = YES;
     [self.contentView addSubview:self.surface];
@@ -104,6 +105,7 @@
     UIView *selected = [[UIView alloc] init];
     selected.backgroundColor = UIColor.clearColor;
     self.selectedBackgroundView = selected;
+    self.referenceRowMinimum=[self.surface.heightAnchor constraintGreaterThanOrEqualToConstant:56]; self.referenceRowMinimum.active=NO;
     [self refreshPresentation];
     return self;
 }
@@ -158,6 +160,7 @@
     self.destructive = destructive;
     self.explanationLabel.text = explanation;
     self.explanationLabel.hidden = !explanation.length;
+    self.nameLabel.hidden = NO;
     self.surface.layer.maskedCorners = (first ? kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner : 0)
         | (last ? kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner : 0);
     // Keep the material's own clipping consistent with the connected group corners.
@@ -240,11 +243,31 @@
 @implementation PLPrefTableViewController
 
 - (BOOL)usesRefinedSettingsPresentation { return NO; }
+- (BOOL)usesReferenceTableGeometry { return NO; }
 - (UISearchBar *)presentationSearchBar { return self.searchController.searchBar; }
 - (void)endPresentationSearch {
     self.searchController.active = NO;
     self.searchController.searchBar.text = @"";
     [self updateSearchResultsForSearchController:self.searchController];
+}
+
+- (NSIndexPath *)sourceIndexPathForDisplayIndexPath:(NSIndexPath *)indexPath {
+    return self.presentationRows ? self.presentationRows[indexPath.section][indexPath.row] : indexPath;
+}
+- (NSIndexPath *)displayIndexPathForSourceIndexPath:(NSIndexPath *)source {
+    if (!self.presentationRows) return source;
+    for (NSUInteger section=0; section<self.presentationRows.count; section++) {
+        NSUInteger row = [self.presentationRows[section] indexOfObject:source];
+        if (row != NSNotFound) return [NSIndexPath indexPathForRow:row inSection:section];
+    }
+    return nil;
+}
+- (NSDictionary *)preferenceItemAtDisplayIndexPath:(NSIndexPath *)indexPath {
+    NSIndexPath *source = [self sourceIndexPathForDisplayIndexPath:indexPath];
+    return self.prefContents[source.section][source.row];
+}
+- (NSString *)preferenceSectionAtDisplayIndexPath:(NSIndexPath *)indexPath {
+    return self.prefSections[[self sourceIndexPathForDisplayIndexPath:indexPath].section];
 }
 
 - (void)refreshRefinedSettingsPresentation {
@@ -266,10 +289,22 @@
 
 - (void)configureRefinedCell:(UITableViewCell *)cell item:(NSDictionary *)item indexPath:(NSIndexPath *)indexPath {
     if (![cell isKindOfClass:AMERefinedPreferenceCell.class]) return;
-    BOOL heading = !self.filteredItems && self.prefSections && indexPath.row == 0;
+    if (self.presentationRows) {
+        cell.contentView.directionalLayoutMargins = NSDirectionalEdgeInsetsZero;
+        cell.imageView.image=nil;
+        NSString *key=item[@"key"];
+        if ([key isEqualToString:@"custom_accent_color"]) {
+            id rawValue=self.getPreference(@"general",@"accent_color");
+            NSString *value=[rawValue isKindOfClass:NSString.class]?rawValue:@"";
+            cell.detailTextLabel.text=value.length?value:@"Use native default";
+            cell.detailTextLabel.backgroundColor=UIColor.blackColor;
+            cell.detailTextLabel.textColor=AmeUISecondaryTextColor();
+        } else cell.detailTextLabel.backgroundColor=UIColor.clearColor;
+    }
+    BOOL heading = !self.presentationRows && !self.filteredItems && self.prefSections && indexPath.row == 0;
     BOOL first = indexPath.row == 0;
     BOOL last = indexPath.row == [self.tableView numberOfRowsInSection:indexPath.section] - 1;
-    BOOL expanded = !self.filteredItems && self.prefSectionsVisibility[indexPath.section].boolValue;
+    BOOL expanded = !self.presentationRows && !self.filteredItems && self.prefSectionsVisibility[indexPath.section].boolValue;
     NSString *explanation = nil;
     if (!self.filteredItems && !heading && self.prefDetailVisible && [item[@"hasDetail"] boolValue]
         && (item[@"type"] == self.typePickField || item[@"type"] == self.typeChildPane)) {
@@ -277,6 +312,32 @@
     }
     [(AMERefinedPreferenceCell *)cell configureHeading:heading expanded:expanded first:first last:last
         explanation:explanation destructive:[item[@"destructive"] boolValue]];
+    AMERefinedPreferenceCell *reference=(AMERefinedPreferenceCell *)cell;
+    reference.referenceRowMinimum.active=self.presentationRows!=nil;
+    if(self.presentationRows) {
+        CGFloat viewport=self.view.window.bounds.size.width; if(viewport<=0)viewport=UIScreen.mainScreen.bounds.size.width;
+        CGFloat scale=viewport>=900?viewport/1536.0:.72;
+        NSString *key=item[@"key"]; CGFloat height=[key isEqualToString:@"custom_accent_color"]?136:[key isEqualToString:@"announcement_preview_level"]?146:100;
+        reference.referenceRowMinimum.constant=height*scale;
+        reference.nameLabel.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:24*scale]];
+        reference.valueLabel.font=reference.nameLabel.font;
+        reference.explanationLabel.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote] scaledFontForFont:[UIFont systemFontOfSize:16*scale]];
+        if(item[@"type"]==self.typePickField) {
+            id current=self.getPreference([self preferenceSectionAtDisplayIndexPath:indexPath],item[@"key"]);
+            NSUInteger selected=[item[@"pickKeys"] indexOfObject:current]; NSArray *labels=item[@"pickList"];
+            if(selected<labels.count) reference.valueLabel.text=labels[selected];
+        }
+        if([key isEqualToString:@"announcement_preview_level"]) {
+            reference.nameLabel.hidden=YES;
+            reference.disclosure.image=[UIImage systemImageNamed:@"chevron.up.chevron.down"];
+            reference.explanationLabel.text=@"How much detail announcements show on the home screen.";
+            reference.explanationLabel.hidden=NO;
+        }
+        id accentValue=getPrefObject(@"general.accent_color");
+        UIColor *accent=[accentValue isKindOfClass:NSString.class] && [accentValue length]?AmeUIAccentColor():UIColor.systemBlueColor;
+        if([cell.accessoryView isKindOfClass:UISwitch.class]) ((UISwitch *)cell.accessoryView).onTintColor=accent;
+    }
+
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
@@ -301,7 +362,7 @@
 {
     [super viewDidLoad];
 
-    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
+    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:(self.usesReferenceTableGeometry ? UITableViewStylePlain : UITableViewStyleInsetGrouped)];
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     if (self.prefSections) {
         self.prefSectionsVisibility = [[NSMutableArray<NSNumber *> alloc] initWithCapacity:self.prefSections.count];
@@ -403,6 +464,8 @@
         self.navigationItem.rightBarButtonItems = @[[self drawHelpButton]];
     }
 
+    if (self.presentationRows) { [self.tableView reloadData]; return; }
+
     // Scan for child pane cells and reload them
     // FIXME: any cheaper operations?
     NSMutableArray *indexPaths = [[NSMutableArray alloc] init];
@@ -429,6 +492,7 @@
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     // 搜索结果为单一扁平 section
     if (self.filteredItems) return 1;
+    if (self.presentationRows) return self.presentationRows.count;
     return self.prefSectionsVisibility.count;
 }
 
@@ -437,6 +501,7 @@
     if (self.filteredItems) {
         return self.filteredItems.count;
     }
+    if (self.presentationRows) return self.presentationRows[section].count;
     if (self.prefSectionsVisibility[section].boolValue) {
         return self.prefContents[section].count;
     }
@@ -473,7 +538,7 @@
         return cell;
     }
 
-    NSDictionary *item = self.prefContents[indexPath.section][indexPath.row];
+    NSDictionary *item = [self preferenceItemAtDisplayIndexPath:indexPath];
 
     NSString *cellID;
     UITableViewCellStyle cellStyle;
@@ -504,15 +569,15 @@
     cell.detailTextLabel.text = nil;
 
     NSString *key = item[@"key"];
-    if (indexPath.row == 0 && self.prefSections) {
-        key = self.prefSections[indexPath.section];
+    if (!self.presentationRows && indexPath.row == 0 && self.prefSections) {
+        key = [self preferenceSectionAtDisplayIndexPath:indexPath];
         cell.selectionStyle = UITableViewCellSelectionStyleDefault;
         cell.textLabel.text = localize(([NSString stringWithFormat:@"preference.section.%@", key]), nil);
     } else {
         CreateView createView = item[@"type"];
-        createView(cell, self.prefSections[indexPath.section], key, item);
+        createView(cell, [self preferenceSectionAtDisplayIndexPath:indexPath], key, item);
         if (cell.accessoryView) {
-            objc_setAssociatedObject(cell.accessoryView, @"section", self.prefSections[indexPath.section], OBJC_ASSOCIATION_ASSIGN);
+            objc_setAssociatedObject(cell.accessoryView, @"section", [self preferenceSectionAtDisplayIndexPath:indexPath], OBJC_ASSOCIATION_ASSIGN);
             objc_setAssociatedObject(cell.accessoryView, @"key", key, OBJC_ASSOCIATION_ASSIGN);
             objc_setAssociatedObject(cell.accessoryView, @"item", item, OBJC_ASSOCIATION_ASSIGN);
         }
@@ -702,29 +767,23 @@
         self.filteredItems = nil;
         _currentSearchText = @"";
 
-        // 展开对应 section
-        if (origSection.intValue < (int)self.prefSectionsVisibility.count) {
-            self.prefSectionsVisibility[origSection.intValue] = @YES;
-        }
+        NSIndexPath *source = [NSIndexPath indexPathForRow:origRow.integerValue inSection:origSection.integerValue];
+        if (origSection.integerValue < self.prefSectionsVisibility.count) self.prefSectionsVisibility[origSection.integerValue] = @YES;
+        NSIndexPath *visible = [self displayIndexPathForSourceIndexPath:source];
+        if (!visible) { self.presentationRows = @[@[source]]; visible = [NSIndexPath indexPathForRow:0 inSection:0]; }
         [self.tableView reloadData];
-
-        // 跳转到该项并触发原始点击行为
-        NSIndexPath *origIndexPath = [NSIndexPath indexPathForRow:origRow.intValue inSection:origSection.intValue];
-        [self.tableView scrollToRowAtIndexPath:origIndexPath atScrollPosition:UITableViewScrollPositionMiddle animated:!(self.usesRefinedSettingsPresentation && UIAccessibilityIsReduceMotionEnabled())];
-        // 延迟触发，等滚动完成
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self tableView:tableView didSelectRowAtIndexPath:origIndexPath];
-        });
+        [self.tableView scrollToRowAtIndexPath:visible atScrollPosition:UITableViewScrollPositionMiddle animated:NO];
+        dispatch_async(dispatch_get_main_queue(), ^{ [self tableView:tableView didSelectRowAtIndexPath:visible]; });
         return;
     }
 
-    if (indexPath.row == 0 && self.prefSections) {
+    if (!self.presentationRows && indexPath.row == 0 && self.prefSections) {
         self.prefSectionsVisibility[indexPath.section] = @(![self.prefSectionsVisibility[indexPath.section] boolValue]);
         [tableView reloadSections:[NSIndexSet indexSetWithIndex:indexPath.section] withRowAnimation:(self.usesRefinedSettingsPresentation && UIAccessibilityIsReduceMotionEnabled() ? UITableViewRowAnimationNone : UITableViewRowAnimationFade)];
         return;
     }
 
-    NSDictionary *item = self.prefContents[indexPath.section][indexPath.row];
+    NSDictionary *item = [self preferenceItemAtDisplayIndexPath:indexPath];
 
     // Search forwards programmatically, so UIKit cannot enforce the disabled cell's touch gate.
     // Consult the existing condition; do not invent or change any setting's availability rule.
@@ -758,7 +817,7 @@
 #pragma mark External UITableView functions
 
 - (void)tableView:(UITableView *)tableView openChildPaneAtIndexPath:(NSIndexPath *)indexPath {
-    NSDictionary *item = self.prefContents[indexPath.section][indexPath.row];
+    NSDictionary *item = [self preferenceItemAtDisplayIndexPath:indexPath];
     UIViewController *vc = [item[@"class"] new];
     if ([item[@"canDismissWithSwipe"] boolValue]) {
         [self.navigationController pushViewController:vc animated:YES];
@@ -770,104 +829,34 @@
     }
 }
 
-- (UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction configurationForMenuAtLocation:(CGPoint)location
-{
-    return [UIContextMenuConfiguration configurationWithIdentifier:nil previewProvider:nil actionProvider:^UIMenu * _Nullable(NSArray<UIMenuElement *> * _Nonnull suggestedActions) {
-        return self.currentMenu;
-    }];
-}
-
-- (_UIContextMenuStyle *)_contextMenuInteraction:(UIContextMenuInteraction *)interaction styleForMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
-{
-    _UIContextMenuStyle *style = [_UIContextMenuStyle defaultStyle];
-    style.preferredLayout = 3; // _UIContextMenuLayoutCompactMenu
-    return style;
-}
-
 - (void)tableView:(UITableView *)tableView openPickerAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
-    NSDictionary *item = self.prefContents[indexPath.section][indexPath.row];
-
-    NSString *message = nil;
-    if ([item[@"hasDetail"] boolValue]) {
-        message = localize(([NSString stringWithFormat:@"preference.detail.%@", item[@"key"]]), nil);
+    if (!cell || self.presentedViewController) return;
+    NSDictionary *item = [self preferenceItemAtDisplayIndexPath:indexPath];
+    NSString *section = [self preferenceSectionAtDisplayIndexPath:indexPath];
+    BOOL (^enabled)(void) = item[@"enableCondition"];
+    if (enabled && !enabled()) return;
+    NSArray *keys = item[@"pickKeys"], *labels = item[@"pickList"];
+    id selected = self.getPreference(section,item[@"key"]);
+    UIAlertController *menu = [UIAlertController alertControllerWithTitle:cell.textLabel.text message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    for (NSUInteger i=0; i<MIN(keys.count,labels.count); i++) {
+        id value = keys[i];
+        NSString *title = [selected isEqual:value] ? [@"✓ " stringByAppendingString:labels[i]] : labels[i];
+        [menu addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            self.setPreference(section,item[@"key"],value);
+            void (^originalAction)(NSString *) = item[@"action"]; if (originalAction) originalAction(value);
+            [self.tableView reloadData];
+        }]];
     }
-
-    NSArray *pickKeys = item[@"pickKeys"];
-    NSArray *pickList = item[@"pickList"];
-
-    // 修复 iPhone 上选项弹出菜单被过度压缩不可调整的问题。
-    // 根因：UIContextMenuInteraction 紧凑菜单（preferredLayout=3）锚点取自窄小的
-    // cell.detailTextLabel.frame，在 iPhone 窄屏上把多个中文选项挤压到很小的浮动气泡内。
-    // 修复：iPhone 上改用 UIAlertController actionSheet，提供标准尺寸的全宽选择器，
-    // 每个选项有足够空间可正常点击。iPad 上保留 UIContextMenuInteraction 紧凑菜单
-    // （锚点 popover 在大屏上更自然）。
-    if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPhone) {
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:message
-                                                                       message:nil
-                                                                preferredStyle:UIAlertControllerStyleActionSheet];
-        for (int i = 0; i < pickList.count; i++) {
-            NSString *title = pickList[i];
-            NSString *value = pickKeys[i];
-            // 在标题前加 ✓ 标记当前选中项，让用户能直观看到当前值
-            if ([cell.detailTextLabel.text isEqualToString:value]) {
-                title = [NSString stringWithFormat:@"✓ %@", title];
-            }
-            UIAlertAction *action = [UIAlertAction actionWithTitle:title
-                                                              style:UIAlertActionStyleDefault
-                                                            handler:^(UIAlertAction *a) {
-                cell.detailTextLabel.text = value;
-                self.setPreference(self.prefSections[indexPath.section], item[@"key"], value);
-                void(^invokeAction)(NSString *) = item[@"action"];
-                if (invokeAction) {
-                    invokeAction(value);
-                }
-            }];
-            [alert addAction:action];
-        }
-        [alert addAction:[UIAlertAction actionWithTitle:localize(@"Cancel", nil)
-                                                   style:UIAlertActionStyleCancel
-                                                 handler:nil]];
-        // 配置 popoverPresentationController，防御性处理（iPhone 上 actionSheet 从底部弹出，
-        // popoverPresentationController 不会生效，但设置 sourceView 避免 iPad 分屏时崩溃）
-        alert.popoverPresentationController.sourceView = cell;
-        alert.popoverPresentationController.sourceRect = cell.bounds;
-        [self presentViewController:alert animated:YES completion:nil];
-        return;
-    }
-
-    // iPad：保留 UIContextMenuInteraction 紧凑菜单
-    NSMutableArray<UIAction *> *menuItems = [[NSMutableArray alloc] init];
-    for (int i = 0; i < pickList.count; i++) {
-        [menuItems addObject:[UIAction
-            actionWithTitle:pickList[i]
-            image:nil identifier:nil
-            handler:^(UIAction *action) {
-                cell.detailTextLabel.text = pickKeys[i];
-                self.setPreference(self.prefSections[indexPath.section], item[@"key"], pickKeys[i]);
-                void(^invokeAction)(NSString *) = item[@"action"];
-                if (invokeAction) {
-                    invokeAction(pickKeys[i]);
-                }
-            }]];
-        if ([cell.detailTextLabel.text isEqualToString:pickKeys[i]]) {
-            menuItems.lastObject.state = UIMenuElementStateOn;
-        }
-    }
-
-    self.currentMenu = [UIMenu menuWithTitle:message children:menuItems];
-    UIContextMenuInteraction *interaction = [[UIContextMenuInteraction alloc] initWithDelegate:self];
-    // 挂载到 cell 本身而不是 detailTextLabel，避免 detailTextLabel 尚未进入 window 时触发 UITargetedPreview 断言崩溃
-    [cell addInteraction:interaction];
-    CGRect detailFrame = self.usesRefinedSettingsPresentation
-        ? [cell convertRect:cell.detailTextLabel.bounds fromView:cell.detailTextLabel] : cell.detailTextLabel.frame;
-    CGPoint location = CGPointMake(CGRectGetMidX(detailFrame), CGRectGetMidY(detailFrame));
-    [interaction _presentMenuAtLocation:location];
+    [menu addAction:[UIAlertAction actionWithTitle:localize(@"Cancel",nil) style:UIAlertActionStyleCancel handler:nil]];
+    menu.popoverPresentationController.sourceView = cell;
+    menu.popoverPresentationController.sourceRect = cell.bounds;
+    [self presentViewController:menu animated:YES completion:nil];
 }
 
 - (void)tableView:(UITableView *)tableView invokeActionWithPromptAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *view = [self.tableView cellForRowAtIndexPath:indexPath];
-    NSDictionary *item = self.prefContents[indexPath.section][indexPath.row];
+    NSDictionary *item = [self preferenceItemAtDisplayIndexPath:indexPath];
     NSString *key = item[@"key"];
 
     if ([item[@"showConfirmPrompt"] boolValue]) {
@@ -890,7 +879,7 @@
 }
 
 - (void)tableView:(UITableView *)tableView invokeActionAtIndexPath:(NSIndexPath *)indexPath {
-    NSDictionary *item = self.prefContents[indexPath.section][indexPath.row];
+    NSDictionary *item = [self preferenceItemAtDisplayIndexPath:indexPath];
     NSString *key = item[@"key"];
 
     void(^invokeAction)(void) = item[@"action"];

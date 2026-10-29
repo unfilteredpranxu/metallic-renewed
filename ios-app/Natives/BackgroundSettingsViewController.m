@@ -17,6 +17,11 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
     return translated.length && ![translated isEqualToString:key] ? translated : (fallback ?: key);
 }
 
+static CGFloat MetallicAppearanceReferenceScale(UIView *view) {
+    CGFloat width=view.window.bounds.size.width;
+    if(width<=0)width=UIScreen.mainScreen.bounds.size.width;
+    return width>=900?width/1536.0:.72;
+}
 @interface BackgroundSettingsViewController ()
 - (UITableViewCell *)appearanceSliderCell:(NSString *)identifier title:(NSString *)title
                                   value:(CGFloat)value minimum:(CGFloat)minimum action:(SEL)action;
@@ -26,6 +31,10 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
 - (void)resetInterfaceAppearance;
 - (void)wallpaperChanged:(NSNotification *)notification;
 @property (nonatomic, strong) NSArray<NSArray *> *sections;
+@property(nonatomic, strong) UISlider *referenceBlurSlider;
+@property(nonatomic, strong) UISlider *referenceOpacitySlider;
+@property(nonatomic, strong) UILabel *referenceResetState;
+@property(nonatomic, strong) UIStackView *referenceAppearanceStack;
 @property (nonatomic, strong) UIImageView *previewImageView;
 @property (nonatomic, weak) UILabel *glassStrengthValueLabel;   // ★ [GLASSUI] Glass-intensity value label
 @end
@@ -162,23 +171,74 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
     }
 }
 
-- (void)setupLauncherThemeHeader {
-    UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(0,0,self.tableView.bounds.size.width,168)];
-    panel.layer.cornerRadius = 28; panel.clipsToBounds = YES;
-    [[BackgroundManager sharedManager] applyEffectToView:panel];
-    UILabel *title = [[UILabel alloc] init]; title.text = @"Theme";
-    title.font = [UIFont preferredFontForTextStyle:UIFontTextStyleTitle2]; title.textColor = AmeUIPrimaryTextColor();
-    UISegmentedControl *control = [[UISegmentedControl alloc] initWithItems:@[@"System",@"Light",@"Dark"]];
-    control.selectedSegmentIndex = self.themeIndex>=0 && self.themeIndex<3 ? self.themeIndex : 0;
-    [control addTarget:self action:@selector(launcherThemeChanged:) forControlEvents:UIControlEventValueChanged];
-    UILabel *detail = [[UILabel alloc] init]; detail.text = @"Changes apply across the launcher immediately.";
-    detail.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote]; detail.textColor = AmeUISecondaryTextColor(); detail.numberOfLines = 0;
-    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[title,control,detail]];
-    stack.axis = UILayoutConstraintAxisVertical; stack.spacing = 20; stack.translatesAutoresizingMaskIntoConstraints = NO;
-    [panel addSubview:stack];
-    [NSLayoutConstraint activateConstraints:@[[stack.topAnchor constraintEqualToAnchor:panel.topAnchor constant:20], [stack.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor constant:24], [stack.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor constant:-24], [stack.bottomAnchor constraintEqualToAnchor:panel.bottomAnchor constant:-16], [control.heightAnchor constraintGreaterThanOrEqualToConstant:44]]];
-    self.tableView.tableHeaderView = panel;
+- (UILabel *)referenceText:(NSString *)text size:(CGFloat)size secondary:(BOOL)secondary {
+    CGFloat scale=MetallicAppearanceReferenceScale(self.view);
+    UILabel *label=[[UILabel alloc] init]; label.text=text; label.numberOfLines=0;
+    label.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[UIFont systemFontOfSize:size*scale weight:size>=28 ? UIFontWeightSemibold : UIFontWeightRegular]];
+    label.textColor=secondary ? AmeUISecondaryTextColor() : AmeUIPrimaryTextColor(); label.adjustsFontForContentSizeCategory=YES;
+    return label;
 }
+- (UIView *)referenceCard:(UIStackView *)content top:(CGFloat)top {
+    CGFloat scale=MetallicAppearanceReferenceScale(self.view);
+    UIView *card=[[UIView alloc] init]; card.layer.cornerRadius=32*scale; card.clipsToBounds=YES;
+    [[BackgroundManager sharedManager] applyEffectToView:card]; content.translatesAutoresizingMaskIntoConstraints=NO;
+    [card addSubview:content];
+    [NSLayoutConstraint activateConstraints:@[[content.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:26*scale], [content.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-26*scale], [content.topAnchor constraintEqualToAnchor:card.topAnchor constant:top*scale], [content.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-28*scale]]];
+    return card;
+}
+
+- (void)setupLauncherThemeHeader {
+    CGFloat scale=MetallicAppearanceReferenceScale(self.view);
+    UIStackView *all=[[UIStackView alloc] init]; all.axis=UILayoutConstraintAxisVertical; all.spacing=26*scale; all.translatesAutoresizingMaskIntoConstraints=NO;
+    self.referenceAppearanceStack=all;
+    UILabel *title=[self referenceText:@"Theme" size:28 secondary:NO];
+    UISegmentedControl *theme=[[UISegmentedControl alloc] initWithItems:@[@"System",@"Light",@"Dark"]];
+    theme.selectedSegmentIndex=self.themeIndex>=0&&self.themeIndex<3?self.themeIndex:0;
+    [theme addTarget:self action:@selector(launcherThemeChanged:) forControlEvents:UIControlEventValueChanged];
+    [theme.heightAnchor constraintGreaterThanOrEqualToConstant:MAX(36,40*scale)].active=YES;
+    UIStackView *themeStack=[[UIStackView alloc] initWithArrangedSubviews:@[title,theme,[self referenceText:@"Changes apply across the launcher immediately." size:16 secondary:YES]]];
+    themeStack.axis=UILayoutConstraintAxisVertical; themeStack.spacing=22*scale;
+    [all addArrangedSubview:[self referenceCard:themeStack top:0]];
+    BackgroundManager *manager=BackgroundManager.sharedManager;
+    UITableViewCell *blur=[self appearanceSliderCell:@"InterfaceBlur" title:@"UI Blur" value:manager.interfaceBlurIntensity minimum:0 action:@selector(interfaceBlurSliderChanged:)];
+    UITableViewCell *opacity=[self appearanceSliderCell:@"InterfaceOpacity" title:@"UI Panel Opacity" value:manager.uiOpacity minimum:.1 action:@selector(opacitySliderChanged:)];
+    self.referenceBlurSlider=(UISlider *)[blur.contentView viewWithTag:500]; self.referenceOpacitySlider=(UISlider *)[opacity.contentView viewWithTag:500];
+    NSMutableArray *sliders=[NSMutableArray array];
+    for (UITableViewCell *cell in @[blur,opacity]) {
+        UIView *body=cell.contentView; [body removeFromSuperview]; body.directionalLayoutMargins=NSDirectionalEdgeInsetsZero;
+        body.insetsLayoutMarginsFromSafeArea=NO; body.preservesSuperviewLayoutMargins=NO;
+        ((UILabel *)[body viewWithTag:502]).font=[UIFont systemFontOfSize:22*scale];
+        ((UILabel *)[body viewWithTag:501]).font=[UIFont systemFontOfSize:22*scale];
+        [sliders addObject:body];
+    }
+    UILabel *interfaceTitle=[self referenceText:@"Interface Glass" size:28 secondary:NO];
+    UILabel *interfaceHelp=[self referenceText:@"Controls launcher panels only. Wallpaper blur and dimming stay in the Wallpaper section." size:16 secondary:YES];
+    UIButton *reset=[UIButton buttonWithType:UIButtonTypeSystem]; [reset setTitle:@"Reset to Recommended" forState:UIControlStateNormal];
+    reset.titleLabel.font=[UIFont systemFontOfSize:22*scale]; reset.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;
+    reset.tintColor=AmeUIPrimaryTextColor(); [reset addTarget:self action:@selector(resetInterfaceAppearance) forControlEvents:UIControlEventTouchUpInside];
+    [reset.heightAnchor constraintGreaterThanOrEqualToConstant:44].active=YES;
+    self.referenceResetState=[self referenceText:@"" size:16 secondary:YES];
+    UIStackView *resetRow=[[UIStackView alloc] initWithArrangedSubviews:@[reset,self.referenceResetState]]; resetRow.alignment=UIStackViewAlignmentCenter;
+    UIStackView *glass=[[UIStackView alloc] initWithArrangedSubviews:@[interfaceTitle,interfaceHelp,sliders[0],[self referenceText:@"0% removes the material. Higher values use denser system materials; Apple does not expose a custom blur radius." size:16 secondary:YES],sliders[1],[self referenceText:@"Changes the tint strength of cards, bars and sheets. It never dims the wallpaper." size:16 secondary:YES],resetRow,[self referenceText:@"These cards update live while you drag either control." size:16 secondary:YES]]];
+    glass.axis=UILayoutConstraintAxisVertical; glass.spacing=18*scale; [glass setCustomSpacing:22*scale afterView:interfaceTitle];
+    [all addArrangedSubview:[self referenceCard:glass top:32]];
+    UIView *header=[[UIView alloc] initWithFrame:CGRectMake(0,0,self.tableView.bounds.size.width,900*scale)];
+    [header addSubview:all];
+    [NSLayoutConstraint activateConstraints:@[[all.leadingAnchor constraintEqualToAnchor:header.leadingAnchor], [all.trailingAnchor constraintEqualToAnchor:header.trailingAnchor], [all.topAnchor constraintEqualToAnchor:header.topAnchor], [all.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-26*scale]]];
+    self.tableView.tableHeaderView=header;
+    [self refreshReferenceInterfaceControls];
+}
+- (void)refreshReferenceInterfaceControls {
+    BackgroundManager *manager=BackgroundManager.sharedManager;
+    if (!self.referenceBlurSlider.tracking) self.referenceBlurSlider.value=manager.interfaceBlurIntensity;
+    if (!self.referenceOpacitySlider.tracking) self.referenceOpacitySlider.value=manager.uiOpacity;
+    self.referenceBlurSlider.enabled=manager.uiEffect==BackgroundUIEffectBlur;
+    [self updatePercentageForSlider:self.referenceBlurSlider value:manager.interfaceBlurIntensity];
+    [self updatePercentageForSlider:self.referenceOpacitySlider value:manager.uiOpacity];
+    BOOL recommended=manager.uiEffect==BackgroundUIEffectBlur&&fabs(manager.uiOpacity-.7)<.001&&fabs(manager.interfaceBlurIntensity-.79)<.001;
+    self.referenceResetState.text=recommended?@"Recommended":@"Custom";
+}
+
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     if (!self.launcherPresentation) return;
@@ -226,10 +286,12 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    if (self.launcherPresentation && section==0) return 1;
     return [self.sections[section] count];
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    if (self.launcherPresentation && section==0) return @"More appearance options";
     if (section == 0) return MetallicPresentationText(@"renewed.appearance.interface", @"Interface Glass");
     if (section == 5) return MetallicPresentationText(@"renewed.appearance.wallpaper", @"Wallpaper");
     return self.sections[section][0];
@@ -294,7 +356,7 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (self.launcherPresentation && indexPath.section == 0) indexPath = [NSIndexPath indexPathForRow:[@[@2,@1,@3,@0][indexPath.row] integerValue] inSection:0];
+
     static NSString *cellIdentifier = @"BackgroundCell";
     
     BackgroundManager *manager = [BackgroundManager sharedManager];
@@ -659,7 +721,7 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
 #pragma mark - Table View Delegate
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (self.launcherPresentation && indexPath.section == 0) indexPath = [NSIndexPath indexPathForRow:[@[@2,@1,@3,@0][indexPath.row] integerValue] inSection:0];
+
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     
     // UI effect settings section.
@@ -1042,6 +1104,7 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
 /// manually clear the tableView background and backgroundView so the global background can
 /// show through correctly.
 - (void)reapplyBackgroundEffect {
+    if (self.launcherPresentation) [self refreshReferenceInterfaceControls];
     [[BackgroundManager sharedManager] makeViewControllerTransparent:self];
     self.tableView.backgroundColor = UIColor.clearColor;
     self.tableView.backgroundView = nil;
@@ -1101,7 +1164,7 @@ static NSString *MetallicPresentationText(NSString *key, NSString *fallback) {
     [self.appearance didMoveToParentViewController:self];
     self.navigationItem.rightBarButtonItem = self.appearance.navigationItem.rightBarButtonItem;
     UILayoutGuide *g = self.view.safeAreaLayoutGuide;
-    NSLayoutConstraint *width = [self.appearance.view.widthAnchor constraintEqualToAnchor:g.widthAnchor multiplier:.84]; width.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *width = [self.appearance.view.widthAnchor constraintEqualToAnchor:g.widthAnchor multiplier:1240.0/1536.0]; width.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[[self.appearance.view.centerXAnchor constraintEqualToAnchor:g.centerXAnchor], [self.appearance.view.topAnchor constraintEqualToAnchor:g.topAnchor], [self.appearance.view.bottomAnchor constraintEqualToAnchor:g.bottomAnchor], [self.appearance.view.leadingAnchor constraintGreaterThanOrEqualToAnchor:g.leadingAnchor constant:8], [self.appearance.view.trailingAnchor constraintLessThanOrEqualToAnchor:g.trailingAnchor constant:-8], width]];
 }
 - (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self.navigationController setNavigationBarHidden:YES animated:NO]; }

@@ -7,5 +7,6 @@
 @end
 
 @interface MetallicSettingsContainerViewController : UIViewController
+- (void)selectCategory:(NSInteger)index;
 @property(nonatomic, strong, readonly) LauncherPreferencesViewController *preferences;
 @end

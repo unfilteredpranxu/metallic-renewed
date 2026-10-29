@@ -89,6 +89,7 @@
 @implementation LauncherPreferencesViewController
 
 - (BOOL)usesRefinedSettingsPresentation { return YES; }
+- (BOOL)usesReferenceTableGeometry { return self.referenceContentMode; }
 
 - (id)init {
     self = [super init];
@@ -1840,7 +1841,7 @@
 
     // 判断是否为 section header 行（row 0 且有 prefSections）
     // section header 行不加彩色背景，保持原始样式（避免与组内项视觉混淆）
-    BOOL isSectionHeader = (indexPath.row == 0 && self.prefSections && !self.filteredItems);
+    BOOL isSectionHeader = (!self.presentationRows && indexPath.row == 0 && self.prefSections && !self.filteredItems);
     if (isSectionHeader) {
         // section header：恢复默认 tint（不加背景），让图标保持系统默认外观
         iconView.backgroundColor = [UIColor clearColor];
@@ -1857,10 +1858,7 @@
         // 搜索结果模式
         item = self.filteredItems[indexPath.row];
     } else if (self.prefSections && indexPath.section < (NSInteger)self.prefContents.count) {
-        NSArray *sectionItems = self.prefContents[indexPath.section];
-        if (indexPath.row < (NSInteger)sectionItems.count) {
-            item = sectionItems[indexPath.row];
-        }
+        item = [self preferenceItemAtDisplayIndexPath:indexPath];
     }
 
     // 判断是否为危险操作项
@@ -1947,6 +1945,7 @@
 #pragma mark - UITableView Delegate
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+    if (self.presentationRows) return nil;
     if (section == 0) { // Add to general section
         NSString *versionString = [NSString stringWithFormat:@"Metallic Launcher %@\n%@ on %@ (%s)\nPID: %d",
             NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"],
@@ -1972,6 +1971,10 @@
     return footer;
 }
 
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+    return self.presentationRows ? 0.01 : UITableViewAutomaticDimension;
+}
+
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section {
     NSString *text = [self tableView:tableView titleForFooterInSection:section];
     if (!text.length) return nil;
@@ -1983,7 +1986,7 @@
 
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
     NSString *text = [self tableView:tableView titleForFooterInSection:section];
-    if (!text.length) return 8;
+    if (!text.length) return self.presentationRows ? 0.01 : 8;
     CGFloat available = tableView.safeAreaLayoutGuide.layoutFrame.size.width;
     if (available <= 0) return UITableViewAutomaticDimension;
     CGFloat width = MAX(1, MIN(840, available - 64) - 28);
@@ -2005,7 +2008,7 @@
 
 /// 重写子页面跳转：为 CustomControlsViewController 设置必需的回调块
 - (void)tableView:(UITableView *)tableView openChildPaneAtIndexPath:(NSIndexPath *)indexPath {
-    NSDictionary *item = self.prefContents[indexPath.section][indexPath.row];
+    NSDictionary *item = [self preferenceItemAtDisplayIndexPath:indexPath];
 
     // 特殊处理：键位调整界面需要 setDefaultCtrl / getDefaultCtrl 回调
     if ([item[@"key"] isEqualToString:@"custom_controls"]) {
@@ -2060,10 +2063,15 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
 @property(nonatomic, strong) UIScrollView *categoryScroll;
 @property(nonatomic, strong) UIButton *categoryMenu;
 @property(nonatomic, strong) UILabel *sectionTitle;
+@property(nonatomic,strong) UIStackView *referenceHeading;
+@property(nonatomic,strong) UISearchBar *referenceSearch;
 @property(nonatomic, strong) UILabel *identity;
 @property(nonatomic, strong) NSArray<NSString *> *categoryTitles;
 @property(nonatomic, strong) NSLayoutConstraint *sidebarWidth;
 @property(nonatomic, strong) NSLayoutConstraint *headingTop;
+@property(nonatomic, strong) UIButton *soundButton;
+@property(nonatomic, strong) NSLayoutConstraint *soundHeight;
+@property(nonatomic, strong) NSLayoutConstraint *paneRight;
 @end
 @implementation MetallicSettingsContainerViewController
 - (void)viewDidLoad {
@@ -2087,6 +2095,7 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     title.adjustsFontForContentSizeCategory = YES;
     UIStackView *heading = [[UIStackView alloc] initWithArrangedSubviews:@[eyebrow,title]];
     heading.axis = UILayoutConstraintAxisVertical; heading.spacing = 8; heading.translatesAutoresizingMaskIntoConstraints = NO;
+    self.referenceHeading=heading;
     [self.view addSubview:heading];
     UIButton *help = [UIButton buttonWithType:UIButtonTypeSystem]; help.translatesAutoresizingMaskIntoConstraints = NO;
     [help setImage:[UIImage systemImageNamed:@"questionmark.circle"] forState:UIControlStateNormal];
@@ -2095,7 +2104,7 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     [help addTarget:helpItem.target action:helpItem.action forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:help];
     [NSLayoutConstraint activateConstraints:@[[help.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-24], [help.centerYAnchor constraintEqualToAnchor:title.centerYAnchor], [help.widthAnchor constraintEqualToConstant:44], [help.heightAnchor constraintEqualToConstant:44]]];
-    UISearchBar *search = [self.preferences presentationSearchBar];
+    UISearchBar *search = [self.preferences presentationSearchBar]; self.referenceSearch=search;
     [search removeFromSuperview]; search.translatesAutoresizingMaskIntoConstraints = NO;
     search.placeholder = @"Search settings and tools"; search.searchBarStyle = UISearchBarStyleMinimal;
     [self.view addSubview:search];
@@ -2127,11 +2136,23 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
     self.sectionTitle = [[UILabel alloc] init]; self.sectionTitle.font = [UIFont preferredFontForTextStyle:UIFontTextStyleTitle2];
     self.sectionTitle.textColor = AmeUIPrimaryTextColor(); self.sectionTitle.numberOfLines = 0; self.sectionTitle.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.sectionTitle];
+    self.soundButton = [UIButton buttonWithType:UIButtonTypeSystem]; self.soundButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.soundButton setTitle:@"Sound & Haptics" forState:UIControlStateNormal];
+    [self.soundButton setImage:[UIImage systemImageNamed:@"speaker.wave.2"] forState:UIControlStateNormal];
+    self.soundButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+    self.soundButton.contentEdgeInsets = UIEdgeInsetsMake(12,20,12,20);
+    self.soundButton.tintColor = AmeUIPrimaryTextColor();
+    self.soundButton.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+    [self.soundButton addTarget:self action:@selector(openSoundHaptics) forControlEvents:UIControlEventTouchUpInside];
+    AmeApplyGlassChipStyle(self.soundButton,26,YES);
+    [self.view addSubview:self.soundButton];
     self.identity = [[UILabel alloc] init]; self.identity.font = AmeUIFont(AmeUIFontRoleDescription); self.identity.textColor = AmeUISecondaryTextColor();
     self.identity.numberOfLines = 0; self.identity.translatesAutoresizingMaskIntoConstraints = NO; [self.view addSubview:self.identity];
     self.sidebarWidth = [self.categoryScroll.widthAnchor constraintEqualToConstant:224];
     self.headingTop = [self.sectionTitle.topAnchor constraintEqualToAnchor:search.bottomAnchor constant:24];
     UILayoutGuide *g = self.view.safeAreaLayoutGuide;
+    self.soundHeight = [self.soundButton.heightAnchor constraintEqualToConstant:68];
+    self.paneRight = [self.sectionTitle.trailingAnchor constraintEqualToAnchor:g.trailingAnchor constant:-24];
     [NSLayoutConstraint activateConstraints:@[
         [heading.topAnchor constraintEqualToAnchor:g.topAnchor constant:8], [heading.leadingAnchor constraintEqualToAnchor:g.leadingAnchor constant:24],
         [heading.trailingAnchor constraintLessThanOrEqualToAnchor:g.trailingAnchor constant:-24],
@@ -2139,9 +2160,10 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
         [self.categoryScroll.topAnchor constraintEqualToAnchor:search.bottomAnchor constant:20], [self.categoryScroll.leadingAnchor constraintEqualToAnchor:g.leadingAnchor constant:24], self.sidebarWidth, [self.categoryScroll.bottomAnchor constraintEqualToAnchor:g.bottomAnchor],
         [self.categoryStack.leadingAnchor constraintEqualToAnchor:self.categoryScroll.contentLayoutGuide.leadingAnchor], [self.categoryStack.trailingAnchor constraintEqualToAnchor:self.categoryScroll.contentLayoutGuide.trailingAnchor], [self.categoryStack.topAnchor constraintEqualToAnchor:self.categoryScroll.contentLayoutGuide.topAnchor], [self.categoryStack.bottomAnchor constraintEqualToAnchor:self.categoryScroll.contentLayoutGuide.bottomAnchor], [self.categoryStack.widthAnchor constraintEqualToAnchor:self.categoryScroll.frameLayoutGuide.widthAnchor],
         [self.categoryMenu.topAnchor constraintEqualToAnchor:search.bottomAnchor], [self.categoryMenu.leadingAnchor constraintEqualToAnchor:g.leadingAnchor constant:24], [self.categoryMenu.heightAnchor constraintEqualToConstant:44],
-        self.headingTop, [self.sectionTitle.leadingAnchor constraintEqualToAnchor:self.categoryScroll.trailingAnchor constant:24], [self.sectionTitle.trailingAnchor constraintEqualToAnchor:g.trailingAnchor constant:-24],
+        self.headingTop, [self.sectionTitle.leadingAnchor constraintEqualToAnchor:self.categoryScroll.trailingAnchor constant:24], self.paneRight,
         [self.identity.leadingAnchor constraintEqualToAnchor:self.sectionTitle.leadingAnchor], [self.identity.trailingAnchor constraintEqualToAnchor:self.sectionTitle.trailingAnchor], [self.identity.topAnchor constraintEqualToAnchor:self.sectionTitle.bottomAnchor constant:8],
-        [content.leadingAnchor constraintEqualToAnchor:self.sectionTitle.leadingAnchor constant:-12], [content.trailingAnchor constraintEqualToAnchor:g.trailingAnchor constant:-24], [content.topAnchor constraintEqualToAnchor:self.identity.bottomAnchor constant:8], [content.bottomAnchor constraintEqualToAnchor:g.bottomAnchor]
+        [self.soundButton.leadingAnchor constraintEqualToAnchor:self.sectionTitle.leadingAnchor], [self.soundButton.trailingAnchor constraintEqualToAnchor:self.sectionTitle.trailingAnchor], [self.soundButton.topAnchor constraintEqualToAnchor:self.identity.bottomAnchor constant:16], self.soundHeight,
+        [content.leadingAnchor constraintEqualToAnchor:self.sectionTitle.leadingAnchor], [content.trailingAnchor constraintEqualToAnchor:self.sectionTitle.trailingAnchor], [content.topAnchor constraintEqualToAnchor:self.soundButton.bottomAnchor constant:24], [content.bottomAnchor constraintEqualToAnchor:g.bottomAnchor]
     ]];
     [self selectCategory:0];
 }
@@ -2149,9 +2171,39 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     BOOL wide = self.view.safeAreaLayoutGuide.layoutFrame.size.width >= 700 && !UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
-    CGFloat width = wide ? MIN(240, self.view.bounds.size.width * .19) : 0;
+    CGFloat scale = wide ? self.view.bounds.size.width/1536.0 : .72;
+    CGFloat width = wide ? 252*scale : 0;
     if (self.sidebarWidth.constant != width) self.sidebarWidth.constant = width;
-    self.headingTop.constant = wide ? 24 : 52;
+    self.headingTop.constant = wide ? 32*scale : 52;
+    UILabel *eyebrow=(UILabel *)self.referenceHeading.arrangedSubviews.firstObject;
+    UILabel *title=(UILabel *)self.referenceHeading.arrangedSubviews.lastObject;
+    eyebrow.font=[UIFont systemFontOfSize:16*scale weight:UIFontWeightMedium];
+    title.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleLargeTitle] scaledFontForFont:[UIFont systemFontOfSize:44*scale weight:UIFontWeightBold]];
+    self.referenceHeading.spacing=18*scale;
+    self.sectionTitle.font=[[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle2] scaledFontForFont:[UIFont systemFontOfSize:28*scale weight:UIFontWeightSemibold]];
+    for(NSLayoutConstraint *c in self.view.constraints) {
+        CGFloat value=c.constant;
+        if(c.firstItem==self.referenceHeading && c.firstAttribute==NSLayoutAttributeTop)value=20*scale;
+        if(c.firstItem==self.referenceHeading && c.firstAttribute==NSLayoutAttributeLeading)value=38*scale;
+        if(c.firstItem==self.referenceSearch) {
+            if(c.firstAttribute==NSLayoutAttributeTop)value=34*scale;
+            if(c.firstAttribute==NSLayoutAttributeLeading)value=38*scale;
+            if(c.firstAttribute==NSLayoutAttributeTrailing)value=-38*scale;
+            if(c.firstAttribute==NSLayoutAttributeHeight)value=MAX(44,62*scale);
+        }
+        if(c.firstItem==self.categoryScroll && c.firstAttribute==NSLayoutAttributeLeading)value=wide?38*scale:24;
+        if(c.firstItem==self.categoryScroll && c.firstAttribute==NSLayoutAttributeTop)value=24*scale;
+        if(c.firstItem==self.sectionTitle && c.firstAttribute==NSLayoutAttributeLeading)value=wide?62*scale:0;
+        if(c.firstItem==self.identity && c.firstAttribute==NSLayoutAttributeTop)value=10*scale;
+        if(c.firstItem==self.soundButton && c.firstAttribute==NSLayoutAttributeTop)value=self.soundButton.hidden?0:21*scale;
+        if(c.firstItem==self.preferences.view && c.firstAttribute==NSLayoutAttributeTop)value=self.soundButton.hidden?20*scale:24*scale;
+        if(fabs(c.constant-value)>.1)c.constant=value;
+    }
+    self.referenceSearch.backgroundImage=[[UIImage alloc] init]; self.referenceSearch.searchTextField.backgroundColor=UIColor.clearColor;
+    self.referenceSearch.searchTextField.borderStyle=UITextBorderStyleNone;
+    if(![self.referenceSearch viewWithTag:kAmeGlassBackdropTag]) AmeApplyGlassChipStyle(self.referenceSearch,31*scale,YES);
+    self.paneRight.constant = wide ? -216*scale : -24;
+    self.soundHeight.constant = self.soundButton.hidden ? 0 : MAX(44,88*scale);
     self.categoryScroll.hidden = !wide; self.categoryMenu.hidden = wide;
     // Compact sections use the same destinations; their menu remains above the content.
     self.categoryMenu.alpha = wide ? 0 : 1;
@@ -2159,6 +2211,20 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     if (self.navigationController.topViewController != self) [self.navigationController setNavigationBarHidden:NO animated:animated];
+}
+- (void)openSoundHaptics {
+    LauncherPreferencesViewController *sound = [[LauncherPreferencesViewController alloc] init];
+    sound.referenceContentMode = YES; sound.prefSectionsVisible = YES;
+    [sound loadViewIfNeeded]; sound.prefDetailVisible = YES;
+    NSSet *keys=[NSSet setWithArray:@[@"disable_haptics",@"silence_other_audio",@"silence_with_switch",@"allow_microphone"]];
+    NSMutableArray *paths=[NSMutableArray array];
+    for (NSUInteger section=0;section<sound.prefContents.count;section++) {
+        for (NSUInteger row=1;row<sound.prefContents[section].count;row++) {
+            if ([keys containsObject:sound.prefContents[section][row][@"key"]]) [paths addObject:[NSIndexPath indexPathForRow:row inSection:section]];
+        }
+    }
+    sound.presentationRows = @[paths]; sound.title = @"Sound & Haptics";
+    [self.navigationController pushViewController:sound animated:YES];
 }
 - (void)categoryTapped:(UIButton *)sender { [self selectCategory:sender.tag]; }
 - (void)selectCategory:(NSInteger)index {
@@ -2184,17 +2250,34 @@ static LauncherNewsViewController *MetallicFindHome(UIViewController *controller
         button.accessibilityTraits = UIAccessibilityTraitButton | (button.tag==index ? UIAccessibilityTraitSelected : 0);
     }
     self.identity.text = index==8 ? [NSString stringWithFormat:@"Metallic Launcher · %@\n%@ · iOS %@", NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"] ?: @"Version unavailable", UIDevice.currentDevice.model, UIDevice.currentDevice.systemVersion] : @"";
-    // These are presentation anchors into the unchanged seven-section/90-option model.
-    NSArray *sections = @[@0,@5,@2,@4,@1,@0,@0,@6,@0,@0];
-    NSArray *keys = @[@"ui_theme",@"auto_ram",@"renderer",@"custom_controls",@"fileSource",@"cosmetica",@"version_isolation",@"debug_universal_script_jit",@"check_update",@"launcher_background"];
-    NSInteger section = [sections[index] integerValue];
+    // Category content is an ordering of ORIGINAL identities, not a second preference model.
     [self.preferences endPresentationSearch];
-    [[self.preferences presentationSearchBar] resignFirstResponder];
-    NSInteger row = 0;
-    for (NSDictionary *item in self.preferences.prefContents[section]) { if ([item[@"key"] isEqual:keys[index]]) break; row++; }
-    if (row >= (NSInteger)self.preferences.prefContents[section].count) row=0;
-    self.preferences.prefSectionsVisibility[section] = @YES;
+    NSMutableArray<NSIndexPath *> *rows = [NSMutableArray array];
+    NSArray *firstGeneral = @[@"custom_accent_color",@"announcement_preview_level",@"appicon",@"auto_check_update"];
+    NSDictionary *generalMoves = @{@"check_sha":@4,@"multi_threaded":@4,@"curseforge_api_key":@4,@"cosmetica":@5,@"version_isolation":@6,@"erase_demo_data":@6,@"debug_logging":@7,@"memory_limit_help":@1,@"check_update":@8};
+    for (NSUInteger section=0;section<self.preferences.prefContents.count;section++) {
+        NSArray *items=self.preferences.prefContents[section];
+        for (NSUInteger row=1;row<items.count;row++) {
+            NSDictionary *item=items[row]; if (!item[@"type"]) continue;
+            NSString *key=item[@"key"];
+            NSInteger category=0;
+            switch(section) { case 0: category=generalMoves[key] ? [generalMoves[key] integerValue] : 0; break;
+                case 1: category=4; break; case 2: case 3: category=2; break; case 4: category=3; break; case 5: category=1; break; default: category=7; break; }
+            if (category==index) [rows addObject:[NSIndexPath indexPathForRow:row inSection:section]];
+        }
+    }
+    if (index==0) {
+        [rows sortUsingComparator:^NSComparisonResult(NSIndexPath *a,NSIndexPath *b) {
+            NSString *ka=self.preferences.prefContents[a.section][a.row][@"key"], *kb=self.preferences.prefContents[b.section][b.row][@"key"];
+            NSUInteger ia=[firstGeneral indexOfObject:ka],ib=[firstGeneral indexOfObject:kb];
+            if (ia!=ib) return ia<ib ? NSOrderedAscending : NSOrderedDescending;
+            return [a compare:b];
+        }];
+    }
+    self.soundButton.hidden = index!=0;
+    self.preferences.presentationRows = rows.count ? @[rows] : @[];
     [self.preferences.tableView reloadData];
-    [self.preferences.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:section] atScrollPosition:UITableViewScrollPositionTop animated:NO];
+    [self.preferences.tableView setContentOffset:CGPointZero animated:NO];
+    [self.view setNeedsLayout];
 }
 @end

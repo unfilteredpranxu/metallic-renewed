@@ -1530,7 +1530,7 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     [self.rootStack addArrangedSubview:self.instanceRow];
     self.emptyInstances = AMEHomeLabel(MetallicPresentationText(@"renewed.home.empty_instances", @"Your next adventure starts here. Create an instance or install Minecraft from Downloads."), AmeUIFontRoleBody);
     [self.rootStack addArrangedSubview:self.emptyInstances];
-    [self.rootStack addArrangedSubview:AMEHomeLabel(MetallicPresentationText(@"renewed.home.cards", @"Home cards"), AmeUIFontRoleSectionHeading)];
+
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appearanceChanged:)
                                                  name:@"BackgroundUIEffectChanged" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(contentSizeChanged:)
@@ -1805,9 +1805,9 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     self.navigationController.navigationBarHidden = YES;
     
     // 加载磁贴配置
-    self.allTileConfigs = [[HomeTileConfig loadSavedConfigs] mutableCopy];
+    self.allTileConfigs = [NSMutableArray array];
     // ★ [HOME6] 按 ameHomeCardLayout(顺序 + 尺寸)重排;未存过则写回默认(等价 home6.html 默认布局)。
-    self.allTileConfigs = [[self configsByApplyingStoredBentoLayout:self.allTileConfigs] mutableCopy];
+
     [self rebuildDisplaySections];
     
     // Embed LauncherRightPanelViewController as child view controller to handle launch flow, JIT, downloads, and versions
@@ -1831,10 +1831,7 @@ static UILabel *AMEHomeLabel(NSString *text, AmeUIFontRole role) {
     [self setupHomeLogo];   // responsive transparent emblem replaces old blob
     [self applyHomeSafeAreaInsets];   // ★ [HOME6] 首次按实时安全区铺一次(竖/横通用)
     [self updateSkinDisplay];
-    [self checkMinecraftVersions];
-    [self checkForUpdate];
-    [self loadLatestNewsForTile];
-    [self loadAnnouncementsForTile];
+    // The retired feed owns no metadata, news or announcement requests.
 self.actionPanel = [[HomeActionPanelView alloc] init];
 self.actionPanel.translatesAutoresizingMaskIntoConstraints = NO;
 [self.view addSubview:self.actionPanel];
@@ -2185,6 +2182,11 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
             tabs.selectedIndex=AMELauncherTabSettings;
             break;
         }
+        case 8: [self handleShortcutAction:kShortcutActionMods]; break;
+        case 9: [self handleShortcutAction:kShortcutActionShaders]; break;
+        case 10: [self handleShortcutAction:kShortcutActionModpack]; break;
+        case 11: [self handleShortcutAction:kShortcutActionBackground]; break;
+        case 12: [self handleShortcutAction:kShortcutActionMultiplayer]; break;
         default: break;
     }
 }
@@ -2265,19 +2267,8 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 // MARK: - Build Display Sections
 
 - (void)rebuildDisplaySections {
-    // ★ [SIZE4] 四档跨度后,若仍按“feature + 小格”分段,section 边界会把空位切成块 ⇒ 尾段必然留洞,
-    //   且自定义 item 无法跨段回填。故把所有可见卡片放进**同一个 section**,交给
-    //   bentoSectionForTiles:cols: 的占位图算法统一排布(行优先首次适配 ⇒ 后续卡补空位)。
-    //   数据源形状 displaySections[section][item] 保持不变,cellForItem / numberOfItems 等全部不动。
-    NSMutableArray<HomeTileConfig *> *visible = [NSMutableArray array];
-    for (HomeTileConfig *tile in self.allTileConfigs) {
-        if (tile.visible) [visible addObject:tile];
-    }
-    if (visible.count == 0) {
-        self.displaySections = @[];
-        return;
-    }
-    self.displaySections = @[ [visible copy] ];
+    // Retired presentation only: saved home_tiles_config/ameHomeCardLayout are not mutated.
+    self.displaySections=@[];
 }
 
 // MARK: - Header Setup
@@ -3605,19 +3596,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 }
 
 - (void)loadLatestNewsForTile {
-    if (self.isLoadingNews) return;
-    self.isLoadingNews = YES;
-    __weak typeof(self) weakSelf = self;
-    [[MinecraftNewsService sharedService] fetchLatestNewsWithCompletion:^(NSArray<MinecraftNewsItem *> *items, NSInteger totalCount, NSError *error) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        strongSelf.isLoadingNews = NO;
-        if (items.count > 0) {
-            strongSelf.latestNewsItem = items.firstObject;
-        }
-        // 刷新 News tile 显示最新标题/摘要/封面
-        [strongSelf reloadNewsSection];
-    }];
+    // Retired Home feed: deliberately no promotional network work.
 }
 
 /// 重新加载 News tile 所在 section
@@ -3633,40 +3612,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 }
 
 - (void)checkMinecraftVersions {
-    self.isLoadingVersions = YES;
-    self.latestRelease = localize(@"i18n_str_347", nil);
-    self.latestSnapshot = localize(@"i18n_str_347", nil);
-    [self reloadVersionSections];
-    
-    NSString *downloadSource = getPrefObject(@"general.download_source");
-    NSString *url;
-    if ([downloadSource isEqualToString:@"bmclapi"]) {
-        url = @"https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json";
-    } else {
-        url = @"https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
-    }
-    
-    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:[NSURL URLWithString:url] completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.isLoadingVersions = NO;
-            if (data && !error) {
-                NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-                if (json) {
-                    NSDictionary *latest = json[@"latest"];
-                    self.latestRelease = latest[@"release"] ?: localize(@"i18n_str_121", nil);
-                    self.latestSnapshot = latest[@"snapshot"] ?: localize(@"i18n_str_121", nil);
-                } else {
-                    self.latestRelease = localize(@"i18n_str_358", nil);
-                    self.latestSnapshot = localize(@"i18n_str_358", nil);
-                }
-            } else {
-                self.latestRelease = localize(@"i18n_str_202", nil);
-                self.latestSnapshot = localize(@"i18n_str_202", nil);
-            }
-            [self reloadVersionSections];
-        });
-    }];
-    [task resume];
+    // Version catalogue metadata belongs to Downloads, not the retired Home feed.
 }
 
 - (void)reloadVersionSections {
@@ -3683,59 +3629,8 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 // MARK: - Update Check
 
 - (void)checkForUpdate {
-    NSString *currentVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"];
-    
-    if ([currentVersion rangeOfString:@"Preview" options:NSCaseInsensitiveSearch].location != NSNotFound) {
-        self.announcementText = localize(@"i18n_str_359", nil);
-        self.hasUpdate = NO;
-        [self reloadAnnouncementSection];
-        return;
-    }
-    
-    NSURL *url = [NSURL URLWithString:@"https://github.com/herbrine8403/Amethyst-iOS-MyRemastered/releases/latest"];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-    [request setHTTPMethod:@"GET"];
-    
-    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        if (error || ((NSHTTPURLResponse *)response).statusCode != 200 || !data) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                self.announcementText = localize(@"i18n_str_360", nil);
-                self.hasUpdate = NO;
-                [self reloadAnnouncementSection];
-            });
-            return;
-        }
-        
-        NSString *html = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        NSString *latestVer = [self extractVersionFromHTML:html];
-        
-        if (!latestVer) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                self.announcementText = localize(@"i18n_str_360", nil);
-                self.hasUpdate = NO;
-                [self reloadAnnouncementSection];
-            });
-            return;
-        }
-        
-        if ([latestVer hasPrefix:@"v"]) {
-            latestVer = [latestVer substringFromIndex:1];
-        }
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
-            NSComparisonResult cmp = [self compareVersion:currentVersion withVersion:latestVer];
-            if (cmp == NSOrderedAscending) {
-                self.announcementText = [NSString stringWithFormat:localize(@"i18n_str_361", nil), latestVer];
-                self.latestVersion = latestVer;
-                self.hasUpdate = YES;
-            } else {
-                self.announcementText = localize(@"i18n_str_362", nil);
-                self.hasUpdate = NO;
-            }
-            [self reloadAnnouncementSection];
-        });
-    }];
-    [task resume];
+    self.hasUpdate=NO;
+    self.announcementText=@"Metallic updates are not configured.";
 }
 
 - (void)reloadAnnouncementSection {
@@ -3753,15 +3648,7 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 
 /// 为首页公告磁贴拉取最新公告（取首条），失败时回退到更新检测文案
 - (void)loadAnnouncementsForTile {
-    __weak typeof(self) weakSelf = self;
-    [[AnnouncementService sharedService] fetchAnnouncementsWithCompletion:^(NSArray<AnnouncementItem *> *items, NSError *error) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        if (items.count > 0) {
-            strongSelf.latestAnnouncement = items.firstObject;
-        }
-        [strongSelf reloadAnnouncementSection];
-    }];
+    // Retired Home feed: deliberately no promotional network work.
 }
 
 /// 打开公告磁贴上 actionURL 指向的链接（SFSafariViewController 内嵌打开）
@@ -3810,11 +3697,10 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 }
 
 - (void)downloadLatestVersion {
-    NSString *urlString = @"https://github.com/herbrine8403/Amethyst-iOS-MyRemastered/releases/latest";
-    NSURL *url = [NSURL URLWithString:urlString];
-    if ([[UIApplication sharedApplication] canOpenURL:url]) {
-        [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
-    }
+    if(self.presentedViewController)return;
+    UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Metallic Launcher" message:@"Metallic updates are not configured. No verified official release channel is available." preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 // MARK: - Cell Fade-In Animation
@@ -3929,11 +3815,8 @@ CGFloat trailingMargin = (UIDevice.currentDevice.userInterfaceIdiom == UIUserInt
 ///   home_tiles_config ⇒ 业务字段(可见性 / 类型 / 图标 / …);ameHomeCardLayout ⇒ 顺序 + 尺寸。
 ///   几何仍交给 compositional layout:只 reloadData + invalidateLayout,不硬摆 frame。
 - (void)handleHomeCardLayoutChanged:(NSNotification *)note {
-    NSArray<HomeTileConfig *> *saved = [HomeTileConfig loadSavedConfigs];
-    self.allTileConfigs = [[self configsByApplyingStoredBentoLayout:saved] mutableCopy];
+    // Legacy preferences remain recoverable, but can never restore the retired feed.
     [self rebuildDisplaySections];
-    [self.collectionView reloadData];
-    [self.collectionView.collectionViewLayout invalidateLayout];
 }
 
 // MARK: - ★ [HOME6] 朝向与安全区(横竖屏切换的唯一入口)

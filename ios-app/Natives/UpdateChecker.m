@@ -48,6 +48,8 @@ static NSString *AMENonEmpty(NSString * _Nullable s, NSString *fallback) {
 
 @implementation UpdateChecker
 
++ (BOOL)hasOfficialMetallicReleaseChannel { return NO; }
+
 + (NSString *)repoOwner { return @"herbrine8403"; }
 + (NSString *)repoName { return @"Amethyst-iOS-MyRemastered"; }
 
@@ -326,6 +328,9 @@ static NSString *AMENonEmpty(NSString * _Nullable s, NSString *fallback) {
 #pragma mark - 启动检查 / 手动检查
 
 + (void)performStartupCheckFromPresenter:(UIViewController *)presenter {
+    // No verified Metallic release channel is configured; never poll an unrelated fork.
+    if(![self hasOfficialMetallicReleaseChannel])return;
+
     if (![self autoCheckEnabled]) {
         NSLog(@"[UpdateChecker] Startup check disabled by preference");
         return;
@@ -353,6 +358,11 @@ static NSString *AMENonEmpty(NSString * _Nullable s, NSString *fallback) {
 
 + (void)performManualCheckFromPresenter:(UIViewController *)presenter
                            showUpToDate:(BOOL)showUpToDate {
+    if(![self hasOfficialMetallicReleaseChannel]) {
+        [self presentSimpleAlertWithTitle:@"Metallic Launcher" message:@"Metallic updates are not configured. No verified official release channel is available." fromPresenter:presenter];
+        return;
+    }
+
     /* 5 秒防连点（对齐 ZL2 手动检查的限频） */
     if ([self isWithinRateLimit:5.0]) {
         NSLog(@"[UpdateChecker] Manual check too frequent, ignoring");

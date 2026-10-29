@@ -145,7 +145,13 @@ static UIViewController *AmeWrapInNav(UIViewController *vc) {
     self.toolsMenu = [UIMenu menuWithTitle:@"Tools" children:@[ai]];
     UIAction *jar=[UIAction actionWithTitle:@"Execute JAR" image:[UIImage systemImageNamed:@"doc"] identifier:nil handler:^(__kindof UIAction *action) { [toolsWeakSelf ameForwardHomeOverflow:6]; }];
     UIAction *downloads=[UIAction actionWithTitle:@"Download Center" image:[UIImage systemImageNamed:@"arrow.down.circle"] identifier:nil handler:^(__kindof UIAction *action) { [toolsWeakSelf ameForwardHomeOverflow:5]; }];
-    self.topNav.moreMenu=[UIMenu menuWithTitle:@"More" children:@[jar,downloads,ai]];
+    NSMutableArray<UIMenuElement *> *actions=[NSMutableArray arrayWithArray:@[jar,downloads,ai]];
+    NSArray *titles=@[@"Mods Manager",@"Shader Management",@"Import Modpack",@"Wallpaper Settings",@"Multiplayer"];
+    for(NSUInteger i=0;i<titles.count;i++) {
+        NSInteger route=8+i;
+        [actions addObject:[UIAction actionWithTitle:titles[i] image:nil identifier:nil handler:^(__kindof UIAction *action) { [toolsWeakSelf ameForwardHomeOverflow:route]; }]];
+    }
+    self.topNav.moreMenu=[UIMenu menuWithTitle:@"More" children:actions];
     self.pendingSelection = NSNotFound;
     self.profileSlot = [[UILayoutGuide alloc] init];
     [self.navigationGroup addLayoutGuide:self.profileSlot];
